@@ -1,0 +1,77 @@
+/* page base */
+body {
+    background: #1a1a1a; /* deep gray */
+    color: #ffffff;      /* white fonts */
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    margin: 0;
+    padding: 16px;
+}
+
+/* center main and make things readable */
+main {
+    margin: 0 auto;
+}
+
+/* digging grid */
+#digging-grid {
+    border-collapse: collapse;
+    margin: 16px auto;    /* centered horizontally */
+    display: block;       /* allow auto margins to work reliably */
+    width: fit-content;   /* shrink to the grid width */
+}
+
+/* each grid cell is a bigger square now */
+#digging-grid .cell {
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    box-sizing: border-box;
+    background: #8b5e3c;    /* brownish */
+    border: 1px solid #6b3f27; /* darker outline so cells are visible */
+    color: #fff;            /* show hardness numbers in white */
+    text-align: center;
+    font-size: 14px;
+    line-height: 50px;      /* vertically center the number */
+}
+
+/* style for the depth label (first column) */
+#digging-grid .depth-cell {
+    width: 50px;
+    min-width: 50px;
+    background: transparent;
+    color: #fff;
+    text-align: center;
+    font-weight: 600;
+    padding: 0;
+    border: none;
+    vertical-align: middle;
+}
+
+/* ensure text (if any) is white and small */
+#digging-grid .cell,
+#controls,
+header, footer {
+    color: #ffffff;
+}
+
+/* dig button style that matches the theme */
+#dig-button {
+    background: #3a3a3a;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* small responsive tweak so grid isn't squeezed */
+@media (max-width: 420px) {
+    main { padding: 8px; }
+}
+
+/* center the controls below the grid */
+#controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}

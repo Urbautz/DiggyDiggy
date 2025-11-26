@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diggy Diggy - Dwarf Digging Game</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/main.js" defer></script>
+    <script src="js/game.js" defer></script>
+    <script src="js/ui.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Diggy Diggy!</h1>
+        <p>Help the dwarfs dig a deep hole! How deep? Yes!</p>
+    </header>
+    <main>
+        <table id="digging-grid" aria-label="Digging grid">
+            <tbody>
+                <!-- 10x10 static grid -->
+                <tr>
+                    <td class="cell" data-row="0" data-col="0"></td><td class="cell" data-row="0" data-col="1"></td><td class="cell" data-row="0" data-col="2"></td><td class="cell" data-row="0" data-col="3"></td><td class="cell" data-row="0" data-col="4"></td><td class="cell" data-row="0" data-col="5"></td><td class="cell" data-row="0" data-col="6"></td><td class="cell" data-row="0" data-col="7"></td><td class="cell" data-row="0" data-col="8"></td><td class="cell" data-row="0" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="1" data-col="0"></td><td class="cell" data-row="1" data-col="1"></td><td class="cell" data-row="1" data-col="2"></td><td class="cell" data-row="1" data-col="3"></td><td class="cell" data-row="1" data-col="4"></td><td class="cell" data-row="1" data-col="5"></td><td class="cell" data-row="1" data-col="6"></td><td class="cell" data-row="1" data-col="7"></td><td class="cell" data-row="1" data-col="8"></td><td class="cell" data-row="1" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="2" data-col="0"></td><td class="cell" data-row="2" data-col="1"></td><td class="cell" data-row="2" data-col="2"></td><td class="cell" data-row="2" data-col="3"></td><td class="cell" data-row="2" data-col="4"></td><td class="cell" data-row="2" data-col="5"></td><td class="cell" data-row="2" data-col="6"></td><td class="cell" data-row="2" data-col="7"></td><td class="cell" data-row="2" data-col="8"></td><td class="cell" data-row="2" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="3" data-col="0"></td><td class="cell" data-row="3" data-col="1"></td><td class="cell" data-row="3" data-col="2"></td><td class="cell" data-row="3" data-col="3"></td><td class="cell" data-row="3" data-col="4"></td><td class="cell" data-row="3" data-col="5"></td><td class="cell" data-row="3" data-col="6"></td><td class="cell" data-row="3" data-col="7"></td><td class="cell" data-row="3" data-col="8"></td><td class="cell" data-row="3" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="4" data-col="0"></td><td class="cell" data-row="4" data-col="1"></td><td class="cell" data-row="4" data-col="2"></td><td class="cell" data-row="4" data-col="3"></td><td class="cell" data-row="4" data-col="4"></td><td class="cell" data-row="4" data-col="5"></td><td class="cell" data-row="4" data-col="6"></td><td class="cell" data-row="4" data-col="7"></td><td class="cell" data-row="4" data-col="8"></td><td class="cell" data-row="4" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="5" data-col="0"></td><td class="cell" data-row="5" data-col="1"></td><td class="cell" data-row="5" data-col="2"></td><td class="cell" data-row="5" data-col="3"></td><td class="cell" data-row="5" data-col="4"></td><td class="cell" data-row="5" data-col="5"></td><td class="cell" data-row="5" data-col="6"></td><td class="cell" data-row="5" data-col="7"></td><td class="cell" data-row="5" data-col="8"></td><td class="cell" data-row="5" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="6" data-col="0"></td><td class="cell" data-row="6" data-col="1"></td><td class="cell" data-row="6" data-col="2"></td><td class="cell" data-row="6" data-col="3"></td><td class="cell" data-row="6" data-col="4"></td><td class="cell" data-row="6" data-col="5"></td><td class="cell" data-row="6" data-col="6"></td><td class="cell" data-row="6" data-col="7"></td><td class="cell" data-row="6" data-col="8"></td><td class="cell" data-row="6" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="7" data-col="0"></td><td class="cell" data-row="7" data-col="1"></td><td class="cell" data-row="7" data-col="2"></td><td class="cell" data-row="7" data-col="3"></td><td class="cell" data-row="7" data-col="4"></td><td class="cell" data-row="7" data-col="5"></td><td class="cell" data-row="7" data-col="6"></td><td class="cell" data-row="7" data-col="7"></td><td class="cell" data-row="7" data-col="8"></td><td class="cell" data-row="7" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="8" data-col="0"></td><td class="cell" data-row="8" data-col="1"></td><td class="cell" data-row="8" data-col="2"></td><td class="cell" data-row="8" data-col="3"></td><td class="cell" data-row="8" data-col="4"></td><td class="cell" data-row="8" data-col="5"></td><td class="cell" data-row="8" data-col="6"></td><td class="cell" data-row="8" data-col="7"></td><td class="cell" data-row="8" data-col="8"></td><td class="cell" data-row="8" data-col="9"></td>
+                </tr>
+                <tr>
+                    <td class="cell" data-row="9" data-col="0"></td><td class="cell" data-row="9" data-col="1"></td><td class="cell" data-row="9" data-col="2"></td><td class="cell" data-row="9" data-col="3"></td><td class="cell" data-row="9" data-col="4"></td><td class="cell" data-row="9" data-col="5"></td><td class="cell" data-row="9" data-col="6"></td><td class="cell" data-row="9" data-col="7"></td><td class="cell" data-row="9" data-col="8"></td><td class="cell" data-row="9" data-col="9"></td>
+                </tr>
+            </tbody>
+        </table>
+        <div id="controls">
+            <button id="dig-button">Dig</button>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Diggy Diggy Game</p>
+    </footer>
+</body>
+</html>

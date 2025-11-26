@@ -1,0 +1,27 @@
+{
+  "name": "diggy-diggy",
+  "version": "1.0.0",
+  "description": "An incremental game about dwarfs digging a hole.",
+  "main": "webroot/js/main.js",
+  "scripts": {
+    "start": "live-server webroot",
+    "test": "jest"
+  },
+  "keywords": [
+    "incremental",
+    "game",
+    "dwarfs",
+    "digging"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "live-server": "^1.2.1",
+    "jest": "^27.0.6"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/diggy-diggy.git"
+  }
+}
