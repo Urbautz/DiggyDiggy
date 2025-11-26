@@ -1,5 +1,5 @@
 // This file handles the user interface interactions, updating the display based on the game state and player actions.
-
+/*
 const gridElement = document.getElementById('digging-grid');
 
 function createGrid(depth) {
@@ -15,7 +15,7 @@ function createGrid(depth) {
         gridElement.appendChild(row);
     }
 }
-
+/*
 function updateGrid(depth, dwarfs) {
     for (let i = 0; i < depth; i++) {
         for (let j = 0; j < 10; j++) {
@@ -28,7 +28,7 @@ function updateGrid(depth, dwarfs) {
         }
     }
 }
-
+*/
 function openSettings() {
     alert("hallo welt");
         openModal('settings-modal');
