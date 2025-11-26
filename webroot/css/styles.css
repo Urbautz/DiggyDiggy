@@ -116,3 +116,49 @@ header, footer {
 #settings-button:hover, #dig-button:hover {
     transform: translateY(-1px);
 }
+
+/* modal overlay & dialog (glass effect) */
+.modal {
+    display: none; /* shown by JS */
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal[aria-hidden="false"] { display: flex; }
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+}
+
+.modal-dialog {
+    position: relative;
+    width: clamp(280px, 60vw, 720px);
+    max-width: 95%;
+    border-radius: 12px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px) saturate(120%);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #fff;
+    z-index: 2010;
+}
+
+.modal-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.modal-header h2 { margin:0; font-size:20px; }
+.modal-close { background:transparent; border:none; color: #fff; font-size:20px; cursor:pointer; }
+.modal-body { margin-top: 12px; color: #eaeaea; }
+.modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top: 16px; }
+
+.btn-primary { background: linear-gradient(180deg,#3b82f6,#2563eb); color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.btn-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.08); color: #fff; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+
+/* small screen: dialogs slightly smaller */
+@media (max-width: 420px) {
+    .modal-dialog { width: 92%; padding: 14px; }
+}
