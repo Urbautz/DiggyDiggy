@@ -1,15 +1,15 @@
 // This file initializes the game, setting up the initial state and handling the game loop.
 
 let grid = [];
-const gridWidth = 10;
+const gridWidth = 20;
 const gridDepth = 25; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
 
 // Material registry — easy to extend later
 const materials = [
-    { id: 'earth', name: 'Earth', hardness: 3, color: '#6b4b2c' },
-    { id: 'clay', name: 'Clay', hardness: 10, color: '#a57f61' },
-    { id: 'sandstone', name: 'Sandstone', hardness: 25, color: '#d5b68a' },
+    { id: 'earth', name: 'Earth', hardness: 1, color: '#6b4b2c' },
+    { id: 'clay', name: 'Clay', hardness: 3, color: '#a57f61' },
+    { id: 'gravel', name: 'Sandstone', hardness: 4, color: '#443232' },
 ];
 
 // Add new material at runtime
@@ -30,7 +30,6 @@ function getMaterialById(id) {
 
 // Create a random grid (grid[row][col] -> { materialId, hardness })
 function generateGrid() {
-    grid = [];
     for (let r = 0; r < gridDepth; r++) {
         const row = [];
         for (let c = 0; c < gridWidth; c++) {
@@ -89,6 +88,26 @@ function updateGridDisplay() {
         }
         tbody.appendChild(rowEl);
     }
+}
+
+function openSettings() {
+    alert("hallo welt");
+        openModal('settings-modal');
+}
+
+function openModal(modalname) {
+    const modal = document.getElementById(modalname);
+    if (!modal) return;
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+    if (!modal) return;
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function initUI() {
+    createGrid(10); // Initialize the grid with 10 rows
 }
 
 function tick() {}

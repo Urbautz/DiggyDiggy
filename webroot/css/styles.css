@@ -27,10 +27,10 @@ main {
     padding: 0;
     box-sizing: border-box;
     background: #8b5e3c;    /* brownish */
-    border: 1px solid #6b3f27; /* darker outline so cells are visible */
+    border: 1px solid #000000; /* darker outline so cells are visible */
     color: #fff;            /* show hardness numbers in white */
     text-align: center;
-    font-size: 14px;
+    font-size: 10px;
     line-height: 50px;      /* vertically center the number */
 }
 
