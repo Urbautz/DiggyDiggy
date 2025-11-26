@@ -412,6 +412,7 @@ function dig() {
                 continue;
             } else {
                 console.log(`Dwarf ${dwarf.name} could not schedule move to (${foundBelow},${nextRowIndex})`);
+                scheduleMove(dwarf, foundBelow+1, nextRowIndex+1)
                 continue;
             }
         }
