@@ -1,6 +1,5 @@
 // This file initializes the game, setting up the initial state and handling the game loop.
 
-let dwarfs = [];
 let grid = [];
 const gridWidth = 10;
 const gridDepth = 25; // full data depth

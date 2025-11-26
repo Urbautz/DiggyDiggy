@@ -30,7 +30,8 @@ function updateGrid(depth, dwarfs) {
 }
 
 function openSettings() {
-        openmModal('settings-modal');
+    alert("hallo welt");
+        openModal('settings-modal');
 }
 
 function openModal(modalname) {
@@ -47,6 +48,3 @@ function closeModal() {
 function initUI() {
     createGrid(10); // Initialize the grid with 10 rows
 }
-
-// Export functions for use in other modules
-export { createGrid, updateGrid, initUI };
