@@ -55,12 +55,13 @@ function updateGridDisplay() {
                 cell.style.background = 'skyblue';
                 // show dwarf initials even in empty (dug-out) cells so the dwarf's location is visible
                 if (dwarfsHere.length > 0) {
-                    // use a single dig emoji inside a styled span to mark presence
-                    const marker = '⛏️';
-                    cell.innerHTML = `<span class="dwarf-marker">${marker}</span>`;
+                    // mark the cell as occupied — the CSS background pseudo-element will show the emoji
+                    cell.classList.add('has-dwarf');
+                    cell.textContent = '';
                     cell.title = `${dwarfsHere.map(d => d.name).join(', ')} (standing here, dug out)`;
                     cell.setAttribute('aria-label', `row ${r} col ${c} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
                 } else {
+                    cell.classList.remove('has-dwarf');
                     cell.textContent = '';
                     cell.title = mat ? `${mat.name} (dug out)` : 'Empty';
                     cell.setAttribute('aria-label', `row ${r} col ${c} empty`);
@@ -72,11 +73,12 @@ function updateGridDisplay() {
                 cell.title = mat ? `${mat.name} (hardness ${displayHardness})` : `hardness ${displayHardness}`;
                 // show current hardness value inside the cell (rounded up for clarity)
                 if (dwarfsHere.length > 0) {
-                    const marker = '⛏️';
-                    // render the hardness plus a styled emoji marker
-                    cell.innerHTML = `${displayHardness} <span class="dwarf-marker">${marker}</span>`;
+                    // mark the cell with the background emoji and render hardness text normally
+                    cell.classList.add('has-dwarf');
+                    cell.textContent = displayHardness;
                     cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
                 } else {
+                    cell.classList.remove('has-dwarf');
                     cell.textContent = displayHardness;
                     cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness}`);
                 }

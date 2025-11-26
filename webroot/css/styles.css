@@ -32,15 +32,36 @@ main {
     text-align: center;
     font-size: 10px;
     line-height: 50px;      /* vertically center the number */
+    position: relative;     /* allow pseudo-element background markers */
 }
 
 /* marker used to show a dwarf in a cell */
+/* kept for compatibility (no longer required) */
 #digging-grid .dwarf-marker {
     display: inline-block;
-    font-size: 26px; /* bigger emoji */
+    font-size: 26px; /* kept for legacy rendering */
     line-height: 1;
     vertical-align: middle;
     margin-left: 6px;
+}
+
+/* show a faint, larger emoji in the background when a dwarf occupies the cell */
+#digging-grid .cell.has-dwarf::before {
+    content: '⛏️';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;        /* larger, background-style */
+    opacity: 0.42;          /* very subtle */
+    pointer-events: none;   /* doesn't interfere with interactions */
+    z-index: 0;             /* behind the normal content */
+}
+
+/* ensure cell content sits above the background marker */
+#digging-grid .cell > * {
+    position: relative;
+    z-index: 1;
 }
 
 /* style for the depth label (first column) */
