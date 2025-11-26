@@ -29,6 +29,21 @@ function updateGrid(depth, dwarfs) {
     }
 }
 
+function openSettings() {
+        openmModal('settings-modal');
+}
+
+function openModal(modalname) {
+    const modal = document.getElementById(modalname);
+    if (!modal) return;
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+    if (!modal) return;
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 function initUI() {
     createGrid(10); // Initialize the grid with 10 rows
 }

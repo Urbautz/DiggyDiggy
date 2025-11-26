@@ -45,8 +45,12 @@ function initializeGame() {
         });
     }
 
+    function openSettings() {
+        openmModal('settings-modal');
+    }
+
     function openModal(modalname) {
-        const modal = document.getElementById('dig-button');
+        const modal = document.getElementById(modalname);
         if (!modal) return;
         modal.setAttribute('aria-hidden', 'false');
     }
