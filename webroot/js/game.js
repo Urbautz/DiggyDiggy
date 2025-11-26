@@ -202,6 +202,38 @@ function dig() {
         if (!dwarf.status) dwarf.status = 'idle';
         if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
         console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
+        // If dwarf's bucket is full, force them to go to drop-off to unload
+        const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a,b) => a + b, 0) : 0;
+        if (typeof bucketCapacity === 'number' && bucketTotal >= bucketCapacity) {
+            // if at drop-off, deposit
+            if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
+                // transfer bucket contents to global materialsStock
+                if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
+                    for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
+                        materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
+                    }
+                    console.log(`Dwarf ${dwarf.name} unloaded ${JSON.stringify(dwarf.bucket)} at drop-off`);
+                    dwarf.bucket = {};
+                    dwarf.status = 'idle';
+                    // Refresh displays
+                    if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                }
+                // continue acting after deposit (do not schedule other actions this tick)
+                continue;
+            }
+
+            // otherwise, attempt to schedule a move to drop-off
+            if (!dwarf.moveTarget || dwarf.moveTarget.x !== dropOff.x || dwarf.moveTarget.y !== dropOff.y) {
+                const scheduled = scheduleMove(dwarf, dropOff.x, dropOff.y);
+                if (scheduled) {
+                    console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
+                    if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                    continue; // movement will consume this tick
+                }
+            }
+            // if we couldn't schedule, fall through and wait
+        }
+
         // guard: ensure grid is available and the dwarf's row exists
         if (!Array.isArray(grid) || grid.length === 0) {
             console.warn('Grid not initialized yet');

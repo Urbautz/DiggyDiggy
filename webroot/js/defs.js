@@ -46,3 +46,14 @@ let dwarfs = [
     
 let grid = [];
 let startX = 0;
+
+// Global stockpile for collected materials (dwarfs must deliver to drop-off to increase these)
+const materialsStock = {};
+// Initialize stock counts for all known materials
+for (const m of materials) materialsStock[m.id] = 0;
+
+// How many items a dwarf can hold before needing to return to drop-off
+const bucketCapacity = 4;
+
+// Drop-off location (where dwarfs should deliver their bucket contents). Choose top-left by default.
+const dropOff = { x: 0, y: 0 };

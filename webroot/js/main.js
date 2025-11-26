@@ -89,6 +89,15 @@ function updateGridDisplay() {
                     mover.textContent = '🏃';
                     cell.appendChild(mover);
                 }
+
+                // show drop-off marker (global drop-off location) if this cell matches
+                if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
+                    cell.classList.add('drop-off');
+                    const box = document.createElement('span');
+                    box.className = 'drop-off-marker';
+                    box.textContent = '📦';
+                    cell.appendChild(box);
+                }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
@@ -128,6 +137,8 @@ function updateGridDisplay() {
         tbody.appendChild(rowEl);
     }
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
+        // Update visible stock counts too
+        updateStockDisplay();
 }
 
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
@@ -148,20 +159,28 @@ function closeModal(modalName) {
     if (modalName) {
         const m = document.getElementById(modalName);
         if (m) m.setAttribute('aria-hidden', 'true');
+        // If we just closed the dwarfs modal, stop live updates
+        if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
         return;
     }
     // close any open modal
-    document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => m.setAttribute('aria-hidden','true'));
+    document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
+        const id = m.id;
+        m.setAttribute('aria-hidden','true');
+        if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
+    });
 }
 
 // Open the dwarfs overview modal and populate current data
 function openDwarfs() {
     populateDwarfsOverview();
     openModal('dwarfs-modal');
+    startDwarfsLiveUpdate();
 }
 
 function closeDwarfs() {
     closeModal('dwarfs-modal');
+    stopDwarfsLiveUpdate();
 }
 
 // Populate the dwarfs modal with a compact table showing state for each dwarf
@@ -202,6 +221,29 @@ function populateDwarfsOverview() {
     container.appendChild(table);
 }
 
+// ---- live-update for the dwarfs modal ----
+let _dwarfsModalRefreshId = null;
+function startDwarfsLiveUpdate(intervalMs = 350) {
+    if (_dwarfsModalRefreshId) return;
+    // Refresh immediately and then on an interval while modal is open
+    _dwarfsModalRefreshId = setInterval(() => {
+        // only update if the modal is visible
+        const modal = document.getElementById('dwarfs-modal');
+        if (!modal || modal.getAttribute('aria-hidden') === 'true') {
+            // if modal is gone or hidden, stop the interval
+            stopDwarfsLiveUpdate();
+            return;
+        }
+        populateDwarfsOverview();
+    }, intervalMs);
+}
+
+function stopDwarfsLiveUpdate() {
+    if (!_dwarfsModalRefreshId) return;
+    clearInterval(_dwarfsModalRefreshId);
+    _dwarfsModalRefreshId = null;
+}
+
 // clicking on any element with data-action="close-modal" closes modals
 document.addEventListener('click', (ev) => {
     const el = ev.target;
@@ -213,6 +255,24 @@ document.addEventListener('click', (ev) => {
 
 function initUI() {
     createGrid(10); // Initialize the grid with 10 rows
+}
+
+// Render the global materials stock into the header area
+function updateStockDisplay() {
+    const container = document.getElementById('stock-status');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // show each material with its stock count
+    for (const m of materials) {
+        const id = m.id;
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        const pill = document.createElement('div');
+        pill.className = 'stock-pill';
+        pill.title = `${m.name}: ${count}`;
+        pill.innerHTML = `<span class="stock-label">${m.name}</span><span class="stock-count">${count}</span>`;
+        container.appendChild(pill);
+    }
 }
 
 function tick() {
