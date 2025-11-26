@@ -47,24 +47,45 @@ function updateGridDisplay() {
 
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
             const rawHardness = Number(cellData.hardness || 0);
-            // find dwarfs at this location (may be none)
+            // find dwarfs at this location (may be none) and separate moving vs standing
             const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === c && d.y === r) : [];
+            const movingHere = dwarfsHere.filter(d => d.status === 'moving');
+            const standingHere = dwarfsHere.filter(d => d.status !== 'moving');
+            const diggersHere = dwarfsHere.filter(d => d.status === 'digging');
 
             if (rawHardness <= 0) {
                 // dug-out / empty
                 cell.style.background = 'skyblue';
-                // show dwarf initials even in empty (dug-out) cells so the dwarf's location is visible
-                if (dwarfsHere.length > 0) {
+                // show dwarf markers even in empty (dug-out) cells
+                if (standingHere.length > 0) {
                     // mark the cell as occupied — the CSS background pseudo-element will show the emoji
                     cell.classList.add('has-dwarf');
                     cell.textContent = '';
-                    cell.title = `${dwarfsHere.map(d => d.name).join(', ')} (standing here, dug out)`;
-                    cell.setAttribute('aria-label', `row ${r} col ${c} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
+                    cell.title = `${standingHere.map(d => d.name).join(', ')} (standing here, dug out)`;
+                    cell.setAttribute('aria-label', `row ${r} col ${c} dwarfs ${standingHere.map(d => d.name).join(', ')}`);
+                    // if any of the standing dwarfs are actively digging, show digging marker
+                    if (diggersHere.length > 0) {
+                        cell.classList.add('is-digging');
+                        const digMarker = document.createElement('span');
+                        digMarker.className = 'digging-marker strike';
+                        digMarker.textContent = '⛏️';
+                        cell.appendChild(digMarker);
+                    } else {
+                        cell.classList.remove('is-digging');
+                    }
                 } else {
                     cell.classList.remove('has-dwarf');
                     cell.textContent = '';
                     cell.title = mat ? `${mat.name} (dug out)` : 'Empty';
                     cell.setAttribute('aria-label', `row ${r} col ${c} empty`);
+                }
+
+                // moving dwarfs are shown with a running icon (may be behind the dig marker)
+                if (movingHere.length > 0) {
+                    const mover = document.createElement('span');
+                    mover.className = 'moving-marker';
+                    mover.textContent = '🏃';
+                    cell.appendChild(mover);
                 }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
@@ -72,15 +93,31 @@ function updateGridDisplay() {
                 const displayHardness = Math.ceil(rawHardness);
                 cell.title = mat ? `${mat.name} (hardness ${displayHardness})` : `hardness ${displayHardness}`;
                 // show current hardness value inside the cell (rounded up for clarity)
-                if (dwarfsHere.length > 0) {
+                if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
                     cell.classList.add('has-dwarf');
                     cell.textContent = displayHardness;
-                    cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
+                    cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness} dwarfs ${standingHere.map(d => d.name).join(', ')}`);
+                    if (diggersHere.length > 0) {
+                        cell.classList.add('is-digging');
+                        const digMarker = document.createElement('span');
+                        digMarker.className = 'digging-marker strike';
+                        digMarker.textContent = '⛏️';
+                        cell.appendChild(digMarker);
+                    } else {
+                        cell.classList.remove('is-digging');
+                    }
                 } else {
                     cell.classList.remove('has-dwarf');
                     cell.textContent = displayHardness;
                     cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness}`);
+                }
+
+                if (movingHere.length > 0) {
+                    const mover = document.createElement('span');
+                    mover.className = 'moving-marker';
+                    mover.textContent = '🏃';
+                    cell.appendChild(mover);
                 }
             }
 
@@ -110,7 +147,14 @@ function initUI() {
     createGrid(10); // Initialize the grid with 10 rows
 }
 
-function tick() {}
+function tick() {
+    // Run one game tick — let dwarfs act
+    try {
+        if (typeof dig === 'function') dig();
+    } catch (err) {
+        console.error('tick(): error running dig()', err);
+    }
+}
 
 // Initialize the game state
 function initGame() {

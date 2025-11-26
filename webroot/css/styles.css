@@ -52,17 +52,62 @@ main {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 24px;        /* larger, background-style */
-    opacity: 0.8;          /* very subtle */
+    font-size: 36px;        /* larger, background-style */
+    opacity: 0.18;          /* subtle */
     pointer-events: none;   /* doesn't interfere with interactions */
-    z-index: 0;             /* behind the normal content */
+    z-index: 1;             /* behind text content but above moving markers */
 }
 
 /* ensure cell content sits above the background marker */
+/* ensure cell content sits above the background marker */
 #digging-grid .cell > * {
     position: relative;
-    z-index: 1;
+    z-index: 3;
 }
+
+/* running/moving marker - intentionally lower z-index so it does not block a digging dwarf's marker */
+#digging-grid .cell .moving-marker {
+    position: absolute;
+    left: 48%;
+    top: 62%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    line-height: 1;
+    z-index: 0; /* lower than the digger background (z-index:1) */
+    opacity: 0.95;
+    pointer-events: none;
+}
+
+/* digging animation styles */
+#digging-grid .cell.is-digging {
+    animation: digGlow 1s linear infinite;
+}
+
+#digging-grid .digging-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    z-index: 2; /* in front of digging background */
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(255,255,255,0.25);
+}
+
+@keyframes digGlow {
+    0% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
+    50% { box-shadow: inset 0 0 18px rgba(255,255,255,0.06); }
+    100% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
+}
+
+/* small shovel impact animation */
+@keyframes shovelStrike {
+    0% { transform: translate(-50%,-60%) rotate(-12deg); opacity: 0.95; }
+    40% { transform: translate(-50%,-40%) rotate(6deg); opacity: 1; }
+    100% { transform: translate(-50%,-50%) rotate(0deg); opacity: 0.8; }
+}
+
+#digging-grid .digging-marker.strike { animation: shovelStrike 0.9s ease-in-out infinite; }
 
 /* style for the depth label (first column) */
 #digging-grid .depth-cell {
