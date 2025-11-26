@@ -10,7 +10,17 @@
     <script src="js/ui.js" defer></script>
 </head>
 <body>
-    <h1>Dwarfs Digging Game</h1>
+    <div class="brand">
+        <h1>Diggy Diggy Dwarf</h1>
+    </div>
+    <header class="topbar">
+
+        <div class="topbar-controls">
+            <button id="dig-button">Dig!</button>
+            <button id="settings-button" aria-label="Settings">⚙️</button>
+        </div>
+    </header>
+
     <div id="game-container">
         <table id="digging-grid">
             <tbody>
@@ -31,6 +41,6 @@
         <p>Number of Dwarfs: <span id="dwarf-count">1</span></p>
         <p>Shovel Type: <span id="shovel-type">Stone Shovel</span></p>
     </div>
-    <button id="dig-button">Dig!</button>
+    <!-- old button removed; Dig button moved to topbar -->
 </body>
 </html>

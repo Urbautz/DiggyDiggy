@@ -10,11 +10,18 @@
     <script src="js/ui.js" defer></script>
 </head>
 <body>
-    <header>
-        <h1>Diggy Diggy!</h1>
-        <p>Help the dwarfs dig a deep hole! How deep? Yes!</p>
+    <header class="topbar">
+    <div class="brand">
+        <h1>Diggy Diggy Dwarf!</h1>
+        <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
+    </div>
+        <div class="topbar-controls">
+            <button id="dig-button">Dig</button>
+            <button id="settings-button" aria-label="Settings">⚙️</button>
+        </div>
     </header>
     <main>
+
         <table id="digging-grid" aria-label="Digging grid">
             <tbody>
                 <!-- 10x10 static grid -->
@@ -50,9 +57,7 @@
                 </tr>
             </tbody>
         </table>
-        <div id="controls">
-            <button id="dig-button">Dig</button>
-        </div>
+        <!-- controls moved to header topbar -->
     </main>
     <footer>
         <p>&copy; 2024 Diggy Diggy Game</p>

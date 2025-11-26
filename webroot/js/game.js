@@ -34,6 +34,24 @@ function updateGameState() {
 function initializeGame() {
     setInterval(dig, 1000); // Dwarfs dig every second
     updateGameState();
+
+    // Attach click handler for the Dig button if present so players can manually trigger a dig
+    const digButton = document.getElementById('dig-button');
+    if (digButton) {
+        digButton.addEventListener('click', () => {
+            dig();
+            updateGameState();
+        });
+    }
+
+    // Settings button placeholder — hook up a basic action
+    const settingsButton = document.getElementById('settings-button');
+    if (settingsButton) {
+        settingsButton.addEventListener('click', () => {
+            // TODO: replace with a real settings modal later
+            alert('Settings are not implemented yet.');
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initializeGame);
