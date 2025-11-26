@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diggy Diggy - Dwarf Digging Game</title>
     <link rel="stylesheet" href="css/styles.css">
-    <script src="js/main.js" defer></script>
+    <script src="js/defs.js" defer></script>
     <script src="js/game.js" defer></script>
+    <script src="js/main.js" defer></script>
 </head>
 <body>
     <header class="topbar">
@@ -14,7 +15,7 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
-        <div class="topbar-controls">
+        <div class="topbar-controls" onclick="dig()">
             <button id="dig-button">Dig</button>
             <button id="settings-button" onclick="openSettings()">⚙️</button>
         </div>

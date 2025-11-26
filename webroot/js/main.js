@@ -1,22 +1,3 @@
-// This file initializes the game, setting up the initial state and handling the game loop.
-
-let grid = [];
-const gridWidth = 20;
-const gridDepth = 25; // full data depth
-const visibleDepth = 10; // show only 10 rows in the UI
-
-// Material registry — easy to extend later
-const materials = [
-    { id: 'earth', name: 'Earth', hardness: 1, color: '#6b4b2c' },
-    { id: 'clay', name: 'Clay', hardness: 3, color: '#a57f61' },
-    { id: 'gravel', name: 'Sandstone', hardness: 4, color: '#443232' },
-];
-
-// Add new material at runtime
-function addMaterial(material) {
-    // Expected shape: { id, name, hardness, color }
-    materials.push(material);
-}
 
 // pick a random material from the registry (equal probability for now)
 function randomMaterial() {
@@ -28,17 +9,7 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
-// Create a random grid (grid[row][col] -> { materialId, hardness })
-function generateGrid() {
-    for (let r = 0; r < gridDepth; r++) {
-        const row = [];
-        for (let c = 0; c < gridWidth; c++) {
-            const mat = randomMaterial();
-            row.push({ materialId: mat.id, hardness: mat.hardness });
-        }
-        grid.push(row);
-    }
-}
+
 
 // Update the grid display in the UI (renders into #digging-grid tbody)
 function updateGridDisplay() {
@@ -81,7 +52,19 @@ function updateGridDisplay() {
             }
 
             // show current hardness value inside the cell
-            cell.textContent = cellData.hardness;
+            let display = String(cellData.hardness);
+
+            // If one or more dwarfs occupy this cell, show a small marker or initial(s)
+            if (Array.isArray(window.dwarfs)) {
+                const dwarfsHere = dwarfs.filter(d => d.x === c && d.y === r);
+                if (dwarfsHere.length > 0) {
+                    // use initials for multiple dwarfs, fallback to a simple marker
+                    const initials = dwarfsHere.map(d => (d.name || 'D').charAt(0)).join('');
+                    display += ' ' + initials;
+                }
+            }
+
+            cell.textContent = display;
             cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${cellData.hardness}`);
 
             rowEl.appendChild(cell);
@@ -114,7 +97,6 @@ function tick() {}
 
 // Initialize the game state
 function initGame() {
-    dwarfs = [{ name: "Dwarf 1", shovelType: "Stone Shovel", depth: 0 }];
     generateGrid();
     updateGridDisplay();
 }
