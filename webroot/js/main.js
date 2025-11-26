@@ -127,11 +127,14 @@ function updateGridDisplay() {
         }
         tbody.appendChild(rowEl);
     }
+        // dwarf status cards removed from main view — status is available in the Dwarfs modal
 }
 
+    // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
+
 function openSettings() {
-    alert("hallo welt");
-        openModal('settings-modal');
+    // Open the settings modal
+    openModal('settings-modal');
 }
 
 function openModal(modalname) {
@@ -140,10 +143,73 @@ function openModal(modalname) {
     modal.setAttribute('aria-hidden', 'false');
 }
 
-function closeModal() {
-    if (!modal) return;
-    modal.setAttribute('aria-hidden', 'true');
+function closeModal(modalName) {
+    // If a modalName is provided, close that specific modal; otherwise close all open modals
+    if (modalName) {
+        const m = document.getElementById(modalName);
+        if (m) m.setAttribute('aria-hidden', 'true');
+        return;
+    }
+    // close any open modal
+    document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => m.setAttribute('aria-hidden','true'));
 }
+
+// Open the dwarfs overview modal and populate current data
+function openDwarfs() {
+    populateDwarfsOverview();
+    openModal('dwarfs-modal');
+}
+
+function closeDwarfs() {
+    closeModal('dwarfs-modal');
+}
+
+// Populate the dwarfs modal with a compact table showing state for each dwarf
+function populateDwarfsOverview() {
+    const container = document.getElementById('dwarfs-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const table = document.createElement('table');
+    table.className = 'dwarfs-table';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Bucket</th><th>Pos</th><th>XP</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const d of dwarfs) {
+        const tr = document.createElement('tr');
+
+        const bucketContents = (() => {
+            if (!d.bucket || Object.keys(d.bucket).length === 0) return 'empty';
+            return Object.entries(d.bucket).map(([k,v]) => `${k}:${v}`).join(', ');
+        })();
+
+        tr.innerHTML = `
+            <td>${d.name}</td>
+            <td>${d.level ?? '-'}</td>
+            <td>${d.shovelType ?? '-'}</td>
+            <td>${d.status ?? 'idle'}</td>
+            <td>${bucketContents}</td>
+            <td>${d.x ?? '-'},${d.y ?? '-'}</td>
+            <td>${d.xp ?? 0}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+// clicking on any element with data-action="close-modal" closes modals
+document.addEventListener('click', (ev) => {
+    const el = ev.target;
+    if (!el) return;
+    if (el.dataset && el.dataset.action === 'close-modal') {
+        closeModal();
+    }
+});
 
 function initUI() {
     createGrid(10); // Initialize the grid with 10 rows

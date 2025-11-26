@@ -15,10 +15,31 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
+    <!-- Dwarfs overview modal -->
+    <div id="dwarfs-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Dwarfs overview dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>Dwarfs</h2>
+                <button class="modal-close" aria-label="Close dwarfs" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>This panel shows a quick overview of all dwarfs including level, tool, status and bucket contents.</p>
+                <div id="dwarfs-list" aria-live="polite">
+                    <!-- populated dynamically by JS -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
         <div class="topbar-controls" onclick="dig()">
-            <button id="dig-button">Dig</button>
+
+            <button id="dwarfs-button" onclick="openDwarfs()">Dwarfs</button>
             <button id="settings-button" onclick="openSettings()">⚙️</button>
         </div>
+        <!-- dwarf-status removed from main view; overview is available via the Dwarfs modal -->
     </header>
     <main>
 

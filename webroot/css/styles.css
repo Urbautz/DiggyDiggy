@@ -177,6 +177,9 @@ header, footer {
     gap: 10px;
 }
 
+/* dwarf status panel in the topbar */
+/* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
+
 /* settings button shares similar visual style but is smaller */
 #settings-button {
     background: #2b2b2b;
@@ -237,3 +240,10 @@ header, footer {
 @media (max-width: 420px) {
     .modal-dialog { width: 92%; padding: 14px; }
 }
+
+/* dwarfs list table inside the dwarfs modal */
+.dwarfs-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.dwarfs-table th, .dwarfs-table td { padding: 8px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.dwarfs-table thead th { font-weight: 700; font-size: 13px; color: #dbeafe; }
+.dwarfs-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.dwarfs-table td { color: #e6eefc; }

@@ -235,6 +235,15 @@ function dig() {
                 dwarf.status = 'digging';
                 const prev = curCell.hardness;
                 curCell.hardness = Math.max(0, curCell.hardness - power);
+                // If we fully dug this cell, 50% chance to add material to dwarf's bucket
+                if (curCell.hardness === 0) {
+                    const matId = curCell.materialId;
+                    if (Math.random() < 0.5) {
+                        dwarf.bucket = dwarf.bucket || {};
+                        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                        console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                    }
+                }
                 console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
                 if (curCell.hardness === 0) {
                     if (reservedDigBy.get(curKey) === dwarf) reservedDigBy.delete(curKey);
@@ -293,6 +302,14 @@ function dig() {
             if (curCellDig && curCellDig.hardness > 0) {
                 const prev = curCellDig.hardness;
                 curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
+                if (curCellDig.hardness === 0) {
+                    const matId = curCellDig.materialId;
+                    if (Math.random() < 0.5) {
+                        dwarf.bucket = dwarf.bucket || {};
+                        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                        console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                    }
+                }
                 console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
                 if (curCellDig.hardness === 0) {
                     if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
@@ -479,6 +496,14 @@ function dig() {
         if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
         // perform digging
         target.hardness = Math.max(0, target.hardness - power);
+        if (target.hardness === 0) {
+            const matId = target.materialId;
+            if (Math.random() < 0.5) {
+                dwarf.bucket = dwarf.bucket || {};
+                dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+            }
+        }
         console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
         // update dwarf status and release dig reservation if the cell is fully dug
         if (target.hardness === 0) {
