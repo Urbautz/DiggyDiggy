@@ -34,6 +34,15 @@ main {
     line-height: 50px;      /* vertically center the number */
 }
 
+/* marker used to show a dwarf in a cell */
+#digging-grid .dwarf-marker {
+    display: inline-block;
+    font-size: 26px; /* bigger emoji */
+    line-height: 1;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
 /* style for the depth label (first column) */
 #digging-grid .depth-cell {
     width: 50px;

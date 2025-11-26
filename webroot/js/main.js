@@ -45,27 +45,42 @@ function updateGridDisplay() {
             cell.dataset.row = r;
             cell.dataset.col = c;
 
-            if (mat) {
-                // color indicates material; title shows name + hardness
-                cell.style.background = mat.color;
-                cell.title = `${mat.name} (hardness ${cellData.hardness})`;
-            }
+            // Render empty (dug-out) cells differently: skyblue background and no "0" text
+            const rawHardness = Number(cellData.hardness || 0);
+            // find dwarfs at this location (may be none)
+            const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === c && d.y === r) : [];
 
-            // show current hardness value inside the cell
-            let display = String(cellData.hardness);
-
-            // If one or more dwarfs occupy this cell, show a small marker or initial(s)
-            if (Array.isArray(window.dwarfs)) {
-                const dwarfsHere = dwarfs.filter(d => d.x === c && d.y === r);
+            if (rawHardness <= 0) {
+                // dug-out / empty
+                cell.style.background = 'skyblue';
+                // show dwarf initials even in empty (dug-out) cells so the dwarf's location is visible
                 if (dwarfsHere.length > 0) {
-                    // use initials for multiple dwarfs, fallback to a simple marker
-                    const initials = dwarfsHere.map(d => (d.name || 'D').charAt(0)).join('');
-                    display += ' ' + initials;
+                    // use a single dig emoji inside a styled span to mark presence
+                    const marker = '⛏️';
+                    cell.innerHTML = `<span class="dwarf-marker">${marker}</span>`;
+                    cell.title = `${dwarfsHere.map(d => d.name).join(', ')} (standing here, dug out)`;
+                    cell.setAttribute('aria-label', `row ${r} col ${c} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
+                } else {
+                    cell.textContent = '';
+                    cell.title = mat ? `${mat.name} (dug out)` : 'Empty';
+                    cell.setAttribute('aria-label', `row ${r} col ${c} empty`);
+                }
+            } else {
+                // color indicates material; title shows name + rounded-up hardness
+                if (mat) cell.style.background = mat.color;
+                const displayHardness = Math.ceil(rawHardness);
+                cell.title = mat ? `${mat.name} (hardness ${displayHardness})` : `hardness ${displayHardness}`;
+                // show current hardness value inside the cell (rounded up for clarity)
+                if (dwarfsHere.length > 0) {
+                    const marker = '⛏️';
+                    // render the hardness plus a styled emoji marker
+                    cell.innerHTML = `${displayHardness} <span class="dwarf-marker">${marker}</span>`;
+                    cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness} dwarfs ${dwarfsHere.map(d => d.name).join(', ')}`);
+                } else {
+                    cell.textContent = displayHardness;
+                    cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness}`);
                 }
             }
-
-            cell.textContent = display;
-            cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${cellData.hardness}`);
 
             rowEl.appendChild(cell);
         }
