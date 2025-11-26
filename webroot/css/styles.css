@@ -53,7 +53,7 @@ main {
     top: 50%;
     transform: translate(-50%, -50%);
     font-size: 36px;        /* larger, background-style */
-    opacity: 0.18;          /* subtle */
+    opacity: 0.6;          /* subtle */
     pointer-events: none;   /* doesn't interfere with interactions */
     z-index: 1;             /* behind text content but above moving markers */
 }
