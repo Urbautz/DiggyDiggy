@@ -7,10 +7,6 @@ let dwarfs = [
 let holeDepth = 10;
 let holeGrid = Array.from({ length: holeDepth }, () => Array(10).fill(' '));
 
-function dig() {
-    alert(dig);
-}
-
 function updateGameState() {
     const gridElement = document.getElementById('holeGrid');
     if (!gridElement) return; // nothing to update on pages without the holeGrid element
@@ -27,17 +23,9 @@ function updateGameState() {
 }
 
 function initializeGame() {
-    setInterval(dig, 1000); // Dwarfs dig every second
+    setInterval(tick, 200); // Dwarfs dig every second
     updateGameState();
 
-    // Attach click handler for the Dig button if present so players can manually trigger a dig
-    const digButton = document.getElementById('dig-button');
-    if (digButton) {
-        digButton.addEventListener('click', () => {
-            dig();
-            updateGameState();
-        });
-    }
 
     }
 

@@ -91,6 +91,8 @@ function updateGridDisplay() {
     }
 }
 
+function tick() {}
+
 // Initialize the game state
 function initGame() {
     dwarfs = [{ name: "Dwarf 1", shovelType: "Stone Shovel", depth: 0 }];
