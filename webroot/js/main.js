@@ -200,20 +200,40 @@ function populateDwarfsOverview() {
     for (const d of dwarfs) {
         const tr = document.createElement('tr');
 
-        const bucketContents = (() => {
-            if (!d.bucket || Object.keys(d.bucket).length === 0) return 'empty';
-            return Object.entries(d.bucket).map(([k,v]) => `${k}:${v}`).join(', ');
-        })();
+        // create cells manually so bucket can render one resource per line
+        const nameTd = document.createElement('td'); nameTd.textContent = d.name;
+        const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
+        const toolTd = document.createElement('td'); toolTd.textContent = d.shovelType ?? '-';
+        const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
 
-        tr.innerHTML = `
-            <td>${d.name}</td>
-            <td>${d.level ?? '-'}</td>
-            <td>${d.shovelType ?? '-'}</td>
-            <td>${d.status ?? 'idle'}</td>
-            <td>${bucketContents}</td>
-            <td>${d.x ?? '-'},${d.y ?? '-'}</td>
-            <td>${d.xp ?? 0}</td>
-        `;
+        // bucket cell: one line per resource (material name and count)
+        const bucketTd = document.createElement('td');
+        if (!d.bucket || Object.keys(d.bucket).length === 0) {
+            const emptyEl = document.createElement('div');
+            emptyEl.className = 'bucket-line empty';
+            emptyEl.textContent = 'empty';
+            bucketTd.appendChild(emptyEl);
+        } else {
+            for (const [matId, cnt] of Object.entries(d.bucket)) {
+                const mat = getMaterialById(matId);
+                const line = document.createElement('div');
+                line.className = 'bucket-line';
+                const label = mat ? mat.name : matId;
+                line.textContent = `${label}: ${cnt}`;
+                bucketTd.appendChild(line);
+            }
+        }
+
+        const posTd = document.createElement('td'); posTd.textContent = `${d.x ?? '-'},${d.y ?? '-'}`;
+        const xpTd = document.createElement('td'); xpTd.textContent = `${d.xp ?? 0}`;
+
+        tr.appendChild(nameTd);
+        tr.appendChild(levelTd);
+        tr.appendChild(toolTd);
+        tr.appendChild(statusTd);
+        tr.appendChild(bucketTd);
+        tr.appendChild(posTd);
+        tr.appendChild(xpTd);
         tbody.appendChild(tr);
     }
 

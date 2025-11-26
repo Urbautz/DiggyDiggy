@@ -257,3 +257,5 @@ header, footer {
 .dwarfs-table thead th { font-weight: 700; font-size: 13px; color: #dbeafe; }
 .dwarfs-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 .dwarfs-table td { color: #e6eefc; }
+.dwarfs-table .bucket-line { font-size: 12px; padding: 2px 0; color: #cfe7ff }
+.dwarfs-table .bucket-line.empty { opacity: 0.6; color: #9fbfe0 }
