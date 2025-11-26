@@ -6,8 +6,8 @@ const visibleDepth = 10; // show only 10 rows in the UI
 // Material registry — easy to extend later
 const materials = [
     { id: 'earth', name: 'Earth', hardness: 1, color: '#6b4b2c' },
-    { id: 'clay', name: 'Clay', hardness: 3, color: '#a57f61' },
-    { id: 'gravel', name: 'Sandstone', hardness: 4, color: '#443232' },
+    { id: 'clay', name: 'Clay', hardness: 2, color: '#a57f61' },
+    { id: 'gravel', name: 'Sandstone', hardness: 2, color: '#443232' },
 ];
 
 // Tools
@@ -41,3 +41,4 @@ let dwarfs = [
 ]
     
 let grid = [];
+let startX = 0;

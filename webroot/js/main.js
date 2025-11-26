@@ -32,7 +32,9 @@ function updateGridDisplay() {
         // first column = depth label (1-based depth for readability)
         const depthCell = document.createElement('td');
         depthCell.className = 'depth-cell';
-        depthCell.textContent = (r + 1).toString(); // show 1..visibleDepth
+        // show depth offset using startX (startX + 1 = top visible level)
+        const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
+        depthCell.textContent = String(depthLabel);
         depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
         rowEl.appendChild(depthCell);
 

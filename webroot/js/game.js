@@ -85,6 +85,60 @@ function scheduleMove(dwarf, targetX, targetY){
     return true;
 }
 
+// If the top-most visible row(s) are completely empty, remove them and push new rows at the bottom.
+// Update startX, shift dwarfs, shift reservations and update display.
+function checkAndShiftTopRows() {
+    // Keep removing top rows while the very top row is fully dug-out (hardness <= 0)
+    let removed = 0;
+    while (grid.length > 0) {
+        const top = grid[0];
+        if (!top) break;
+        const allEmpty = top.every(cell => !cell || Number(cell.hardness) <= 0);
+        if (!allEmpty) break;
+
+        // remove the top row
+        grid.shift();
+        removed += 1;
+
+        // add a new random row at the bottom
+        const newRow = [];
+        for (let c = 0; c < gridWidth; c++) {
+            const mat = typeof randomMaterial === 'function' ? randomMaterial() : { id: 'earth', hardness: 1 };
+            newRow.push({ materialId: mat.id, hardness: mat.hardness });
+        }
+        grid.push(newRow);
+
+        // advance the global startX (we've moved the world deeper by one row)
+        if (typeof startX === 'number') startX += 1;
+
+        // shift dwarfs' y coordinates up by one (they effectively moved up relative to the grid)
+        for (const d of dwarfs) {
+            d.y = Math.max(0, d.y - 1);
+            // also adjust moveTarget if present
+            if (d.moveTarget && typeof d.moveTarget.y === 'number') d.moveTarget.y = Math.max(0, d.moveTarget.y - 1);
+        }
+
+        // shift reservation maps: keys are 'x,y' -> adjust y-1. Remove reservations that fall off top
+        const shiftMap = (map) => {
+            const entries = Array.from(map.entries());
+            map.clear();
+            for (const [k, v] of entries) {
+                const [kx, ky] = k.split(',').map(Number);
+                const ny = ky - 1;
+                if (ny >= 0) map.set(coordKey(kx, ny), v);
+            }
+        };
+        shiftMap(reservedDigBy);
+        shiftMap(reservedMoveBy);
+    }
+
+    if (removed > 0) {
+        console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
+        // redraw the UI showing new levels
+        if (typeof updateGridDisplay === 'function') updateGridDisplay();
+    }
+}
+
 
 // Create a random grid (grid[row][col] -> { materialId, hardness })
 function attemptCollapse(x,y) {
@@ -437,6 +491,8 @@ function dig() {
         // Refresh UI display if available
         updateGridDisplay();
     }
+    // after processing all dwarfs in this tick, check for fully-empty top rows and shift the grid
+    checkAndShiftTopRows();
 }
 function initializeGame() {
     setInterval(tick, 200); // Dwarfs dig every second
