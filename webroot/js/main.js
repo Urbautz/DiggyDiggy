@@ -269,16 +269,43 @@ function closeModal(modalName) {
     });
 }
 
-// Open the dwarfs overview modal and populate current data
+// Switch the materials panel to show dwarfs overview
 function openDwarfs() {
-    populateDwarfsOverview();
-    openModal('dwarfs-modal');
+    const panel = document.getElementById('materials-panel');
+    if (!panel) return;
+    
+    // Mark panel as showing dwarfs view
+    panel.dataset.view = 'dwarfs';
+    
+    // Update header
+    const header = panel.querySelector('.materials-panel-header h3');
+    if (header) header.textContent = 'Dwarfs';
+    
+    // Populate dwarfs content in the materials-list container
+    populateDwarfsInPanel();
     startDwarfsLiveUpdate();
 }
 
 function closeDwarfs() {
-    closeModal('dwarfs-modal');
     stopDwarfsLiveUpdate();
+    showWarehousePanel();
+}
+
+// Switch back to warehouse view
+function showWarehousePanel() {
+    const panel = document.getElementById('materials-panel');
+    if (!panel) return;
+    
+    // Mark panel as showing warehouse view
+    panel.dataset.view = 'warehouse';
+    
+    // Update header
+    const header = panel.querySelector('.materials-panel-header h3');
+    if (header) header.textContent = 'Warehouse';
+    
+    // Show warehouse content
+    stopDwarfsLiveUpdate();
+    updateMaterialsPanel();
 }
 
 // Populate the dwarfs modal with a compact table showing state for each dwarf
@@ -317,20 +344,45 @@ function populateDwarfsOverview() {
     container.appendChild(table);
 }
 
-// ---- live-update for the dwarfs modal ----
+// Populate dwarfs in the materials panel (not modal)
+function populateDwarfsInPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    list.innerHTML = '';
+    
+    // Create a compact list of dwarfs
+    for (const d of dwarfs) {
+        const row = document.createElement('div');
+        row.className = 'dwarf-row';
+        
+        const name = document.createElement('div');
+        name.className = 'dwarf-name';
+        name.textContent = d.name;
+        
+        const info = document.createElement('div');
+        info.className = 'dwarf-info';
+        info.textContent = `Lvl. ${d.level || 1}  •⚡${d.energy || 0} • ${d.status || 'idle'}`;
+        
+        row.appendChild(name);
+        row.appendChild(info);
+        list.appendChild(row);
+    }
+}
+
+// ---- live-update for the dwarfs panel/modal ----
 let _dwarfsModalRefreshId = null;
 function startDwarfsLiveUpdate(intervalMs = 350) {
     if (_dwarfsModalRefreshId) return;
-    // Refresh immediately and then on an interval while modal is open
+    // Refresh immediately and then on an interval while view is active
     _dwarfsModalRefreshId = setInterval(() => {
-        // only update if the modal is visible
-        const modal = document.getElementById('dwarfs-modal');
-        if (!modal || modal.getAttribute('aria-hidden') === 'true') {
-            // if modal is gone or hidden, stop the interval
+        const panel = document.getElementById('materials-panel');
+        // Check if we're still in dwarfs view
+        if (panel && panel.dataset.view === 'dwarfs') {
+            populateDwarfsInPanel();
+        } else {
+            // If not in dwarfs view, stop the interval
             stopDwarfsLiveUpdate();
-            return;
         }
-        populateDwarfsOverview();
     }, intervalMs);
 }
 
@@ -365,6 +417,10 @@ function updateStockDisplay() {
 }
 
 function updateMaterialsPanel() {
+    const panel = document.getElementById('materials-panel');
+    // Only update if we're in warehouse view (or view not set)
+    if (panel && panel.dataset.view === 'dwarfs') return;
+    
     const list = document.getElementById('materials-list');
     if (!list) return;
     list.innerHTML = '';
@@ -384,6 +440,12 @@ function updateMaterialsPanel() {
 function focusMaterialsPanel() {
     const panel = document.getElementById('materials-panel');
     if (!panel) return;
+    
+    // Switch to warehouse view if not already
+    if (panel.dataset.view !== 'warehouse') {
+        showWarehousePanel();
+    }
+    
     panel.classList.add('materials-panel--highlight');
     if (materialsPanelHighlightTimer) clearTimeout(materialsPanelHighlightTimer);
     materialsPanelHighlightTimer = setTimeout(() => {
