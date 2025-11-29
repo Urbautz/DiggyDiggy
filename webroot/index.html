@@ -43,7 +43,7 @@
         <div id="stock-status" class="stock-status" aria-live="polite"></div>
     </header>
     <main>
-
+        <div class="grids">
         <table id="digging-grid" aria-label="Digging grid">
             <tbody>
                 <!-- 10x10 static grid -->
@@ -79,6 +79,24 @@
                 </tr>
             </tbody>
         </table>
+
+        <!-- right-side / auxiliary grids container -->
+        <div id="side-grids">
+            <table id="drop-grid" aria-label="Drop-off grid">
+                <tbody>
+                    <tr>
+                        <td class="cell" data-row="0" data-col="0"></td><td class="cell" data-row="0" data-col="1"></td><td class="cell" data-row="0" data-col="2"></td>
+                    </tr>
+                    <tr>
+                        <td class="cell" data-row="1" data-col="0"></td><td class="cell" data-row="1" data-col="1"></td><td class="cell" data-row="1" data-col="2"></td>
+                    </tr>
+                    <tr>
+                        <td class="cell" data-row="2" data-col="0"></td><td class="cell" data-row="2" data-col="1"></td><td class="cell" data-row="2" data-col="2"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        </div>
         <!-- controls moved to header topbar -->
     </main>
 

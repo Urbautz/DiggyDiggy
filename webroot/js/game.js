@@ -136,8 +136,10 @@ function attemptCollapse(x,y) {
     let scanY = y - 1; // start with the cell immediately above the emptied cell
     if (scanY < 0) return;
 
-    // if there's nothing above, nothing to collapse
-    if (!grid[scanY] || grid[scanY][x].hardness <= 0) return;
+    // if there's nothing above or the column is out-of-range, nothing to collapse
+    if (!grid[scanY]) return;
+    const aboveCell = grid[scanY][x];
+    if (!aboveCell || aboveCell.hardness <= 0) return;
 
     // perform cascading down the column ux until we hit a non-empty below cell or top
     while (scanY >= 0) {
@@ -189,14 +191,54 @@ function actForDwarf(dwarf) {
             if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
                 // transfer bucket contents to global materialsStock
                 if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
-                    for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
-                        materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
-                    }
-                    console.log(`Dwarf ${dwarf.name} unloaded ${JSON.stringify(dwarf.bucket)} at drop-off`);
-                    dwarf.bucket = {};
-                    dwarf.status = 'idle';
-                    // Refresh displays
-                    if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                        // unloading takes one tick: if not already unloading, start it and return
+                        if (dwarf.status !== 'unloading') {
+                            dwarf.status = 'unloading';
+                            if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                            return; // consume this tick for the unloading animation
+                        }
+
+                        // second tick: complete unload and clear bucket
+                        for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
+                            materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
+                        }
+                        console.log(`Dwarf ${dwarf.name} finished unloading ${JSON.stringify(dwarf.bucket)} at drop-off`);
+                        dwarf.bucket = {};
+                        dwarf.status = 'idle';
+                        // Refresh displays
+                        if (typeof updateGridDisplay === 'function') updateGridDisplay();
+
+                    // After unloading at the drop-off area, schedule a return
+                    // target back into the digging grid so dwarfs resume work.
+                    try {
+                        // Prefer same row (if visible) and nearest undug column
+                        if (Array.isArray(grid) && grid.length > 0) {
+                            let rowIdx = Math.min(dwarf.y, grid.length - 1);
+                            const row = grid[rowIdx] || [];
+                            // search by increasing offset from center (or 0)
+                            let chosen = -1;
+                            for (let offset = 0; offset < row.length; offset++) {
+                                // prefer center columns first
+                                const c = (Math.floor(row.length/2) + offset) % row.length;
+                                if (row[c] && row[c].hardness > 0 && (!reservedDigBy.get(coordKey(c,rowIdx)) || reservedDigBy.get(coordKey(c,rowIdx)) === dwarf)) {
+                                    chosen = c; break;
+                                }
+                            }
+                            if (chosen === -1) {
+                                // fallback: scan whole grid for any undug cell
+                                outer: for (let ry = 0; ry < grid.length; ry++) {
+                                    const r = grid[ry];
+                                    for (let cx = 0; cx < (r ? r.length : 0); cx++) {
+                                        if (r && r[cx] && r[cx].hardness > 0 && (!reservedDigBy.get(coordKey(cx,ry)) || reservedDigBy.get(coordKey(cx,ry)) === dwarf)) { chosen = cx; rowIdx = ry; break outer; }
+                                    }
+                                }
+                            }
+                            if (chosen !== -1) {
+                                scheduleMove(dwarf, chosen, rowIdx);
+                                console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                            }
+                        }
+                    } catch (e) { console.warn('Error scheduling return from drop-off', e); }
                 }
                 // continue acting after deposit (do not schedule other actions this tick)
                 return;

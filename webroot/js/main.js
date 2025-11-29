@@ -91,12 +91,13 @@ function updateGridDisplay() {
                 }
 
                 // show drop-off marker (global drop-off location) if this cell matches
-                if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
-                    cell.classList.add('drop-off');
-                    const box = document.createElement('span');
-                    box.className = 'drop-off-marker';
-                    box.textContent = '📦';
-                    cell.appendChild(box);
+                    if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
+                        cell.classList.add('drop-off');
+                        const box = document.createElement('span');
+                        // warehouse icon
+                        box.className = 'drop-off-marker warehouse';
+                        box.textContent = '🏭';
+                        cell.appendChild(box);
                 }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
@@ -139,6 +140,77 @@ function updateGridDisplay() {
     }
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
         // Update visible stock counts too
+        // render the small drop-off grid (if present)
+        const dropTable = document.getElementById('drop-grid');
+        if (dropTable && typeof dropGridStartX === 'number' && typeof dropGridWidth === 'number' && typeof dropGridHeight === 'number') {
+            let tb = dropTable.querySelector('tbody');
+            if (!tb) { tb = document.createElement('tbody'); dropTable.appendChild(tb); }
+            tb.innerHTML = '';
+            for (let rr = 0; rr < dropGridHeight; rr++) {
+                const rowEl = document.createElement('tr');
+                for (let cc = 0; cc < dropGridWidth; cc++) {
+                    const gx = dropGridStartX + cc;
+                    const gy = rr;
+                    const cell = document.createElement('td');
+                    cell.className = 'cell';
+                    cell.dataset.row = rr;
+                    cell.dataset.col = cc;
+                    // find dwarfs at this location
+                    const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === gx && d.y === gy) : [];
+                    const movingHere = dwarfsHere.filter(d => d.status === 'moving');
+                    const standingHere = dwarfsHere.filter(d => d.status !== 'moving');
+                    const diggersHere = dwarfsHere.filter(d => d.status === 'digging');
+
+                    // drop-grid is intentionally empty for now — show dwarfs or markers
+                    if (standingHere.length > 0) {
+                        cell.classList.add('has-dwarf');
+                        cell.textContent = '';
+                        cell.title = `${standingHere.map(d => d.name).join(', ')}`;
+                        if (diggersHere.length > 0) {
+                            cell.classList.add('is-digging');
+                            const digMarker = document.createElement('span');
+                            digMarker.className = 'digging-marker strike';
+                            digMarker.textContent = '⛏️';
+                            cell.appendChild(digMarker);
+                        }
+                    } else {
+                        cell.textContent = '';
+                    }
+
+                    if (movingHere.length > 0) {
+                        const mover = document.createElement('span');
+                        mover.className = 'moving-marker';
+                        mover.textContent = '🏃';
+                        cell.appendChild(mover);
+                    }
+
+                    // show drop-off marker if this is the configured dropOff
+                    if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
+                        cell.classList.add('drop-off');
+                        const box = document.createElement('span');
+                        box.className = 'drop-off-marker warehouse';
+                        box.textContent = '🏭';
+                        cell.appendChild(box);
+                    }
+
+                    // Show unloading animation when dwarf is unloading here
+                    const unloadersHere = dwarfsHere.filter(d => d.status === 'unloading');
+                    if (unloadersHere.length > 0) {
+                        const anim = document.createElement('span');
+                        anim.className = 'unloading-marker';
+                        const crate = document.createElement('span');
+                        crate.className = 'crate';
+                        crate.textContent = '📦';
+                        anim.appendChild(crate);
+                        cell.appendChild(anim);
+                    }
+
+                    rowEl.appendChild(cell);
+                }
+                tb.appendChild(rowEl);
+            }
+        }
+
         updateStockDisplay();
 }
 

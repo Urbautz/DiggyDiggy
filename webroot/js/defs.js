@@ -69,5 +69,10 @@ for (const m of materials) materialsStock[m.id] = 0;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Drop-off location (where dwarfs should deliver their bucket contents). Choose top-left by default.
-const dropOff = { x: 0, y: 0 };
+// Drop-off location (where dwarfs should deliver their bucket contents).
+// Place the small 3x3 drop-area to the right of the digging grid. Default
+// the drop-off to the top-left cell of that 3x3 area (1/1 in 1-based coordinates).
+const dropGridStartX = gridWidth; // three-column grid placed immediately to the right
+const dropGridWidth = 3, dropGridHeight = 3;
+// drop-off inside the small 3x3: top-left => (0,0) in drop-grid coordinates
+const dropOff = { x: dropGridStartX + 0, y: 0 };
