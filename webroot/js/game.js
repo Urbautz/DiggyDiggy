@@ -182,8 +182,40 @@ function actForDwarf(dwarf) {
     // After a successful dig emptied the cell, attempt diagonal cave-ins
     attemptCollapse(dwarf.x, dwarf.y);
         if (!dwarf.status) dwarf.status = 'idle';
+        if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
         if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
         console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
+        // If dwarf is low on energy, go home to rest (resting restores energy)
+        if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < 25) {
+            // if at the house, start resting
+            if (dwarf.x === house.x && dwarf.y === house.y) {
+                if (dwarf.status !== 'resting') {
+                    dwarf.status = 'resting';
+                    if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                }
+                // consume this tick for resting (restore energy below)
+            }
+            // if not at the house, schedule a move there (unless already moving there)
+            if (!(dwarf.x === house.x && dwarf.y === house.y)) {
+                if (!dwarf.moveTarget || dwarf.moveTarget.x !== house.x || dwarf.moveTarget.y !== house.y) {
+                    scheduleMove(dwarf, house.x, house.y);
+                    dwarf.status = 'moving';
+                    if (typeof updateGridDisplay === 'function') updateGridDisplay();
+                    return; // movement consumes tick
+                }
+            }
+        }
+
+        // handle resting state: regain energy per tick until full
+        if (dwarf.status === 'resting') {
+            // restore energy (one tick of rest restores a chunk)
+            dwarf.energy = Math.min(1000, (dwarf.energy || 0) + 250);
+            if (typeof updateGridDisplay === 'function') updateGridDisplay();
+            // when fully rested, resume work next tick
+            if (dwarf.energy >= 1000) { dwarf.status = 'idle'; dwarf.energy = 1000; }
+            return;
+        }
+
         // If dwarf's bucket is full, force them to go to drop-off to unload
         const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a,b) => a + b, 0) : 0;
         if (typeof bucketCapacity === 'number' && bucketTotal >= bucketCapacity) {
@@ -234,8 +266,14 @@ function actForDwarf(dwarf) {
                                 }
                             }
                             if (chosen !== -1) {
-                                scheduleMove(dwarf, chosen, rowIdx);
-                                console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                                // if dwarf is exhausted after unloading, send them to house instead
+                                if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
+                                    scheduleMove(dwarf, house.x, house.y);
+                                    console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
+                                } else {
+                                    scheduleMove(dwarf, chosen, rowIdx);
+                                    console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                                }
                             }
                         }
                     } catch (e) { console.warn('Error scheduling return from drop-off', e); }
@@ -250,7 +288,7 @@ function actForDwarf(dwarf) {
                     if (scheduled) {
                     console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                     if (typeof updateGridDisplay === 'function') updateGridDisplay();
-                    return; // movement will consume this tick
+                        return; // movement will consume this tick
                 }
             }
             // if we couldn't schedule, fall through and wait
@@ -288,6 +326,8 @@ function actForDwarf(dwarf) {
                 reservedDigBy.set(curKey, dwarf);
                 dwarf.status = 'digging';
                 const prev = curCell.hardness;
+                // digging consumes energy
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
                 curCell.hardness = Math.max(0, curCell.hardness - power);
                 // If we fully dug this cell, 50% chance to add material to dwarf's bucket
                 if (curCell.hardness === 0) {
@@ -325,8 +365,10 @@ function actForDwarf(dwarf) {
                 dwarf.status = 'idle';
             } else {
                 dwarf.x = nextX; dwarf.y = nextY;
+                // moving consumes a small amount of energy
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 1);
                 console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
-                if (dwarf.x === tx && dwarf.y === ty) { dwarf.moveTarget = null; dwarf.status = 'idle'; }
+                    if (dwarf.x === tx && dwarf.y === ty) { dwarf.moveTarget = null; dwarf.status = 'idle'; }
                 else { dwarf.status = 'moving'; }
                 updateGridDisplay();
                 return; // movement consumes the action for this tick
@@ -340,6 +382,8 @@ function actForDwarf(dwarf) {
             const curCellDig = grid[dwarf.y][dwarf.x];
             if (curCellDig && curCellDig.hardness > 0) {
                 const prev = curCellDig.hardness;
+                // digging consumes energy
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
                 curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
                 if (curCellDig.hardness === 0) {
                     const matId = curCellDig.materialId;
@@ -536,6 +580,8 @@ function actForDwarf(dwarf) {
         if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
         // perform digging
         target.hardness = Math.max(0, target.hardness - power);
+        // digging consumes energy (for this dig action)
+        dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
         if (target.hardness === 0) {
             const matId = target.materialId;
             if (Math.random() < 0.5) {
@@ -546,13 +592,13 @@ function actForDwarf(dwarf) {
         }
         console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
         // update dwarf status and release dig reservation if the cell is fully dug
-        if (target.hardness === 0) {
+            if (target.hardness === 0) {
             if (reservedDigBy.get(targetKey) === dwarf) reservedDigBy.delete(targetKey);
             dwarf.status = 'idle';
             
         } else {
             dwarf.status = 'digging';
-        }
+            }
         // Refresh UI display if available
         updateGridDisplay();
 }

@@ -25,37 +25,37 @@ let dwarfs = [
       level: 1, xp: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {} },
+      bucket: {}, energy: 1000 },
     { name: "Shovelli", 
       shovelType: "Stone", 
       level: 1, xp: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {} },
+      bucket: {}, energy: 1000 },
     { name: "Diggmaster", 
       shovelType: "Stone", 
       level: 1, xp: 0,
       x: 0, y: 0,
      status: 'idle', moveTarget: null,
-     bucket: {} },
+    bucket: {}, energy: 1000 },
     { name: "Burrower", 
      shovelType: "Stone", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-     bucket: {} },
+    bucket: {}, energy: 1000 },
     { name: "Downer", 
      shovelType: "Stone", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-     bucket: {} },
+    bucket: {}, energy: 1000 },
     { name: "SuperDigger", 
      shovelType: "Copper", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-     bucket: {} },
+    bucket: {}, energy: 1000 },
 ]
     
 let grid = [];
@@ -76,3 +76,5 @@ const dropGridStartX = gridWidth; // three-column grid placed immediately to the
 const dropGridWidth = 3, dropGridHeight = 3;
 // drop-off inside the small 3x3: top-left => (0,0) in drop-grid coordinates
 const dropOff = { x: dropGridStartX + 0, y: 0 };
+// bed / house: place second cell on the top row (1,1 in 1-based coordinates)
+const house = { x: dropGridStartX + 1, y: 0 };

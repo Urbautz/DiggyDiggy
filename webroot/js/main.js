@@ -97,8 +97,11 @@ function updateGridDisplay() {
                         // warehouse icon
                         box.className = 'drop-off-marker warehouse';
                         box.textContent = '🏭';
+                        box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
-                }
+                        cell.style.cursor = 'pointer';
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWarehouseModal(); });
+                    }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
@@ -190,7 +193,28 @@ function updateGridDisplay() {
                         const box = document.createElement('span');
                         box.className = 'drop-off-marker warehouse';
                         box.textContent = '🏭';
+                        box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
+                        cell.style.cursor = 'pointer';
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWarehouseModal(); });
+                    }
+
+                    // show house / bed icon if this is the house cell
+                    if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
+                        const bed = document.createElement('span');
+                        bed.className = 'drop-off-marker house';
+                        bed.textContent = '🛏️';
+                        bed.title = 'House (resting area)';
+                        cell.appendChild(bed);
+                    }
+
+                    // show resting marker when dwarf is resting here
+                    const restersHere = dwarfsHere.filter(d => d.status === 'resting');
+                    if (restersHere.length > 0) {
+                        const sleep = document.createElement('span');
+                        sleep.className = 'resting-marker';
+                        sleep.textContent = '😴';
+                        cell.appendChild(sleep);
                     }
 
                     // Show unloading animation when dwarf is unloading here
@@ -266,7 +290,7 @@ function populateDwarfsOverview() {
     table.className = 'dwarfs-table';
 
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Bucket</th><th>Pos</th><th>XP</th></tr>';
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th><th>Bucket</th><th>Pos</th><th>XP</th></tr>';
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
@@ -278,6 +302,7 @@ function populateDwarfsOverview() {
         const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
         const toolTd = document.createElement('td'); toolTd.textContent = d.shovelType ?? '-';
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
+        const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
 
         // bucket cell: one line per resource (material name and count)
         const bucketTd = document.createElement('td');
@@ -304,6 +329,7 @@ function populateDwarfsOverview() {
         tr.appendChild(levelTd);
         tr.appendChild(toolTd);
         tr.appendChild(statusTd);
+        tr.appendChild(energyTd);
         tr.appendChild(bucketTd);
         tr.appendChild(posTd);
         tr.appendChild(xpTd);
@@ -354,18 +380,31 @@ function initUI() {
 function updateStockDisplay() {
     const container = document.getElementById('stock-status');
     if (!container) return;
+    // stock has moved into the warehouse modal — hide top-bar stock
     container.innerHTML = '';
+    container.style.display = 'none';
+}
 
-    // show each material with its stock count
+// Open and populate the warehouse modal with current stock
+function openWarehouseModal() {
+    const body = document.getElementById('warehouse-stock-body');
+    if (!body) return openModal('warehouse-modal');
+    body.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'warehouse-stock-list';
+    // show each known material
     for (const m of materials) {
         const id = m.id;
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
-        const pill = document.createElement('div');
-        pill.className = 'stock-pill';
-        pill.title = `${m.name}: ${count}`;
-        pill.innerHTML = `<span class="stock-label">${m.name}</span><span class="stock-count">${count}</span>`;
-        container.appendChild(pill);
+        const row = document.createElement('div');
+        row.className = 'warehouse-row';
+        const name = document.createElement('span'); name.className = 'warehouse-name'; name.textContent = m.name;
+        const cnt = document.createElement('span'); cnt.className = 'warehouse-count'; cnt.textContent = String(count);
+        row.appendChild(name); row.appendChild(cnt);
+        list.appendChild(row);
     }
+    body.appendChild(list);
+    openModal('warehouse-modal');
 }
 
 function tick() {
