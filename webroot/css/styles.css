@@ -234,6 +234,7 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-width: 150px;
 }
 
 .materials-panel {

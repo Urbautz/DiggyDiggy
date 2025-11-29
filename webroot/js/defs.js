@@ -44,7 +44,7 @@ let dwarfs = [
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 1000 },
-    { name: "Downer", 
+    { name: "Nevertired McPickaxemaster", 
      shovelType: "Stone", 
      level: 1, xp: 0,
      x: 0, y: 0,
