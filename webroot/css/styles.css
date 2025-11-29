@@ -234,6 +234,7 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-width: 150px;
 }
 
 .materials-panel {
@@ -248,25 +249,6 @@ header, footer {
     flex-direction: column;
     gap: 10px;
     min-width: 220px;
-}
-/* dwarfs view renders as a compact table inside the panel */
-.materials-panel table.dwarfs-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.materials-panel table.dwarfs-table th,
-.materials-panel table.dwarfs-table td {
-    padding: 6px 8px;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    text-align: left;
-}
-.materials-panel table.dwarfs-table th {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    font-weight: 600;
-    color: #cbd5ff;
 }
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
@@ -302,7 +284,7 @@ header, footer {
 /* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
 
 /* settings button shares similar visual style but is smaller */
-#settings-button {
+#settings-button, #pause-button {
     background: #2b2b2b;
     color: #fff;
     border: 1px solid #444;
@@ -310,9 +292,10 @@ header, footer {
     cursor: pointer;
     border-radius: 6px;
     font-size: 14px;
+    transition: transform 0.1s ease;
 }
 
-#settings-button:hover, #dig-button:hover {
+#settings-button:hover, #pause-button:hover, #dig-button:hover {
     transform: translateY(-1px);
 }
 
@@ -408,3 +391,8 @@ header, footer {
 .warehouse-row { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); }
 .warehouse-name { font-weight:700; color:#e6eefc }
 .warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff }
+
+/* Dwarf panel rows (when shown in materials panel) */
+.dwarf-row { display:flex; flex-direction:column; gap:2px; padding:8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); margin-bottom:4px; }
+.dwarf-name { font-weight:700; color:#e6eefc; font-size:14px; }
+.dwarf-info { font-size:12px; color:#9fbfe0; font-family: monospace; }

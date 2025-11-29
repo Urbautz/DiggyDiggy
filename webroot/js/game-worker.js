@@ -1,0 +1,659 @@
+// Web Worker for game tick calculations
+// This worker handles all the heavy computation for the game tick,
+// preventing UI blocking during dwarf actions and grid updates.
+
+let grid = [];
+let dwarfs = [];
+let materials = [];
+let tools = [];
+let gridWidth = 10;
+let gridDepth = 11;
+let visibleDepth = 10;
+let startX = 0;
+let materialsStock = {};
+let bucketCapacity = 4;
+let dropOff = null;
+let house = null;
+let dropGridStartX = 10;
+
+// Reservation maps (coordinate -> dwarf who reserved the cell)
+const reservedDigBy = new Map();
+
+// Stuck detection tracking
+const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
+
+function coordKey(x, y) {
+    return `${x},${y}`;
+}
+
+function isCellOccupiedByStanding(x, y) {
+    return dwarfs.some(d => d.x === x && d.y === y && d.status !== 'moving');
+}
+
+function isReservedForDig(x, y) {
+    return reservedDigBy.has(coordKey(x, y));
+}
+
+function getMaterialById(id) {
+    return materials.find(m => m.id === id) || null;
+}
+
+function randomMaterial(depthLevel = 0) {
+    // Filter materials that are valid for this depth level
+    const validMaterials = materials.filter(m => 
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+    );
+    
+    if (validMaterials.length === 0) {
+        // Fallback to first material if none match
+        return materials[0];
+    }
+    
+    // Calculate total probability for probability distribution
+    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
+    
+    // Random selection weighted by probability
+    let random = Math.random() * totalProbability;
+    for (const mat of validMaterials) {
+        random -= (mat.probability || 1);
+        if (random <= 0) {
+            return mat;
+        }
+    }
+    
+    // Fallback to last valid material
+    return validMaterials[validMaterials.length - 1];
+}
+
+function scheduleMove(dwarf, targetX, targetY) {
+    let finalY = targetY;
+    if (typeof visibleDepth === 'number' && finalY >= visibleDepth) {
+        let found = -1;
+        for (let ry = 0; ry < Math.min(visibleDepth, grid.length); ry++) {
+            const cell = grid[ry] && grid[ry][targetX];
+            if (cell && cell.hardness > 0) {
+                found = ry;
+                break;
+            }
+        }
+        if (found !== -1) {
+            finalY = found;
+            //console.log(`Adjusting move target to visible row ${finalY} for dwarf ${dwarf.name} (original ${targetY})`);
+        } else {
+            //console.log(`No visible target found in column ${targetX} for dwarf ${dwarf.name}; not scheduling`);
+            return false;
+        }
+    }
+
+    dwarf.moveTarget = { x: targetX, y: finalY };
+    dwarf.status = 'moving';
+    return true;
+}
+
+function checkAndShiftTopRows() {
+    let removed = 0;
+    while (grid.length > 0) {
+        const top = grid[0];
+        if (!top) break;
+        const allEmpty = top.every(cell => !cell || Number(cell.hardness) <= 0);
+        if (!allEmpty) break;
+
+        grid.shift();
+        removed += 1;
+
+        const newRow = [];
+        // Calculate the depth level for the new row at the bottom
+        const newRowDepth = startX + grid.length + 1;
+        for (let c = 0; c < gridWidth; c++) {
+            let mat;
+            
+            // Check left tile (50% chance to use same material)
+            if (c > 0 && Math.random() < 0.5) {
+                const leftCell = newRow[c - 1];
+                if (leftCell && leftCell.materialId) {
+                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    if (leftMat) {
+                        mat = leftMat;
+                    }
+                }
+            }
+            
+            // Check above tile (50% chance to use same material if not air/empty)
+            if (!mat && grid.length > 0 && Math.random() < 0.5) {
+                const aboveCell = grid[grid.length - 1][c];
+                if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
+                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    if (aboveMat) {
+                        mat = aboveMat;
+                    }
+                }
+            }
+            
+            // If no clustering, use random based on depth
+            if (!mat) {
+                mat = randomMaterial(newRowDepth);
+            }
+            
+            newRow.push({ materialId: mat.id, hardness: mat.hardness });
+        }
+        grid.push(newRow);
+
+        if (typeof startX === 'number') startX += 1;
+
+        for (const d of dwarfs) {
+            d.y = Math.max(0, d.y - 1);
+            if (d.moveTarget && typeof d.moveTarget.y === 'number') {
+                d.moveTarget.y = Math.max(0, d.moveTarget.y - 1);
+            }
+        }
+
+        const shiftMap = (map) => {
+            const entries = Array.from(map.entries());
+            map.clear();
+            for (const [k, v] of entries) {
+                const [kx, ky] = k.split(',').map(Number);
+                const ny = ky - 1;
+                if (ny >= 0) map.set(coordKey(kx, ny), v);
+            }
+        };
+        shiftMap(reservedDigBy);
+    }
+
+    if (removed > 0) {
+        console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
+    }
+    return removed > 0;
+}
+
+function attemptCollapse(x, y) {
+    //console.log(`attemptColumnCollapse(${x},${y})`);
+
+    const ux = x;
+    let scanY = y - 1;
+    if (scanY < 0) return;
+
+    if (!grid[scanY]) return;
+    const aboveCell = grid[scanY][x];
+    if (!aboveCell || aboveCell.hardness <= 0) return;
+
+    while (scanY >= 0) {
+        const src = grid[scanY][ux];
+        const dstY = scanY + 1;
+        const dst = grid[dstY] && grid[dstY][ux];
+
+        if (!src || src.hardness <= 0) break;
+        if (!dst || dst.hardness > 0) break;
+
+        console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
+        grid[dstY][ux] = { materialId: src.materialId, hardness: src.hardness };
+        grid[scanY][ux] = { materialId: src.materialId, hardness: 0 };
+
+        for (const d of dwarfs) {
+            if (d.x === ux && d.y === scanY) {
+                d.y = dstY;
+                console.log(`Dwarf ${d.name} fell from (${ux},${scanY}) to (${ux},${dstY})`);
+            }
+        }
+
+        const srcKey = coordKey(ux, scanY);
+        if (reservedDigBy.get(srcKey)) reservedDigBy.delete(srcKey);
+
+        scanY -= 1;
+    }
+}
+
+function actForDwarf(dwarf) {
+    attemptCollapse(dwarf.x, dwarf.y);
+    if (!dwarf.status) dwarf.status = 'idle';
+    if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
+    if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
+
+    // Check for stuck dwarf
+    const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
+    const trackKey = dwarf.name; // Use name as unique key
+    const tracked = stuckTracking.get(trackKey);
+    
+    if (tracked) {
+        // Check if position or hardness changed
+        if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
+            // Dwarf moved or made progress, reset tracking
+            stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+        } else {
+            // Same position and hardness, increment stuck counter
+            tracked.ticks++;
+            if (tracked.ticks >= 10) {
+                // Stuck for 10 ticks! Teleport to house and reset
+                console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                dwarf.x = house.x;
+                dwarf.y = house.y;
+                dwarf.status = 'idle';
+                dwarf.moveTarget = null;
+                // Clear any reservations
+                for (const [key, val] of reservedDigBy.entries()) {
+                    if (val === dwarf) reservedDigBy.delete(key);
+                }
+                stuckTracking.delete(trackKey);
+                return;
+            }
+        }
+    } else {
+        // First time tracking this dwarf
+        stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+    }
+
+    //console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
+
+    // Low energy handling
+    if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < 25) {
+        if (dwarf.x === house.x && dwarf.y === house.y) {
+            if (dwarf.status !== 'resting') {
+                dwarf.status = 'resting';
+            }
+        }
+        if (!(dwarf.x === house.x && dwarf.y === house.y)) {
+            if (!dwarf.moveTarget || dwarf.moveTarget.x !== house.x || dwarf.moveTarget.y !== house.y) {
+                scheduleMove(dwarf, house.x, house.y);
+                dwarf.status = 'moving';
+                return;
+            }
+        }
+    }
+
+    // Resting state
+    if (dwarf.status === 'resting') {
+        dwarf.energy = Math.min(1000, (dwarf.energy || 0) + 100);
+        if (dwarf.energy >= 1000) {
+            dwarf.status = 'idle';
+            dwarf.energy = 1000;
+        }
+        return;
+    }
+
+    // Full bucket handling
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    if (typeof bucketCapacity === 'number' && bucketTotal >= bucketCapacity) {
+        if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
+            if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
+                if (dwarf.status !== 'unloading') {
+                    dwarf.status = 'unloading';
+                    return;
+                }
+
+                for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
+                    materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
+                }
+                //console.log(`Dwarf ${dwarf.name} finished unloading ${JSON.stringify(dwarf.bucket)} at drop-off`);
+                dwarf.bucket = {};
+                dwarf.status = 'idle';
+
+                try {
+                    if (Array.isArray(grid) && grid.length > 0) {
+                        let rowIdx = Math.min(dwarf.y, grid.length - 1);
+                        const row = grid[rowIdx] || [];
+                        let chosen = -1;
+                        for (let offset = 0; offset < row.length; offset++) {
+                            const c = (Math.floor(row.length / 2) + offset) % row.length;
+                            if (row[c] && row[c].hardness > 0 && (!reservedDigBy.get(coordKey(c, rowIdx)) || reservedDigBy.get(coordKey(c, rowIdx)) === dwarf)) {
+                                chosen = c;
+                                break;
+                            }
+                        }
+                        if (chosen === -1) {
+                            outer: for (let ry = 0; ry < grid.length; ry++) {
+                                const r = grid[ry];
+                                for (let cx = 0; cx < (r ? r.length : 0); cx++) {
+                                    if (r && r[cx] && r[cx].hardness > 0 && (!reservedDigBy.get(coordKey(cx, ry)) || reservedDigBy.get(coordKey(cx, ry)) === dwarf)) {
+                                        chosen = cx;
+                                        rowIdx = ry;
+                                        break outer;
+                                    }
+                                }
+                            }
+                        }
+                        if (chosen !== -1) {
+                            if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
+                                scheduleMove(dwarf, house.x, house.y);
+                                //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
+                            } else {
+                                scheduleMove(dwarf, chosen, rowIdx);
+                                //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Error scheduling return from drop-off', e);
+                }
+            }
+            return;
+        }
+
+        if (!dwarf.moveTarget || dwarf.moveTarget.x !== dropOff.x || dwarf.moveTarget.y !== dropOff.y) {
+            const scheduled = scheduleMove(dwarf, dropOff.x, dropOff.y);
+            if (scheduled) {
+                console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
+                return;
+            }
+        }
+    }
+
+    // Guard: ensure grid is available
+    if (!Array.isArray(grid) || grid.length === 0) {
+        console.warn('Grid not initialized yet');
+        return;
+    }
+
+    const rowIndex = dwarf.y;
+    const originalX = dwarf.x;
+    if (typeof rowIndex !== 'number' || rowIndex < 0 || rowIndex >= grid.length) {
+        console.warn(`Dwarf ${dwarf.name} has invalid y=${rowIndex}`);
+        return;
+    }
+
+    const tool = tools.find(t => t.name === dwarf.shovelType);
+    const power = tool ? tool.power : 0.5;
+
+    const row = grid[rowIndex];
+    const curCell = row[originalX];
+
+    let movedDownByChance = false;
+    let skipHorizontalScan = false;
+
+    // Idle dwarf on cell with hardness - start digging
+    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0) {
+        const curKey = coordKey(dwarf.x, dwarf.y);
+        if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf) {
+            reservedDigBy.set(curKey, dwarf);
+            dwarf.status = 'digging';
+            const prev = curCell.hardness;
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            curCell.hardness = Math.max(0, curCell.hardness - power);
+            if (curCell.hardness === 0) {
+                const matId = curCell.materialId;
+                if (Math.random() < 0.5) {
+                    dwarf.bucket = dwarf.bucket || {};
+                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                }
+            }
+            //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
+            if (curCell.hardness === 0) {
+                if (reservedDigBy.get(curKey) === dwarf) reservedDigBy.delete(curKey);
+                dwarf.status = 'idle';
+            }
+            return;
+        }
+    }
+
+    // Moving state
+    if (dwarf.status === 'moving' && dwarf.moveTarget) {
+        const tx = dwarf.moveTarget.x, ty = dwarf.moveTarget.y;
+        const dx = tx - dwarf.x, dy = ty - dwarf.y;
+        const stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
+        const stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
+        const nextX = dwarf.x + (stepX !== 0 ? stepX : 0);
+        const nextY = dwarf.y + (stepX === 0 ? stepY : 0);
+
+        if (!Array.isArray(grid) || dwarf.y < 0 || dwarf.y >= grid.length) {
+            dwarf.moveTarget = null;
+            dwarf.status = 'idle';
+        } else {
+            dwarf.x = nextX;
+            dwarf.y = nextY;
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 1);
+            //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
+            if (dwarf.x === tx && dwarf.y === ty) {
+                dwarf.moveTarget = null;
+                dwarf.status = 'idle';
+            } else {
+                dwarf.status = 'moving';
+            }
+            return;
+        }
+    }
+
+    // Digging state
+    if (dwarf.status === 'digging') {
+        const curKeyDig = coordKey(dwarf.x, dwarf.y);
+        if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf);
+        const curCellDig = grid[dwarf.y][dwarf.x];
+        if (curCellDig && curCellDig.hardness > 0) {
+            const prev = curCellDig.hardness;
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
+            if (curCellDig.hardness === 0) {
+                const matId = curCellDig.materialId;
+                if (Math.random() < 0.5) {
+                    dwarf.bucket = dwarf.bucket || {};
+                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                }
+            }
+            //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
+            if (curCellDig.hardness === 0) {
+                if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
+                dwarf.status = 'idle';
+            }
+            return;
+        } else {
+            if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
+            dwarf.status = 'idle';
+        }
+    }
+
+    // Try moving down if current cell is empty
+    if (curCell && curCell.hardness <= 0) {
+        const downChance = 0.3;
+        if (Math.random() < downChance) {
+            const downRowIndex = rowIndex + 1;
+            if (downRowIndex < grid.length) {
+                const downCell = grid[downRowIndex][originalX];
+                const occupiedDown = isCellOccupiedByStanding(originalX, downRowIndex);
+                const downKey = coordKey(originalX, downRowIndex);
+                if (downCell && downCell.hardness > 0 && !occupiedDown && !isReservedForDig(originalX, downRowIndex)) {
+                    if (scheduleMove(dwarf, originalX, downRowIndex)) {
+                        //console.log(`Dwarf ${dwarf.name} decided to move down from (${originalX},${rowIndex}) to (${originalX},${downRowIndex})`);
+                        return;
+                    } else {
+                        //console.log(`Dwarf ${dwarf.name} couldn't schedule move down to (${originalX},${downRowIndex})`);
+                    }
+                }
+            }
+        }
+    }
+
+    // Search for diggable column on current row
+    let foundCol = -1;
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    if (movedDownByChance) foundCol = originalX;
+    if (!skipHorizontalScan) {
+        for (let offset = 0; offset < row.length; offset++) {
+            const c = (originalX + dir * offset + row.length) % row.length;
+            if (!(row[c] && row[c].hardness > 0)) continue;
+            if (isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf) continue;
+            if (isCellOccupiedByStanding(c, rowIndex)) {
+                console.log(`Cell (${c},${rowIndex}) is occupied by a standing dwarf — skipping`);
+                continue;
+            }
+            foundCol = c;
+            break;
+        }
+    }
+
+    // If no column found, try row below
+    if (foundCol === -1) {
+        const nextRowIndex = rowIndex + 1;
+        if (nextRowIndex >= grid.length) {
+            console.log(`No diggable cell found on row ${rowIndex} and no row below for dwarf ${dwarf.name}`);
+            return;
+        }
+
+        const nextRow = grid[nextRowIndex];
+        let foundBelow = -1;
+
+        for (let offset = 0; offset < nextRow.length; offset++) {
+            const c = (originalX + dir * offset + nextRow.length) % nextRow.length;
+            if (!(nextRow[c] && nextRow[c].hardness > 0)) continue;
+            if (isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf) continue;
+            if (isCellOccupiedByStanding(c, nextRowIndex)) continue;
+            foundBelow = c;
+            break;
+        }
+
+        if (foundBelow === -1) {
+            console.log(`No diggable cell found on row ${rowIndex} or row ${nextRowIndex} for dwarf ${dwarf.name}`);
+            return;
+        }
+
+        if (scheduleMove(dwarf, foundBelow, nextRowIndex)) {
+            //console.log(`Dwarf ${dwarf.name} scheduled move to (${foundBelow},${nextRowIndex})`);
+            foundCol = foundBelow;
+            return;
+        } else {
+            console.log(`Dwarf ${dwarf.name} could not schedule move to (${foundBelow},${nextRowIndex})`);
+            scheduleMove(dwarf, foundBelow + 1, nextRowIndex + 1);
+            return;
+        }
+    }
+
+    // Schedule horizontal move
+    if (foundCol !== -1 && (foundCol !== originalX || dwarf.y !== rowIndex)) {
+        if (!dwarf.moveTarget) {
+            if (!scheduleMove(dwarf, foundCol, dwarf.y)) {
+                console.log(`Dwarf ${dwarf.name} can't reserve (${foundCol},${dwarf.y}) — already reserved or not visible`);
+                return;
+            }
+            //console.log(`Dwarf ${dwarf.name} planning move to (${foundCol},${dwarf.y})`);
+            return;
+        }
+    }
+
+    // Move up if horizontal move and above cell is undug
+    const prevRowIndex = rowIndex;
+    if (foundCol !== originalX && prevRowIndex > 0) {
+        const aboveRowIndex = prevRowIndex - 1;
+        const aboveCell = grid[aboveRowIndex] && grid[aboveRowIndex][foundCol];
+        const occupiedAbove = dwarfs.some(other => other !== dwarf && other.x === foundCol && other.y === aboveRowIndex);
+        if (aboveCell && aboveCell.hardness > 0 && !occupiedAbove) {
+            if (Math.random() < 0.7) {
+                dwarf.y = aboveRowIndex;
+                //console.log(`Dwarf ${dwarf.name} moved up to (${foundCol},${aboveRowIndex}) after changing x (70% roll passed)`);
+            } else {
+                //console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
+            }
+        } else if (aboveCell && aboveCell.hardness > 0 && occupiedAbove) {
+            console.log(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
+        }
+    }
+
+    // Safety check for moving up
+    if (dwarf.x !== originalX && prevRowIndex > 0) {
+        const aboveRowIndex2 = prevRowIndex - 1;
+        const aboveCell2 = grid[aboveRowIndex2] && grid[aboveRowIndex2][dwarf.x];
+        const occupiedAbove2 = dwarfs.some(other => other !== dwarf && other.x === dwarf.x && other.y === aboveRowIndex2);
+        if (aboveCell2 && aboveCell2.hardness > 0 && !occupiedAbove2) {
+            if (Math.random() < 0.7) {
+                dwarf.y = aboveRowIndex2;
+                //console.log(`(Safety) Dwarf ${dwarf.name} moved up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll passed)`);
+            } else {
+                //console.log(`(Safety) Dwarf ${dwarf.name} chose NOT to move up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll failed)`);
+            }
+        } else if (aboveCell2 && aboveCell2.hardness > 0 && occupiedAbove2) {
+            console.log(`(Safety) Dwarf ${dwarf.name} could not move up to (${dwarf.x},${aboveRowIndex2}) because another dwarf is present`);
+        }
+    }
+
+    // Perform digging
+    const targetRowIndex = dwarf.y;
+    const target = grid[targetRowIndex][foundCol];
+    const prev = target.hardness;
+    const targetKey = coordKey(foundCol, targetRowIndex);
+    if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
+    target.hardness = Math.max(0, target.hardness - power);
+    dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+    if (target.hardness === 0) {
+        const matId = target.materialId;
+        if (Math.random() < 0.5) {
+            dwarf.bucket = dwarf.bucket || {};
+            dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+            //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+        }
+    }
+    //console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
+    if (target.hardness === 0) {
+        if (reservedDigBy.get(targetKey) === dwarf) reservedDigBy.delete(targetKey);
+        dwarf.status = 'idle';
+    } else {
+        dwarf.status = 'digging';
+    }
+}
+
+function tick() {
+    try {
+        for (const d of dwarfs) {
+            actForDwarf(d);
+        }
+        const shifted = checkAndShiftTopRows();
+        
+        // Send updated state back to main thread
+        self.postMessage({
+            type: 'tick-complete',
+            data: {
+                grid,
+                dwarfs,
+                startX,
+                materialsStock,
+                shifted
+            }
+        });
+    } catch (err) {
+        console.error('Worker tick() error:', err);
+        self.postMessage({
+            type: 'tick-error',
+            error: err.message
+        });
+    }
+}
+
+// Listen for messages from main thread
+self.addEventListener('message', (e) => {
+    const { type, data } = e.data;
+    
+    switch (type) {
+        case 'init':
+            // Initialize worker with game state
+            grid = data.grid;
+            dwarfs = data.dwarfs;
+            materials = data.materials;
+            tools = data.tools;
+            gridWidth = data.gridWidth;
+            gridDepth = data.gridDepth;
+            visibleDepth = data.visibleDepth;
+            startX = data.startX;
+            materialsStock = data.materialsStock;
+            bucketCapacity = data.bucketCapacity;
+            dropOff = data.dropOff;
+            house = data.house;
+            dropGridStartX = data.dropGridStartX;
+            console.log('Worker initialized with game state');
+            self.postMessage({ type: 'init-complete' });
+            break;
+            
+        case 'tick':
+            // Execute game tick
+            tick();
+            break;
+            
+        case 'update-state':
+            // Update specific parts of state from main thread
+            if (data.grid) grid = data.grid;
+            if (data.dwarfs) dwarfs = data.dwarfs;
+            if (data.startX !== undefined) startX = data.startX;
+            if (data.materialsStock) materialsStock = data.materialsStock;
+            break;
+            
+        default:
+            console.warn('Unknown message type:', type);
+    }
+});
+
+console.log('Game worker loaded and ready');

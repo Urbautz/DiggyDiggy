@@ -5,11 +5,13 @@ const visibleDepth = 10; // show only 10 rows in the UI
 
 // Material registry — easy to extend later
 const materials = [
-    { id: 'earth', name: 'Earth', hardness: 1, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
-    { id: 'clay', name: 'Clay', hardness: 2, worth:0.015, minlevel: 20, maxlevel: 1999, color: '#a57f61' },
-    { id: 'gravel', name: 'Gravel', hardness: 2, worth: 0.025, minlevel: 100, maxlevel: 2999, color: '#534f4fff' },
-    { id: 'Sandstone', name: 'Sandstone', hardness: 3, worth: 0.025, minlevel: 300, maxlevel: 999999999, color: '#9d4d39ff' },
-    { id: 'limestone', name: 'Limestone', hardness: 3, worth: 0.05, minlevel: 1200, color: '#a8a19fff' },
+    { id: 'earth', name: 'Earth', hardness: 1, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
+    { id: 'Sand', name: 'Sand', hardness: 1, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 300, color: '#e0aa46' },
+    { id: 'mud', name: 'Mud', hardness: 2, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#4a2f13ff' },
+    { id: 'clay', name: 'Clay', hardness: 5, probability: 0.015, worth: 0.015, minlevel: 25, maxlevel: 1999, color: '#a57f61' },
+    { id: 'gravel', name: 'Gravel', hardness: 5, probability: 0.025, worth: 0.025, minlevel: 100, maxlevel: 2999, color: '#534f4fff' },
+    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 0.025, minlevel: 300, maxlevel: 999999999, color: '#9d4d39ff' },
+    { id: 'limestone', name: 'Limestone', hardness: 8, probability: 0.05, worth: 0.05, minlevel: 1200, color: '#a8a19fff' },
 ];
 
 // Tools
@@ -44,7 +46,7 @@ let dwarfs = [
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 1000 },
-    { name: "Downer", 
+    { name: "Nevertired McPickaxemaster", 
      shovelType: "Stone", 
      level: 1, xp: 0,
      x: 0, y: 0,
