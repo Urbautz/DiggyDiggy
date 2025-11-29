@@ -9,15 +9,42 @@ body {
 
 /* center main and make things readable */
 main {
-    margin: 0 auto;
+    margin: 0;
+    width: 100%;
 }
+
+/* layout for multiple grids side-by-side */
+.grids { display:flex; gap:28px; align-items:flex-start; justify-content:flex-start; }
+.digging-grid {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    gap: 0px;
+}
+.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 320px; }
+
+/* the small drop-grid uses smaller cells to visually differentiate it */
+#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width:135px;}
+#drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
+#drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
+/* ensure content within drop-grid cells stacks correctly */
+#drop-grid .cell > * { position: relative; z-index: 1; }
+/* dwarf background marker should be positioned absolutely so it doesn't push layout */
+#drop-grid .has-dwarf::before { content: '👷'; font-size: 20px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; opacity: 0.75; pointer-events: none; }
+#drop-grid .drop-off { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06); }
+/* center the warehouse icon inside the cell so it doesn't move when other content changes */
+#drop-grid .cell .drop-off-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.95; }
+#drop-grid .cell .unloading-marker { z-index: 5; }
 
 /* digging grid */
 #digging-grid {
     border-collapse: collapse;
-    margin: 16px auto;    /* centered horizontally */
-    display: block;       /* allow auto margins to work reliably */
-    width: fit-content;   /* shrink to the grid width */
+    margin: 16px 0 16px 24px;
+    display: block;
+    width: fit-content;
+    background-color: #333333;
 }
 
 /* each grid cell is a bigger square now */
@@ -26,7 +53,7 @@ main {
     height: 50px;
     padding: 0;
     box-sizing: border-box;
-    background: #8b5e3c;    /* brownish */
+    background: #fff;    /* brownish */
     border: 1px solid #000000; /* darker outline so cells are visible */
     color: #fff;            /* show hardness numbers in white */
     text-align: center;
@@ -52,13 +79,12 @@ main {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 36px;        /* larger, background-style */
-    opacity: 0.6;          /* subtle */
+    font-size: 24px;        /* larger, background-style */
+    opacity: 0;          /* subtle */
     pointer-events: none;   /* doesn't interfere with interactions */
     z-index: 1;             /* behind text content but above moving markers */
 }
 
-/* ensure cell content sits above the background marker */
 /* ensure cell content sits above the background marker */
 #digging-grid .cell > * {
     position: relative;
@@ -91,23 +117,20 @@ main {
     font-size: 24px;
     z-index: 2; /* in front of digging background */
     pointer-events: none;
-    text-shadow: 0 0 6px rgba(255,255,255,0.25);
 }
 
-@keyframes digGlow {
-    0% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
-    50% { box-shadow: inset 0 0 18px rgba(255,255,255,0.06); }
-    100% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
-}
 
 /* small shovel impact animation */
 @keyframes shovelStrike {
-    0% { transform: translate(-50%,-60%) rotate(-12deg); opacity: 0.95; }
-    40% { transform: translate(-50%,-40%) rotate(6deg); opacity: 1; }
-    100% { transform: translate(-50%,-50%) rotate(0deg); opacity: 0.8; }
+    30% { transform: translate(-50%,-60%) rotate3d(1, 2, 3, 30deg); }
+    40% { transform: translate(-50%,-40%) rotate3d(1, 2, 3, 10deg); }
+    100% { transform: translate(-50%,-50%) rotate3d(1, 2, 3, 0deg); }
 }
 
-#digging-grid .digging-marker.strike { animation: shovelStrike 0.9s ease-in-out infinite; }
+#digging-grid .digging-marker.strike { 
+    
+    animation: shovelStrike 0.9s ease-in-out infinite; 
+}
 
 /* style for the depth label (first column) */
 #digging-grid .depth-cell {
@@ -177,6 +200,104 @@ header, footer {
     gap: 10px;
 }
 
+/* stock status pills in header */
+.stock-status { display:flex; align-items:center; gap:8px; margin-left: 12px; }
+.stock-pill { display:flex; gap:6px; align-items:center; padding:6px 8px; border-radius:8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03); font-size:12px; color:#dbeafe }
+.stock-pill .stock-label { opacity:0.85; font-weight:600 }
+.stock-pill .stock-count { background: rgba(255,255,255,0.06); padding:2px 6px; border-radius:6px; font-weight:700; color:#fff }
+
+.cell-tooltip .tooltip-dwarfs {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #cfd8ff;
+    word-break: break-word;
+    display: none;
+}
+/* drop-off marker styling */
+.cell.drop-off { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.04); }
+.cell .drop-off-marker { position: absolute; right: 4px; top: 4px; font-size: 15px; opacity: 0.95; z-index: 4 }
+
+/* warehouse icon for the drop-off */
+.drop-off-marker.warehouse { font-size: 18px; transform: translateY(-1px); }
+
+/* house / bed marker */
+.drop-off-marker.house { font-size: 18px; transform: translateY(-1px); }
+
+.drop-grid-panel {
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.materials-panel {
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+}
+/* dwarfs view renders as a compact table inside the panel */
+.materials-panel table.dwarfs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.materials-panel table.dwarfs-table th,
+.materials-panel table.dwarfs-table td {
+    padding: 6px 8px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    text-align: left;
+}
+.materials-panel table.dwarfs-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    color: #cbd5ff;
+}
+.materials-panel--highlight {
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
+}
+.materials-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px;
+}
+.materials-panel h3 {
+    margin: 0;
+    font-size: 16px;
+}
+.materials-panel-subtitle {
+    font-size: 12px;
+    color: #dbeafe;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.resting-marker { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -50%); font-size: 18px; z-index: 4; }
+
+/* unloading (one-tick) animation */
+.unloading-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; z-index: 5; pointer-events: none; }
+.unloading-marker .crate { display: inline-block; animation: unloadGrow 240ms ease-in-out forwards; transform-origin:center; }
+@keyframes unloadGrow {
+    0% { transform: scale(0.6); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 1; }
+}
+
 /* dwarf status panel in the topbar */
 /* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
 
@@ -227,6 +348,38 @@ header, footer {
     z-index: 2010;
 }
 
+.cell-tooltip {
+    position: fixed;
+    pointer-events: none;
+    display: none;
+    z-index: 2500;
+    padding: 10px 14px;
+    min-width: 180px;
+    max-width: 260px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    color: #fff;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    opacity: 0;
+}
+.cell-tooltip.visible {
+    display: block;
+    opacity: 0.95;
+}
+.cell-tooltip .tooltip-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f8fafc;
+}
+.cell-tooltip .tooltip-hardness {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #dbeafe;
+}
+
 .modal-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .modal-header h2 { margin:0; font-size:20px; }
 .modal-close { background:transparent; border:none; color: #fff; font-size:20px; cursor:pointer; }
@@ -247,3 +400,11 @@ header, footer {
 .dwarfs-table thead th { font-weight: 700; font-size: 13px; color: #dbeafe; }
 .dwarfs-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 .dwarfs-table td { color: #e6eefc; }
+.dwarfs-table .bucket-line { font-size: 12px; padding: 2px 0; color: #cfe7ff }
+.dwarfs-table .bucket-line.empty { opacity: 0.6; color: #9fbfe0 }
+
+/* Warehouse modal stock list */
+.warehouse-stock-list { display:flex; flex-direction:column; gap:8px; }
+.warehouse-row { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); }
+.warehouse-name { font-weight:700; color:#e6eefc }
+.warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff }

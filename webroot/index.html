@@ -35,15 +35,14 @@
         </div>
     </div>
         <div class="topbar-controls" onclick="dig()">
-
-            <button id="dwarfs-button" onclick="openDwarfs()">Dwarfs</button>
             <button id="settings-button" onclick="openSettings()">⚙️</button>
         </div>
-        <!-- dwarf-status removed from main view; overview is available via the Dwarfs modal -->
+        <!-- Stock status: displays global collected material counts -->
+        <div id="stock-status" class="stock-status" aria-live="polite"></div>
     </header>
     <main>
-
-        <table id="digging-grid" aria-label="Digging grid">
+        <div class="grids">
+        <table id="digging-grid" aria-label="Digging grid" class="digging-grid">
             <tbody>
                 <!-- 10x10 static grid -->
                 <tr>
@@ -78,6 +77,35 @@
                 </tr>
             </tbody>
         </table>
+
+        <!-- right-side / auxiliary grids container -->
+        <div id="side-grids">
+            <div id="drop-grid-panel" class="materials-panel" aria-live="polite">
+            <h3>Functions</h3>
+            <table id="drop-grid" aria-label="Drop-off grid">
+                <tbody>
+                    <tr>
+                        <td class="cell" data-row="0" data-col="0"></td>
+                        <td class="cell" data-row="0" data-col="1"></td>
+                        <td class="cell" data-row="0" data-col="2"></td>
+                    </tr>
+                    <tr>
+                        <td class="cell" data-row="1" data-col="0"></td><td class="cell" data-row="1" data-col="1"></td><td class="cell" data-row="1" data-col="2"></td>
+                    </tr>
+                    <tr>
+                        <td class="cell" data-row="2" data-col="0"></td><td class="cell" data-row="2" data-col="1"></td><td class="cell" data-row="2" data-col="2"></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            <div id="materials-panel" class="materials-panel" aria-live="polite">
+                <div class="materials-panel-header">
+                    <h3>Warehouse</h3>
+                </div>
+                <div id="materials-list" class="warehouse-stock-list"></div>
+            </div>
+        </div>
+        </div>
         <!-- controls moved to header topbar -->
     </main>
 
@@ -99,7 +127,6 @@
         </div>
     </div>
     <footer>
-        <p>&copy; 2024 Diggy Diggy Game</p>
     </footer>
 </body>
 </html>
