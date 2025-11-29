@@ -371,6 +371,8 @@ header, footer {
 
 .btn-primary { background: linear-gradient(180deg,#3b82f6,#2563eb); color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
 .btn-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.08); color: #fff; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.btn-danger { background: linear-gradient(180deg,#ef4444,#dc2626); color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.btn-danger:hover { background: linear-gradient(180deg,#dc2626,#b91c1c); }
 
 /* small screen: dialogs slightly smaller */
 @media (max-width: 420px) {

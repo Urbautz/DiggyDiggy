@@ -119,11 +119,11 @@
                 <button class="modal-close" aria-label="Close settings" data-action="close-modal">×</button>
             </header>
             <div class="modal-body">
-                <p>Use the buttons below to save or load a game state (saved locally in your browser).</p>
+                <p>Your game is automatically saved after each action. You can delete your saved progress below.</p>
             </div>
             <footer class="modal-footer">
-                <button id="settings-save" class="btn-primary">Save</button>
-                <button id="settings-load" class="btn-secondary">Load</button>
+                <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
+                <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
         </div>
     </div>
