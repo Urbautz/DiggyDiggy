@@ -1,13 +1,15 @@
 // Base data}
-const gridWidth = 20;
-const gridDepth = 25; // full data depth
+const gridWidth = 10;
+const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
 
 // Material registry — easy to extend later
 const materials = [
-    { id: 'earth', name: 'Earth', hardness: 1, color: '#6b4b2c' },
-    { id: 'clay', name: 'Clay', hardness: 2, color: '#a57f61' },
-    { id: 'gravel', name: 'Sandstone', hardness: 2, color: '#443232' },
+    { id: 'earth', name: 'Earth', hardness: 1, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
+    { id: 'clay', name: 'Clay', hardness: 2, worth:0.015, minlevel: 20, maxlevel: 1999, color: '#a57f61' },
+    { id: 'gravel', name: 'Gravel', hardness: 2, worth: 0.025, minlevel: 100, maxlevel: 2999, color: '#534f4fff' },
+    { id: 'Sandstone', name: 'Sandstone', hardness: 3, worth: 0.025, minlevel: 300, maxlevel: 999999999, color: '#9d4d39ff' },
+    { id: 'limestone', name: 'Limestone', hardness: 3, worth: 0.05, minlevel: 1200, color: '#a8a19fff' },
 ];
 
 // Tools
@@ -38,6 +40,18 @@ let dwarfs = [
      bucket: {} },
     { name: "Burrower", 
      shovelType: "Stone", 
+     level: 1, xp: 0,
+     x: 0, y: 0,
+     status: 'idle', moveTarget: null,
+     bucket: {} },
+    { name: "Downer", 
+     shovelType: "Stone", 
+     level: 1, xp: 0,
+     x: 0, y: 0,
+     status: 'idle', moveTarget: null,
+     bucket: {} },
+    { name: "SuperDigger", 
+     shovelType: "Copper", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,

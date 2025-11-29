@@ -101,6 +101,7 @@ function updateGridDisplay() {
             } else {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
+                
                 const displayHardness = Math.ceil(rawHardness);
                 cell.title = mat ? `${mat.name} (hardness ${displayHardness})` : `hardness ${displayHardness}`;
                 // show current hardness value inside the cell (rounded up for clarity)
@@ -302,6 +303,11 @@ function tick() {
     } catch (err) {
         console.error('tick(): error running dig()', err);
     }
+}
+
+function initializeGame() {
+    setInterval(tick, 500); // Dwarfs dig every second
+    updateGameState();
 }
 
 // Initialize the game state

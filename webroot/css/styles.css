@@ -18,6 +18,7 @@ main {
     margin: 16px auto;    /* centered horizontally */
     display: block;       /* allow auto margins to work reliably */
     width: fit-content;   /* shrink to the grid width */
+    background-color: #333333; /* match body background */
 }
 
 /* each grid cell is a bigger square now */
@@ -26,7 +27,7 @@ main {
     height: 50px;
     padding: 0;
     box-sizing: border-box;
-    background: #8b5e3c;    /* brownish */
+    background: #fff;    /* brownish */
     border: 1px solid #000000; /* darker outline so cells are visible */
     color: #fff;            /* show hardness numbers in white */
     text-align: center;
@@ -52,13 +53,12 @@ main {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 36px;        /* larger, background-style */
-    opacity: 0.6;          /* subtle */
+    font-size: 24px;        /* larger, background-style */
+    opacity: 0;          /* subtle */
     pointer-events: none;   /* doesn't interfere with interactions */
     z-index: 1;             /* behind text content but above moving markers */
 }
 
-/* ensure cell content sits above the background marker */
 /* ensure cell content sits above the background marker */
 #digging-grid .cell > * {
     position: relative;
@@ -91,23 +91,20 @@ main {
     font-size: 24px;
     z-index: 2; /* in front of digging background */
     pointer-events: none;
-    text-shadow: 0 0 6px rgba(255,255,255,0.25);
 }
 
-@keyframes digGlow {
-    0% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
-    50% { box-shadow: inset 0 0 18px rgba(255,255,255,0.06); }
-    100% { box-shadow: inset 0 0 0px rgba(255,255,255,0); }
-}
 
 /* small shovel impact animation */
 @keyframes shovelStrike {
-    0% { transform: translate(-50%,-60%) rotate(-12deg); opacity: 0.95; }
-    40% { transform: translate(-50%,-40%) rotate(6deg); opacity: 1; }
-    100% { transform: translate(-50%,-50%) rotate(0deg); opacity: 0.8; }
+    30% { transform: translate(-50%,-60%) rotate3d(1, 2, 3, 30deg); }
+    40% { transform: translate(-50%,-40%) rotate3d(1, 2, 3, 10deg); }
+    100% { transform: translate(-50%,-50%) rotate3d(1, 2, 3, 0deg); }
 }
 
-#digging-grid .digging-marker.strike { animation: shovelStrike 0.9s ease-in-out infinite; }
+#digging-grid .digging-marker.strike { 
+    
+    animation: shovelStrike 0.9s ease-in-out infinite; 
+}
 
 /* style for the depth label (first column) */
 #digging-grid .depth-cell {
