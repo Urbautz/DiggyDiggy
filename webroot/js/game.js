@@ -35,7 +35,6 @@ function generateGrid() {
 
 // Reservation maps (coordinate -> dwarf who reserved the cell)
 const reservedDigBy = new Map();
-const reservedMoveBy = new Map();
 
 function coordKey(x,y){ return `${x},${y}`; }
 
@@ -44,9 +43,9 @@ function isCellOccupiedByStanding(x,y){
 }
 
 function isReservedForDig(x,y){ return reservedDigBy.has(coordKey(x,y)); }
-function isReservedForMove(x,y){ return reservedMoveBy.has(coordKey(x,y)); }
+// movement reservations removed: movement no longer reserves cells
 
-// scheduleMove: reserve a move target and set dwarf.moveTarget/status while enforcing visibility.
+// scheduleMove: plan a move target and set dwarf.moveTarget/status while enforcing visibility.
 // If the target row is not visible (>= visibleDepth), pick the top-most visible row in that column that still has hardness>0.
 // returns true when scheduled, false otherwise
 function scheduleMove(dwarf, targetX, targetY){
@@ -67,19 +66,6 @@ function scheduleMove(dwarf, targetX, targetY){
         }
     }
 
-    const key = coordKey(targetX, finalY);
-    const existing = reservedMoveBy.get(key);
-    if (existing && existing !== dwarf) {
-        console.log(`scheduleMove: target ${key} already reserved by ${existing.name}`);
-        return false;
-    }
-
-    // remove any previous final target reservation owned by this dwarf
-    for (const [k, v] of reservedMoveBy.entries()) {
-        if (v === dwarf) reservedMoveBy.delete(k);
-    }
-
-    reservedMoveBy.set(key, dwarf);
     dwarf.moveTarget = { x: targetX, y: finalY };
     dwarf.status = 'moving';
     return true;
@@ -129,7 +115,6 @@ function checkAndShiftTopRows() {
             }
         };
         shiftMap(reservedDigBy);
-        shiftMap(reservedMoveBy);
     }
 
     if (removed > 0) {
@@ -163,11 +148,8 @@ function attemptCollapse(x,y) {
         if (!src || src.hardness <= 0) break; // nothing to fall
         if (!dst || dst.hardness > 0) break; // destination not empty / supported
 
-        const curDestKey = coordKey(ux, dstY);
-        if (isReservedForMove(ux, dstY) || isCellOccupiedByStanding(ux, dstY)) {
-            console.log(`collapse: can't move (${ux},${scanY}) to (${ux},${dstY}) - reserved or occupied`);
-            break;
-        }
+        // allow collapses to proceed even if dwarfs are present at destination —
+        // movement is no longer reserved and multiple dwarfs may be in the same cell
 
         // move the material down one
         console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
@@ -185,7 +167,6 @@ function attemptCollapse(x,y) {
         // clear reservations related to the source position
         const srcKey = coordKey(ux, scanY);
         if (reservedDigBy.get(srcKey)) reservedDigBy.delete(srcKey);
-        if (reservedMoveBy.get(srcKey)) reservedMoveBy.delete(srcKey);
 
         // continue further up
         scanY -= 1;
@@ -195,10 +176,9 @@ function attemptCollapse(x,y) {
 }
 
 
-function dig() {
-    for (let dwarf of dwarfs) {
-        // After a successful dig emptied the cell, attempt diagonal cave-ins
-        attemptCollapse(dwarf.x, dwarf.y);
+function actForDwarf(dwarf) {
+    // After a successful dig emptied the cell, attempt diagonal cave-ins
+    attemptCollapse(dwarf.x, dwarf.y);
         if (!dwarf.status) dwarf.status = 'idle';
         if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
         console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
@@ -219,16 +199,16 @@ function dig() {
                     if (typeof updateGridDisplay === 'function') updateGridDisplay();
                 }
                 // continue acting after deposit (do not schedule other actions this tick)
-                continue;
+                return;
             }
 
             // otherwise, attempt to schedule a move to drop-off
             if (!dwarf.moveTarget || dwarf.moveTarget.x !== dropOff.x || dwarf.moveTarget.y !== dropOff.y) {
                 const scheduled = scheduleMove(dwarf, dropOff.x, dropOff.y);
-                if (scheduled) {
+                    if (scheduled) {
                     console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                     if (typeof updateGridDisplay === 'function') updateGridDisplay();
-                    continue; // movement will consume this tick
+                    return; // movement will consume this tick
                 }
             }
             // if we couldn't schedule, fall through and wait
@@ -237,14 +217,14 @@ function dig() {
         // guard: ensure grid is available and the dwarf's row exists
         if (!Array.isArray(grid) || grid.length === 0) {
             console.warn('Grid not initialized yet');
-            continue;
+            return;
         }
 
         const rowIndex = dwarf.y;
         const originalX = dwarf.x; // remember where we started on this tick
         if (typeof rowIndex !== 'number' || rowIndex < 0 || rowIndex >= grid.length) {
             console.warn(`Dwarf ${dwarf.name} has invalid y=${rowIndex}`);
-            continue;
+              return;
         }
 
         // Find the tool power for this dwarf's shovel
@@ -282,7 +262,7 @@ function dig() {
                     dwarf.status = 'idle';
                 }
                 updateGridDisplay();
-                continue; // consume tick — no movement this turn
+                return; // consume tick — no movement this turn
             }
         }
 
@@ -295,34 +275,19 @@ function dig() {
             const nextX = dwarf.x + (stepX !== 0 ? stepX : 0);
             const nextY = dwarf.y + (stepX === 0 ? stepY : 0);
 
-            const nextKey = coordKey(nextX, nextY);
-            const reservedBy = reservedMoveBy.get(nextKey);
-            const occupiedByStanding = isCellOccupiedByStanding(nextX, nextY);
-
-            if (reservedBy && reservedBy !== dwarf) {
-                console.log(`Dwarf ${dwarf.name} can't move to ${nextKey} — reserved by ${reservedBy.name}`);
-                const finalKey = coordKey(tx, ty);
-                if (reservedMoveBy.get(finalKey) === dwarf) reservedMoveBy.delete(finalKey);
-                dwarf.moveTarget = null;
-                dwarf.status = 'idle';
-            } else if (occupiedByStanding) {
-                console.log(`Dwarf ${dwarf.name} blocked by standing dwarf at ${nextKey}`);
-                const finalKey = coordKey(tx, ty);
-                if (reservedMoveBy.get(finalKey) === dwarf) reservedMoveBy.delete(finalKey);
+            // movements no longer check / remove reservations — many dwarfs can be
+            // in the same cell while moving, so simply advance toward the target.
+            // If the target is no longer valid (out of bounds), cancel and idle.
+            if (!Array.isArray(grid) || dwarf.y < 0 || dwarf.y >= grid.length) {
                 dwarf.moveTarget = null;
                 dwarf.status = 'idle';
             } else {
                 dwarf.x = nextX; dwarf.y = nextY;
                 console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
-                if (dwarf.x === tx && dwarf.y === ty) {
-                    const finalKey = coordKey(tx, ty);
-                    if (reservedMoveBy.get(finalKey) === dwarf) reservedMoveBy.delete(finalKey);
-                    dwarf.moveTarget = null; dwarf.status = 'idle';
-                } else {
-                    dwarf.status = 'moving';
-                }
+                if (dwarf.x === tx && dwarf.y === ty) { dwarf.moveTarget = null; dwarf.status = 'idle'; }
+                else { dwarf.status = 'moving'; }
                 updateGridDisplay();
-                continue; // movement consumes the action for this tick
+                return; // movement consumes the action for this tick
             }
         }
 
@@ -348,7 +313,7 @@ function dig() {
                     dwarf.status = 'idle';
                 }
                 updateGridDisplay();
-                continue; // digging consumes tick
+                return; // digging consumes tick
             } else {
                 if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
                 dwarf.status = 'idle';
@@ -364,11 +329,11 @@ function dig() {
                     const downCell = grid[downRowIndex][originalX];
                     const occupiedDown = isCellOccupiedByStanding(originalX, downRowIndex);
                     const downKey = coordKey(originalX, downRowIndex);
-                    if (downCell && downCell.hardness > 0 && !occupiedDown && !isReservedForDig(originalX, downRowIndex) && !isReservedForMove(originalX, downRowIndex)) {
+                    if (downCell && downCell.hardness > 0 && !occupiedDown && !isReservedForDig(originalX, downRowIndex)) {
                         if (scheduleMove(dwarf, originalX, downRowIndex)) {
                             console.log(`Dwarf ${dwarf.name} decided to move down from (${originalX},${rowIndex}) to (${originalX},${downRowIndex})`);
                             updateGridDisplay();
-                            continue; // consume move for this tick
+                            return; // consume move for this tick
                         } else {
                             console.log(`Dwarf ${dwarf.name} couldn't schedule move down to (${originalX},${downRowIndex})`);
                         }
@@ -395,7 +360,7 @@ function dig() {
                 // skip if the cell is reserved for digging by someone else
                 if (isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c,rowIndex)) !== dwarf) continue;
                 // don't pick a target if final target is already reserved for move by a different dwarf
-                if (isReservedForMove(c, rowIndex) && reservedMoveBy.get(coordKey(c,rowIndex)) !== dwarf) continue;
+                // movement reservations removed — allow movement plans regardless
                 // don't pick a target if a standing dwarf occupies it
                 if (isCellOccupiedByStanding(c, rowIndex)) {
                     console.log(`Cell (${c},${rowIndex}) is occupied by a standing dwarf — skipping`);
@@ -412,7 +377,7 @@ function dig() {
             const nextRowIndex = rowIndex + 1;
             if (nextRowIndex >= grid.length) {
                 console.log(`No diggable cell found on row ${rowIndex} and no row below for dwarf ${dwarf.name}`);
-                continue;
+                  return;
             }
 
             const nextRow = grid[nextRowIndex];
@@ -423,7 +388,7 @@ function dig() {
                 const c = (originalX + dir * offset + nextRow.length) % nextRow.length;
                 if (!(nextRow[c] && nextRow[c].hardness > 0)) continue;
                 if (isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c,nextRowIndex)) !== dwarf) continue;
-                if (isReservedForMove(c, nextRowIndex) && reservedMoveBy.get(coordKey(c,nextRowIndex)) !== dwarf) continue;
+                // movement reservations removed — allow movement plans regardless
                 if (isCellOccupiedByStanding(c, nextRowIndex)) continue;
                 foundBelow = c;
                 break;
@@ -431,7 +396,7 @@ function dig() {
 
             if (foundBelow === -1) {
                 console.log(`No diggable cell found on row ${rowIndex} or row ${nextRowIndex} for dwarf ${dwarf.name}`);
-                continue;
+                    return;
             }
 
             // schedule move to the found below column (movement will happen one step per tick)
@@ -441,11 +406,11 @@ function dig() {
                 foundCol = foundBelow;
                 // movement consumes tick; skip further processing this turn
                 updateGridDisplay();
-                continue;
+                    return;
             } else {
                 console.log(`Dwarf ${dwarf.name} could not schedule move to (${foundBelow},${nextRowIndex})`);
                 scheduleMove(dwarf, foundBelow+1, nextRowIndex+1)
-                continue;
+                    return;
             }
         }
 
@@ -455,7 +420,7 @@ function dig() {
         if (foundCol === -1) {
             // safety-check
             console.log(`No target found for dwarf ${dwarf.name} at startRow=${rowIndex}`);
-            continue;
+                return;
         }
         // If the found target is a different column (horizontal move) and dwarf is not already moving,
         // schedule a move rather than teleporting. Movement takes one tick and is step-by-step.
@@ -465,11 +430,11 @@ function dig() {
                 // use scheduleMove to ensure visible final target and reservation
                 if (!scheduleMove(dwarf, foundCol, dwarf.y)) {
                     console.log(`Dwarf ${dwarf.name} can't reserve (${foundCol},${dwarf.y}) — already reserved or not visible`);
-                    continue;
+                        return;
                 }
                 console.log(`Dwarf ${dwarf.name} planning move to (${foundCol},${dwarf.y})`);
                 updateGridDisplay();
-                continue; // movement scheduled: consumes tick
+                    return; // movement scheduled: consumes tick
             }
         }
 
@@ -548,13 +513,12 @@ function dig() {
         }
         // Refresh UI display if available
         updateGridDisplay();
-    }
+}
+
+function dig() {
+    for (let dwarf of dwarfs) actForDwarf(dwarf);
     // after processing all dwarfs in this tick, check for fully-empty top rows and shift the grid
     checkAndShiftTopRows();
-}
-function initializeGame() {
-    setInterval(tick, 200); // Dwarfs dig every second
-    updateGameState();
 }
 
     // close modal with Escape key
@@ -562,4 +526,7 @@ function initializeGame() {
         if (e.key === 'Escape' && modal && modal.getAttribute('aria-hidden') === 'false') closeSettings();
     });
 
-document.addEventListener('DOMContentLoaded', initializeGame);
+// Avoid referencing initializeGame directly (it may be defined in another script file)
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initializeGame === 'function') initializeGame();
+});

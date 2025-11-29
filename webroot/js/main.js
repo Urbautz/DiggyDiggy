@@ -299,14 +299,20 @@ function updateStockDisplay() {
 function tick() {
     // Run one game tick — let dwarfs act
     try {
-        if (typeof dig === 'function') dig();
+        // prefer per-dwarf action when available
+        if (typeof actForDwarf === 'function') {
+            for (const d of dwarfs) actForDwarf(d);
+            if (typeof checkAndShiftTopRows === 'function') checkAndShiftTopRows();
+        } else if (typeof dig === 'function') {
+            dig();
+        }
     } catch (err) {
         console.error('tick(): error running dig()', err);
     }
 }
 
 function initializeGame() {
-    setInterval(tick, 500); // Dwarfs dig every second
+    setInterval(tick, 250); // Dwarfs dig every second
     updateGameState();
 }
 
