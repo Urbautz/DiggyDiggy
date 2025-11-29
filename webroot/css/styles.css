@@ -249,6 +249,25 @@ header, footer {
     gap: 10px;
     min-width: 220px;
 }
+/* dwarfs view renders as a compact table inside the panel */
+.materials-panel table.dwarfs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.materials-panel table.dwarfs-table th,
+.materials-panel table.dwarfs-table td {
+    padding: 6px 8px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    text-align: left;
+}
+.materials-panel table.dwarfs-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    color: #cbd5ff;
+}
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
 }
