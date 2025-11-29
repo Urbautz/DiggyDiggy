@@ -264,6 +264,10 @@ function updateGridDisplay() {
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
 
 function openSettings() {
+    // Pause game when opening settings
+    if (!gamePaused) {
+        togglePause();
+    }
     // Open the settings modal
     openModal('settings-modal');
 }
@@ -626,6 +630,9 @@ function initWorker() {
                 
                 // Update UI to reflect new state
                 updateGridDisplay();
+                
+                // Autosave after each tick
+                saveGame();
                 break;
                 
             case 'tick-error':
@@ -684,6 +691,65 @@ function togglePause() {
     console.log(gamePaused ? 'Game paused' : 'Game resumed');
 }
 
+function saveGame() {
+    try {
+        const gameState = {
+            grid: grid,
+            dwarfs: dwarfs,
+            startX: startX,
+            materialsStock: materialsStock,
+            timestamp: Date.now(),
+            version: '1.0'
+        };
+        localStorage.setItem('diggyDiggyGameState', JSON.stringify(gameState));
+    } catch (e) {
+        console.error('Failed to save game:', e);
+    }
+}
+
+function loadGame() {
+    try {
+        const saved = localStorage.getItem('diggyDiggyGameState');
+        if (!saved) {
+            console.log('No saved game found');
+            return false;
+        }
+        
+        const gameState = JSON.parse(saved);
+        
+        // Restore game state
+        grid = gameState.grid || [];
+        dwarfs = gameState.dwarfs || [];
+        startX = gameState.startX || 0;
+        
+        // Restore materials stock
+        if (gameState.materialsStock) {
+            for (const key in gameState.materialsStock) {
+                materialsStock[key] = gameState.materialsStock[key];
+            }
+        }
+        
+        console.log('Game loaded from', new Date(gameState.timestamp));
+        return true;
+    } catch (e) {
+        console.error('Failed to load game:', e);
+        return false;
+    }
+}
+
+function deleteSave() {
+    if (confirm('Are you sure you want to delete your saved game? This cannot be undone.')) {
+        try {
+            localStorage.removeItem('diggyDiggyGameState');
+            alert('Save deleted! The page will reload with a new game.');
+            location.reload();
+        } catch (e) {
+            console.error('Failed to delete save:', e);
+            alert('Failed to delete save.');
+        }
+    }
+}
+
 function initializeGame() {
     initWorker();
     gameTickIntervalId = setInterval(tick, 250); // Dwarfs dig every 250ms
@@ -693,7 +759,14 @@ function initializeGame() {
 
 // Initialize the game state
 function initGame() {
-    generateGrid();
+    // Try to load saved game first
+    const loaded = loadGame();
+    
+    if (!loaded) {
+        // No saved game, generate new grid
+        generateGrid();
+    }
+    
     updateGridDisplay();
 }
 
