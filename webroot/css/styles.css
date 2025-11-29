@@ -9,16 +9,25 @@ body {
 
 /* center main and make things readable */
 main {
-    margin: 0 auto;
+    margin: 0;
+    width: 100%;
 }
 
 /* layout for multiple grids side-by-side */
-.grids { display:flex; gap:18px; align-items:flex-start; justify-content:center; }
-.grids #side-grids { display:flex; flex-direction:column; gap:12px; }
+.grids { display:flex; gap:28px; align-items:flex-start; justify-content:flex-start; }
+.digging-grid {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    gap: 0px;
+}
+.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 320px; }
 
 /* the small drop-grid uses smaller cells to visually differentiate it */
-#drop-grid { border-collapse: collapse; background: #222; padding: 6px; }
-#drop-grid .cell { width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
+#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width:135px;}
+#drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
 #drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
 /* ensure content within drop-grid cells stacks correctly */
 #drop-grid .cell > * { position: relative; z-index: 1; }
@@ -32,10 +41,10 @@ main {
 /* digging grid */
 #digging-grid {
     border-collapse: collapse;
-    margin: 16px auto;    /* centered horizontally */
-    display: block;       /* allow auto margins to work reliably */
-    width: fit-content;   /* shrink to the grid width */
-    background-color: #333333; /* match body background */
+    margin: 16px 0 16px 24px;
+    display: block;
+    width: fit-content;
+    background-color: #333333;
 }
 
 /* each grid cell is a bigger square now */
@@ -214,6 +223,19 @@ header, footer {
 /* house / bed marker */
 .drop-off-marker.house { font-size: 18px; transform: translateY(-1px); }
 
+.drop-grid-panel {
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .materials-panel {
     margin-top: 12px;
     padding: 16px;
@@ -234,7 +256,7 @@ header, footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
+    gap: 3px;
 }
 .materials-panel h3 {
     margin: 0;
