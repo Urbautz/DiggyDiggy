@@ -198,10 +198,12 @@ function updateGridDisplay() {
 
                     // show house / bed icon if this is the house cell
                     if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
+                        cell.style.cursor = 'pointer';
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openDwarfs(); });
                         const bed = document.createElement('span');
                         bed.className = 'drop-off-marker house';
-                        bed.textContent = '🛏️';
-                        bed.title = 'House (resting area)';
+                        bed.textContent = '🏠';
+                        bed.title = 'House (open dwarfs overview)';
                         cell.appendChild(bed);
                     }
 
@@ -289,7 +291,7 @@ function populateDwarfsOverview() {
     table.className = 'dwarfs-table';
 
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th><th>Bucket</th><th>Pos</th><th>XP</th></tr>';
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th></tr>';
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
@@ -303,35 +305,11 @@ function populateDwarfsOverview() {
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
         const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
 
-        // bucket cell: one line per resource (material name and count)
-        const bucketTd = document.createElement('td');
-        if (!d.bucket || Object.keys(d.bucket).length === 0) {
-            const emptyEl = document.createElement('div');
-            emptyEl.className = 'bucket-line empty';
-            emptyEl.textContent = 'empty';
-            bucketTd.appendChild(emptyEl);
-        } else {
-            for (const [matId, cnt] of Object.entries(d.bucket)) {
-                const mat = getMaterialById(matId);
-                const line = document.createElement('div');
-                line.className = 'bucket-line';
-                const label = mat ? mat.name : matId;
-                line.textContent = `${label}: ${cnt}`;
-                bucketTd.appendChild(line);
-            }
-        }
-
-        const posTd = document.createElement('td'); posTd.textContent = `${d.x ?? '-'},${d.y ?? '-'}`;
-        const xpTd = document.createElement('td'); xpTd.textContent = `${d.xp ?? 0}`;
-
         tr.appendChild(nameTd);
         tr.appendChild(levelTd);
         tr.appendChild(toolTd);
         tr.appendChild(statusTd);
         tr.appendChild(energyTd);
-        tr.appendChild(bucketTd);
-        tr.appendChild(posTd);
-        tr.appendChild(xpTd);
         tbody.appendChild(tr);
     }
 

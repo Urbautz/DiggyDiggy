@@ -209,7 +209,7 @@ function actForDwarf(dwarf) {
         // handle resting state: regain energy per tick until full
         if (dwarf.status === 'resting') {
             // restore energy (one tick of rest restores a chunk)
-            dwarf.energy = Math.min(1000, (dwarf.energy || 0) + 250);
+            dwarf.energy = Math.min(1000, (dwarf.energy || 0) + 100);
             if (typeof updateGridDisplay === 'function') updateGridDisplay();
             // when fully rested, resume work next tick
             if (dwarf.energy >= 1000) { dwarf.status = 'idle'; dwarf.energy = 1000; }
