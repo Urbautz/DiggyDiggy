@@ -6,11 +6,11 @@ const visibleDepth = 10; // show only 10 rows in the UI
 // Material registry — easy to extend later
 const materials = [
     { id: 'earth', name: 'Earth', hardness: 1, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
-    { id: 'Sand', name: 'Sand', hardness: 1, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 300, color: '#e0aa46' },
+    { id: 'Sand', name: 'Sand', hardness: 1, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 100, color: '#e0aa46' },
     { id: 'mud', name: 'Mud', hardness: 2, probability: 0.01, worth: 0.01, minlevel: 0, maxlevel: 999, color: '#4a2f13ff' },
-    { id: 'clay', name: 'Clay', hardness: 5, probability: 0.015, worth: 0.015, minlevel: 25, maxlevel: 1999, color: '#a57f61' },
-    { id: 'gravel', name: 'Gravel', hardness: 5, probability: 0.025, worth: 0.025, minlevel: 100, maxlevel: 2999, color: '#534f4fff' },
-    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 0.025, minlevel: 300, maxlevel: 999999999, color: '#9d4d39ff' },
+    { id: 'clay', name: 'Clay', hardness: 5, probability: 0.015, worth: 0.015, minlevel: 75, maxlevel: 1999, color: '#a57f61' },
+    { id: 'gravel', name: 'Gravel', hardness: 5, probability: 0.025, worth: 0.025, minlevel: 150, maxlevel: 2999, color: '#534f4fff' },
+    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 0.025, minlevel: 1300, maxlevel: 999999999, color: '#9d4d39ff' },
     { id: 'limestone', name: 'Limestone', hardness: 8, probability: 0.05, worth: 0.05, minlevel: 1200, color: '#a8a19fff' },
 ];
 
