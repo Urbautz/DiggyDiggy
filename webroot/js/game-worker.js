@@ -38,9 +38,31 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
-function randomMaterial() {
-    const idx = Math.floor(Math.random() * materials.length);
-    return materials[idx];
+function randomMaterial(depthLevel = 0) {
+    // Filter materials that are valid for this depth level
+    const validMaterials = materials.filter(m => 
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+    );
+    
+    if (validMaterials.length === 0) {
+        // Fallback to first material if none match
+        return materials[0];
+    }
+    
+    // Calculate total probability for probability distribution
+    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
+    
+    // Random selection weighted by probability
+    let random = Math.random() * totalProbability;
+    for (const mat of validMaterials) {
+        random -= (mat.probability || 1);
+        if (random <= 0) {
+            return mat;
+        }
+    }
+    
+    // Fallback to last valid material
+    return validMaterials[validMaterials.length - 1];
 }
 
 function scheduleMove(dwarf, targetX, targetY) {
@@ -80,8 +102,38 @@ function checkAndShiftTopRows() {
         removed += 1;
 
         const newRow = [];
+        // Calculate the depth level for the new row at the bottom
+        const newRowDepth = startX + grid.length + 1;
         for (let c = 0; c < gridWidth; c++) {
-            const mat = randomMaterial();
+            let mat;
+            
+            // Check left tile (50% chance to use same material)
+            if (c > 0 && Math.random() < 0.5) {
+                const leftCell = newRow[c - 1];
+                if (leftCell && leftCell.materialId) {
+                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    if (leftMat) {
+                        mat = leftMat;
+                    }
+                }
+            }
+            
+            // Check above tile (50% chance to use same material if not air/empty)
+            if (!mat && grid.length > 0 && Math.random() < 0.5) {
+                const aboveCell = grid[grid.length - 1][c];
+                if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
+                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    if (aboveMat) {
+                        mat = aboveMat;
+                    }
+                }
+            }
+            
+            // If no clustering, use random based on depth
+            if (!mat) {
+                mat = randomMaterial(newRowDepth);
+            }
+            
             newRow.push({ materialId: mat.id, hardness: mat.hardness });
         }
         grid.push(newRow);

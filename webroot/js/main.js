@@ -1,8 +1,30 @@
 
-// pick a random material from the registry (equal probability for now)
-function randomMaterial() {
-    const idx = Math.floor(Math.random() * materials.length);
-    return materials[idx];
+// pick a random material from the registry based on depth level and probability (probability)
+function randomMaterial(depthLevel = 0) {
+    // Filter materials that are valid for this depth level
+    const validMaterials = materials.filter(m => 
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+    );
+    
+    if (validMaterials.length === 0) {
+        // Fallback to first material if none match
+        return materials[0];
+    }
+    
+    // Calculate total probability for probability distribution
+    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
+    
+    // Random selection weighted by probability
+    let random = Math.random() * totalProbability;
+    for (const mat of validMaterials) {
+        random -= (mat.probability || 1);
+        if (random <= 0) {
+            return mat;
+        }
+    }
+    
+    // Fallback to last valid material
+    return validMaterials[validMaterials.length - 1];
 }
 
 function getMaterialById(id) {
@@ -427,6 +449,9 @@ function updateMaterialsPanel() {
     for (const m of materials) {
         const id = m.id;
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        // Skip materials with 0 stock
+        if (count === 0) continue;
+        
         const row = document.createElement('div');
         row.className = 'warehouse-row';
         const name = document.createElement('span'); name.className = 'warehouse-name'; name.textContent = m.name;

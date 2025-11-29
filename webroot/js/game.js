@@ -26,7 +26,35 @@ function generateGrid() {
     for (let r = 0; r < gridDepth; r++) {
         const row = [];
         for (let c = 0; c < gridWidth; c++) {
-            const mat = randomMaterial();
+            let mat;
+            
+            // Check left tile (50% chance to use same material)
+            if (c > 0 && Math.random() < 0.5) {
+                const leftCell = row[c - 1];
+                if (leftCell && leftCell.materialId) {
+                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    if (leftMat) {
+                        mat = leftMat;
+                    }
+                }
+            }
+            
+            // Check above tile (50% chance to use same material if not air/empty)
+            if (!mat && r > 0 && Math.random() < 0.5) {
+                const aboveCell = grid[r - 1][c];
+                if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
+                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    if (aboveMat) {
+                        mat = aboveMat;
+                    }
+                }
+            }
+            
+            // If no clustering, use random based on depth
+            if (!mat) {
+                mat = randomMaterial(r + (startX || 0));
+            }
+            
             row.push({ materialId: mat.id, hardness: mat.hardness });
         }
         grid.push(row);
