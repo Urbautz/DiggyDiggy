@@ -573,6 +573,8 @@ function refreshTooltipAfterRedraw() {
 // Web Worker for game calculations
 let gameWorker = null;
 let workerInitialized = false;
+let gameTickIntervalId = null;
+let gamePaused = false;
 
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
@@ -636,6 +638,9 @@ function initWorker() {
 }
 
 function tick() {
+    // Don't tick if game is paused
+    if (gamePaused) return;
+    
     // Send tick request to worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({ type: 'tick' });
@@ -644,9 +649,20 @@ function tick() {
     }
 }
 
+function togglePause() {
+    gamePaused = !gamePaused;
+    const btn = document.getElementById('pause-button');
+    if (btn) {
+        btn.textContent = gamePaused ? '▶️' : '⏸️';
+        btn.title = gamePaused ? 'Resume game' : 'Pause game';
+    }
+    console.log(gamePaused ? 'Game paused' : 'Game resumed');
+}
+
 function initializeGame() {
     initWorker();
-    setInterval(tick, 250); // Dwarfs dig every 250ms
+    gameTickIntervalId = setInterval(tick, 250); // Dwarfs dig every 250ms
+    gamePaused = false; // Start with game running
     updateGameState();
 }
 

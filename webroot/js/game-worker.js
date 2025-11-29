@@ -19,6 +19,9 @@ let dropGridStartX = 10;
 // Reservation maps (coordinate -> dwarf who reserved the cell)
 const reservedDigBy = new Map();
 
+// Stuck detection tracking
+const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
+
 function coordKey(x, y) {
     return `${x},${y}`;
 }
@@ -53,9 +56,9 @@ function scheduleMove(dwarf, targetX, targetY) {
         }
         if (found !== -1) {
             finalY = found;
-            console.log(`Adjusting move target to visible row ${finalY} for dwarf ${dwarf.name} (original ${targetY})`);
+            //console.log(`Adjusting move target to visible row ${finalY} for dwarf ${dwarf.name} (original ${targetY})`);
         } else {
-            console.log(`No visible target found in column ${targetX} for dwarf ${dwarf.name}; not scheduling`);
+            //console.log(`No visible target found in column ${targetX} for dwarf ${dwarf.name}; not scheduling`);
             return false;
         }
     }
@@ -111,7 +114,7 @@ function checkAndShiftTopRows() {
 }
 
 function attemptCollapse(x, y) {
-    console.log(`attemptColumnCollapse(${x},${y})`);
+    //console.log(`attemptColumnCollapse(${x},${y})`);
 
     const ux = x;
     let scanY = y - 1;
@@ -153,7 +156,40 @@ function actForDwarf(dwarf) {
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
     if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
 
-    console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
+    // Check for stuck dwarf
+    const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
+    const trackKey = dwarf.name; // Use name as unique key
+    const tracked = stuckTracking.get(trackKey);
+    
+    if (tracked) {
+        // Check if position or hardness changed
+        if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
+            // Dwarf moved or made progress, reset tracking
+            stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+        } else {
+            // Same position and hardness, increment stuck counter
+            tracked.ticks++;
+            if (tracked.ticks >= 10) {
+                // Stuck for 10 ticks! Teleport to house and reset
+                console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                dwarf.x = house.x;
+                dwarf.y = house.y;
+                dwarf.status = 'idle';
+                dwarf.moveTarget = null;
+                // Clear any reservations
+                for (const [key, val] of reservedDigBy.entries()) {
+                    if (val === dwarf) reservedDigBy.delete(key);
+                }
+                stuckTracking.delete(trackKey);
+                return;
+            }
+        }
+    } else {
+        // First time tracking this dwarf
+        stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+    }
+
+    //console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
 
     // Low energy handling
     if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < 25) {
@@ -194,7 +230,7 @@ function actForDwarf(dwarf) {
                 for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
                     materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
                 }
-                console.log(`Dwarf ${dwarf.name} finished unloading ${JSON.stringify(dwarf.bucket)} at drop-off`);
+                //console.log(`Dwarf ${dwarf.name} finished unloading ${JSON.stringify(dwarf.bucket)} at drop-off`);
                 dwarf.bucket = {};
                 dwarf.status = 'idle';
 
@@ -225,10 +261,10 @@ function actForDwarf(dwarf) {
                         if (chosen !== -1) {
                             if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
                                 scheduleMove(dwarf, house.x, house.y);
-                                console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
+                                //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
                                 scheduleMove(dwarf, chosen, rowIdx);
-                                console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                                //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
                             }
                         }
                     }
@@ -284,10 +320,10 @@ function actForDwarf(dwarf) {
                 if (Math.random() < 0.5) {
                     dwarf.bucket = dwarf.bucket || {};
                     dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-                    console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
                 }
             }
-            console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
+            //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
                 if (reservedDigBy.get(curKey) === dwarf) reservedDigBy.delete(curKey);
                 dwarf.status = 'idle';
@@ -312,7 +348,7 @@ function actForDwarf(dwarf) {
             dwarf.x = nextX;
             dwarf.y = nextY;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 1);
-            console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
+            //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
                 dwarf.status = 'idle';
@@ -337,10 +373,10 @@ function actForDwarf(dwarf) {
                 if (Math.random() < 0.5) {
                     dwarf.bucket = dwarf.bucket || {};
                     dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-                    console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
                 }
             }
-            console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
+            //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
                 if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
                 dwarf.status = 'idle';
@@ -363,10 +399,10 @@ function actForDwarf(dwarf) {
                 const downKey = coordKey(originalX, downRowIndex);
                 if (downCell && downCell.hardness > 0 && !occupiedDown && !isReservedForDig(originalX, downRowIndex)) {
                     if (scheduleMove(dwarf, originalX, downRowIndex)) {
-                        console.log(`Dwarf ${dwarf.name} decided to move down from (${originalX},${rowIndex}) to (${originalX},${downRowIndex})`);
+                        //console.log(`Dwarf ${dwarf.name} decided to move down from (${originalX},${rowIndex}) to (${originalX},${downRowIndex})`);
                         return;
                     } else {
-                        console.log(`Dwarf ${dwarf.name} couldn't schedule move down to (${originalX},${downRowIndex})`);
+                        //console.log(`Dwarf ${dwarf.name} couldn't schedule move down to (${originalX},${downRowIndex})`);
                     }
                 }
             }
@@ -417,7 +453,7 @@ function actForDwarf(dwarf) {
         }
 
         if (scheduleMove(dwarf, foundBelow, nextRowIndex)) {
-            console.log(`Dwarf ${dwarf.name} scheduled move to (${foundBelow},${nextRowIndex})`);
+            //console.log(`Dwarf ${dwarf.name} scheduled move to (${foundBelow},${nextRowIndex})`);
             foundCol = foundBelow;
             return;
         } else {
@@ -434,7 +470,7 @@ function actForDwarf(dwarf) {
                 console.log(`Dwarf ${dwarf.name} can't reserve (${foundCol},${dwarf.y}) — already reserved or not visible`);
                 return;
             }
-            console.log(`Dwarf ${dwarf.name} planning move to (${foundCol},${dwarf.y})`);
+            //console.log(`Dwarf ${dwarf.name} planning move to (${foundCol},${dwarf.y})`);
             return;
         }
     }
@@ -448,9 +484,9 @@ function actForDwarf(dwarf) {
         if (aboveCell && aboveCell.hardness > 0 && !occupiedAbove) {
             if (Math.random() < 0.7) {
                 dwarf.y = aboveRowIndex;
-                console.log(`Dwarf ${dwarf.name} moved up to (${foundCol},${aboveRowIndex}) after changing x (70% roll passed)`);
+                //console.log(`Dwarf ${dwarf.name} moved up to (${foundCol},${aboveRowIndex}) after changing x (70% roll passed)`);
             } else {
-                console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
+                //console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
             }
         } else if (aboveCell && aboveCell.hardness > 0 && occupiedAbove) {
             console.log(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
@@ -465,9 +501,9 @@ function actForDwarf(dwarf) {
         if (aboveCell2 && aboveCell2.hardness > 0 && !occupiedAbove2) {
             if (Math.random() < 0.7) {
                 dwarf.y = aboveRowIndex2;
-                console.log(`(Safety) Dwarf ${dwarf.name} moved up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll passed)`);
+                //console.log(`(Safety) Dwarf ${dwarf.name} moved up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll passed)`);
             } else {
-                console.log(`(Safety) Dwarf ${dwarf.name} chose NOT to move up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll failed)`);
+                //console.log(`(Safety) Dwarf ${dwarf.name} chose NOT to move up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll failed)`);
             }
         } else if (aboveCell2 && aboveCell2.hardness > 0 && occupiedAbove2) {
             console.log(`(Safety) Dwarf ${dwarf.name} could not move up to (${dwarf.x},${aboveRowIndex2}) because another dwarf is present`);
@@ -487,10 +523,10 @@ function actForDwarf(dwarf) {
         if (Math.random() < 0.5) {
             dwarf.bucket = dwarf.bucket || {};
             dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-            console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+            //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
         }
     }
-    console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
+    //console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
     if (target.hardness === 0) {
         if (reservedDigBy.get(targetKey) === dwarf) reservedDigBy.delete(targetKey);
         dwarf.status = 'idle';

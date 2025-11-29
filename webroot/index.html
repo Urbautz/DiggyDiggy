@@ -34,8 +34,9 @@
             </footer>
         </div>
     </div>
-        <div class="topbar-controls" onclick="dig()">
-            <button id="settings-button" onclick="openSettings()">⚙️</button>
+        <div class="topbar-controls">
+            <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸️</button>
+            <button id="settings-button" onclick="openSettings()" title="Settings">⚙️</button>
         </div>
         <!-- Stock status: displays global collected material counts -->
         <div id="stock-status" class="stock-status" aria-live="polite"></div>
