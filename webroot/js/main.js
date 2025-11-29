@@ -193,25 +193,17 @@ function updateGridDisplay() {
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => {
-                            ev.stopPropagation();
-                            setWarehousePanelMode('warehouse');
-                            focusMaterialsPanel();
-                        });
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
 
                     // show house / bed icon if this is the house cell
                     if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => {
-                            ev.stopPropagation();
-                            setWarehousePanelMode('dwarfs');
-                            focusMaterialsPanel();
-                        });
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openDwarfs(); });
                         const bed = document.createElement('span');
                         bed.className = 'drop-off-marker house';
                         bed.textContent = '🏠';
-                        bed.title = 'House (show dwarfs overview)';
+                        bed.title = 'House (open dwarfs overview)';
                         cell.appendChild(bed);
                     }
 
@@ -294,7 +286,35 @@ function populateDwarfsOverview() {
     const container = document.getElementById('dwarfs-list');
     if (!container) return;
     container.innerHTML = '';
-    container.appendChild(buildDwarfsSummaryTable());
+
+    const table = document.createElement('table');
+    table.className = 'dwarfs-table';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const d of dwarfs) {
+        const tr = document.createElement('tr');
+
+        // create cells manually so bucket can render one resource per line
+        const nameTd = document.createElement('td'); nameTd.textContent = d.name;
+        const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
+        const toolTd = document.createElement('td'); toolTd.textContent = d.shovelType ?? '-';
+        const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
+        const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
+
+        tr.appendChild(nameTd);
+        tr.appendChild(levelTd);
+        tr.appendChild(toolTd);
+        tr.appendChild(statusTd);
+        tr.appendChild(energyTd);
+        tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    container.appendChild(table);
 }
 
 // ---- live-update for the dwarfs modal ----
@@ -335,37 +355,6 @@ function initUI() {
 
 // Render the global materials stock into the header area
 let materialsPanelHighlightTimer = null;
-let warehousePanelMode = 'warehouse';
-
-function setWarehousePanelMode(mode) {
-    warehousePanelMode = mode === 'dwarfs' ? 'dwarfs' : 'warehouse';
-    updateMaterialsPanel();
-}
-
-function buildDwarfsSummaryTable() {
-    const table = document.createElement('table');
-    table.className = 'dwarfs-table';
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th></tr>';
-    table.appendChild(thead);
-    const tbody = document.createElement('tbody');
-    for (const d of dwarfs) {
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td'); nameTd.textContent = d.name;
-        const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
-        const toolTd = document.createElement('td'); toolTd.textContent = d.shovelType ?? '-';
-        const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
-        const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
-        tr.appendChild(nameTd);
-        tr.appendChild(levelTd);
-        tr.appendChild(toolTd);
-        tr.appendChild(statusTd);
-        tr.appendChild(energyTd);
-        tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    return table;
-}
 
 function updateStockDisplay() {
     const container = document.getElementById('stock-status');
@@ -376,20 +365,9 @@ function updateStockDisplay() {
 }
 
 function updateMaterialsPanel() {
-    const panel = document.getElementById('materials-panel');
-    if (!panel) return;
-    panel.dataset.view = warehousePanelMode;
-    const headerTitle = panel.querySelector('.materials-panel-header h3');
-    if (headerTitle) {
-        headerTitle.textContent = warehousePanelMode === 'dwarfs' ? 'Dwarfs' : 'Warehouse';
-    }
     const list = document.getElementById('materials-list');
     if (!list) return;
     list.innerHTML = '';
-    if (warehousePanelMode === 'dwarfs') {
-        list.appendChild(buildDwarfsSummaryTable());
-        return;
-    }
     for (const m of materials) {
         const id = m.id;
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
@@ -530,23 +508,83 @@ function refreshTooltipAfterRedraw() {
     showCellTooltipFromEvent(cell, { clientX: lastMouseX, clientY: lastMouseY });
 }
 
-function tick() {
-    // Run one game tick — let dwarfs act
-    try {
-        // prefer per-dwarf action when available
-        if (typeof actForDwarf === 'function') {
-            for (const d of dwarfs) actForDwarf(d);
-            if (typeof checkAndShiftTopRows === 'function') checkAndShiftTopRows();
-        } else if (typeof dig === 'function') {
-            dig();
+// Web Worker for game calculations
+let gameWorker = null;
+let workerInitialized = false;
+
+function initWorker() {
+    gameWorker = new Worker('js/game-worker.js');
+    
+    gameWorker.addEventListener('message', (e) => {
+        const { type, data, error } = e.data;
+        
+        switch (type) {
+            case 'init-complete':
+                workerInitialized = true;
+                console.log('Game worker initialized successfully');
+                break;
+                
+            case 'tick-complete':
+                // Update game state with worker results
+                grid = data.grid;
+                dwarfs = data.dwarfs;
+                startX = data.startX;
+                
+                // Update materialsStock properties (can't reassign const)
+                for (const key in data.materialsStock) {
+                    materialsStock[key] = data.materialsStock[key];
+                }
+                
+                // Update UI to reflect new state
+                updateGridDisplay();
+                break;
+                
+            case 'tick-error':
+                console.error('Worker tick error:', error);
+                break;
+                
+            default:
+                console.warn('Unknown worker message type:', type);
         }
-    } catch (err) {
-        console.error('tick(): error running dig()', err);
+    });
+    
+    gameWorker.addEventListener('error', (e) => {
+        console.error('Worker error:', e.message, e);
+    });
+    
+    // Initialize worker with current game state
+    gameWorker.postMessage({
+        type: 'init',
+        data: {
+            grid,
+            dwarfs,
+            materials,
+            tools,
+            gridWidth,
+            gridDepth,
+            visibleDepth,
+            startX,
+            materialsStock,
+            bucketCapacity,
+            dropOff,
+            house,
+            dropGridStartX
+        }
+    });
+}
+
+function tick() {
+    // Send tick request to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({ type: 'tick' });
+    } else {
+        console.warn('Worker not ready yet');
     }
 }
 
 function initializeGame() {
-    setInterval(tick, 250); // Dwarfs dig every second
+    initWorker();
+    setInterval(tick, 250); // Dwarfs dig every 250ms
     updateGameState();
 }
 
