@@ -95,6 +95,12 @@
                     </tr>
                 </tbody>
             </table>
+            <div id="materials-panel" class="materials-panel" aria-live="polite">
+                <div class="materials-panel-header">
+                    <h3>Warehouse</h3>
+                </div>
+                <div id="materials-list" class="warehouse-stock-list"></div>
+            </div>
         </div>
         </div>
         <!-- controls moved to header topbar -->
@@ -114,22 +120,6 @@
             <footer class="modal-footer">
                 <button id="settings-save" class="btn-primary">Save</button>
                 <button id="settings-load" class="btn-secondary">Load</button>
-            </footer>
-        </div>
-    </div>
-    <!-- Warehouse modal (shows materials stock) -->
-    <div id="warehouse-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Warehouse stock dialog">
-        <div class="modal-backdrop" data-action="close-modal"></div>
-        <div class="modal-dialog" role="document">
-            <header class="modal-header">
-                <h2>Warehouse stock</h2>
-                <button class="modal-close" aria-label="Close warehouse" data-action="close-modal">×</button>
-            </header>
-            <div class="modal-body" id="warehouse-stock-body">
-                <!-- populated dynamically by JS -->
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
         </div>
     </div>

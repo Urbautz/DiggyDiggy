@@ -98,7 +98,7 @@ function updateGridDisplay() {
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWarehouseModal(); });
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
@@ -193,7 +193,7 @@ function updateGridDisplay() {
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWarehouseModal(); });
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
 
                     // show house / bed icon if this is the house cell
@@ -232,6 +232,7 @@ function updateGridDisplay() {
             }
         }
 
+        updateMaterialsPanel();
         updateStockDisplay();
         refreshTooltipAfterRedraw();
 }
@@ -375,22 +376,20 @@ function initUI() {
 }
 
 // Render the global materials stock into the header area
+let materialsPanelHighlightTimer = null;
+
 function updateStockDisplay() {
     const container = document.getElementById('stock-status');
     if (!container) return;
-    // stock has moved into the warehouse modal — hide top-bar stock
+    // stock has moved into the inline panel — keep the header pill area empty
     container.innerHTML = '';
     container.style.display = 'none';
 }
 
-// Open and populate the warehouse modal with current stock
-function openWarehouseModal() {
-    const body = document.getElementById('warehouse-stock-body');
-    if (!body) return openModal('warehouse-modal');
-    body.innerHTML = '';
-    const list = document.createElement('div');
-    list.className = 'warehouse-stock-list';
-    // show each known material
+function updateMaterialsPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    list.innerHTML = '';
     for (const m of materials) {
         const id = m.id;
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
@@ -398,11 +397,20 @@ function openWarehouseModal() {
         row.className = 'warehouse-row';
         const name = document.createElement('span'); name.className = 'warehouse-name'; name.textContent = m.name;
         const cnt = document.createElement('span'); cnt.className = 'warehouse-count'; cnt.textContent = String(count);
-        row.appendChild(name); row.appendChild(cnt);
+        row.appendChild(name);
+        row.appendChild(cnt);
         list.appendChild(row);
     }
-    body.appendChild(list);
-    openModal('warehouse-modal');
+}
+
+function focusMaterialsPanel() {
+    const panel = document.getElementById('materials-panel');
+    if (!panel) return;
+    panel.classList.add('materials-panel--highlight');
+    if (materialsPanelHighlightTimer) clearTimeout(materialsPanelHighlightTimer);
+    materialsPanelHighlightTimer = setTimeout(() => {
+        panel.classList.remove('materials-panel--highlight');
+    }, 1000);
 }
 
 function createCellTooltipElement() {
