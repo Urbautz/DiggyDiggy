@@ -63,7 +63,6 @@ function updateGridDisplay() {
                     // mark the cell as occupied — the CSS background pseudo-element will show the emoji
                     cell.classList.add('has-dwarf');
                     cell.textContent = '';
-                    cell.title = `${standingHere.map(d => d.name).join(', ')} (standing here, dug out)`;
                     cell.setAttribute('aria-label', `row ${r} col ${c} dwarfs ${standingHere.map(d => d.name).join(', ')}`);
                     // if any of the standing dwarfs are actively digging, show digging marker
                     if (diggersHere.length > 0) {
@@ -78,7 +77,6 @@ function updateGridDisplay() {
                 } else {
                     cell.classList.remove('has-dwarf');
                     cell.textContent = '';
-                    cell.title = mat ? `${mat.name} (dug out)` : 'Empty';
                     cell.setAttribute('aria-label', `row ${r} col ${c} empty`);
                 }
 
@@ -107,12 +105,11 @@ function updateGridDisplay() {
                 if (mat) cell.style.background = mat.color;
                 
                 const displayHardness = Math.ceil(rawHardness);
-                cell.title = mat ? `${mat.name} (hardness ${displayHardness})` : `hardness ${displayHardness}`;
                 // show current hardness value inside the cell (rounded up for clarity)
                 if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
                     cell.classList.add('has-dwarf');
-                    cell.textContent = displayHardness;
+                    cell.textContent = '';
                     cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness} dwarfs ${standingHere.map(d => d.name).join(', ')}`);
                     if (diggersHere.length > 0) {
                         cell.classList.add('is-digging');
@@ -125,7 +122,7 @@ function updateGridDisplay() {
                     }
                 } else {
                     cell.classList.remove('has-dwarf');
-                    cell.textContent = displayHardness;
+                    cell.textContent = '';
                     cell.setAttribute('aria-label', `row ${r} col ${c} hardness ${displayHardness}`);
                 }
 
@@ -236,6 +233,7 @@ function updateGridDisplay() {
         }
 
         updateStockDisplay();
+        refreshTooltipAfterRedraw();
 }
 
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
@@ -405,6 +403,123 @@ function openWarehouseModal() {
     }
     body.appendChild(list);
     openModal('warehouse-modal');
+}
+
+function createCellTooltipElement() {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'cell-tooltip';
+    tooltip.className = 'cell-tooltip';
+    tooltip.setAttribute('aria-hidden', 'true');
+    tooltip.innerHTML = '<div class="tooltip-title"></div><div class="tooltip-hardness"></div><div class="tooltip-dwarfs" aria-live="polite"></div>';
+    document.body.appendChild(tooltip);
+    return tooltip;
+}
+
+const cellTooltipElement = createCellTooltipElement();
+const cellTooltipTitle = cellTooltipElement.querySelector('.tooltip-title');
+const cellTooltipHardness = cellTooltipElement.querySelector('.tooltip-hardness');
+const cellTooltipDwarfs = cellTooltipElement.querySelector('.tooltip-dwarfs');
+const tooltipState = { lastRow: null, lastCol: null, lastMouseX: 0, lastMouseY: 0 };
+
+function hideCellTooltip() {
+    cellTooltipElement.classList.remove('visible');
+    cellTooltipElement.style.left = '';
+    cellTooltipElement.style.top = '';
+    if (cellTooltipDwarfs) {
+        cellTooltipDwarfs.textContent = '';
+        cellTooltipDwarfs.style.display = 'none';
+    }
+    tooltipState.lastRow = null;
+    tooltipState.lastCol = null;
+    tooltipState.lastMouseX = 0;
+    tooltipState.lastMouseY = 0;
+}
+
+function showCellTooltipFromEvent(cell, event) {
+    if (!cell || !cellTooltipTitle || !cellTooltipHardness) return;
+    const rowIndex = Number(cell.dataset.row);
+    const colIndex = Number(cell.dataset.col);
+    if (!Number.isFinite(rowIndex) || !Number.isFinite(colIndex)) {
+        hideCellTooltip();
+        return;
+    }
+
+    const cellData = grid[rowIndex] && grid[rowIndex][colIndex];
+    if (!cellData) {
+        hideCellTooltip();
+        return;
+    }
+
+    const mouseX = event && typeof event.clientX === 'number' ? event.clientX : tooltipState.lastMouseX;
+    const mouseY = event && typeof event.clientY === 'number' ? event.clientY : tooltipState.lastMouseY;
+
+    const material = getMaterialById(cellData.materialId);
+    const hardness = Math.max(0, Math.ceil(Number(cellData.hardness) || 0));
+    const isDugOut = hardness <= 0;
+    const label = isDugOut ? 'Cleared' : (material ? material.name : 'Unknown');
+    cellTooltipTitle.textContent = label;
+    cellTooltipHardness.textContent = isDugOut ? 'Fully dug out' : `Hardness ${hardness}`;
+
+    if (cellTooltipDwarfs) {
+        const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === colIndex && d.y === rowIndex) : [];
+        if (dwarfsHere.length > 0) {
+            const statuses = dwarfsHere.map(d => {
+                const state = d.status || 'idle';
+                return `${d.name} (${state})`;
+            });
+            cellTooltipDwarfs.textContent = `Dwarfs: ${statuses.join(', ')}`;
+            cellTooltipDwarfs.style.display = 'block';
+        } else {
+            cellTooltipDwarfs.textContent = '';
+            cellTooltipDwarfs.style.display = 'none';
+        }
+    }
+
+    cellTooltipElement.classList.add('visible');
+    const offset = 12;
+    const tooltipRect = cellTooltipElement.getBoundingClientRect();
+    const maxLeft = window.innerWidth - tooltipRect.width - 8;
+    const maxTop = window.innerHeight - tooltipRect.height - 8;
+    const left = Math.min(maxLeft, mouseX + offset);
+    const top = Math.min(maxTop, mouseY + offset);
+    cellTooltipElement.style.left = `${Math.max(8, left)}px`;
+    cellTooltipElement.style.top = `${Math.max(8, top)}px`;
+
+    tooltipState.lastRow = rowIndex;
+    tooltipState.lastCol = colIndex;
+    tooltipState.lastMouseX = mouseX;
+    tooltipState.lastMouseY = mouseY;
+}
+
+function handleGridTooltipMove(event) {
+    const cell = event.target.closest('#digging-grid td.cell');
+    if (!cell) {
+        hideCellTooltip();
+        return;
+    }
+    showCellTooltipFromEvent(cell, event);
+}
+
+function initGridTooltip() {
+    const gridTable = document.getElementById('digging-grid');
+    if (!gridTable) return;
+    gridTable.addEventListener('mousemove', handleGridTooltipMove);
+    gridTable.addEventListener('mouseleave', hideCellTooltip);
+}
+
+initGridTooltip();
+
+function refreshTooltipAfterRedraw() {
+    if (!cellTooltipElement.classList.contains('visible')) return;
+    const { lastRow, lastCol, lastMouseX, lastMouseY } = tooltipState;
+    if (lastRow === null || lastCol === null) return;
+    const selector = `#digging-grid td.cell[data-row="${lastRow}"][data-col="${lastCol}"]`;
+    const cell = document.querySelector(selector);
+    if (!cell) {
+        hideCellTooltip();
+        return;
+    }
+    showCellTooltipFromEvent(cell, { clientX: lastMouseX, clientY: lastMouseY });
 }
 
 function tick() {
