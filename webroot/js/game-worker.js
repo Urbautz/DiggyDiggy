@@ -258,7 +258,7 @@ function actForDwarf(dwarf) {
                 for (const [key, val] of reservedDigBy.entries()) {
                     if (val === dwarf) reservedDigBy.delete(key);
                 }
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 stuckTracking.delete(trackKey);
                 return;
             }
@@ -280,7 +280,7 @@ function actForDwarf(dwarf) {
         if (!(dwarf.x === house.x && dwarf.y === house.y)) {
             if (!dwarf.moveTarget || dwarf.moveTarget.x !== house.x || dwarf.moveTarget.y !== house.y) {
                 // Release research reservation if dwarf was heading there
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 scheduleMove(dwarf, house.x, house.y);
                 dwarf.status = 'moving';
                 return;
@@ -307,7 +307,7 @@ function actForDwarf(dwarf) {
             // Only if no other dwarf has reserved the research cell
             if (activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && 
                 Math.random() < 0.95) {
-                researchReservedBy = dwarf;
+                researchReservedBy = dwarf.name;
                 scheduleMove(dwarf, research.x, research.y);
                 //console.log(`Dwarf ${dwarf.name} finished resting, reserved research, heading to research lab`);
                 return;
@@ -322,14 +322,14 @@ function actForDwarf(dwarf) {
         if (typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y) {
             // Check if there's an active research
             if (!activeResearch) {
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
             }
             
             // Check if dwarf has enough energy
             if (dwarf.energy < 10) {
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
             }
@@ -358,16 +358,19 @@ function actForDwarf(dwarf) {
                     treeItem.progress = 0;
                 }
                 
-                // Clear active research and reservation
+                // Clear active research and release reservation
                 activeResearch = null;
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) {
+                    researchReservedBy = null;
+                    console.log(`Research reservation released by ${dwarf.name}`);
+                }
                 dwarf.status = 'idle';
                 console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
             }
             return;
         } else {
             // Not at research location, release reservation and become idle
-            if (researchReservedBy === dwarf) researchReservedBy = null;
+            if (researchReservedBy === dwarf.name) researchReservedBy = null;
             dwarf.status = 'idle';
         }
     }
@@ -432,7 +435,7 @@ function actForDwarf(dwarf) {
                                 // Check if there's active research and research is not reserved
                                 if (activeResearch && !researchReservedBy && Math.random() < 0.95 && typeof research === 'object' && research !== null) {
                                     // 95% chance to go research instead of digging (if research not reserved)
-                                    researchReservedBy = dwarf;
+                                    researchReservedBy = dwarf.name;
                                     scheduleMove(dwarf, research.x, research.y);
                                     dwarf.status = 'moving';
                                     //console.log(`Dwarf ${dwarf.name} reserved research, heading to research lab`);
@@ -454,7 +457,7 @@ function actForDwarf(dwarf) {
             const scheduled = scheduleMove(dwarf, dropOff.x, dropOff.y);
             if (scheduled) {
                 // Release research reservation if dwarf was heading there
-                if (researchReservedBy === dwarf) researchReservedBy = null;
+                if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                 return;
             }
@@ -482,8 +485,8 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'idle' && typeof research === 'object' && research !== null && 
         dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= 10) {
         // Only start researching if this dwarf has reserved it or it's not reserved
-        if (researchReservedBy === dwarf || !researchReservedBy) {
-            researchReservedBy = dwarf;
+        if (researchReservedBy === dwarf.name || !researchReservedBy) {
+            researchReservedBy = dwarf.name;
             dwarf.status = 'researching';
             console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
             return;
@@ -503,7 +506,7 @@ function actForDwarf(dwarf) {
         if (dwarf.x !== research.x || dwarf.y !== research.y) {
             // Not at research location, reserve and move there
             if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
-                researchReservedBy = dwarf;
+                researchReservedBy = dwarf.name;
                 scheduleMove(dwarf, research.x, research.y);
                 //console.log(`Idle dwarf ${dwarf.name} reserved research, heading to research lab`);
                 return;
