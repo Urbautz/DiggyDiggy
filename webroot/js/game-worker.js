@@ -16,6 +16,7 @@ let dropOff = null;
 let house = null;
 let dropGridStartX = 10;
 let gold = 1000;
+let toolsInventory = [];
 
 // Reservation maps (coordinate -> dwarf who reserved the cell)
 const reservedDigBy = new Map();
@@ -37,6 +38,19 @@ function isReservedForDig(x, y) {
 
 function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
+}
+
+function getDwarfToolPower(dwarf) {
+    if (!dwarf.toolId) return 0.5; // default power if no tool
+    
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance) return 0.5;
+    
+    const toolDef = tools.find(t => t.name === toolInstance.type);
+    if (!toolDef) return 0.5;
+    
+    // Calculate power based on base power and tool level (10% per level)
+    return toolDef.power * (1 + (toolInstance.level - 1) * 0.1);
 }
 
 function randomMaterial(depthLevel = 0) {
@@ -360,8 +374,7 @@ function actForDwarf(dwarf) {
         return;
     }
 
-    const tool = tools.find(t => t.name === dwarf.shovelType);
-    const power = tool ? tool.power : 0.5;
+    const power = getDwarfToolPower(dwarf);
 
     const row = grid[rowIndex];
     const curCell = row[originalX];
@@ -641,6 +654,7 @@ function tick() {
                 startX,
                 materialsStock,
                 gold,
+                toolsInventory,
                 shifted
             }
         });
@@ -674,6 +688,7 @@ self.addEventListener('message', (e) => {
             house = data.house;
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
+            toolsInventory = data.toolsInventory || [];
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -690,6 +705,7 @@ self.addEventListener('message', (e) => {
             if (data.startX !== undefined) startX = data.startX;
             if (data.materialsStock) materialsStock = data.materialsStock;
             if (data.gold !== undefined) gold = data.gold;
+            if (data.toolsInventory) toolsInventory = data.toolsInventory;
             break;
             
         default:

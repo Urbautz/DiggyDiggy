@@ -340,7 +340,7 @@ function populateWorkbench() {
     toolsTable.className = 'workbench-table';
     
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Tool</th><th>Level</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
+    thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Level</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
     toolsTable.appendChild(thead);
     
     const tbody = document.createElement('tbody');
@@ -348,6 +348,12 @@ function populateWorkbench() {
     // Show each individual tool in inventory
     for (const toolInstance of toolsInventory) {
         const tr = document.createElement('tr');
+        
+        // Find which dwarf has this tool
+        const dwarf = dwarfs.find(d => d.toolId === toolInstance.id);
+        const dwarfTd = document.createElement('td');
+        dwarfTd.textContent = dwarf ? dwarf.name : 'Unassigned';
+        dwarfTd.className = 'dwarf-name';
         
         const nameTd = document.createElement('td');
         nameTd.textContent = `${toolInstance.type} #${toolInstance.id}`;
@@ -382,6 +388,7 @@ function populateWorkbench() {
         
         actionTd.appendChild(upgradeBtn);
         
+        tr.appendChild(dwarfTd);
         tr.appendChild(nameTd);
         tr.appendChild(levelTd);
         tr.appendChild(powerTd);
@@ -538,7 +545,20 @@ function populateDwarfsOverview() {
         // create cells manually so bucket can render one resource per line
         const nameTd = document.createElement('td'); nameTd.textContent = d.name;
         const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
-        const toolTd = document.createElement('td'); toolTd.textContent = d.shovelType ?? '-';
+        
+        // Find the tool assigned to this dwarf
+        const toolTd = document.createElement('td');
+        if (d.toolId) {
+            const toolInstance = toolsInventory.find(t => t.id === d.toolId);
+            if (toolInstance) {
+                toolTd.textContent = `${toolInstance.type} (Lvl ${toolInstance.level})`;
+            } else {
+                toolTd.textContent = `Tool #${d.toolId}`;
+            }
+        } else {
+            toolTd.textContent = '-';
+        }
+        
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
         const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
 
@@ -909,6 +929,13 @@ function initWorker() {
                     gold = data.gold;
                 }
                 
+                // Update toolsInventory from worker (it might be modified during digging)
+                if (data.toolsInventory) {
+                    // Update the array in place to keep the reference
+                    toolsInventory.length = 0;
+                    toolsInventory.push(...data.toolsInventory);
+                }
+                
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -946,7 +973,8 @@ function initWorker() {
             dropOff,
             house,
             dropGridStartX,
-            gold
+            gold,
+            toolsInventory
         }
     });
 }
@@ -983,7 +1011,7 @@ function saveGame() {
             toolsInventory: toolsInventory,
             gold: gold,
             timestamp: Date.now(),
-            version: '1.0'
+            version: gameversion
         };
         localStorage.setItem('diggyDiggyGameState', JSON.stringify(gameState));
     } catch (e) {
@@ -1000,6 +1028,13 @@ function loadGame() {
         }
         
         const gameState = JSON.parse(saved);
+        
+        // Check version - if mismatch, start new game
+        if (gameState.version !== gameversion) {
+            console.log(`Version mismatch: saved=${gameState.version}, current=${gameversion}. Starting new game.`);
+            localStorage.removeItem('diggyDiggyGameState');
+            return false;
+        }
         
         // Restore game state
         grid = gameState.grid || [];
