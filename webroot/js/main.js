@@ -480,6 +480,47 @@ function updateGoldDisplay() {
     }
 }
 
+function sellMaterial(materialId, amount) {
+    console.log('sellMaterial called:', materialId, amount);
+    if (!materialsStock[materialId] || materialsStock[materialId] < amount) {
+        console.warn(`Not enough ${materialId} to sell`);
+        return;
+    }
+    
+    const material = getMaterialById(materialId);
+    if (!material) {
+        console.warn(`Material ${materialId} not found`);
+        return;
+    }
+    
+    // Calculate earnings
+    const earnings = material.worth * amount;
+    
+    // Update stock and gold
+    materialsStock[materialId] -= amount;
+    gold += earnings;
+    
+    // Update the worker's state with new values
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                materialsStock: materialsStock,
+                gold: gold
+            }
+        });
+    }
+    
+    // Update UI
+    updateMaterialsPanel();
+    updateGoldDisplay();
+    
+    // Save game
+    saveGame();
+    
+    console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold`);
+}
+
 function updateMaterialsPanel() {
     const panel = document.getElementById('materials-panel');
     // Only update if we're in warehouse view (or view not set)
@@ -496,10 +537,47 @@ function updateMaterialsPanel() {
         
         const row = document.createElement('div');
         row.className = 'warehouse-row';
-        const name = document.createElement('span'); name.className = 'warehouse-name'; name.textContent = m.name;
-        const cnt = document.createElement('span'); cnt.className = 'warehouse-count'; cnt.textContent = String(count);
-        row.appendChild(name);
-        row.appendChild(cnt);
+        
+        const info = document.createElement('div');
+        info.className = 'warehouse-info';
+        
+        const name = document.createElement('span');
+        name.className = 'warehouse-name';
+        name.textContent = m.name;
+        
+        const cnt = document.createElement('span');
+        cnt.className = 'warehouse-count';
+        cnt.textContent = String(count);
+        
+        info.appendChild(name);
+        info.appendChild(cnt);
+        
+        const buttons = document.createElement('div');
+        buttons.className = 'warehouse-buttons';
+        
+        const sell1Btn = document.createElement('button');
+        sell1Btn.className = 'btn-sell';
+        sell1Btn.textContent = 'Sell 1';
+        sell1Btn.title = `Sell 1 ${m.name} for ${m.worth.toFixed(2)} gold`;
+        sell1Btn.onclick = () => {
+            console.log('Sell 1 button clicked for', id);
+            sellMaterial(id, 1);
+        };
+        
+        const sellAllBtn = document.createElement('button');
+        sellAllBtn.className = 'btn-sell-all';
+        sellAllBtn.textContent = 'Sell All';
+        sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * m.worth).toFixed(2)} gold`;
+        sellAllBtn.onclick = () => {
+            console.log('Sell All button clicked for', id);
+            sellMaterial(id, count);
+        };
+        
+        buttons.appendChild(sell1Btn);
+        buttons.appendChild(sellAllBtn);
+        
+        row.appendChild(info);
+        row.appendChild(buttons);
         list.appendChild(row);
     }
 }

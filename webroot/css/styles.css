@@ -448,9 +448,46 @@ header, footer {
 
 /* Warehouse modal stock list */
 .warehouse-stock-list { display:flex; flex-direction:column; gap:8px; }
-.warehouse-row { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); }
-.warehouse-name { font-weight:700; color:#e6eefc }
-.warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff }
+.warehouse-row { 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center; 
+    padding:8px 10px; 
+    background: rgba(255,255,255,0.02); 
+    border-radius:6px; 
+    border:1px solid rgba(255,255,255,0.02); 
+    gap: 12px;
+}
+.warehouse-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+.warehouse-name { font-weight:700; color:#e6eefc; font-size: 13px; }
+.warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff; font-size: 12px; }
+.warehouse-buttons {
+    display: flex;
+    gap: 6px;
+}
+.btn-sell, .btn-sell-all {
+    background: linear-gradient(180deg, #10b981, #059669);
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+.btn-sell:hover, .btn-sell-all:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #059669, #047857);
+}
+.btn-sell:active, .btn-sell-all:active {
+    transform: translateY(0);
+}
 
 /* Dwarf panel rows (when shown in materials panel) */
 .dwarf-row { display:flex; flex-direction:column; gap:2px; padding:8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); margin-bottom:4px; }
