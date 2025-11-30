@@ -1105,6 +1105,15 @@ function applyLevelUp(dwarf, upgradeType) {
             break;
     }
     
+    // Reset dwarf position and status after leveling up to prevent getting stuck
+    actualDwarf.status = 'idle';
+    actualDwarf.moveTarget = null;
+    // Move dwarf to house location to ensure valid position
+    if (typeof house === 'object' && house !== null) {
+        actualDwarf.x = house.x;
+        actualDwarf.y = house.y;
+    }
+    
     // Sync state with worker
     gameWorker.postMessage({
         type: 'update-state',
