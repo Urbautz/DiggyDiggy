@@ -291,9 +291,12 @@ function actForDwarf(dwarf) {
     // Resting state
     if (dwarf.status === 'resting') {
         const maxEnergy = dwarf.maxEnergy || 100;
-        // Apply better-housing research bonus (5% faster rest per level)
+        // Apply better-housing research bonus with diminishing returns
+        // Formula: bonus = level * 10% / (1 + level * 0.15)
+        // This gives: lvl 1=8.7%, lvl 2=15.4%, lvl 3=20%, lvl 4=23.5%, lvl 5=26%, lvl 10=33%
         const betterHousing = researchtree.find(r => r.id === 'better-housing');
-        const restBonus = betterHousing ? 1 + (betterHousing.level || 0) * 0.05 : 1;
+        const housingLevel = betterHousing ? (betterHousing.level || 0) : 0;
+        const restBonus = housingLevel > 0 ? 1 + (housingLevel * 0.1) / (1 + housingLevel * 0.15) : 1;
         const restAmount = 25 * restBonus;
         dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + restAmount);
         if (dwarf.energy >= maxEnergy) {

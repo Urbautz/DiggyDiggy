@@ -817,6 +817,10 @@ function openDwarfs() {
     // Mark panel as showing dwarfs view
     panel.dataset.view = 'dwarfs';
     
+    // Remove Sell All button from header
+    const sellAllBtn = document.getElementById('sell-all-header-btn');
+    if (sellAllBtn) sellAllBtn.remove();
+    
     // Update header
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Dwarfs';
@@ -1110,9 +1114,8 @@ function openLevelUpModal(dwarf) {
         content.appendChild(nextBtnContainer);
     }
     
-    // Show modal
-    modal.setAttribute('aria-hidden', 'false');
-    modal.style.display = 'flex';
+    // Show modal using openModal to auto-pause the game
+    openModal('levelup-modal');
 }
 
 // Apply the chosen level up upgrade
@@ -1152,13 +1155,11 @@ function applyLevelUp(dwarf, upgradeType) {
             break;
     }
     
-    // Reset dwarf position and status after leveling up to prevent getting stuck
-    actualDwarf.status = 'idle';
-    actualDwarf.moveTarget = null;
-    // Move dwarf to house location to ensure valid position
-    if (typeof house === 'object' && house !== null) {
-        actualDwarf.x = house.x;
-        actualDwarf.y = house.y;
+    // Don't reset status or position - let the dwarf continue what they were doing
+    // Only clear move target if they were specifically moving somewhere
+    if (actualDwarf.status === 'moving') {
+        actualDwarf.status = 'idle';
+        actualDwarf.moveTarget = null;
     }
     
     // Sync state with worker
@@ -1170,7 +1171,7 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Close the modal after successful level up
+    // Close the modal after successful level up (will auto-unpause)
     closeModal('levelup-modal');
     
     // Refresh dwarf display
@@ -1393,6 +1394,32 @@ function updateMaterialsPanel() {
     
     const list = document.getElementById('materials-list');
     if (!list) return;
+    
+    // Check if there are any materials to sell
+    const hasAnyMaterials = materials.some(m => {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        return count > 0;
+    });
+    
+    // Update or create Sell All button in header (only in warehouse view)
+    let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    const header = panel.querySelector('.materials-panel-header');
+    const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
+    
+    if (header && hasAnyMaterials && isWarehouseView) {
+        if (!sellAllHeaderBtn) {
+            sellAllHeaderBtn = document.createElement('button');
+            sellAllHeaderBtn.id = 'sell-all-header-btn';
+            sellAllHeaderBtn.className = 'btn-sell-all-global';
+            sellAllHeaderBtn.textContent = 'Sell All';
+            sellAllHeaderBtn.onclick = sellAllMaterials;
+            header.appendChild(sellAllHeaderBtn);
+        }
+    } else if (sellAllHeaderBtn && (!hasAnyMaterials || !isWarehouseView)) {
+        // Remove button if no materials or not in warehouse view
+        sellAllHeaderBtn.remove();
+    }
+    
     list.innerHTML = '';
     for (const m of materials) {
         const id = m.id;
@@ -1447,6 +1474,44 @@ function updateMaterialsPanel() {
         row.appendChild(info);
         row.appendChild(buttons);
         list.appendChild(row);
+    }
+}
+
+function sellAllMaterials() {
+    // Calculate total gold from all materials
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    let totalGold = 0;
+    let totalItems = 0;
+    
+    for (const m of materials) {
+        const id = m.id;
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        if (count > 0) {
+            const goldForThisMaterial = count * m.worth * tradeBonus;
+            totalGold += goldForThisMaterial;
+            totalItems += count;
+            materialsStock[id] = 0;
+        }
+    }
+    
+    if (totalItems > 0) {
+        gold += totalGold;
+        console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        
+        // Update worker with new gold amount
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { gold, materialsStock }
+        });
+        
+        // Update displays
+        updateGoldDisplay();
+        updateMaterialsPanel();
+        
+        // Save game
+        saveGame();
     }
 }
 

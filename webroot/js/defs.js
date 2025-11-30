@@ -1,5 +1,5 @@
 // Base data}
-const gameversion = '0.8';
+const gameversion = '0.10.0';
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
@@ -90,7 +90,7 @@ let researchtree = [
     { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, level: 0,
       description: 'Dwarfs dig 1% harder.' }, 
     { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
-      description: 'The Home is more comfy, letting them rest 5% faster.' },
+      description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
         { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
       description: 'Sell Prices for materials are improved by 3% per level' },
    /* { id: 'advanced-tools', name: 'Advanced Tools', cost: 2000, level: 0, maxlevel: 1,
