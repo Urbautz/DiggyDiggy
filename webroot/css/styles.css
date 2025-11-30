@@ -743,3 +743,15 @@ header, footer {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* Notification badge pulse animation */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.85;
+    }
+}

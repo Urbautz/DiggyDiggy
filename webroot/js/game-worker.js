@@ -55,7 +55,12 @@ function getDwarfToolPower(dwarf) {
     // Calculate power based on base power, tool level (10% per level), and dwarf's digPower (10% per point)
     const toolBonus = 1 + (toolInstance.level - 1) * 0.1;
     const dwarfBonus = 1 + (dwarf.digPower || 0) * 0.1;
-    return toolDef.power * toolBonus * dwarfBonus;
+    
+    // Apply improved-digging research bonus (1% per level)
+    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
+    
+    return toolDef.power * toolBonus * dwarfBonus * researchBonus;
 }
 
 function randomMaterial(depthLevel = 0) {
@@ -282,7 +287,11 @@ function actForDwarf(dwarf) {
     // Resting state
     if (dwarf.status === 'resting') {
         const maxEnergy = dwarf.maxEnergy || 100;
-        dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + 25);
+        // Apply better-housing research bonus (5% faster rest per level)
+        const betterHousing = researchtree.find(r => r.id === 'better-housing');
+        const restBonus = betterHousing ? 1 + (betterHousing.level || 0) * 0.05 : 1;
+        const restAmount = 25 * restBonus;
+        dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + restAmount);
         if (dwarf.energy >= maxEnergy) {
             dwarf.status = 'idle';
             dwarf.energy = maxEnergy;

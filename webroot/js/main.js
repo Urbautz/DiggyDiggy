@@ -262,33 +262,105 @@ function updateGridDisplay() {
                     if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
                         cell.style.cursor = 'pointer';
                         cell.addEventListener('click', (ev) => { ev.stopPropagation(); openDwarfs(); });
+                        
+                        // Create container for icon and badge with absolute positioning
+                        const iconContainer = document.createElement('span');
+                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                        
                         const bed = document.createElement('span');
-                        bed.className = 'drop-off-marker house';
+                        bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         bed.textContent = '🏠';
-                        bed.title = 'House (open dwarfs overview)';
-                        cell.appendChild(bed);
+                        
+                        // Check if any dwarf can level up
+                        const dwarfsCanLevelUp = dwarfs.filter(d => {
+                            const currentXP = d.xp || 0;
+                            const currentLevel = d.level || 1;
+                            const xpNeeded = 250 * currentLevel;
+                            return currentXP >= xpNeeded;
+                        });
+                        
+                        if (dwarfsCanLevelUp.length > 0) {
+                            bed.title = `House (${dwarfsCanLevelUp.length} dwarf(s) ready to level up!)`;
+                            // Add notification badge
+                            const badge = document.createElement('span');
+                            badge.className = 'notification-badge';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.textContent = dwarfsCanLevelUp.length;
+                            bed.appendChild(badge);
+                        } else {
+                            bed.title = 'House (open dwarfs overview)';
+                        }
+                        
+                        iconContainer.appendChild(bed);
+                        cell.appendChild(iconContainer);
                     }
 
                     // show workbench icon if this is the workbench cell
                     if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
                         cell.style.cursor = 'pointer';
                         cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWorkbench(); });
+                        
+                        // Create container for icon and badge with absolute positioning
+                        const iconContainer = document.createElement('span');
+                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                        
                         const bench = document.createElement('span');
-                        bench.className = 'drop-off-marker workbench';
+                        bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         bench.textContent = '🔨';
-                        bench.title = 'Workbench (craft tools)';
-                        cell.appendChild(bench);
+                        
+                        // Check if any tool can be upgraded
+                        const toolsCanUpgrade = toolsInventory.filter(toolInstance => {
+                            const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
+                            return gold >= upgradeCost;
+                        });
+                        
+                        if (toolsCanUpgrade.length > 0) {
+                            bench.title = `Workbench (${toolsCanUpgrade.length} tool(s) can be upgraded!)`;
+                            // Add notification badge
+                            const badge = document.createElement('span');
+                            badge.className = 'notification-badge';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.textContent = toolsCanUpgrade.length;
+                            bench.appendChild(badge);
+                        } else {
+                            bench.title = 'Workbench (craft tools)';
+                        }
+                        
+                        iconContainer.appendChild(bench);
+                        cell.appendChild(iconContainer);
                     }
 
                     // show research icon if this is the research cell
                     if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
                         cell.style.cursor = 'pointer';
                         cell.addEventListener('click', (ev) => { ev.stopPropagation(); openResearch(); });
+                        
+                        // Add research icon
                         const researchIcon = document.createElement('span');
                         researchIcon.className = 'drop-off-marker research';
                         researchIcon.textContent = '🔬';
                         researchIcon.title = 'Research Lab';
                         cell.appendChild(researchIcon);
+                        
+                        // Add progress bar if research is active
+                        if (activeResearch) {
+                            const progress = activeResearch.progress || 0;
+                            const progressPercent = Math.min(100, Math.floor((progress / activeResearch.cost) * 100));
+                            
+                            const progressContainer = document.createElement('div');
+                            progressContainer.className = 'research-progress-container';
+                            progressContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+                            
+                            const progressBar = document.createElement('div');
+                            progressBar.className = 'research-progress-bar';
+                            progressBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); width: ${progressPercent}%; transition: width 0.3s ease;`;
+                            
+                            progressContainer.appendChild(progressBar);
+                            cell.appendChild(progressContainer);
+                            
+                            // Update title with progress info
+                            researchIcon.title = `Research Lab\n${activeResearch.name}: ${progress}/${activeResearch.cost} (${progressPercent}%)`;
+                        }
                     }
 
                     // show resting marker when dwarf is resting here
@@ -1087,8 +1159,12 @@ function sellMaterial(materialId, amount) {
         return;
     }
     
-    // Calculate earnings
-    const earnings = material.worth * amount;
+    // Apply better-trading research bonus (3% per level)
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    // Calculate earnings with trade bonus
+    const earnings = material.worth * amount * tradeBonus;
     
     // Update stock and gold
     materialsStock[materialId] -= amount;
@@ -1113,13 +1189,17 @@ function sellMaterial(materialId, amount) {
     // Save game
     saveGame();
     
-    console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold`);
+    console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)`);
 }
 
 function updateMaterialsPanel() {
     const panel = document.getElementById('materials-panel');
     // Only update if we're in warehouse view (or view not set)
     if (panel && panel.dataset.view === 'dwarfs') return;
+    
+    // Calculate trade bonus once for display
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
     
     const list = document.getElementById('materials-list');
     if (!list) return;
@@ -1142,8 +1222,9 @@ function updateMaterialsPanel() {
         
         const worth = document.createElement('span');
         worth.className = 'warehouse-worth';
-        worth.textContent = `${m.worth.toFixed(2)} 💰`;
-        worth.title = `Worth: ${m.worth.toFixed(2)} gold each`;
+        const actualWorth = m.worth * tradeBonus;
+        worth.textContent = `${actualWorth.toFixed(2)} 💰`;
+        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `Worth: ${m.worth.toFixed(2)} gold each`;
         
         const cnt = document.createElement('span');
         cnt.className = 'warehouse-count';
@@ -1159,7 +1240,7 @@ function updateMaterialsPanel() {
         const sell1Btn = document.createElement('button');
         sell1Btn.className = 'btn-sell';
         sell1Btn.textContent = 'Sell 1';
-        sell1Btn.title = `Sell 1 ${m.name} for ${m.worth.toFixed(2)} gold`;
+        sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
         sell1Btn.onclick = () => {
             console.log('Sell 1 button clicked for', id);
             sellMaterial(id, 1);
@@ -1168,7 +1249,7 @@ function updateMaterialsPanel() {
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
         sellAllBtn.textContent = 'Sell All';
-        sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * m.worth).toFixed(2)} gold`;
+        sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
         sellAllBtn.onclick = () => {
             console.log('Sell All button clicked for', id);
             sellMaterial(id, count);
