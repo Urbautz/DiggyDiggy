@@ -26,7 +26,7 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone Shovel', power: 0.4, upgradecost: 200},
+    { name: 'Stone Shovel', power: 0.4, upgradecost: 50},
     { name: 'Bronce Shovel', power: 0.6, upgradecost: 7500},
     { name: 'Copper Shovel', power: 0.8, upgradecost: 25000},
 ]

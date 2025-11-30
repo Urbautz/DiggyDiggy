@@ -325,8 +325,9 @@ function actForDwarf(dwarf) {
             activeResearch.progress += researchPoints;
             //console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
             
-            // Check if research is complete
-            if (activeResearch.progress >= activeResearch.cost) {
+            // Check if research is complete (cost doubles each level)
+            const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+            if (activeResearch.progress >= actualCost) {
                 const completedResearch = activeResearch;
                 completedResearch.level = (completedResearch.level || 0) + 1;
                 completedResearch.progress = 0;

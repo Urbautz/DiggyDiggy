@@ -345,7 +345,8 @@ function updateGridDisplay() {
                         // Add progress bar if research is active
                         if (activeResearch) {
                             const progress = activeResearch.progress || 0;
-                            const progressPercent = Math.min(100, Math.floor((progress / activeResearch.cost) * 100));
+                            const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+                            const progressPercent = Math.min(100, Math.floor((progress / actualCost) * 100));
                             
                             const progressContainer = document.createElement('div');
                             progressContainer.className = 'research-progress-container';
@@ -359,7 +360,7 @@ function updateGridDisplay() {
                             cell.appendChild(progressContainer);
                             
                             // Update title with progress info
-                            researchIcon.title = `Research Lab\n${activeResearch.name}: ${progress}/${activeResearch.cost} (${progressPercent}%)`;
+                            researchIcon.title = `Research Lab\n${activeResearch.name}: ${progress}/${actualCost} (${progressPercent}%)`;
                         }
                     }
 
@@ -439,12 +440,14 @@ function populateResearch() {
         const activeDiv = document.createElement('div');
         activeDiv.className = 'active-research';
         const progress = activeResearch.progress || 0;
-        const progressPercent = Math.floor((progress / activeResearch.cost) * 100);
+        // Calculate actual cost for current level (doubles each level)
+        const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+        const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
             <p><strong>${activeResearch.name}</strong></p>
             <p>${activeResearch.description}</p>
-            <p>Progress: ${progress} / ${activeResearch.cost} (${progressPercent}%)</p>
+            <p>Progress: ${progress} / ${actualCost} (${progressPercent}%)</p>
             <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
         `;
         
@@ -493,7 +496,9 @@ function populateResearch() {
         levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
         
         const costTd = document.createElement('td');
-        costTd.textContent = `${researchItem.cost} 🔬`;
+        // Calculate actual cost for next level (doubles each level)
+        const actualCost = researchItem.cost * Math.pow(2, currentLevel);
+        costTd.textContent = `${actualCost} 🔬`;
         costTd.title = 'Research points required';
         
         const actionTd = document.createElement('td');
@@ -1032,6 +1037,31 @@ function openLevelUpModal(dwarf) {
     optionsDiv.appendChild(strengthOption);
     optionsDiv.appendChild(wisdomOption);
     content.appendChild(optionsDiv);
+    
+    // Add Next button if there are more dwarfs that can level up
+    const dwarfsCanLevelUp = dwarfs.filter(d => {
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = 250 * currentLevel;
+        return currentXP >= xpNeeded;
+    });
+    
+    if (dwarfsCanLevelUp.length > 1) {
+        const currentIndex = dwarfsCanLevelUp.findIndex(d => d.name === dwarf.name);
+        const nextDwarf = dwarfsCanLevelUp[(currentIndex + 1) % dwarfsCanLevelUp.length];
+        
+        const nextBtnContainer = document.createElement('div');
+        nextBtnContainer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;';
+        
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn-primary';
+        nextBtn.textContent = `Next: ${nextDwarf.name} →`;
+        nextBtn.style.cssText = 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); padding: 10px 20px;';
+        nextBtn.onclick = () => openLevelUpModal(nextDwarf);
+        
+        nextBtnContainer.appendChild(nextBtn);
+        content.appendChild(nextBtnContainer);
+    }
     
     // Show modal
     modal.setAttribute('aria-hidden', 'false');
