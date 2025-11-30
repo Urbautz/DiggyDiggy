@@ -313,7 +313,7 @@ header, footer {
     letter-spacing: 0.4px;
 }
 
-.resting-marker { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -50%); font-size: 18px; z-index: 4; }
+.resting-marker { position: absolute; right: 2px; top: 2px; font-size: 14px; z-index: 5; pointer-events: none; }
 
 .striking-marker { 
     position: absolute;
@@ -353,11 +353,10 @@ header, footer {
     cursor: pointer;
     border-radius: 6px;
     font-size: 14px;
-    transition: transform 0.1s ease;
 }
 
 #settings-button:hover, #pause-button:hover, #dig-button:hover {
-    transform: translateY(-1px);
+    background: #333;
 }
 
 /* modal overlay & dialog (glass effect) */
@@ -488,14 +487,10 @@ header, footer {
     cursor: pointer;
     font-size: 11px;
     font-weight: 600;
-    transition: transform 0.1s ease, opacity 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 .btn-sell:hover, .btn-sell-all:hover {
-    transform: translateY(-1px);
     background: linear-gradient(180deg, #059669, #047857);
-}
-.btn-sell:active, .btn-sell-all:active {
-    transform: translateY(0);
 }
 
 /* Dwarf panel rows (when shown in materials panel) */
@@ -597,16 +592,11 @@ header, footer {
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
-    transition: transform 0.1s ease, opacity 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
 .btn-upgrade:hover:not(.disabled) {
-    transform: translateY(-1px);
     background: linear-gradient(180deg, #7c3aed, #6d28d9);
-}
-
-.btn-upgrade:active:not(.disabled) {
-    transform: translateY(0);
 }
 
 .btn-upgrade.disabled {
@@ -655,12 +645,10 @@ header, footer {
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
 .btn-levelup:hover {
     background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
-    transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(255, 215, 0, 0.4);
 }
 
@@ -729,7 +717,6 @@ header, footer {
 
 .btn-research:hover:not(.disabled):not(:disabled) {
     background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
-    transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
 }
 

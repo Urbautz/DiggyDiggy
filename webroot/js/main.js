@@ -143,6 +143,7 @@ function updateGridDisplay() {
                 // show drop-off marker (global drop-off location) if this cell matches
                     if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
                         cell.classList.add('drop-off');
+                        cell.dataset.clickAction = 'focus-materials';
                         const box = document.createElement('span');
                         // warehouse icon
                         box.className = 'drop-off-marker warehouse';
@@ -150,7 +151,6 @@ function updateGridDisplay() {
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
@@ -249,19 +249,19 @@ function updateGridDisplay() {
                     // show drop-off marker if this is the configured dropOff
                     if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
                         cell.classList.add('drop-off');
+                        cell.dataset.clickAction = 'focus-materials';
                         const box = document.createElement('span');
                         box.className = 'drop-off-marker warehouse';
                         box.textContent = '🏭';
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
 
                     // show house / bed icon if this is the house cell
                     if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openDwarfs(); });
+                        cell.dataset.clickAction = 'open-dwarfs';
                         
                         // Create container for icon and badge with absolute positioning
                         const iconContainer = document.createElement('span');
@@ -298,7 +298,7 @@ function updateGridDisplay() {
                     // show workbench icon if this is the workbench cell
                     if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWorkbench(); });
+                        cell.dataset.clickAction = 'open-workbench';
                         
                         // Create container for icon and badge with absolute positioning
                         const iconContainer = document.createElement('span');
@@ -333,7 +333,7 @@ function updateGridDisplay() {
                     // show research icon if this is the research cell
                     if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openResearch(); });
+                        cell.dataset.clickAction = 'open-research';
                         
                         // Add research icon
                         const researchIcon = document.createElement('span');
@@ -411,7 +411,8 @@ function updateGridDisplay() {
             }
         }
 
-        updateMaterialsPanel();
+        // Don't call updateMaterialsPanel here - it recreates buttons too frequently
+        // Only update it when materials actually change (in sellMaterial function)
         updateStockDisplay();
         updateGoldDisplay();
         refreshTooltipAfterRedraw();
@@ -520,7 +521,7 @@ function populateResearch() {
         } else {
             researchBtn.className = 'btn-research';
             researchBtn.textContent = 'Research';
-            researchBtn.onclick = () => startResearch(researchItem.id);
+            researchBtn.dataset.researchId = researchItem.id;
         }
         
         actionTd.appendChild(researchBtn);
@@ -660,7 +661,7 @@ function populateWorkbench() {
         upgradeBtn.textContent = `Upgrade`;
         const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
         upgradeBtn.title = `Upgrade to quality ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
-        upgradeBtn.onclick = () => upgradeTool(toolInstance.id);
+        upgradeBtn.dataset.toolId = toolInstance.id;
         
         if (gold < upgradeCost) {
             upgradeBtn.disabled = true;
@@ -736,17 +737,28 @@ function upgradeTool(toolId) {
 }
 
 function openSettings() {
-    // Pause game when opening settings
-    if (!gamePaused) {
-        togglePause();
-    }
-    // Open the settings modal
+    // Open the settings modal (game will pause automatically)
     openModal('settings-modal');
 }
 
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
+    
+    // Store whether game was paused before opening modal
+    modal.dataset.wasGamePaused = gamePaused.toString();
+    
+    // Pause the game when opening any modal
+    if (!gamePaused) {
+        gamePaused = true;
+        const btn = document.getElementById('pause-button');
+        if (btn) {
+            btn.textContent = '▶️';
+            btn.title = 'Resume game';
+        }
+        console.log('Game paused (modal opened)');
+    }
+    
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
 }
@@ -756,6 +768,18 @@ function closeModal(modalName) {
     if (modalName) {
         const m = document.getElementById(modalName);
         if (m) {
+            // Resume game if it wasn't paused before modal opened
+            const wasGamePaused = m.dataset.wasGamePaused === 'true';
+            if (!wasGamePaused && gamePaused) {
+                gamePaused = false;
+                const btn = document.getElementById('pause-button');
+                if (btn) {
+                    btn.textContent = '⏸️';
+                    btn.title = 'Pause game';
+                }
+                console.log('Game resumed (modal closed)');
+            }
+            
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
@@ -766,6 +790,19 @@ function closeModal(modalName) {
     // close any open modal
     document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
         const id = m.id;
+        
+        // Resume game if it wasn't paused before modal opened
+        const wasGamePaused = m.dataset.wasGamePaused === 'true';
+        if (!wasGamePaused && gamePaused) {
+            gamePaused = false;
+            const btn = document.getElementById('pause-button');
+            if (btn) {
+                btn.textContent = '⏸️';
+                btn.title = 'Pause game';
+            }
+            console.log('Game resumed (modal closed)');
+        }
+        
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
@@ -861,7 +898,7 @@ function populateDwarfsOverview() {
             const levelUpBtn = document.createElement('button');
             levelUpBtn.className = 'btn-levelup';
             levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.onclick = () => openLevelUpModal(d);
+            levelUpBtn.dataset.dwarfName = d.name;
             actionTd.appendChild(levelUpBtn);
         }
 
@@ -911,7 +948,7 @@ function populateDwarfsInPanel() {
             const levelUpBtn = document.createElement('button');
             levelUpBtn.className = 'btn-levelup btn-levelup-small';
             levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.onclick = () => openLevelUpModal(d);
+            levelUpBtn.dataset.dwarfName = d.name;
             infoContainer.appendChild(levelUpBtn);
         }
         
@@ -971,7 +1008,8 @@ function openLevelUpModal(dwarf) {
     const digPowerBtn = document.createElement('button');
     digPowerBtn.className = 'btn-primary';
     digPowerBtn.textContent = 'Choose Dig Power';
-    digPowerBtn.onclick = () => applyLevelUp(dwarf, 'digPower');
+    digPowerBtn.dataset.upgradeType = 'digPower';
+    digPowerBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         digPowerBtn.disabled = true;
         digPowerBtn.classList.add('disabled');
@@ -989,7 +1027,8 @@ function openLevelUpModal(dwarf) {
     const energyBtn = document.createElement('button');
     energyBtn.className = 'btn-primary';
     energyBtn.textContent = 'Choose Max Energy';
-    energyBtn.onclick = () => applyLevelUp(dwarf, 'maxEnergy');
+    energyBtn.dataset.upgradeType = 'maxEnergy';
+    energyBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         energyBtn.disabled = true;
         energyBtn.classList.add('disabled');
@@ -1007,7 +1046,8 @@ function openLevelUpModal(dwarf) {
     const strengthBtn = document.createElement('button');
     strengthBtn.className = 'btn-primary';
     strengthBtn.textContent = 'Choose Strength';
-    strengthBtn.onclick = () => applyLevelUp(dwarf, 'strength');
+    strengthBtn.dataset.upgradeType = 'strength';
+    strengthBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         strengthBtn.disabled = true;
         strengthBtn.classList.add('disabled');
@@ -1025,7 +1065,8 @@ function openLevelUpModal(dwarf) {
     const wisdomBtn = document.createElement('button');
     wisdomBtn.className = 'btn-primary';
     wisdomBtn.textContent = 'Choose Wisdom';
-    wisdomBtn.onclick = () => applyLevelUp(dwarf, 'wisdom');
+    wisdomBtn.dataset.upgradeType = 'wisdom';
+    wisdomBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         wisdomBtn.disabled = true;
         wisdomBtn.classList.add('disabled');
@@ -1057,7 +1098,8 @@ function openLevelUpModal(dwarf) {
         nextBtn.className = 'btn-primary';
         nextBtn.textContent = `Next: ${nextDwarf.name} →`;
         nextBtn.style.cssText = 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); padding: 10px 20px;';
-        nextBtn.onclick = () => openLevelUpModal(nextDwarf);
+        nextBtn.dataset.dwarfName = nextDwarf.name;
+        nextBtn.dataset.action = 'next-levelup';
         
         nextBtnContainer.appendChild(nextBtn);
         content.appendChild(nextBtnContainer);
@@ -1105,6 +1147,15 @@ function applyLevelUp(dwarf, upgradeType) {
             break;
     }
     
+    // Reset dwarf position and status after leveling up to prevent getting stuck
+    actualDwarf.status = 'idle';
+    actualDwarf.moveTarget = null;
+    // Move dwarf to house location to ensure valid position
+    if (typeof house === 'object' && house !== null) {
+        actualDwarf.x = house.x;
+        actualDwarf.y = house.y;
+    }
+    
     // Sync state with worker
     gameWorker.postMessage({
         type: 'update-state',
@@ -1114,29 +1165,24 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Refresh dwarf display and modal content
+    // Close the modal after successful level up
+    closeModal('levelup-modal');
+    
+    // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
     
-    // Refresh the level up modal to show updated stats
-    openLevelUpModal(actualDwarf);
+    console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
+// Update is now handled every 10th tick instead of on an interval
 let _dwarfsModalRefreshId = null;
-function startDwarfsLiveUpdate(intervalMs = 350) {
-    if (_dwarfsModalRefreshId) return;
-    // Refresh immediately and then on an interval while view is active
-    _dwarfsModalRefreshId = setInterval(() => {
-        const panel = document.getElementById('materials-panel');
-        // Check if we're still in dwarfs view
-        if (panel && panel.dataset.view === 'dwarfs') {
-            populateDwarfsInPanel();
-        } else {
-            // If not in dwarfs view, stop the interval
-            stopDwarfsLiveUpdate();
-        }
-    }, intervalMs);
+function startDwarfsLiveUpdate(intervalMs = 1000) {
+    // No longer using interval-based updates
+    // Updates happen every 10th tick in the worker message handler
+    // Just do an immediate update when switching to dwarfs view
+    populateDwarfsInPanel();
 }
 
 function stopDwarfsLiveUpdate() {
@@ -1151,6 +1197,115 @@ document.addEventListener('click', (ev) => {
     if (!el) return;
     if (el.dataset && el.dataset.action === 'close-modal') {
         closeModal();
+    }
+});
+
+// Delegated event handler for grid cell clicks (prevents adding listeners on every render)
+document.addEventListener('click', (ev) => {
+    const cell = ev.target.closest('td.cell[data-click-action]');
+    if (!cell) return;
+    
+    const action = cell.dataset.clickAction;
+    ev.stopPropagation();
+    
+    switch(action) {
+        case 'focus-materials':
+            focusMaterialsPanel();
+            break;
+        case 'open-dwarfs':
+            openDwarfs();
+            break;
+        case 'open-workbench':
+            openWorkbench();
+            break;
+        case 'open-research':
+            openResearch();
+            break;
+    }
+});
+
+// Delegated event handler for sell buttons
+document.addEventListener('click', (ev) => {
+    const sellBtn = ev.target.closest('.btn-sell, .btn-sell-all');
+    if (!sellBtn) return;
+    
+    const materialId = sellBtn.dataset.materialId;
+    const sellAmount = parseInt(sellBtn.dataset.sellAmount, 10);
+    
+    if (materialId && !isNaN(sellAmount)) {
+        console.log(`Sell button clicked: ${materialId} x${sellAmount}`);
+        sellMaterial(materialId, sellAmount);
+    }
+});
+
+// Delegated event handler for upgrade buttons
+document.addEventListener('click', (ev) => {
+    const upgradeBtn = ev.target.closest('.btn-upgrade');
+    if (!upgradeBtn || upgradeBtn.disabled) return;
+    
+    const toolId = parseInt(upgradeBtn.dataset.toolId, 10);
+    if (!isNaN(toolId)) {
+        console.log(`Upgrade button clicked for tool ${toolId}`);
+        upgradeTool(toolId);
+    }
+});
+
+// Delegated event handler for research buttons
+document.addEventListener('click', (ev) => {
+    const researchBtn = ev.target.closest('.btn-research');
+    if (!researchBtn || researchBtn.disabled) return;
+    
+    const researchId = researchBtn.dataset.researchId;
+    if (researchId) {
+        console.log(`Research button clicked: ${researchId}`);
+        startResearch(researchId);
+    }
+});
+
+// Delegated event handler for level up buttons
+document.addEventListener('click', (ev) => {
+    const levelUpBtn = ev.target.closest('.btn-levelup');
+    if (!levelUpBtn) return;
+    
+    const dwarfName = levelUpBtn.dataset.dwarfName;
+    if (dwarfName) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Level up button clicked for ${dwarfName}`);
+            openLevelUpModal(dwarf);
+        }
+    }
+});
+
+// Delegated event handler for level up upgrade choices
+document.addEventListener('click', (ev) => {
+    const upgradeChoiceBtn = ev.target.closest('.btn-primary[data-upgrade-type]');
+    if (!upgradeChoiceBtn || upgradeChoiceBtn.disabled) return;
+    
+    const dwarfName = upgradeChoiceBtn.dataset.dwarfName;
+    const upgradeType = upgradeChoiceBtn.dataset.upgradeType;
+    
+    if (dwarfName && upgradeType) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Level up choice: ${dwarfName} -> ${upgradeType}`);
+            applyLevelUp(dwarf, upgradeType);
+        }
+    }
+});
+
+// Delegated event handler for next dwarf button in level up modal
+document.addEventListener('click', (ev) => {
+    const nextBtn = ev.target.closest('.btn-primary[data-action="next-levelup"]');
+    if (!nextBtn) return;
+    
+    const dwarfName = nextBtn.dataset.dwarfName;
+    if (dwarfName) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Next level up: ${dwarfName}`);
+            openLevelUpModal(dwarf);
+        }
     }
 });
 
@@ -1213,8 +1368,8 @@ function sellMaterial(materialId, amount) {
     }
     
     // Update UI
-    updateMaterialsPanel();
     updateGoldDisplay();
+    updateMaterialsPanel(); // Refresh warehouse panel after selling
     
     // Save game
     saveGame();
@@ -1271,19 +1426,15 @@ function updateMaterialsPanel() {
         sell1Btn.className = 'btn-sell';
         sell1Btn.textContent = 'Sell 1';
         sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
-        sell1Btn.onclick = () => {
-            console.log('Sell 1 button clicked for', id);
-            sellMaterial(id, 1);
-        };
+        sell1Btn.dataset.materialId = id;
+        sell1Btn.dataset.sellAmount = '1';
         
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
         sellAllBtn.textContent = 'Sell All';
         sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
-        sellAllBtn.onclick = () => {
-            console.log('Sell All button clicked for', id);
-            sellMaterial(id, count);
-        };
+        sellAllBtn.dataset.materialId = id;
+        sellAllBtn.dataset.sellAmount = count.toString();
         
         buttons.appendChild(sell1Btn);
         buttons.appendChild(sellAllBtn);
@@ -1432,6 +1583,7 @@ let gameWorker = null;
 let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
+let tickCounter = 0; // Track ticks for periodic updates
 
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
@@ -1451,8 +1603,12 @@ function initWorker() {
                 dwarfs = data.dwarfs;
                 startX = data.startX;
                 
-                // Update materialsStock properties (can't reassign const)
+                // Check if materialsStock changed to update warehouse panel
+                let stockChanged = false;
                 for (const key in data.materialsStock) {
+                    if (materialsStock[key] !== data.materialsStock[key]) {
+                        stockChanged = true;
+                    }
                     materialsStock[key] = data.materialsStock[key];
                 }
                 
@@ -1478,6 +1634,21 @@ function initWorker() {
                 
                 // Update UI to reflect new state
                 updateGridDisplay();
+                
+                // Update warehouse panel if materials stock changed
+                if (stockChanged) {
+                    updateMaterialsPanel();
+                }
+                
+                // Update dwarf panel every 10th tick if in dwarfs view
+                tickCounter++;
+                if (tickCounter >= 10) {
+                    tickCounter = 0;
+                    const panel = document.getElementById('materials-panel');
+                    if (panel && panel.dataset.view === 'dwarfs') {
+                        populateDwarfsInPanel();
+                    }
+                }
                 
                 // Autosave after each tick
                 saveGame();
@@ -1651,6 +1822,7 @@ function initGame() {
     
     updateGridDisplay();
     updateGoldDisplay();
+    updateMaterialsPanel(); // Initialize materials panel on load
 }
 
 // Start the game
