@@ -25,44 +25,44 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone', power: 0.4 },
-    { name: 'Bronce', power: 0.6 },
+    { name: 'Stone Shovel', power: 0.4 },
+    { name: 'Bronce Shovel', power: 0.6 },
     { name: 'Copper', power: 0.8 },
 ]
 
 let dwarfs = [
     { name: "Diggingston", 
-      shovelType: "Stone", 
+      Tool: "Stone", 
       level: 1, xp: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 1000 },
     { name: "Shovelli", 
-      shovelType: "Stone", 
+      shovelType: "Stone Shovel", 
       level: 1, xp: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 1000 },
     { name: "Diggmaster", 
-      shovelType: "Stone", 
+      shovelType: "Stone Shovel", 
       level: 1, xp: 0,
       x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 1000 },
     { name: "Burrower", 
-     shovelType: "Stone", 
+     shovelType: "Stone Shovel", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 1000 },
     { name: "Nevertired McPickaxemaster", 
-     shovelType: "Stone", 
+     shovelType: "Stone Shovel", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 1000 },
     { name: "SuperDigger", 
-     shovelType: "Copper", 
+     shovelType: "Stone Shovel", 
      level: 1, xp: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
@@ -84,9 +84,11 @@ const bucketCapacity = 4;
 // Drop-off location (where dwarfs should deliver their bucket contents).
 // Place the small 3x3 drop-area to the right of the digging grid. Default
 // the drop-off to the top-left cell of that 3x3 area (1/1 in 1-based coordinates).
-const dropGridStartX = gridWidth; // three-column grid placed immediately to the right
-const dropGridWidth = 3, dropGridHeight = 3;
-// drop-off inside the small 3x3: top-left => (0,0) in drop-grid coordinates
+const dropGridStartX = gridWidth; // six-column grid placed immediately to the right
+const dropGridWidth = 6, dropGridHeight = 1;
+// drop-off inside the 6x1 grid: first cell (0,0) in drop-grid coordinates
 const dropOff = { x: dropGridStartX + 0, y: 0 };
-// bed / house: place second cell on the top row (1,1 in 1-based coordinates)
+// bed / house: place second cell (1,0) in drop-grid coordinates
 const house = { x: dropGridStartX + 1, y: 0 };
+// workbench: place third cell (2,0) in drop-grid coordinates
+const workbench = { x: dropGridStartX + 2, y: 0 };

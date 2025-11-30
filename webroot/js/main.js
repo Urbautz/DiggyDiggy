@@ -249,6 +249,17 @@ function updateGridDisplay() {
                         cell.appendChild(bed);
                     }
 
+                    // show workbench icon if this is the workbench cell
+                    if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
+                        cell.style.cursor = 'pointer';
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWorkbench(); });
+                        const bench = document.createElement('span');
+                        bench.className = 'drop-off-marker workbench';
+                        bench.textContent = '🔨';
+                        bench.title = 'Workbench (craft tools)';
+                        cell.appendChild(bench);
+                    }
+
                     // show resting marker when dwarf is resting here
                     const restersHere = dwarfsHere.filter(d => d.status === 'resting');
                     if (restersHere.length > 0) {
@@ -293,6 +304,10 @@ function updateGridDisplay() {
 }
 
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
+
+function openWorkbench() {
+    openModal('workbench-modal');
+}
 
 function openSettings() {
     // Pause game when opening settings
@@ -545,11 +560,17 @@ function updateMaterialsPanel() {
         name.className = 'warehouse-name';
         name.textContent = m.name;
         
+        const worth = document.createElement('span');
+        worth.className = 'warehouse-worth';
+        worth.textContent = `${m.worth.toFixed(2)} 💰`;
+        worth.title = `Worth: ${m.worth.toFixed(2)} gold each`;
+        
         const cnt = document.createElement('span');
         cnt.className = 'warehouse-count';
         cnt.textContent = String(count);
         
         info.appendChild(name);
+        info.appendChild(worth);
         info.appendChild(cnt);
         
         const buttons = document.createElement('div');

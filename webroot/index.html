@@ -87,18 +87,15 @@
         <div id="side-grids">
             <div id="drop-grid-panel" class="materials-panel" aria-live="polite">
             <h3>Functions</h3>
-            <table id="drop-grid" aria-label="Drop-off grid">
+            <table id="drop-grid" aria-label="Functions grid">
                 <tbody>
                     <tr>
                         <td class="cell" data-row="0" data-col="0"></td>
                         <td class="cell" data-row="0" data-col="1"></td>
                         <td class="cell" data-row="0" data-col="2"></td>
-                    </tr>
-                    <tr>
-                        <td class="cell" data-row="1" data-col="0"></td><td class="cell" data-row="1" data-col="1"></td><td class="cell" data-row="1" data-col="2"></td>
-                    </tr>
-                    <tr>
-                        <td class="cell" data-row="2" data-col="0"></td><td class="cell" data-row="2" data-col="1"></td><td class="cell" data-row="2" data-col="2"></td>
+                        <td class="cell" data-row="0" data-col="3"></td>
+                        <td class="cell" data-row="0" data-col="4"></td>
+                        <td class="cell" data-row="0" data-col="5"></td>
                     </tr>
                 </tbody>
             </table>
@@ -113,6 +110,26 @@
         </div>
         <!-- controls moved to header topbar -->
     </main>
+
+    <!-- Workbench modal -->
+    <div id="workbench-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Workbench dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>🔨 Workbench</h2>
+                <button class="modal-close" aria-label="Close workbench" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>Craft tools and upgrades for your dwarfs here!</p>
+                <div id="workbench-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
 
     <!-- Settings modal -->
     <div id="settings-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Settings dialog">

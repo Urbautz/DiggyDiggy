@@ -26,7 +26,7 @@ main {
 .grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 320px; }
 
 /* the small drop-grid uses smaller cells to visually differentiate it */
-#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width:135px;}
+#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
 #drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
 #drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
 /* ensure content within drop-grid cells stacks correctly */
@@ -263,6 +263,9 @@ header, footer {
 /* house / bed marker */
 .drop-off-marker.house { font-size: 18px; transform: translateY(-1px); }
 
+/* workbench marker */
+.drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
+
 .drop-grid-panel {
     margin-top: 12px;
     padding: 16px;
@@ -465,6 +468,12 @@ header, footer {
     flex: 1;
 }
 .warehouse-name { font-weight:700; color:#e6eefc; font-size: 13px; }
+.warehouse-worth { 
+    font-size: 11px; 
+    color: #ffd700; 
+    opacity: 0.8;
+    margin-left: 6px;
+}
 .warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff; font-size: 12px; }
 .warehouse-buttons {
     display: flex;
