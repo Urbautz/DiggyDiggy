@@ -49,8 +49,10 @@ function getDwarfToolPower(dwarf) {
     const toolDef = tools.find(t => t.name === toolInstance.type);
     if (!toolDef) return 0.5;
     
-    // Calculate power based on base power and tool level (10% per level)
-    return toolDef.power * (1 + (toolInstance.level - 1) * 0.1);
+    // Calculate power based on base power, tool level (10% per level), and dwarf's digPower (10% per point)
+    const toolBonus = 1 + (toolInstance.level - 1) * 0.1;
+    const dwarfBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    return toolDef.power * toolBonus * dwarfBonus;
 }
 
 function randomMaterial(depthLevel = 0) {
@@ -276,10 +278,11 @@ function actForDwarf(dwarf) {
 
     // Resting state
     if (dwarf.status === 'resting') {
-        dwarf.energy = Math.min(1000, (dwarf.energy || 0) + 100);
-        if (dwarf.energy >= 1000) {
+        const maxEnergy = dwarf.maxEnergy || 100;
+        dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + 25);
+        if (dwarf.energy >= maxEnergy) {
             dwarf.status = 'idle';
-            dwarf.energy = 1000;
+            dwarf.energy = maxEnergy;
         }
         return;
     }
@@ -296,7 +299,8 @@ function actForDwarf(dwarf) {
 
     // Full bucket handling
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
-    if (typeof bucketCapacity === 'number' && bucketTotal >= bucketCapacity) {
+    const dwarfCapacity = bucketCapacity + (dwarf.strength || 0);
+    if (typeof bucketCapacity === 'number' && bucketTotal >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
                 if (dwarf.status !== 'unloading') {

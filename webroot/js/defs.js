@@ -1,5 +1,5 @@
 // Base data}
-const gameversion = '0.6.1';
+const gameversion = '0.7';
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
@@ -45,39 +45,45 @@ let dwarfs = [
     { name: "Diggingston", 
       toolId: 1, 
       level: 1, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {}, energy: 1000 },
+      bucket: {}, energy: 100 },
     { name: "Shovelli", 
       toolId: 2, 
       level: 1, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {}, energy: 1000 },
+      bucket: {}, energy: 100 },
     { name: "Diggmaster", 
       toolId: 3, 
       level: 1, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0,
       x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 1000 },
+    bucket: {}, energy: 100 },
     { name: "Burrower", 
      toolId: 4, 
      level: 1, xp: 0,
+     digPower: 0, maxEnergy: 100, strength: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 1000 },
+    bucket: {}, energy: 100 },
     { name: "Nevertired McPickaxemaster", 
      toolId: 5, 
      level: 1, xp: 0,
+     digPower: 0, maxEnergy: 100, strength: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 1000 },
+    bucket: {}, energy: 100 },
     { name: "SuperDigger", 
      toolId: 6, 
      level: 1, xp: 0,
+     digPower: 0, maxEnergy: 100, strength: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 1000 },
+    bucket: {}, energy: 100 },
 ]
     
 let grid = [];

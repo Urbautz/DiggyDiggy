@@ -467,13 +467,17 @@ function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
     modal.setAttribute('aria-hidden', 'false');
+    modal.style.display = 'flex';
 }
 
 function closeModal(modalName) {
     // If a modalName is provided, close that specific modal; otherwise close all open modals
     if (modalName) {
         const m = document.getElementById(modalName);
-        if (m) m.setAttribute('aria-hidden', 'true');
+        if (m) {
+            m.setAttribute('aria-hidden', 'true');
+            m.style.display = 'none';
+        }
         // If we just closed the dwarfs modal, stop live updates
         if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
         return;
@@ -482,6 +486,7 @@ function closeModal(modalName) {
     document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
         const id = m.id;
         m.setAttribute('aria-hidden','true');
+        m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
     });
 }
@@ -550,7 +555,7 @@ function populateDwarfsOverview() {
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 1000 * currentLevel;
+        const xpNeeded = 250 * currentLevel;
         xpTd.textContent = `${currentXP} / ${xpNeeded}`;
         
         // Find the tool assigned to this dwarf
@@ -608,15 +613,29 @@ function populateDwarfsInPanel() {
         name.className = 'dwarf-name';
         name.textContent = d.name;
         
+        const infoContainer = document.createElement('div');
+        infoContainer.className = 'dwarf-info-container';
+        
         const info = document.createElement('div');
         info.className = 'dwarf-info';
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 1000 * currentLevel;
+        const xpNeeded = 250 * currentLevel;
         info.textContent = `Lvl. ${currentLevel} (${currentXP}/${xpNeeded} XP) •⚡${d.energy || 0} • ${d.status || 'idle'}`;
         
+        infoContainer.appendChild(info);
+        
+        // Add level up button if XP threshold reached
+        if (currentXP >= xpNeeded) {
+            const levelUpBtn = document.createElement('button');
+            levelUpBtn.className = 'btn-levelup btn-levelup-small';
+            levelUpBtn.textContent = 'Level Up!';
+            levelUpBtn.onclick = () => openLevelUpModal(d);
+            infoContainer.appendChild(levelUpBtn);
+        }
+        
         row.appendChild(name);
-        row.appendChild(info);
+        row.appendChild(infoContainer);
         list.appendChild(row);
     }
 }
@@ -632,11 +651,147 @@ function openLevelUpModal(dwarf) {
     // Store the dwarf being leveled up
     modal.dataset.dwarfName = dwarf.name;
     
+    // Populate level up options
+    const content = document.getElementById('levelup-content');
+    content.innerHTML = '';
+    
+    const title = document.createElement('h3');
+    const xpNeeded = 250 * dwarf.level;
+    const currentXP = dwarf.xp || 0;
+    const hasEnoughXP = currentXP >= xpNeeded;
+    title.textContent = `${dwarf.name} - Level ${dwarf.level} → ${dwarf.level + 1}`;
+    content.appendChild(title);
+    
+    // Show XP status
+    const xpStatus = document.createElement('p');
+    xpStatus.style.textAlign = 'center';
+    xpStatus.style.fontSize = '14px';
+    xpStatus.style.marginBottom = '15px';
+    if (hasEnoughXP) {
+        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} ✓`;
+        xpStatus.style.color = '#4CAF50';
+    } else {
+        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} (Not enough XP)`;
+        xpStatus.style.color = '#ff6b6b';
+    }
+    content.appendChild(xpStatus);
+    
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'levelup-options';
+    
+    // Option 1: Dig Power
+    const digPowerOption = document.createElement('div');
+    digPowerOption.className = 'levelup-option';
+    digPowerOption.innerHTML = `
+        <h4>⛏️ Dig Power</h4>
+        <p>Increases digging power by 10%</p>
+        <p class="levelup-stats">Current: +${(dwarf.digPower || 0) * 10}% → New: +${((dwarf.digPower || 0) + 1) * 10}%</p>
+    `;
+    const digPowerBtn = document.createElement('button');
+    digPowerBtn.className = 'btn-primary';
+    digPowerBtn.textContent = 'Choose Dig Power';
+    digPowerBtn.onclick = () => applyLevelUp(dwarf, 'digPower');
+    if (!hasEnoughXP) {
+        digPowerBtn.disabled = true;
+        digPowerBtn.classList.add('disabled');
+    }
+    digPowerOption.appendChild(digPowerBtn);
+    
+    // Option 2: Max Energy
+    const energyOption = document.createElement('div');
+    energyOption.className = 'levelup-option';
+    energyOption.innerHTML = `
+        <h4>⚡ Max Energy</h4>
+        <p>Increases maximum energy by 20%</p>
+        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * 1.2)}</p>
+    `;
+    const energyBtn = document.createElement('button');
+    energyBtn.className = 'btn-primary';
+    energyBtn.textContent = 'Choose Max Energy';
+    energyBtn.onclick = () => applyLevelUp(dwarf, 'maxEnergy');
+    if (!hasEnoughXP) {
+        energyBtn.disabled = true;
+        energyBtn.classList.add('disabled');
+    }
+    energyOption.appendChild(energyBtn);
+    
+    // Option 3: Strength
+    const strengthOption = document.createElement('div');
+    strengthOption.className = 'levelup-option';
+    strengthOption.innerHTML = `
+        <h4>💪 Strength</h4>
+        <p>Increases bucket capacity by 1</p>
+        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + 1}</p>
+    `;
+    const strengthBtn = document.createElement('button');
+    strengthBtn.className = 'btn-primary';
+    strengthBtn.textContent = 'Choose Strength';
+    strengthBtn.onclick = () => applyLevelUp(dwarf, 'strength');
+    if (!hasEnoughXP) {
+        strengthBtn.disabled = true;
+        strengthBtn.classList.add('disabled');
+    }
+    strengthOption.appendChild(strengthBtn);
+    
+    optionsDiv.appendChild(digPowerOption);
+    optionsDiv.appendChild(energyOption);
+    optionsDiv.appendChild(strengthOption);
+    content.appendChild(optionsDiv);
+    
     // Show modal
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
+}
+
+// Apply the chosen level up upgrade
+function applyLevelUp(dwarf, upgradeType) {
+    const xpNeeded = 250 * dwarf.level;
     
-    // TODO: Populate level up options
+    if (dwarf.xp < xpNeeded) {
+        console.error('Not enough XP to level up');
+        return;
+    }
+    
+    // Find the actual dwarf in the main dwarfs array
+    const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
+    if (!actualDwarf) {
+        console.error('Dwarf not found in main array');
+        return;
+    }
+    
+    // Deduct XP and increase level
+    actualDwarf.xp -= xpNeeded;
+    actualDwarf.level += 1;
+    
+    // Apply the chosen upgrade
+    switch(upgradeType) {
+        case 'digPower':
+            actualDwarf.digPower = (actualDwarf.digPower || 0) + 1;
+            break;
+        case 'maxEnergy':
+            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * 1.2);
+            actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
+            break;
+        case 'strength':
+            actualDwarf.strength = (actualDwarf.strength || 0) + 1;
+            break;
+    }
+    
+    // Sync state with worker
+    gameWorker.postMessage({
+        type: 'update-state',
+        data: { dwarfs }
+    });
+    
+    // Save game
+    saveGame();
+    
+    // Refresh dwarf display and modal content
+    populateDwarfsOverview();
+    populateDwarfsInPanel();
+    
+    // Refresh the level up modal to show updated stats
+    openLevelUpModal(actualDwarf);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
