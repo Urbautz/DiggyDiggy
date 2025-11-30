@@ -85,6 +85,17 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100 },
 ]
+
+let researchtree = [
+    { id: 'improved-digging', name: 'Improved Digging', cost: 50, level: 0,
+      description: 'Dwarfs dig 5% harder.' }, 
+    { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
+      description: 'Dwarfs can rest faster.' },
+    { id: 'advanced-tools', name: 'Advanced Tools', cost: 2000, level: 0, maxlevel: 1,
+      description: 'Unlocks Bronce Shovel for purchase.' },
+    { id: 'superior-tools', name: 'Superior Tools', cost: 50000, level: 0, maxlevel: 1,
+      description: 'Unlocks Copper Shovel for purchase.' }
+    ]
     
 let grid = [];
 let startX = 0;
@@ -109,3 +120,5 @@ const dropOff = { x: dropGridStartX + 0, y: 0 };
 const house = { x: dropGridStartX + 1, y: 0 };
 // workbench: place third cell (2,0) in drop-grid coordinates
 const workbench = { x: dropGridStartX + 2, y: 0 };
+// research: place fourth cell (3,0) in drop-grid coordinates
+const research = { x: dropGridStartX + 3, y: 0 };

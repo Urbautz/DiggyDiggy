@@ -280,6 +280,17 @@ function updateGridDisplay() {
                         cell.appendChild(bench);
                     }
 
+                    // show research icon if this is the research cell
+                    if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
+                        cell.style.cursor = 'pointer';
+                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openResearch(); });
+                        const researchIcon = document.createElement('span');
+                        researchIcon.className = 'drop-off-marker research';
+                        researchIcon.textContent = '🔬';
+                        researchIcon.title = 'Research Lab';
+                        cell.appendChild(researchIcon);
+                    }
+
                     // show resting marker when dwarf is resting here
                     const restersHere = dwarfsHere.filter(d => d.status === 'resting');
                     if (restersHere.length > 0) {
@@ -330,6 +341,11 @@ function openWorkbench() {
     populateWorkbench();
 }
 
+function openResearch() {
+    console.log('Research lab clicked - functionality to be implemented');
+    // TODO: Open research modal
+}
+
 function populateWorkbench() {
     const container = document.getElementById('workbench-content');
     if (!container) return;
@@ -340,7 +356,7 @@ function populateWorkbench() {
     toolsTable.className = 'workbench-table';
     
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Level</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
+    thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Quality</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
     toolsTable.appendChild(thead);
     
     const tbody = document.createElement('tbody');
@@ -378,7 +394,7 @@ function populateWorkbench() {
         upgradeBtn.className = 'btn-upgrade';
         upgradeBtn.textContent = `Upgrade`;
         const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
-        upgradeBtn.title = `Upgrade to level ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
+        upgradeBtn.title = `Upgrade to quality ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
         upgradeBtn.onclick = () => upgradeTool(toolInstance.id);
         
         if (gold < upgradeCost) {
@@ -563,7 +579,7 @@ function populateDwarfsOverview() {
         if (d.toolId) {
             const toolInstance = toolsInventory.find(t => t.id === d.toolId);
             if (toolInstance) {
-                toolTd.textContent = `${toolInstance.type} (Lvl ${toolInstance.level})`;
+                toolTd.textContent = `${toolInstance.type} (Q${toolInstance.level})`;
             } else {
                 toolTd.textContent = `Tool #${d.toolId}`;
             }
