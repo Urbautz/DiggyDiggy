@@ -530,11 +530,9 @@ function actForDwarf(dwarf) {
             curCell.hardness = Math.max(0, curCell.hardness - power);
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
-                if (Math.random() < 0.5) {
-                    dwarf.bucket = dwarf.bucket || {};
-                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
-                }
+                dwarf.bucket = dwarf.bucket || {};
+                dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
@@ -593,11 +591,9 @@ function actForDwarf(dwarf) {
             curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;
-                if (Math.random() < 0.5) {
-                    dwarf.bucket = dwarf.bucket || {};
-                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-                    //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
-                }
+                dwarf.bucket = dwarf.bucket || {};
+                dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
@@ -752,11 +748,9 @@ function actForDwarf(dwarf) {
     gold = Math.max(0, gold - 0.01); // Deduct payment for digging
     if (target.hardness === 0) {
         const matId = target.materialId;
-        if (Math.random() < 0.5) {
-            dwarf.bucket = dwarf.bucket || {};
-            dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-            //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
-        }
+        dwarf.bucket = dwarf.bucket || {};
+        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+        //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
     }
     //console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
     if (target.hardness === 0) {

@@ -939,7 +939,12 @@ function populateDwarfsInPanel() {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
         const xpNeeded = 250 * currentLevel;
-        info.textContent = `Lvl. ${currentLevel} (${currentXP}/${xpNeeded} XP) •⚡${d.energy || 0} • ${d.status || 'idle'}`;
+        
+        // Calculate bucket fill
+        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+        const dwarfCapacity = bucketCapacity + (d.strength || 0);
+        
+        info.innerHTML = `📊 Lvl ${currentLevel} (${currentXP}/${xpNeeded} XP)<br>⚡${d.energy || 0}<br>🪣 ${bucketTotal}/${dwarfCapacity}<br>🔨 ${d.status || 'idle'}`;
         
         infoContainer.appendChild(info);
         
