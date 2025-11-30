@@ -295,6 +295,16 @@ function actForDwarf(dwarf) {
         if (dwarf.energy >= maxEnergy) {
             dwarf.status = 'idle';
             dwarf.energy = maxEnergy;
+            
+            // After resting, check if there's active research and go there (80% chance)
+            // Only if no other dwarf is already researching
+            const someoneResearching = dwarfs.some(d => d !== dwarf && d.status === 'researching');
+            if (activeResearch && !someoneResearching && typeof research === 'object' && research !== null && 
+                dwarf.energy >= 10 && Math.random() < 0.8) {
+                scheduleMove(dwarf, research.x, research.y);
+                //console.log(`Dwarf ${dwarf.name} finished resting, heading to research lab`);
+                return;
+            }
         }
         return;
     }
@@ -407,14 +417,18 @@ function actForDwarf(dwarf) {
                             if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
-                            } else if (activeResearch && Math.random() < 0.8 && typeof research === 'object' && research !== null) {
-                                // 80% chance to go research instead of digging
-                                scheduleMove(dwarf, research.x, research.y);
-                                dwarf.status = 'moving';
-                                //console.log(`Dwarf ${dwarf.name} heading to research lab`);
                             } else {
-                                scheduleMove(dwarf, chosen, rowIdx);
-                                //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                                // Check if there's active research and no one else is researching
+                                const someoneResearching = dwarfs.some(d => d !== dwarf && d.status === 'researching');
+                                if (activeResearch && !someoneResearching && Math.random() < 0.8 && typeof research === 'object' && research !== null) {
+                                    // 80% chance to go research instead of digging (if no one else is researching)
+                                    scheduleMove(dwarf, research.x, research.y);
+                                    dwarf.status = 'moving';
+                                    //console.log(`Dwarf ${dwarf.name} heading to research lab`);
+                                } else {
+                                    scheduleMove(dwarf, chosen, rowIdx);
+                                    //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
+                                }
                             }
                         }
                     }
@@ -463,6 +477,22 @@ function actForDwarf(dwarf) {
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
+
+    // Idle dwarf with research available - send to research lab (80% chance)
+    // Only if no other dwarf is already researching
+    const someoneResearching = dwarfs.some(d => d !== dwarf && d.status === 'researching');
+    if (dwarf.status === 'idle' && activeResearch && !someoneResearching && typeof research === 'object' && research !== null && 
+        dwarf.energy >= 10 && Math.random() < 0.8) {
+        // Check if already at research location
+        if (dwarf.x !== research.x || dwarf.y !== research.y) {
+            // Not at research location, move there
+            if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
+                scheduleMove(dwarf, research.x, research.y);
+                //console.log(`Idle dwarf ${dwarf.name} heading to research lab`);
+                return;
+            }
+        }
+    }
 
     // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
     if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 && 
@@ -796,7 +826,12 @@ self.addEventListener('message', (e) => {
             if (data.materialsStock) materialsStock = data.materialsStock;
             if (data.gold !== undefined) gold = data.gold;
             if (data.toolsInventory) toolsInventory = data.toolsInventory;
-            if (data.activeResearch !== undefined) activeResearch = data.activeResearch;
+            if (data.activeResearch !== undefined) {
+                activeResearch = data.activeResearch;
+                if (activeResearch) {
+                    console.log('Worker: Active research updated:', activeResearch.name);
+                }
+            }
             if (data.researchtree) researchtree = data.researchtree;
             break;
             

@@ -737,17 +737,28 @@ function upgradeTool(toolId) {
 }
 
 function openSettings() {
-    // Pause game when opening settings
-    if (!gamePaused) {
-        togglePause();
-    }
-    // Open the settings modal
+    // Open the settings modal (game will pause automatically)
     openModal('settings-modal');
 }
 
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
+    
+    // Store whether game was paused before opening modal
+    modal.dataset.wasGamePaused = gamePaused.toString();
+    
+    // Pause the game when opening any modal
+    if (!gamePaused) {
+        gamePaused = true;
+        const btn = document.getElementById('pause-button');
+        if (btn) {
+            btn.textContent = '▶️';
+            btn.title = 'Resume game';
+        }
+        console.log('Game paused (modal opened)');
+    }
+    
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
 }
@@ -757,6 +768,18 @@ function closeModal(modalName) {
     if (modalName) {
         const m = document.getElementById(modalName);
         if (m) {
+            // Resume game if it wasn't paused before modal opened
+            const wasGamePaused = m.dataset.wasGamePaused === 'true';
+            if (!wasGamePaused && gamePaused) {
+                gamePaused = false;
+                const btn = document.getElementById('pause-button');
+                if (btn) {
+                    btn.textContent = '⏸️';
+                    btn.title = 'Pause game';
+                }
+                console.log('Game resumed (modal closed)');
+            }
+            
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
@@ -767,6 +790,19 @@ function closeModal(modalName) {
     // close any open modal
     document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
         const id = m.id;
+        
+        // Resume game if it wasn't paused before modal opened
+        const wasGamePaused = m.dataset.wasGamePaused === 'true';
+        if (!wasGamePaused && gamePaused) {
+            gamePaused = false;
+            const btn = document.getElementById('pause-button');
+            if (btn) {
+                btn.textContent = '⏸️';
+                btn.title = 'Pause game';
+            }
+            console.log('Game resumed (modal closed)');
+        }
+        
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
@@ -1140,20 +1176,13 @@ function applyLevelUp(dwarf, upgradeType) {
 }
 
 // ---- live-update for the dwarfs panel/modal ----
+// Update is now handled every 10th tick instead of on an interval
 let _dwarfsModalRefreshId = null;
 function startDwarfsLiveUpdate(intervalMs = 1000) {
-    if (_dwarfsModalRefreshId) return;
-    // Refresh immediately and then on an interval while view is active
-    _dwarfsModalRefreshId = setInterval(() => {
-        const panel = document.getElementById('materials-panel');
-        // Check if we're still in dwarfs view
-        if (panel && panel.dataset.view === 'dwarfs') {
-            populateDwarfsInPanel();
-        } else {
-            // If not in dwarfs view, stop the interval
-            stopDwarfsLiveUpdate();
-        }
-    }, intervalMs);
+    // No longer using interval-based updates
+    // Updates happen every 10th tick in the worker message handler
+    // Just do an immediate update when switching to dwarfs view
+    populateDwarfsInPanel();
 }
 
 function stopDwarfsLiveUpdate() {
@@ -1554,6 +1583,7 @@ let gameWorker = null;
 let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
+let tickCounter = 0; // Track ticks for periodic updates
 
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
@@ -1573,8 +1603,12 @@ function initWorker() {
                 dwarfs = data.dwarfs;
                 startX = data.startX;
                 
-                // Update materialsStock properties (can't reassign const)
+                // Check if materialsStock changed to update warehouse panel
+                let stockChanged = false;
                 for (const key in data.materialsStock) {
+                    if (materialsStock[key] !== data.materialsStock[key]) {
+                        stockChanged = true;
+                    }
                     materialsStock[key] = data.materialsStock[key];
                 }
                 
@@ -1600,6 +1634,21 @@ function initWorker() {
                 
                 // Update UI to reflect new state
                 updateGridDisplay();
+                
+                // Update warehouse panel if materials stock changed
+                if (stockChanged) {
+                    updateMaterialsPanel();
+                }
+                
+                // Update dwarf panel every 10th tick if in dwarfs view
+                tickCounter++;
+                if (tickCounter >= 10) {
+                    tickCounter = 0;
+                    const panel = document.getElementById('materials-panel');
+                    if (panel && panel.dataset.view === 'dwarfs') {
+                        populateDwarfsInPanel();
+                    }
+                }
                 
                 // Autosave after each tick
                 saveGame();

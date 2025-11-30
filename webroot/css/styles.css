@@ -645,7 +645,6 @@ header, footer {
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
 .btn-levelup:hover {
