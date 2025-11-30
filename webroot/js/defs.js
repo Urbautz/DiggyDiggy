@@ -10,9 +10,18 @@ const materials = [
     { id: 'mud', name: 'Mud', hardness: 2, probability: 0.01, worth: 0.4, minlevel: 0, maxlevel: 999, color: '#4a2f13ff' },
     { id: 'clay', name: 'Clay', hardness: 5, probability: 0.015, worth: 1, minlevel: 75, maxlevel: 1999, color: '#a57f61' },
     { id: 'gravel', name: 'Gravel', hardness: 5, probability: 0.025, worth: 0.8, minlevel: 150, maxlevel: 2999, color: '#534f4fff' },
-    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 2.0, minlevel: 1300, maxlevel: 999999999, color: '#9d4d39ff' },
-    { id: 'limestone', name: 'Limestone', hardness: 8, probability: 0.05, worth: 2.1, minlevel: 1200, color: '#a8a19fff' },
+    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 2.0, minlevel: 1300, maxlevel: 9999, color: '#9d4d39ff' },
+    { id: 'limestone', name: 'Limestone', hardness: 8, probability: 0.05, worth: 2.1, minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' },
+	{ id: 'Coal', name: 'Coal', hardness: 8, probability: 0.01, worth: 2.5, minlevel: 1500, maxlevel: 9999, color: '#191919ff' },
+	{ id: 'Chalk', name: 'Chalk', hardness: 10, probability: 0.03, worth: 1.1, minlevel: 2000, maxlevel: 9999, color: '#a6b8adff' },
+	{ id: 'Salt', name: 'Salt', hardness: 5, probability: 0.005, worth: 4.5, minlevel: 1500, maxlevel: 9999, color: '#efdaedff' },
+	{ id: 'Bronce Ore', name: 'Bronce', hardness: 30, probability: 0.005, worth: 6.5, minlevel: 3000, maxlevel: 99999, color: '#7e6136ff' },
+	{ id: 'Marble', name: 'Marble', hardness: 40, probability: 0.05, worth: 8, minlevel: 4000, maxlevel: 99999, color: '#7a706eff' },
+	{ id: 'Slate', name: 'Slate', hardness: 110, probability: 0.05, worth: 2, minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },
+	{ id: 'Copper Ore', name: 'Copper Ore', hardness: 15, probability: 0.005, worth: 15, minlevel: 4000, maxlevel: 99999, color: '#c75e41ff' },
+    { id: 'Gold Ore', name: 'Gold Ore', hardness: 30, probability: 0.0005, worth: 1000, minlevel: 5000, maxlevel: 99999, color: '#d6a80eff' }
 ];
+
 
 // Tools
 const tools = [
