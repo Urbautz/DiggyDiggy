@@ -26,7 +26,7 @@ main {
 .grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 320px; }
 
 /* the small drop-grid uses smaller cells to visually differentiate it */
-#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width:135px;}
+#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
 #drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
 #drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
 /* ensure content within drop-grid cells stacks correctly */
@@ -102,6 +102,20 @@ main {
     z-index: 0; /* lower than the digger background (z-index:1) */
     opacity: 0.95;
     pointer-events: none;
+}
+
+/* striking marker for main digging grid */
+#digging-grid .cell .striking-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    line-height: 1;
+    z-index: 5;
+    opacity: 0.95;
+    pointer-events: none;
+    animation: strikeShake 0.5s ease-in-out infinite;
 }
 
 /* digging animation styles */
@@ -194,6 +208,32 @@ header, footer {
     letter-spacing: 0.4px;
 }
 
+.gold-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(218, 165, 32, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #ffd700;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
+    margin-left: auto;
+}
+
+.gold-display .gold-icon {
+    font-size: 20px;
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.4));
+}
+
+.gold-display .gold-amount {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
 .topbar-controls {
     display: flex;
     align-items: center;
@@ -222,6 +262,9 @@ header, footer {
 
 /* house / bed marker */
 .drop-off-marker.house { font-size: 18px; transform: translateY(-1px); }
+
+/* workbench marker */
+.drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
     margin-top: 12px;
@@ -271,6 +314,24 @@ header, footer {
 }
 
 .resting-marker { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -50%); font-size: 18px; z-index: 4; }
+
+.striking-marker { 
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    line-height: 1;
+    z-index: 4;
+    opacity: 0.95;
+    pointer-events: none;
+    animation: strikeShake 0.5s ease-in-out infinite;
+}
+
+@keyframes strikeShake {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+    50% { transform: translate(-50%, -50%) rotate(5deg); }
+}
 
 /* unloading (one-tick) animation */
 .unloading-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; z-index: 5; pointer-events: none; }
@@ -390,11 +451,307 @@ header, footer {
 
 /* Warehouse modal stock list */
 .warehouse-stock-list { display:flex; flex-direction:column; gap:8px; }
-.warehouse-row { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); }
-.warehouse-name { font-weight:700; color:#e6eefc }
-.warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff }
+.warehouse-row { 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center; 
+    padding:8px 10px; 
+    background: rgba(255,255,255,0.02); 
+    border-radius:6px; 
+    border:1px solid rgba(255,255,255,0.02); 
+    gap: 12px;
+}
+.warehouse-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+.warehouse-name { font-weight:700; color:#e6eefc; font-size: 13px; }
+.warehouse-worth { 
+    font-size: 11px; 
+    color: #ffd700; 
+    opacity: 0.8;
+    margin-left: 6px;
+}
+.warehouse-count { background: rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-weight:700; color:#fff; font-size: 12px; }
+.warehouse-buttons {
+    display: flex;
+    gap: 6px;
+}
+.btn-sell, .btn-sell-all {
+    background: linear-gradient(180deg, #10b981, #059669);
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+.btn-sell:hover, .btn-sell-all:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #059669, #047857);
+}
+.btn-sell:active, .btn-sell-all:active {
+    transform: translateY(0);
+}
 
 /* Dwarf panel rows (when shown in materials panel) */
-.dwarf-row { display:flex; flex-direction:column; gap:2px; padding:8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); margin-bottom:4px; }
-.dwarf-name { font-weight:700; color:#e6eefc; font-size:14px; }
-.dwarf-info { font-size:12px; color:#9fbfe0; font-family: monospace; }
+#materials-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.dwarf-row { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 4px; 
+    padding: 8px; 
+    background: rgba(255,255,255,0.02); 
+    border-radius: 6px; 
+    border: 1px solid rgba(255,255,255,0.02); 
+    margin-bottom: 4px; 
+}
+
+.dwarf-name { 
+    font-weight: 700; 
+    color: #e6eefc; 
+    font-size: 14px; 
+}
+
+.dwarf-info-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dwarf-info { 
+    font-size: 12px; 
+    color: #9fbfe0; 
+    font-family: monospace; 
+    flex: 1;
+}
+
+.btn-levelup-small {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+/* Workbench table styles */
+.workbench-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.workbench-table th,
+.workbench-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.workbench-table th {
+    background: rgba(255,255,255,0.03);
+    font-weight: 700;
+    color: #dbeafe;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.workbench-table td {
+    color: #e6eefc;
+    font-size: 14px;
+}
+
+.workbench-table .tool-name {
+    font-weight: 600;
+}
+
+.workbench-table .tool-count,
+.workbench-table .tool-level {
+    text-align: center;
+    font-weight: 700;
+}
+
+.workbench-table .tool-power {
+    text-align: center;
+    color: #fbbf24;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.btn-upgrade {
+    background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+.btn-upgrade:hover:not(.disabled) {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #7c3aed, #6d28d9);
+}
+
+.btn-upgrade:active:not(.disabled) {
+    transform: translateY(0);
+}
+
+.btn-upgrade.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Level up modal */
+.levelup-options {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.levelup-option {
+    flex: 1;
+    min-width: 200px;
+    padding: 15px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.levelup-option h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+}
+
+.levelup-option p {
+    margin: 5px 0;
+}
+
+.levelup-stats {
+    font-weight: bold;
+    color: #4CAF50;
+    margin-top: 10px;
+}
+
+.btn-levelup {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #000;
+    font-weight: bold;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-levelup:hover {
+    background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 215, 0, 0.4);
+}
+
+/* Research modal styles */
+.active-research {
+    background: rgba(76, 175, 80, 0.1);
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.active-research h3 {
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #66BB6A 100%);
+    transition: width 0.3s ease;
+}
+
+.research-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.research-table th,
+.research-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.research-table th {
+    background: rgba(255,255,255,0.05);
+    font-weight: 600;
+}
+
+.research-table td small {
+    color: #9fbfe0;
+    font-size: 12px;
+}
+
+.btn-research {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-research:hover:not(.disabled):not(:disabled) {
+    background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+}
+
+.btn-research.active {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    cursor: not-allowed;
+}
+
+.btn-research.disabled,
+.btn-research:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Notification badge pulse animation */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.85;
+    }
+}

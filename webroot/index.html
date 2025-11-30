@@ -15,6 +15,10 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
+    <div id="gold-display" class="gold-display">
+        <span class="gold-icon">💰</span>
+        <span class="gold-amount">1000</span>
+    </div>
     <!-- Dwarfs overview modal -->
     <div id="dwarfs-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Dwarfs overview dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
@@ -83,18 +87,15 @@
         <div id="side-grids">
             <div id="drop-grid-panel" class="materials-panel" aria-live="polite">
             <h3>Functions</h3>
-            <table id="drop-grid" aria-label="Drop-off grid">
+            <table id="drop-grid" aria-label="Functions grid">
                 <tbody>
                     <tr>
                         <td class="cell" data-row="0" data-col="0"></td>
                         <td class="cell" data-row="0" data-col="1"></td>
                         <td class="cell" data-row="0" data-col="2"></td>
-                    </tr>
-                    <tr>
-                        <td class="cell" data-row="1" data-col="0"></td><td class="cell" data-row="1" data-col="1"></td><td class="cell" data-row="1" data-col="2"></td>
-                    </tr>
-                    <tr>
-                        <td class="cell" data-row="2" data-col="0"></td><td class="cell" data-row="2" data-col="1"></td><td class="cell" data-row="2" data-col="2"></td>
+                        <td class="cell" data-row="0" data-col="3"></td>
+                        <td class="cell" data-row="0" data-col="4"></td>
+                        <td class="cell" data-row="0" data-col="5"></td>
                     </tr>
                 </tbody>
             </table>
@@ -109,6 +110,66 @@
         </div>
         <!-- controls moved to header topbar -->
     </main>
+
+    <!-- Workbench modal -->
+    <div id="workbench-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Workbench dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>🔨 Workbench</h2>
+                <button class="modal-close" aria-label="Close workbench" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>Craft tools and upgrades for your dwarfs here!</p>
+                <div id="workbench-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Level Up modal -->
+    <div id="levelup-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Level Up dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>⭐ Level Up!</h2>
+                <button class="modal-close" aria-label="Close level up" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>Choose an upgrade for your dwarf!</p>
+                <div id="levelup-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Research modal -->
+    <div id="research-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Research dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>🔬 Research Lab</h2>
+                <button class="modal-close" aria-label="Close research" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>Research new technologies to improve your operation!</p>
+                <div id="research-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
 
     <!-- Settings modal -->
     <div id="settings-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Settings dialog">
