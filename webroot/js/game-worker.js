@@ -399,6 +399,7 @@ function actForDwarf(dwarf) {
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCell.hardness = Math.max(0, curCell.hardness - power);
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
@@ -461,6 +462,7 @@ function actForDwarf(dwarf) {
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;

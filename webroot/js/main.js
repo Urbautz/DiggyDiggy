@@ -535,7 +535,7 @@ function populateDwarfsOverview() {
     table.className = 'dwarfs-table';
 
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>Tool</th><th>Status</th><th>Energy</th></tr>';
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>XP</th><th>Tool</th><th>Status</th><th>Energy</th><th>Action</th></tr>';
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
@@ -545,6 +545,13 @@ function populateDwarfsOverview() {
         // create cells manually so bucket can render one resource per line
         const nameTd = document.createElement('td'); nameTd.textContent = d.name;
         const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
+        
+        // XP display with progress to next level
+        const xpTd = document.createElement('td');
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = 1000 * currentLevel;
+        xpTd.textContent = `${currentXP} / ${xpNeeded}`;
         
         // Find the tool assigned to this dwarf
         const toolTd = document.createElement('td');
@@ -561,12 +568,24 @@ function populateDwarfsOverview() {
         
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
         const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
+        
+        // Action column - show level up button if XP threshold reached
+        const actionTd = document.createElement('td');
+        if (currentXP >= xpNeeded) {
+            const levelUpBtn = document.createElement('button');
+            levelUpBtn.className = 'btn-levelup';
+            levelUpBtn.textContent = 'Level Up!';
+            levelUpBtn.onclick = () => openLevelUpModal(d);
+            actionTd.appendChild(levelUpBtn);
+        }
 
         tr.appendChild(nameTd);
         tr.appendChild(levelTd);
+        tr.appendChild(xpTd);
         tr.appendChild(toolTd);
         tr.appendChild(statusTd);
         tr.appendChild(energyTd);
+        tr.appendChild(actionTd);
         tbody.appendChild(tr);
     }
 
@@ -591,12 +610,33 @@ function populateDwarfsInPanel() {
         
         const info = document.createElement('div');
         info.className = 'dwarf-info';
-        info.textContent = `Lvl. ${d.level || 1}  •⚡${d.energy || 0} • ${d.status || 'idle'}`;
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = 1000 * currentLevel;
+        info.textContent = `Lvl. ${currentLevel} (${currentXP}/${xpNeeded} XP) •⚡${d.energy || 0} • ${d.status || 'idle'}`;
         
         row.appendChild(name);
         row.appendChild(info);
         list.appendChild(row);
     }
+}
+
+// Open level up modal for a dwarf
+function openLevelUpModal(dwarf) {
+    const modal = document.getElementById('levelup-modal');
+    if (!modal) {
+        console.error('Level up modal not found');
+        return;
+    }
+    
+    // Store the dwarf being leveled up
+    modal.dataset.dwarfName = dwarf.name;
+    
+    // Show modal
+    modal.setAttribute('aria-hidden', 'false');
+    modal.style.display = 'flex';
+    
+    // TODO: Populate level up options
 }
 
 // ---- live-update for the dwarfs panel/modal ----
