@@ -502,3 +502,74 @@ header, footer {
 .dwarf-row { display:flex; flex-direction:column; gap:2px; padding:8px; background: rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.02); margin-bottom:4px; }
 .dwarf-name { font-weight:700; color:#e6eefc; font-size:14px; }
 .dwarf-info { font-size:12px; color:#9fbfe0; font-family: monospace; }
+
+/* Workbench table styles */
+.workbench-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.workbench-table th,
+.workbench-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.workbench-table th {
+    background: rgba(255,255,255,0.03);
+    font-weight: 700;
+    color: #dbeafe;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.workbench-table td {
+    color: #e6eefc;
+    font-size: 14px;
+}
+
+.workbench-table .tool-name {
+    font-weight: 600;
+}
+
+.workbench-table .tool-count,
+.workbench-table .tool-level {
+    text-align: center;
+    font-weight: 700;
+}
+
+.workbench-table .tool-power {
+    text-align: center;
+    color: #fbbf24;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.btn-upgrade {
+    background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+.btn-upgrade:hover:not(.disabled) {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #7c3aed, #6d28d9);
+}
+
+.btn-upgrade:active:not(.disabled) {
+    transform: translateY(0);
+}
+
+.btn-upgrade.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

@@ -31,6 +31,26 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
+function getToolByType(toolType) {
+    return tools.find(t => t.name === toolType) || null;
+}
+
+function getToolPower(toolType, toolLevel = 1) {
+    const tool = getToolByType(toolType);
+    if (!tool) return 0.5;
+    
+    // Each level gives 10% bonus: power * (1 + (level - 1) * 0.1)
+    return tool.power * (1 + (toolLevel - 1) * 0.1);
+}
+
+function getToolUpgradeCost(toolType, toolLevel = 1) {
+    const tool = getToolByType(toolType);
+    if (!tool) return 0;
+    
+    // Cost doubles with each level
+    return tool.upgradecost * Math.pow(2, toolLevel - 1);
+}
+
 
 
 // Update the grid display in the UI (renders into #digging-grid tbody)
@@ -307,6 +327,124 @@ function updateGridDisplay() {
 
 function openWorkbench() {
     openModal('workbench-modal');
+    populateWorkbench();
+}
+
+function populateWorkbench() {
+    const container = document.getElementById('workbench-content');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const toolsTable = document.createElement('table');
+    toolsTable.className = 'workbench-table';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Tool</th><th>Level</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
+    toolsTable.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    // Show each individual tool in inventory
+    for (const toolInstance of toolsInventory) {
+        const tr = document.createElement('tr');
+        
+        const nameTd = document.createElement('td');
+        nameTd.textContent = `${toolInstance.type} #${toolInstance.id}`;
+        nameTd.className = 'tool-name';
+        
+        const levelTd = document.createElement('td');
+        levelTd.textContent = toolInstance.level;
+        levelTd.className = 'tool-level';
+        
+        const powerTd = document.createElement('td');
+        const power = getToolPower(toolInstance.type, toolInstance.level);
+        powerTd.textContent = power.toFixed(2);
+        powerTd.className = 'tool-power';
+        
+        const costTd = document.createElement('td');
+        const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
+        costTd.textContent = `${upgradeCost.toFixed(0)} 💰`;
+        costTd.className = 'tool-cost';
+        
+        const actionTd = document.createElement('td');
+        const upgradeBtn = document.createElement('button');
+        upgradeBtn.className = 'btn-upgrade';
+        upgradeBtn.textContent = `Upgrade`;
+        const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
+        upgradeBtn.title = `Upgrade to level ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
+        upgradeBtn.onclick = () => upgradeTool(toolInstance.id);
+        
+        if (gold < upgradeCost) {
+            upgradeBtn.disabled = true;
+            upgradeBtn.classList.add('disabled');
+        }
+        
+        actionTd.appendChild(upgradeBtn);
+        
+        tr.appendChild(nameTd);
+        tr.appendChild(levelTd);
+        tr.appendChild(powerTd);
+        tr.appendChild(costTd);
+        tr.appendChild(actionTd);
+        
+        tbody.appendChild(tr);
+    }
+    
+    if (tbody.children.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = 'No tools in inventory';
+        td.style.textAlign = 'center';
+        td.style.padding = '20px';
+        td.style.opacity = '0.6';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    }
+    
+    toolsTable.appendChild(tbody);
+    container.appendChild(toolsTable);
+}
+
+function upgradeTool(toolId) {
+    const toolInstance = toolsInventory.find(t => t.id === toolId);
+    if (!toolInstance) {
+        console.warn('Tool not found in inventory', toolId);
+        return;
+    }
+    
+    const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
+    
+    if (gold < upgradeCost) {
+        console.warn('Not enough gold to upgrade', toolInstance.type);
+        return;
+    }
+    
+    // Deduct gold and increase level
+    gold -= upgradeCost;
+    toolInstance.level += 1;
+    
+    // Update worker state
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gold: gold,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Update UI
+    updateGoldDisplay();
+    populateWorkbench();
+    
+    // Save game
+    saveGame();
+    
+    const newPower = getToolPower(toolInstance.type, toolInstance.level);
+    console.log(`Upgraded ${toolInstance.type} #${toolId} to level ${toolInstance.level} (power: ${newPower.toFixed(2)})`);
 }
 
 function openSettings() {
@@ -521,7 +659,8 @@ function sellMaterial(materialId, amount) {
             type: 'update-state',
             data: {
                 materialsStock: materialsStock,
-                gold: gold
+                gold: gold,
+                toolsInventory: toolsInventory
             }
         });
     }
@@ -841,6 +980,7 @@ function saveGame() {
             dwarfs: dwarfs,
             startX: startX,
             materialsStock: materialsStock,
+            toolsInventory: toolsInventory,
             gold: gold,
             timestamp: Date.now(),
             version: '1.0'
@@ -871,6 +1011,13 @@ function loadGame() {
         if (gameState.materialsStock) {
             for (const key in gameState.materialsStock) {
                 materialsStock[key] = gameState.materialsStock[key];
+            }
+        }
+        
+        // Restore tools inventory
+        if (gameState.toolsInventory) {
+            for (const key in gameState.toolsInventory) {
+                toolsInventory[key] = gameState.toolsInventory[key];
             }
         }
         

@@ -25,14 +25,24 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone Shovel', power: 0.4 },
-    { name: 'Bronce Shovel', power: 0.6 },
-    { name: 'Copper', power: 0.8 },
+    { name: 'Stone Shovel', power: 0.4, upgradecost: 200},
+    { name: 'Bronce Shovel', power: 0.6, upgradecost: 7500},
+    { name: 'Copper Shovel', power: 0.8, upgradecost: 25000},
 ]
+
+// Tools inventory - array of individual tool instances
+const toolsInventory = [
+    { id: 1, type: 'Stone Shovel', level: 1 },
+    { id: 2, type: 'Stone Shovel', level: 1 },
+    { id: 3, type: 'Stone Shovel', level: 1 },
+    { id: 4, type: 'Stone Shovel', level: 1 },
+    { id: 5, type: 'Stone Shovel', level: 1 },
+    { id: 6, type: 'Stone Shovel', level: 1 }
+];
 
 let dwarfs = [
     { name: "Diggingston", 
-      Tool: "Stone", 
+      shovelType: "Stone Shovel", 
       level: 1, xp: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
