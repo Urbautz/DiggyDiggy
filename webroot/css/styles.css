@@ -313,6 +313,24 @@ header, footer {
     letter-spacing: 0.4px;
 }
 
+.btn-sell-all-global {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+.btn-sell-all-global:hover {
+    background: linear-gradient(180deg, #dc2626, #b91c1c);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
 .resting-marker { position: absolute; right: 2px; top: 2px; font-size: 14px; z-index: 5; pointer-events: none; }
 
 .striking-marker { 
