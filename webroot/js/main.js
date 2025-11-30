@@ -521,7 +521,7 @@ function populateResearch() {
         } else {
             researchBtn.className = 'btn-research';
             researchBtn.textContent = 'Research';
-            researchBtn.onclick = () => startResearch(researchItem.id);
+            researchBtn.dataset.researchId = researchItem.id;
         }
         
         actionTd.appendChild(researchBtn);
@@ -661,7 +661,7 @@ function populateWorkbench() {
         upgradeBtn.textContent = `Upgrade`;
         const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
         upgradeBtn.title = `Upgrade to quality ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
-        upgradeBtn.onclick = () => upgradeTool(toolInstance.id);
+        upgradeBtn.dataset.toolId = toolInstance.id;
         
         if (gold < upgradeCost) {
             upgradeBtn.disabled = true;
@@ -862,7 +862,7 @@ function populateDwarfsOverview() {
             const levelUpBtn = document.createElement('button');
             levelUpBtn.className = 'btn-levelup';
             levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.onclick = () => openLevelUpModal(d);
+            levelUpBtn.dataset.dwarfName = d.name;
             actionTd.appendChild(levelUpBtn);
         }
 
@@ -912,7 +912,7 @@ function populateDwarfsInPanel() {
             const levelUpBtn = document.createElement('button');
             levelUpBtn.className = 'btn-levelup btn-levelup-small';
             levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.onclick = () => openLevelUpModal(d);
+            levelUpBtn.dataset.dwarfName = d.name;
             infoContainer.appendChild(levelUpBtn);
         }
         
@@ -972,7 +972,8 @@ function openLevelUpModal(dwarf) {
     const digPowerBtn = document.createElement('button');
     digPowerBtn.className = 'btn-primary';
     digPowerBtn.textContent = 'Choose Dig Power';
-    digPowerBtn.onclick = () => applyLevelUp(dwarf, 'digPower');
+    digPowerBtn.dataset.upgradeType = 'digPower';
+    digPowerBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         digPowerBtn.disabled = true;
         digPowerBtn.classList.add('disabled');
@@ -990,7 +991,8 @@ function openLevelUpModal(dwarf) {
     const energyBtn = document.createElement('button');
     energyBtn.className = 'btn-primary';
     energyBtn.textContent = 'Choose Max Energy';
-    energyBtn.onclick = () => applyLevelUp(dwarf, 'maxEnergy');
+    energyBtn.dataset.upgradeType = 'maxEnergy';
+    energyBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         energyBtn.disabled = true;
         energyBtn.classList.add('disabled');
@@ -1008,7 +1010,8 @@ function openLevelUpModal(dwarf) {
     const strengthBtn = document.createElement('button');
     strengthBtn.className = 'btn-primary';
     strengthBtn.textContent = 'Choose Strength';
-    strengthBtn.onclick = () => applyLevelUp(dwarf, 'strength');
+    strengthBtn.dataset.upgradeType = 'strength';
+    strengthBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         strengthBtn.disabled = true;
         strengthBtn.classList.add('disabled');
@@ -1026,7 +1029,8 @@ function openLevelUpModal(dwarf) {
     const wisdomBtn = document.createElement('button');
     wisdomBtn.className = 'btn-primary';
     wisdomBtn.textContent = 'Choose Wisdom';
-    wisdomBtn.onclick = () => applyLevelUp(dwarf, 'wisdom');
+    wisdomBtn.dataset.upgradeType = 'wisdom';
+    wisdomBtn.dataset.dwarfName = dwarf.name;
     if (!hasEnoughXP) {
         wisdomBtn.disabled = true;
         wisdomBtn.classList.add('disabled');
@@ -1058,7 +1062,8 @@ function openLevelUpModal(dwarf) {
         nextBtn.className = 'btn-primary';
         nextBtn.textContent = `Next: ${nextDwarf.name} →`;
         nextBtn.style.cssText = 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); padding: 10px 20px;';
-        nextBtn.onclick = () => openLevelUpModal(nextDwarf);
+        nextBtn.dataset.dwarfName = nextDwarf.name;
+        nextBtn.dataset.action = 'next-levelup';
         
         nextBtnContainer.appendChild(nextBtn);
         content.appendChild(nextBtnContainer);
@@ -1201,6 +1206,77 @@ document.addEventListener('click', (ev) => {
     if (materialId && !isNaN(sellAmount)) {
         console.log(`Sell button clicked: ${materialId} x${sellAmount}`);
         sellMaterial(materialId, sellAmount);
+    }
+});
+
+// Delegated event handler for upgrade buttons
+document.addEventListener('click', (ev) => {
+    const upgradeBtn = ev.target.closest('.btn-upgrade');
+    if (!upgradeBtn || upgradeBtn.disabled) return;
+    
+    const toolId = parseInt(upgradeBtn.dataset.toolId, 10);
+    if (!isNaN(toolId)) {
+        console.log(`Upgrade button clicked for tool ${toolId}`);
+        upgradeTool(toolId);
+    }
+});
+
+// Delegated event handler for research buttons
+document.addEventListener('click', (ev) => {
+    const researchBtn = ev.target.closest('.btn-research');
+    if (!researchBtn || researchBtn.disabled) return;
+    
+    const researchId = researchBtn.dataset.researchId;
+    if (researchId) {
+        console.log(`Research button clicked: ${researchId}`);
+        startResearch(researchId);
+    }
+});
+
+// Delegated event handler for level up buttons
+document.addEventListener('click', (ev) => {
+    const levelUpBtn = ev.target.closest('.btn-levelup');
+    if (!levelUpBtn) return;
+    
+    const dwarfName = levelUpBtn.dataset.dwarfName;
+    if (dwarfName) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Level up button clicked for ${dwarfName}`);
+            openLevelUpModal(dwarf);
+        }
+    }
+});
+
+// Delegated event handler for level up upgrade choices
+document.addEventListener('click', (ev) => {
+    const upgradeChoiceBtn = ev.target.closest('.btn-primary[data-upgrade-type]');
+    if (!upgradeChoiceBtn || upgradeChoiceBtn.disabled) return;
+    
+    const dwarfName = upgradeChoiceBtn.dataset.dwarfName;
+    const upgradeType = upgradeChoiceBtn.dataset.upgradeType;
+    
+    if (dwarfName && upgradeType) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Level up choice: ${dwarfName} -> ${upgradeType}`);
+            applyLevelUp(dwarf, upgradeType);
+        }
+    }
+});
+
+// Delegated event handler for next dwarf button in level up modal
+document.addEventListener('click', (ev) => {
+    const nextBtn = ev.target.closest('.btn-primary[data-action="next-levelup"]');
+    if (!nextBtn) return;
+    
+    const dwarfName = nextBtn.dataset.dwarfName;
+    if (dwarfName) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Next level up: ${dwarfName}`);
+            openLevelUpModal(dwarf);
+        }
     }
 });
 
