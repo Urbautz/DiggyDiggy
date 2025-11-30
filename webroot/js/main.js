@@ -300,6 +300,16 @@ function updateGridDisplay() {
                         cell.appendChild(sleep);
                     }
 
+                    // show researching marker when dwarf is researching here
+                    const researchersHere = dwarfsHere.filter(d => d.status === 'researching');
+                    if (researchersHere.length > 0) {
+                        const researchMarker = document.createElement('span');
+                        researchMarker.className = 'researching-marker';
+                        researchMarker.textContent = '📚';
+                        researchMarker.title = 'Researching';
+                        cell.appendChild(researchMarker);
+                    }
+
                     // show strike marker when dwarf is striking here
                     const strikersHere = dwarfsHere.filter(d => d.status === 'striking');
                     if (strikersHere.length > 0) {
@@ -342,8 +352,186 @@ function openWorkbench() {
 }
 
 function openResearch() {
-    console.log('Research lab clicked - functionality to be implemented');
-    // TODO: Open research modal
+    openModal('research-modal');
+    populateResearch();
+}
+
+function populateResearch() {
+    const container = document.getElementById('research-content');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // Show active research if any
+    if (activeResearch) {
+        const activeDiv = document.createElement('div');
+        activeDiv.className = 'active-research';
+        const progress = activeResearch.progress || 0;
+        const progressPercent = Math.floor((progress / activeResearch.cost) * 100);
+        activeDiv.innerHTML = `
+            <h3>🔬 Currently Researching</h3>
+            <p><strong>${activeResearch.name}</strong></p>
+            <p>${activeResearch.description}</p>
+            <p>Progress: ${progress} / ${activeResearch.cost} (${progressPercent}%)</p>
+            <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+        `;
+        
+        // Add cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-cancel-research';
+        cancelBtn.textContent = '✖ Cancel Research';
+        cancelBtn.style.cssText = 'margin-top: 10px; width: 100%; padding: 8px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;';
+        cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
+        cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
+        cancelBtn.onclick = () => {
+            if (confirm(`Cancel research on ${activeResearch.name}? Progress will be lost.`)) {
+                cancelResearch();
+            }
+        };
+        activeDiv.appendChild(cancelBtn);
+        
+        container.appendChild(activeDiv);
+    }
+    
+    const researchTable = document.createElement('table');
+    researchTable.className = 'research-table';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Research</th><th>Level</th><th>Cost</th><th>Action</th></tr>';
+    researchTable.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    // Show all researchable items
+    for (const researchItem of researchtree) {
+        const currentLevel = researchItem.level || 0;
+        const maxLevel = researchItem.maxlevel || Infinity;
+        
+        // Skip if max level reached
+        if (currentLevel >= maxLevel) continue;
+        
+        const tr = document.createElement('tr');
+        
+        const nameTd = document.createElement('td');
+        const nameDiv = document.createElement('div');
+        nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
+        nameTd.appendChild(nameDiv);
+        
+        const levelTd = document.createElement('td');
+        levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
+        
+        const costTd = document.createElement('td');
+        costTd.textContent = `${researchItem.cost} 🔬`;
+        costTd.title = 'Research points required';
+        
+        const actionTd = document.createElement('td');
+        const researchBtn = document.createElement('button');
+        
+        // Check if this research is already active
+        const isActive = activeResearch && activeResearch.id === researchItem.id;
+        
+        if (isActive) {
+            researchBtn.className = 'btn-research active';
+            researchBtn.textContent = 'Active';
+            researchBtn.disabled = true;
+        } else if (activeResearch) {
+            // Another research is active
+            researchBtn.className = 'btn-research disabled';
+            researchBtn.textContent = 'Research';
+            researchBtn.disabled = true;
+            researchBtn.title = 'Another research is in progress';
+        } else {
+            researchBtn.className = 'btn-research';
+            researchBtn.textContent = 'Research';
+            researchBtn.onclick = () => startResearch(researchItem.id);
+        }
+        
+        actionTd.appendChild(researchBtn);
+        
+        tr.appendChild(nameTd);
+        tr.appendChild(levelTd);
+        tr.appendChild(costTd);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    }
+    
+    researchTable.appendChild(tbody);
+    container.appendChild(researchTable);
+}
+
+function startResearch(researchId) {
+    const researchItem = researchtree.find(r => r.id === researchId);
+    if (!researchItem) {
+        console.error('Research not found:', researchId);
+        return;
+    }
+    
+    // Check if another research is active
+    if (activeResearch) {
+        console.error('Another research is already active');
+        return;
+    }
+    
+    // Initialize progress if not set
+    if (researchItem.progress === undefined) {
+        researchItem.progress = 0;
+    }
+    
+    // Set as active
+    activeResearch = researchItem;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                activeResearch: activeResearch,
+                researchtree: researchtree
+            }
+        });
+    }
+    
+    // Update displays
+    populateResearch();
+    saveGame();
+    
+    console.log(`Started researching: ${researchItem.name}`);
+}
+
+function cancelResearch() {
+    if (!activeResearch) {
+        console.warn('No active research to cancel');
+        return;
+    }
+    
+    const researchName = activeResearch.name;
+    
+    // Clear active research
+    activeResearch = null;
+    
+    // Make all researching dwarfs idle
+    for (const dwarf of dwarfs) {
+        if (dwarf.status === 'researching') {
+            dwarf.status = 'idle';
+        }
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                activeResearch: null,
+                dwarfs: dwarfs
+            }
+        });
+    }
+    
+    // Update displays
+    populateResearch();
+    saveGame();
+    
+    console.log(`Cancelled research: ${researchName}`);
 }
 
 function populateWorkbench() {
@@ -749,9 +937,28 @@ function openLevelUpModal(dwarf) {
     }
     strengthOption.appendChild(strengthBtn);
     
+    // Option 4: Wisdom
+    const wisdomOption = document.createElement('div');
+    wisdomOption.className = 'levelup-option';
+    wisdomOption.innerHTML = `
+        <h4>🧠 Wisdom</h4>
+        <p>Increases research speed by +1 per tick</p>
+        <p class="levelup-stats">Current: +${1 + (dwarf.wisdom || 0)}/tick → New: +${1 + (dwarf.wisdom || 0) + 1}/tick</p>
+    `;
+    const wisdomBtn = document.createElement('button');
+    wisdomBtn.className = 'btn-primary';
+    wisdomBtn.textContent = 'Choose Wisdom';
+    wisdomBtn.onclick = () => applyLevelUp(dwarf, 'wisdom');
+    if (!hasEnoughXP) {
+        wisdomBtn.disabled = true;
+        wisdomBtn.classList.add('disabled');
+    }
+    wisdomOption.appendChild(wisdomBtn);
+    
     optionsDiv.appendChild(digPowerOption);
     optionsDiv.appendChild(energyOption);
     optionsDiv.appendChild(strengthOption);
+    optionsDiv.appendChild(wisdomOption);
     content.appendChild(optionsDiv);
     
     // Show modal
@@ -790,6 +997,9 @@ function applyLevelUp(dwarf, upgradeType) {
             break;
         case 'strength':
             actualDwarf.strength = (actualDwarf.strength || 0) + 1;
+            break;
+        case 'wisdom':
+            actualDwarf.wisdom = (actualDwarf.wisdom || 0) + 1;
             break;
     }
     
@@ -1147,6 +1357,14 @@ function initWorker() {
                     toolsInventory.push(...data.toolsInventory);
                 }
                 
+                // Update research state from worker
+                if (data.activeResearch !== undefined) {
+                    activeResearch = data.activeResearch;
+                }
+                if (data.researchtree) {
+                    researchtree = data.researchtree;
+                }
+                
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -1183,9 +1401,12 @@ function initWorker() {
             bucketCapacity,
             dropOff,
             house,
+            research,
             dropGridStartX,
             gold,
-            toolsInventory
+            toolsInventory,
+            activeResearch,
+            researchtree
         }
     });
 }
@@ -1221,6 +1442,8 @@ function saveGame() {
             materialsStock: materialsStock,
             toolsInventory: toolsInventory,
             gold: gold,
+            researchtree: researchtree,
+            activeResearch: activeResearch,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -1265,6 +1488,16 @@ function loadGame() {
             for (const key in gameState.toolsInventory) {
                 toolsInventory[key] = gameState.toolsInventory[key];
             }
+        }
+        
+        // Restore research tree
+        if (gameState.researchtree) {
+            researchtree = gameState.researchtree;
+        }
+        
+        // Restore active research
+        if (gameState.activeResearch) {
+            activeResearch = gameState.activeResearch;
         }
         
         console.log('Game loaded from', new Date(gameState.timestamp));

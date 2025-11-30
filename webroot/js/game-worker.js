@@ -14,9 +14,12 @@ let materialsStock = {};
 let bucketCapacity = 4;
 let dropOff = null;
 let house = null;
+let research = null;
 let dropGridStartX = 10;
 let gold = 1000;
 let toolsInventory = [];
+let activeResearch = null;
+let researchtree = [];
 
 // Reservation maps (coordinate -> dwarf who reserved the cell)
 const reservedDigBy = new Map();
@@ -287,6 +290,57 @@ function actForDwarf(dwarf) {
         return;
     }
 
+    // Researching state
+    if (dwarf.status === 'researching') {
+        // Check if at research location
+        if (typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y) {
+            // Check if there's an active research
+            if (!activeResearch) {
+                dwarf.status = 'idle';
+                return;
+            }
+            
+            // Check if dwarf has enough energy
+            if (dwarf.energy < 10) {
+                dwarf.status = 'idle';
+                return;
+            }
+            
+            // Consume energy and generate research point
+            dwarf.energy = Math.max(0, dwarf.energy - 10);
+            if (activeResearch.progress === undefined) {
+                activeResearch.progress = 0;
+            }
+            // Base 1 point + wisdom bonus
+            const researchPoints = 1 + (dwarf.wisdom || 0);
+            activeResearch.progress += researchPoints;
+            //console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
+            
+            // Check if research is complete
+            if (activeResearch.progress >= activeResearch.cost) {
+                const completedResearch = activeResearch;
+                completedResearch.level = (completedResearch.level || 0) + 1;
+                completedResearch.progress = 0;
+                
+                // Find and update in researchtree
+                const treeItem = researchtree.find(r => r.id === completedResearch.id);
+                if (treeItem) {
+                    treeItem.level = completedResearch.level;
+                    treeItem.progress = 0;
+                }
+                
+                // Clear active research
+                activeResearch = null;
+                dwarf.status = 'idle';
+                console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
+            }
+            return;
+        } else {
+            // Not at research location, become idle
+            dwarf.status = 'idle';
+        }
+    }
+
     // Striking state - dwarf refuses to work without pay
     if (dwarf.status === 'striking') {
         // Check if there's gold available now
@@ -343,6 +397,11 @@ function actForDwarf(dwarf) {
                             if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
+                            } else if (activeResearch && Math.random() < 0.8 && typeof research === 'object' && research !== null) {
+                                // 80% chance to go research instead of digging
+                                scheduleMove(dwarf, research.x, research.y);
+                                dwarf.status = 'moving';
+                                //console.log(`Dwarf ${dwarf.name} heading to research lab`);
                             } else {
                                 scheduleMove(dwarf, chosen, rowIdx);
                                 //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
@@ -381,13 +440,23 @@ function actForDwarf(dwarf) {
     const power = getDwarfToolPower(dwarf);
 
     const row = grid[rowIndex];
+    
+    // Check if dwarf is at research location BEFORE accessing grid cells (research is outside main grid)
+    if (dwarf.status === 'idle' && typeof research === 'object' && research !== null && 
+        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= 10) {
+        dwarf.status = 'researching';
+        console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
+        return;
+    }
+    
     const curCell = row[originalX];
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
-    // Idle dwarf on cell with hardness - start digging
-    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0) {
+    // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
+    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 && 
+        !(activeResearch && typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y)) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf) {
             // Check if we can afford to pay the dwarf
@@ -661,6 +730,8 @@ function tick() {
                 materialsStock,
                 gold,
                 toolsInventory,
+                activeResearch,
+                researchtree,
                 shifted
             }
         });
@@ -692,9 +763,12 @@ self.addEventListener('message', (e) => {
             bucketCapacity = data.bucketCapacity;
             dropOff = data.dropOff;
             house = data.house;
+            research = data.research;
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
             toolsInventory = data.toolsInventory || [];
+            activeResearch = data.activeResearch || null;
+            researchtree = data.researchtree || [];
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -712,6 +786,8 @@ self.addEventListener('message', (e) => {
             if (data.materialsStock) materialsStock = data.materialsStock;
             if (data.gold !== undefined) gold = data.gold;
             if (data.toolsInventory) toolsInventory = data.toolsInventory;
+            if (data.activeResearch !== undefined) activeResearch = data.activeResearch;
+            if (data.researchtree) researchtree = data.researchtree;
             break;
             
         default:

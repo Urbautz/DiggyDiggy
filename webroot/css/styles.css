@@ -663,3 +663,83 @@ header, footer {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(255, 215, 0, 0.4);
 }
+
+/* Research modal styles */
+.active-research {
+    background: rgba(76, 175, 80, 0.1);
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.active-research h3 {
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #66BB6A 100%);
+    transition: width 0.3s ease;
+}
+
+.research-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.research-table th,
+.research-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.research-table th {
+    background: rgba(255,255,255,0.05);
+    font-weight: 600;
+}
+
+.research-table td small {
+    color: #9fbfe0;
+    font-size: 12px;
+}
+
+.btn-research {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-research:hover:not(.disabled):not(:disabled) {
+    background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+}
+
+.btn-research.active {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    cursor: not-allowed;
+}
+
+.btn-research.disabled,
+.btn-research:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
