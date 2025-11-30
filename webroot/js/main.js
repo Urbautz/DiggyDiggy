@@ -143,6 +143,7 @@ function updateGridDisplay() {
                 // show drop-off marker (global drop-off location) if this cell matches
                     if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
                         cell.classList.add('drop-off');
+                        cell.dataset.clickAction = 'focus-materials';
                         const box = document.createElement('span');
                         // warehouse icon
                         box.className = 'drop-off-marker warehouse';
@@ -150,7 +151,6 @@ function updateGridDisplay() {
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
             } else {
                 // color indicates material; title shows name + rounded-up hardness
@@ -249,19 +249,19 @@ function updateGridDisplay() {
                     // show drop-off marker if this is the configured dropOff
                     if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
                         cell.classList.add('drop-off');
+                        cell.dataset.clickAction = 'focus-materials';
                         const box = document.createElement('span');
                         box.className = 'drop-off-marker warehouse';
                         box.textContent = '🏭';
                         box.title = 'Warehouse (drop-off)';
                         cell.appendChild(box);
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); focusMaterialsPanel(); });
                     }
 
                     // show house / bed icon if this is the house cell
                     if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openDwarfs(); });
+                        cell.dataset.clickAction = 'open-dwarfs';
                         
                         // Create container for icon and badge with absolute positioning
                         const iconContainer = document.createElement('span');
@@ -298,7 +298,7 @@ function updateGridDisplay() {
                     // show workbench icon if this is the workbench cell
                     if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openWorkbench(); });
+                        cell.dataset.clickAction = 'open-workbench';
                         
                         // Create container for icon and badge with absolute positioning
                         const iconContainer = document.createElement('span');
@@ -333,7 +333,7 @@ function updateGridDisplay() {
                     // show research icon if this is the research cell
                     if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.addEventListener('click', (ev) => { ev.stopPropagation(); openResearch(); });
+                        cell.dataset.clickAction = 'open-research';
                         
                         // Add research icon
                         const researchIcon = document.createElement('span');
@@ -1123,17 +1123,19 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Refresh dwarf display and modal content
+    // Close the modal after successful level up
+    closeModal('levelup-modal');
+    
+    // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
     
-    // Refresh the level up modal to show updated stats
-    openLevelUpModal(actualDwarf);
+    console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
 let _dwarfsModalRefreshId = null;
-function startDwarfsLiveUpdate(intervalMs = 350) {
+function startDwarfsLiveUpdate(intervalMs = 1000) {
     if (_dwarfsModalRefreshId) return;
     // Refresh immediately and then on an interval while view is active
     _dwarfsModalRefreshId = setInterval(() => {
@@ -1160,6 +1162,30 @@ document.addEventListener('click', (ev) => {
     if (!el) return;
     if (el.dataset && el.dataset.action === 'close-modal') {
         closeModal();
+    }
+});
+
+// Delegated event handler for grid cell clicks (prevents adding listeners on every render)
+document.addEventListener('click', (ev) => {
+    const cell = ev.target.closest('td.cell[data-click-action]');
+    if (!cell) return;
+    
+    const action = cell.dataset.clickAction;
+    ev.stopPropagation();
+    
+    switch(action) {
+        case 'focus-materials':
+            focusMaterialsPanel();
+            break;
+        case 'open-dwarfs':
+            openDwarfs();
+            break;
+        case 'open-workbench':
+            openWorkbench();
+            break;
+        case 'open-research':
+            openResearch();
+            break;
     }
 });
 
