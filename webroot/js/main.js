@@ -411,7 +411,8 @@ function updateGridDisplay() {
             }
         }
 
-        updateMaterialsPanel();
+        // Don't call updateMaterialsPanel here - it recreates buttons too frequently
+        // Only update it when materials actually change (in sellMaterial function)
         updateStockDisplay();
         updateGoldDisplay();
         refreshTooltipAfterRedraw();
@@ -1189,6 +1190,20 @@ document.addEventListener('click', (ev) => {
     }
 });
 
+// Delegated event handler for sell buttons
+document.addEventListener('click', (ev) => {
+    const sellBtn = ev.target.closest('.btn-sell, .btn-sell-all');
+    if (!sellBtn) return;
+    
+    const materialId = sellBtn.dataset.materialId;
+    const sellAmount = parseInt(sellBtn.dataset.sellAmount, 10);
+    
+    if (materialId && !isNaN(sellAmount)) {
+        console.log(`Sell button clicked: ${materialId} x${sellAmount}`);
+        sellMaterial(materialId, sellAmount);
+    }
+});
+
 function initUI() {
     createGrid(10); // Initialize the grid with 10 rows
 }
@@ -1248,8 +1263,8 @@ function sellMaterial(materialId, amount) {
     }
     
     // Update UI
-    updateMaterialsPanel();
     updateGoldDisplay();
+    updateMaterialsPanel(); // Refresh warehouse panel after selling
     
     // Save game
     saveGame();
@@ -1306,19 +1321,15 @@ function updateMaterialsPanel() {
         sell1Btn.className = 'btn-sell';
         sell1Btn.textContent = 'Sell 1';
         sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
-        sell1Btn.onclick = () => {
-            console.log('Sell 1 button clicked for', id);
-            sellMaterial(id, 1);
-        };
+        sell1Btn.dataset.materialId = id;
+        sell1Btn.dataset.sellAmount = '1';
         
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
         sellAllBtn.textContent = 'Sell All';
         sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
-        sellAllBtn.onclick = () => {
-            console.log('Sell All button clicked for', id);
-            sellMaterial(id, count);
-        };
+        sellAllBtn.dataset.materialId = id;
+        sellAllBtn.dataset.sellAmount = count.toString();
         
         buttons.appendChild(sell1Btn);
         buttons.appendChild(sellAllBtn);
@@ -1686,6 +1697,7 @@ function initGame() {
     
     updateGridDisplay();
     updateGoldDisplay();
+    updateMaterialsPanel(); // Initialize materials panel on load
 }
 
 // Start the game
