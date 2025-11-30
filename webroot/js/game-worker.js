@@ -15,6 +15,7 @@ let bucketCapacity = 4;
 let dropOff = null;
 let house = null;
 let dropGridStartX = 10;
+let gold = 1000;
 
 // Reservation maps (coordinate -> dwarf who reserved the cell)
 const reservedDigBy = new Map();
@@ -269,6 +270,16 @@ function actForDwarf(dwarf) {
         return;
     }
 
+    // Striking state - dwarf refuses to work without pay
+    if (dwarf.status === 'striking') {
+        // Check if there's gold available now
+        if (gold >= 0.01) {
+            // Gold available, go back to idle and resume work
+            dwarf.status = 'idle';
+        }
+        return;
+    }
+
     // Full bucket handling
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
     if (typeof bucketCapacity === 'number' && bucketTotal >= bucketCapacity) {
@@ -362,10 +373,19 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'idle' && curCell && curCell.hardness > 0) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf) {
+            // Check if we can afford to pay the dwarf
+            if (gold < 0.01) {
+                // Not enough gold - only 10% chance to dig (striking)
+                if (Math.random() > 0.1) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
             reservedDigBy.set(curKey, dwarf);
             dwarf.status = 'digging';
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
             curCell.hardness = Math.max(0, curCell.hardness - power);
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
@@ -417,8 +437,17 @@ function actForDwarf(dwarf) {
         if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf);
         const curCellDig = grid[dwarf.y][dwarf.x];
         if (curCellDig && curCellDig.hardness > 0) {
+            // Check if we can afford to pay the dwarf
+            if (gold < 0.01) {
+                // Not enough gold - only 10% chance to dig (striking)
+                if (Math.random() > 0.1) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
             curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;
@@ -568,8 +597,17 @@ function actForDwarf(dwarf) {
     const prev = target.hardness;
     const targetKey = coordKey(foundCol, targetRowIndex);
     if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
+    // Check if we can afford to pay the dwarf
+    if (gold < 0.01) {
+        // Not enough gold - only 10% chance to dig (striking)
+        if (Math.random() > 0.1) {
+            dwarf.status = 'striking';
+            return;
+        }
+    }
     target.hardness = Math.max(0, target.hardness - power);
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+    gold = Math.max(0, gold - 0.01); // Deduct payment for digging
     if (target.hardness === 0) {
         const matId = target.materialId;
         if (Math.random() < 0.5) {
@@ -602,6 +640,7 @@ function tick() {
                 dwarfs,
                 startX,
                 materialsStock,
+                gold,
                 shifted
             }
         });
@@ -634,6 +673,7 @@ self.addEventListener('message', (e) => {
             dropOff = data.dropOff;
             house = data.house;
             dropGridStartX = data.dropGridStartX;
+            gold = data.gold !== undefined ? data.gold : 1000;
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -649,6 +689,7 @@ self.addEventListener('message', (e) => {
             if (data.dwarfs) dwarfs = data.dwarfs;
             if (data.startX !== undefined) startX = data.startX;
             if (data.materialsStock) materialsStock = data.materialsStock;
+            if (data.gold !== undefined) gold = data.gold;
             break;
             
         default:

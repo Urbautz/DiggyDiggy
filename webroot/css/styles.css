@@ -104,6 +104,20 @@ main {
     pointer-events: none;
 }
 
+/* striking marker for main digging grid */
+#digging-grid .cell .striking-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    line-height: 1;
+    z-index: 5;
+    opacity: 0.95;
+    pointer-events: none;
+    animation: strikeShake 0.5s ease-in-out infinite;
+}
+
 /* digging animation styles */
 #digging-grid .cell.is-digging {
     animation: digGlow 1s linear infinite;
@@ -194,6 +208,32 @@ header, footer {
     letter-spacing: 0.4px;
 }
 
+.gold-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(218, 165, 32, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #ffd700;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
+    margin-left: auto;
+}
+
+.gold-display .gold-icon {
+    font-size: 20px;
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.4));
+}
+
+.gold-display .gold-amount {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
 .topbar-controls {
     display: flex;
     align-items: center;
@@ -271,6 +311,24 @@ header, footer {
 }
 
 .resting-marker { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -50%); font-size: 18px; z-index: 4; }
+
+.striking-marker { 
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    line-height: 1;
+    z-index: 4;
+    opacity: 0.95;
+    pointer-events: none;
+    animation: strikeShake 0.5s ease-in-out infinite;
+}
+
+@keyframes strikeShake {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+    50% { transform: translate(-50%, -50%) rotate(5deg); }
+}
 
 /* unloading (one-tick) animation */
 .unloading-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; z-index: 5; pointer-events: none; }

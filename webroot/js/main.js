@@ -110,6 +110,16 @@ function updateGridDisplay() {
                     cell.appendChild(mover);
                 }
 
+                // show strike marker when dwarf is striking here
+                const strikersHere = dwarfsHere.filter(d => d.status === 'striking');
+                if (strikersHere.length > 0) {
+                    const strike = document.createElement('span');
+                    strike.className = 'striking-marker';
+                    strike.textContent = '🪧';
+                    strike.title = 'On strike - not enough gold!';
+                    cell.appendChild(strike);
+                }
+
                 // show drop-off marker (global drop-off location) if this cell matches
                     if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === c && dropOff.y === r) {
                         cell.classList.add('drop-off');
@@ -153,6 +163,16 @@ function updateGridDisplay() {
                     mover.className = 'moving-marker';
                     mover.textContent = '🏃';
                     cell.appendChild(mover);
+                }
+
+                // show strike marker when dwarf is striking here
+                const strikersHere = dwarfsHere.filter(d => d.status === 'striking');
+                if (strikersHere.length > 0) {
+                    const strike = document.createElement('span');
+                    strike.className = 'striking-marker';
+                    strike.textContent = '🪧';
+                    strike.title = 'On strike - not enough gold!';
+                    cell.appendChild(strike);
                 }
             }
 
@@ -238,6 +258,16 @@ function updateGridDisplay() {
                         cell.appendChild(sleep);
                     }
 
+                    // show strike marker when dwarf is striking here
+                    const strikersHere = dwarfsHere.filter(d => d.status === 'striking');
+                    if (strikersHere.length > 0) {
+                        const strike = document.createElement('span');
+                        strike.className = 'striking-marker';
+                        strike.textContent = '🪧';
+                        strike.title = 'On strike - not enough gold!';
+                        cell.appendChild(strike);
+                    }
+
                     // Show unloading animation when dwarf is unloading here
                     const unloadersHere = dwarfsHere.filter(d => d.status === 'unloading');
                     if (unloadersHere.length > 0) {
@@ -258,6 +288,7 @@ function updateGridDisplay() {
 
         updateMaterialsPanel();
         updateStockDisplay();
+        updateGoldDisplay();
         refreshTooltipAfterRedraw();
 }
 
@@ -440,6 +471,13 @@ function updateStockDisplay() {
     // stock has moved into the inline panel — keep the header pill area empty
     container.innerHTML = '';
     container.style.display = 'none';
+}
+
+function updateGoldDisplay() {
+    const goldAmount = document.querySelector('#gold-display .gold-amount');
+    if (goldAmount && typeof gold === 'number') {
+        goldAmount.textContent = gold.toFixed(2);
+    }
 }
 
 function updateMaterialsPanel() {
@@ -628,6 +666,11 @@ function initWorker() {
                     materialsStock[key] = data.materialsStock[key];
                 }
                 
+                // Update gold
+                if (data.gold !== undefined) {
+                    gold = data.gold;
+                }
+                
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -664,7 +707,8 @@ function initWorker() {
             bucketCapacity,
             dropOff,
             house,
-            dropGridStartX
+            dropGridStartX,
+            gold
         }
     });
 }
@@ -698,6 +742,7 @@ function saveGame() {
             dwarfs: dwarfs,
             startX: startX,
             materialsStock: materialsStock,
+            gold: gold,
             timestamp: Date.now(),
             version: '1.0'
         };
@@ -721,6 +766,7 @@ function loadGame() {
         grid = gameState.grid || [];
         dwarfs = gameState.dwarfs || [];
         startX = gameState.startX || 0;
+        gold = gameState.gold !== undefined ? gameState.gold : 1000;
         
         // Restore materials stock
         if (gameState.materialsStock) {
@@ -768,6 +814,7 @@ function initGame() {
     }
     
     updateGridDisplay();
+    updateGoldDisplay();
 }
 
 // Start the game

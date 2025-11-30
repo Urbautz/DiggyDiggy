@@ -62,6 +62,7 @@ let dwarfs = [
     
 let grid = [];
 let startX = 0;
+let gold = 1;
 
 // Global stockpile for collected materials (dwarfs must deliver to drop-off to increase these)
 const materialsStock = {};
