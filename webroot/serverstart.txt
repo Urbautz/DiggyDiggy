@@ -1,8 +1,1 @@
 $listener = New-Object System.Net.HttpListener; $listener.Prefixes.Add("http://localhost:8000/"); $listener.Start(); Write-Host "Server running at http://localhost:8000 - Press Ctrl+C to stop" -ForegroundColor Green; Start-Process "http://localhost:8000"; while ($listener.IsListening) { $context = $listener.GetContext(); $request = $context.Request; $response = $context.Response; $path = $request.Url.LocalPath; if ($path -eq "/") { $path = "/index.html" }; $filePath = Join-Path (Get-Location) $path.TrimStart('/'); if (Test-Path $filePath) { $content = [System.IO.File]::ReadAllBytes($filePath); $ext = [System.IO.Path]::GetExtension($filePath); $contentType = switch ($ext) { ".html" { "text/html" }; ".css" { "text/css" }; ".js" { "application/javascript" }; default { "application/octet-stream" } }; $response.ContentType = $contentType; $response.ContentLength64 = $content.Length; $response.OutputStream.Write($content, 0, $content.Length) } else { $response.StatusCode = 404 }; $response.Close() }
-
-Cheatmode (+50% der aktuellen tiefe, +500 Gold pro ebene , +1000xp pro level )
-Research is stopping
-Smelter (Kohle + Ore = fertiges material)
-Upgrade für tools
-Weitere materialien "Rachellium", "Sammimant" bis "Urbautzium"
-Zweitstuifges Smelten
