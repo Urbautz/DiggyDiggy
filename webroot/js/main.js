@@ -737,27 +737,12 @@ function upgradeTool(toolId) {
 }
 
 function openSettings() {
-    // Open the settings modal (game will pause automatically)
     openModal('settings-modal');
 }
 
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
-    
-    // Store whether game was paused before opening modal
-    modal.dataset.wasGamePaused = gamePaused.toString();
-    
-    // Pause the game when opening any modal
-    if (!gamePaused) {
-        gamePaused = true;
-        const btn = document.getElementById('pause-button');
-        if (btn) {
-            btn.textContent = '▶️';
-            btn.title = 'Resume game';
-        }
-        console.log('Game paused (modal opened)');
-    }
     
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
@@ -768,18 +753,6 @@ function closeModal(modalName) {
     if (modalName) {
         const m = document.getElementById(modalName);
         if (m) {
-            // Resume game if it wasn't paused before modal opened
-            const wasGamePaused = m.dataset.wasGamePaused === 'true';
-            if (!wasGamePaused && gamePaused) {
-                gamePaused = false;
-                const btn = document.getElementById('pause-button');
-                if (btn) {
-                    btn.textContent = '⏸️';
-                    btn.title = 'Pause game';
-                }
-                console.log('Game resumed (modal closed)');
-            }
-            
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
@@ -790,18 +763,6 @@ function closeModal(modalName) {
     // close any open modal
     document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
         const id = m.id;
-        
-        // Resume game if it wasn't paused before modal opened
-        const wasGamePaused = m.dataset.wasGamePaused === 'true';
-        if (!wasGamePaused && gamePaused) {
-            gamePaused = false;
-            const btn = document.getElementById('pause-button');
-            if (btn) {
-                btn.textContent = '⏸️';
-                btn.title = 'Pause game';
-            }
-            console.log('Game resumed (modal closed)');
-        }
         
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
@@ -825,6 +786,10 @@ function openDwarfs() {
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Dwarfs';
     
+    // Set grid layout for dwarfs
+    const list = document.getElementById('materials-list');
+    if (list) list.setAttribute('data-view', 'dwarfs');
+    
     // Populate dwarfs content in the materials-list container
     populateDwarfsInPanel();
     startDwarfsLiveUpdate();
@@ -846,6 +811,10 @@ function showWarehousePanel() {
     // Update header
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
+    
+    // Remove grid layout for warehouse
+    const list = document.getElementById('materials-list');
+    if (list) list.removeAttribute('data-view');
     
     // Show warehouse content
     stopDwarfsLiveUpdate();
@@ -926,43 +895,84 @@ function populateDwarfsInPanel() {
     if (!list) return;
     list.innerHTML = '';
     
-    // Create a compact list of dwarfs
-    for (const d of dwarfs) {
+    // Sort dwarfs: those who can level up first, then by name
+    const sortedDwarfs = [...dwarfs].sort((a, b) => {
+        const aXP = a.xp || 0;
+        const aLevel = a.level || 1;
+        const aNeeded = 250 * aLevel;
+        const aCanLevelUp = aXP >= aNeeded;
+        
+        const bXP = b.xp || 0;
+        const bLevel = b.level || 1;
+        const bNeeded = 250 * bLevel;
+        const bCanLevelUp = bXP >= bNeeded;
+        
+        if (aCanLevelUp !== bCanLevelUp) {
+            return bCanLevelUp ? 1 : -1; // Can level up first
+        }
+        return a.name.localeCompare(b.name);
+    });
+    
+    // Create a compact list of dwarfs in two columns
+    for (const d of sortedDwarfs) {
         const row = document.createElement('div');
         row.className = 'dwarf-row';
+        
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = 250 * currentLevel;
+        const canLevelUp = currentXP >= xpNeeded;
+        
+        if (canLevelUp) {
+            row.classList.add('can-level-up');
+        }
+        
+        // Header with name and level up button
+        const header = document.createElement('div');
+        header.className = 'dwarf-header';
         
         const name = document.createElement('div');
         name.className = 'dwarf-name';
         name.textContent = d.name;
+        header.appendChild(name);
         
-        const infoContainer = document.createElement('div');
-        infoContainer.className = 'dwarf-info-container';
+        // Add level up button next to name if XP threshold reached
+        if (canLevelUp) {
+            const levelUpBtn = document.createElement('button');
+            levelUpBtn.className = 'btn-levelup btn-levelup-small';
+            levelUpBtn.textContent = '⭐ Lvl Up';
+            levelUpBtn.dataset.dwarfName = d.name;
+            header.appendChild(levelUpBtn);
+        }
         
-        const info = document.createElement('div');
-        info.className = 'dwarf-info';
-        const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        // Calculate digging power
+        const basePower = d.toolId ? (() => {
+            const tool = toolsInventory.find(t => t.id === d.toolId);
+            return tool ? getToolPower(tool.type, tool.level) : 0.5;
+        })() : 0.5;
+        const digPowerBonus = (d.digPower || 0) * 0.1;
+        const totalPower = basePower * (1 + digPowerBonus);
         
         // Calculate bucket fill
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
         const dwarfCapacity = bucketCapacity + (d.strength || 0);
         
-        info.innerHTML = `📊 Lvl ${currentLevel} (${currentXP}/${xpNeeded} XP)<br>⚡${d.energy || 0}<br>🪣 ${bucketTotal}/${dwarfCapacity}<br>🔨 ${d.status || 'idle'}`;
+        // Get tool name for display
+        const toolName = d.toolId ? (() => {
+            const tool = toolsInventory.find(t => t.id === d.toolId);
+            return tool ? tool.type : 'None';
+        })() : 'None';
         
-        infoContainer.appendChild(info);
+        const info = document.createElement('div');
+        info.className = 'dwarf-info';
         
-        // Add level up button if XP threshold reached
-        if (currentXP >= xpNeeded) {
-            const levelUpBtn = document.createElement('button');
-            levelUpBtn.className = 'btn-levelup btn-levelup-small';
-            levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.dataset.dwarfName = d.name;
-            infoContainer.appendChild(levelUpBtn);
-        }
+        // Create level display with XP tooltip
+        const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
-        row.appendChild(name);
-        row.appendChild(infoContainer);
+        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(2)} (${toolName})`;
+        
+        row.appendChild(header);
+        row.appendChild(info);
         list.appendChild(row);
     }
 }
@@ -1114,7 +1124,7 @@ function openLevelUpModal(dwarf) {
         content.appendChild(nextBtnContainer);
     }
     
-    // Show modal using openModal to auto-pause the game
+    // Show modal
     openModal('levelup-modal');
 }
 
@@ -1171,12 +1181,35 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Close the modal after successful level up (will auto-unpause)
-    closeModal('levelup-modal');
-    
     // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
+    
+    // Check if this dwarf can level up again
+    const newXP = actualDwarf.xp || 0;
+    const newLevel = actualDwarf.level || 1;
+    const newXPNeeded = 250 * newLevel;
+    
+    if (newXP >= newXPNeeded) {
+        // Can level up again, refresh the modal with new level
+        openLevelUpModal(actualDwarf);
+    } else {
+        // Check if there are other dwarfs that can level up
+        const dwarfsCanLevelUp = dwarfs.filter(d => {
+            const currentXP = d.xp || 0;
+            const currentLevel = d.level || 1;
+            const xpNeeded = 250 * currentLevel;
+            return currentXP >= xpNeeded;
+        });
+        
+        if (dwarfsCanLevelUp.length > 0) {
+            // Show next dwarf who can level up
+            openLevelUpModal(dwarfsCanLevelUp[0]);
+        } else {
+            // No more dwarfs to level up, close modal
+            closeModal('levelup-modal');
+        }
+    }
     
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
@@ -1395,75 +1428,112 @@ function updateMaterialsPanel() {
     const list = document.getElementById('materials-list');
     if (!list) return;
     
-    // Check if there are any materials to sell
-    const hasAnyMaterials = materials.some(m => {
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
-        return count > 0;
-    });
+    // Calculate total stock value
+    let totalStockValue = 0;
+    const materialsWithStock = [];
     
-    // Update or create Sell All button in header (only in warehouse view)
+    for (const m of materials) {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            const actualWorth = m.worth * tradeBonus;
+            totalStockValue += count * actualWorth;
+            materialsWithStock.push({ material: m, count, actualWorth });
+        }
+    }
+    
+    // Sort by value per piece (low to high)
+    materialsWithStock.sort((a, b) => a.actualWorth - b.actualWorth);
+    
+    const hasAnyMaterials = materialsWithStock.length > 0;
+    
+    // Update or create Sell All button and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let totalValueSpan = document.getElementById('total-stock-value');
     const header = panel.querySelector('.materials-panel-header');
     const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
     
-    if (header && hasAnyMaterials && isWarehouseView) {
-        if (!sellAllHeaderBtn) {
-            sellAllHeaderBtn = document.createElement('button');
-            sellAllHeaderBtn.id = 'sell-all-header-btn';
-            sellAllHeaderBtn.className = 'btn-sell-all-global';
-            sellAllHeaderBtn.textContent = 'Sell All';
-            sellAllHeaderBtn.onclick = sellAllMaterials;
-            header.appendChild(sellAllHeaderBtn);
+    if (header && isWarehouseView) {
+        // Update or create total value display
+        if (!totalValueSpan) {
+            totalValueSpan = document.createElement('span');
+            totalValueSpan.id = 'total-stock-value';
+            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
+            header.appendChild(totalValueSpan);
         }
-    } else if (sellAllHeaderBtn && (!hasAnyMaterials || !isWarehouseView)) {
-        // Remove button if no materials or not in warehouse view
-        sellAllHeaderBtn.remove();
+        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${totalStockValue.toFixed(2)}` : '';
+        
+        if (hasAnyMaterials) {
+            if (!sellAllHeaderBtn) {
+                sellAllHeaderBtn = document.createElement('button');
+                sellAllHeaderBtn.id = 'sell-all-header-btn';
+                sellAllHeaderBtn.className = 'btn-sell-all-global';
+                sellAllHeaderBtn.textContent = 'Sell All';
+                sellAllHeaderBtn.onclick = sellAllMaterials;
+                header.appendChild(sellAllHeaderBtn);
+            }
+        } else if (sellAllHeaderBtn) {
+            sellAllHeaderBtn.remove();
+        }
     }
     
     list.innerHTML = '';
-    for (const m of materials) {
+    
+    // Add table container for warehouse view
+    if (hasAnyMaterials) {
+        const container = document.createElement('div');
+        container.className = 'warehouse-table-container';
+        
+        const tableHeader = document.createElement('div');
+        tableHeader.className = 'warehouse-table-header';
+        tableHeader.innerHTML = `
+            <span class="wh-col-name">MATERIAL</span>
+            <span class="wh-col-price">PRICE</span>
+            <span class="wh-col-count">STOCK</span>
+            <span class="wh-col-total">VALUE</span>
+            <span class="wh-col-actions">SELL</span>
+        `;
+        container.appendChild(tableHeader);
+        list.appendChild(container);
+    }
+    
+    for (const { material: m, count, actualWorth } of materialsWithStock) {
         const id = m.id;
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
-        // Skip materials with 0 stock
-        if (count === 0) continue;
         
         const row = document.createElement('div');
         row.className = 'warehouse-row';
-        
-        const info = document.createElement('div');
-        info.className = 'warehouse-info';
+        // Set material color as background using CSS variable
+        row.style.setProperty('--material-color', m.color || '#888');
         
         const name = document.createElement('span');
-        name.className = 'warehouse-name';
+        name.className = 'wh-col-name';
         name.textContent = m.name;
         
         const worth = document.createElement('span');
-        worth.className = 'warehouse-worth';
-        const actualWorth = m.worth * tradeBonus;
-        worth.textContent = `${actualWorth.toFixed(2)} 💰`;
-        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `Worth: ${m.worth.toFixed(2)} gold each`;
+        worth.className = 'wh-col-price';
+        worth.textContent = `💰 ${actualWorth.toFixed(2)}`;
+        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
         
         const cnt = document.createElement('span');
-        cnt.className = 'warehouse-count';
+        cnt.className = 'wh-col-count';
         cnt.textContent = String(count);
         
-        info.appendChild(name);
-        info.appendChild(worth);
-        info.appendChild(cnt);
+        const totalValue = document.createElement('span');
+        totalValue.className = 'wh-col-total';
+        totalValue.textContent = `💰 ${(count * actualWorth).toFixed(2)}`;
         
-        const buttons = document.createElement('div');
-        buttons.className = 'warehouse-buttons';
+        const buttons = document.createElement('span');
+        buttons.className = 'wh-col-actions';
         
         const sell1Btn = document.createElement('button');
         sell1Btn.className = 'btn-sell';
-        sell1Btn.textContent = 'Sell 1';
+        sell1Btn.textContent = '1';
         sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
         sell1Btn.dataset.materialId = id;
         sell1Btn.dataset.sellAmount = '1';
         
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
-        sellAllBtn.textContent = 'Sell All';
+        sellAllBtn.textContent = 'all';
         sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
         sellAllBtn.dataset.materialId = id;
         sellAllBtn.dataset.sellAmount = count.toString();
@@ -1471,9 +1541,19 @@ function updateMaterialsPanel() {
         buttons.appendChild(sell1Btn);
         buttons.appendChild(sellAllBtn);
         
-        row.appendChild(info);
+        row.appendChild(name);
+        row.appendChild(worth);
+        row.appendChild(cnt);
+        row.appendChild(totalValue);
         row.appendChild(buttons);
-        list.appendChild(row);
+        
+        // Append to container instead of list
+        const container = list.querySelector('.warehouse-table-container');
+        if (container) {
+            container.appendChild(row);
+        } else {
+            list.appendChild(row);
+        }
     }
 }
 
@@ -1654,6 +1734,7 @@ let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
+let cheatModeEnabled = false; // Track if cheat mode is available
 
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
@@ -1761,15 +1842,15 @@ function initWorker() {
             researchtree
         }
     });
+    
+    // Start the worker's internal game loop
+    gameWorker.postMessage({ type: 'start-loop', interval: 250 });
 }
 
 function tick() {
-    // Don't tick if game is paused
-    if (gamePaused) return;
-    
-    // Send tick request to worker
+    // Send tick request to worker (worker will handle pause state)
     if (gameWorker && workerInitialized) {
-        gameWorker.postMessage({ type: 'tick' });
+        gameWorker.postMessage({ type: 'tick', paused: gamePaused });
     } else {
         console.warn('Worker not ready yet');
     }
@@ -1781,6 +1862,10 @@ function togglePause() {
     if (btn) {
         btn.textContent = gamePaused ? '▶️' : '⏸️';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
+    }
+    // Notify worker of pause state change
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({ type: 'set-pause', paused: gamePaused });
     }
     console.log(gamePaused ? 'Game paused' : 'Game resumed');
 }
@@ -1873,9 +1958,58 @@ function deleteSave() {
     }
 }
 
+function activateCheat() {
+    if (!cheatModeEnabled) {
+        console.warn('Cheat mode not enabled');
+        return;
+    }
+    
+    // Double the current depth (startX)
+    startX = startX * 2;
+    
+    // Reset all dwarfs to home location
+    for (const dwarf of dwarfs) {
+        if (house) {
+            dwarf.x = house.x;
+            dwarf.y = house.y;
+        }
+        dwarf.status = 'idle';
+        dwarf.moveTarget = null;
+        
+        // Give XP for one level (250 * current level)
+        const xpForLevel = 250 * (dwarf.level || 1);
+        dwarf.xp = (dwarf.xp || 0) + xpForLevel;
+    }
+    
+    // Add 5000 gold
+    gold += 5000;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                startX: startX,
+                dwarfs: dwarfs,
+                gold: gold
+            }
+        });
+    }
+    
+    // Update UI
+    updateGridDisplay();
+    updateGoldDisplay();
+    populateDwarfsInPanel();
+    
+    // Save game
+    saveGame();
+    
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Dwarfs: reset to home with XP`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\nAll dwarfs reset to home with XP bonus`);
+}
+
 function initializeGame() {
     initWorker();
-    gameTickIntervalId = setInterval(tick, 250); // Dwarfs dig every 250ms
     gamePaused = false; // Start with game running
     updateGameState();
 }
@@ -1895,5 +2029,19 @@ function initGame() {
     updateMaterialsPanel(); // Initialize materials panel on load
 }
 
+// Check for cheat mode in URL
+function checkCheatMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('cheat')) {
+        cheatModeEnabled = true;
+        const cheatSection = document.getElementById('settings-cheat-section');
+        const cheatButton = document.getElementById('settings-cheat-button');
+        if (cheatSection) cheatSection.style.display = 'block';
+        if (cheatButton) cheatButton.style.display = 'inline-block';
+        console.log('🎮 Cheat mode enabled');
+    }
+}
+
 // Start the game
+checkCheatMode();
 initGame();
