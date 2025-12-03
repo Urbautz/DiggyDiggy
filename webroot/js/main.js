@@ -1615,6 +1615,7 @@ let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
+let cheatModeEnabled = false; // Track if cheat mode is available
 
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
@@ -1834,6 +1835,56 @@ function deleteSave() {
     }
 }
 
+function activateCheat() {
+    if (!cheatModeEnabled) {
+        console.warn('Cheat mode not enabled');
+        return;
+    }
+    
+    // Double the current depth (startX)
+    startX = startX * 2;
+    
+    // Reset all dwarfs to home location
+    for (const dwarf of dwarfs) {
+        if (house) {
+            dwarf.x = house.x;
+            dwarf.y = house.y;
+        }
+        dwarf.status = 'idle';
+        dwarf.moveTarget = null;
+        
+        // Give XP for one level (250 * current level)
+        const xpForLevel = 250 * (dwarf.level || 1);
+        dwarf.xp = (dwarf.xp || 0) + xpForLevel;
+    }
+    
+    // Add 5000 gold
+    gold += 5000;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                startX: startX,
+                dwarfs: dwarfs,
+                gold: gold
+            }
+        });
+    }
+    
+    // Update UI
+    updateGridDisplay();
+    updateGoldDisplay();
+    populateDwarfsInPanel();
+    
+    // Save game
+    saveGame();
+    
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Dwarfs: reset to home with XP`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\nAll dwarfs reset to home with XP bonus`);
+}
+
 function initializeGame() {
     initWorker();
     gameTickIntervalId = setInterval(tick, 250); // Dwarfs dig every 250ms
@@ -1856,5 +1907,19 @@ function initGame() {
     updateMaterialsPanel(); // Initialize materials panel on load
 }
 
+// Check for cheat mode in URL
+function checkCheatMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('cheat')) {
+        cheatModeEnabled = true;
+        const cheatSection = document.getElementById('settings-cheat-section');
+        const cheatButton = document.getElementById('settings-cheat-button');
+        if (cheatSection) cheatSection.style.display = 'block';
+        if (cheatButton) cheatButton.style.display = 'inline-block';
+        console.log('🎮 Cheat mode enabled');
+    }
+}
+
 // Start the game
+checkCheatMode();
 initGame();

@@ -181,8 +181,13 @@
             </header>
             <div class="modal-body">
                 <p>Your game is automatically saved after each action. You can delete your saved progress below.</p>
+                <div id="settings-cheat-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 2px solid rgba(255, 215, 0, 0.3);">
+                    <h3 style="color: gold; text-align: center;">🎮 Cheat Mode</h3>
+                    <p style="text-align: center; font-size: 14px; opacity: 0.8;">For testing purposes only</p>
+                </div>
             </div>
             <footer class="modal-footer">
+                <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()" style="display: none;">🚀 Activate Cheat</button>
                 <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
                 <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
