@@ -887,43 +887,74 @@ function populateDwarfsInPanel() {
     if (!list) return;
     list.innerHTML = '';
     
-    // Create a compact list of dwarfs
-    for (const d of dwarfs) {
+    // Sort dwarfs: those who can level up first, then by name
+    const sortedDwarfs = [...dwarfs].sort((a, b) => {
+        const aXP = a.xp || 0;
+        const aLevel = a.level || 1;
+        const aNeeded = 250 * aLevel;
+        const aCanLevelUp = aXP >= aNeeded;
+        
+        const bXP = b.xp || 0;
+        const bLevel = b.level || 1;
+        const bNeeded = 250 * bLevel;
+        const bCanLevelUp = bXP >= bNeeded;
+        
+        if (aCanLevelUp !== bCanLevelUp) {
+            return bCanLevelUp ? 1 : -1; // Can level up first
+        }
+        return a.name.localeCompare(b.name);
+    });
+    
+    // Create a compact list of dwarfs in two columns
+    for (const d of sortedDwarfs) {
         const row = document.createElement('div');
         row.className = 'dwarf-row';
+        
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = 250 * currentLevel;
+        const canLevelUp = currentXP >= xpNeeded;
+        
+        if (canLevelUp) {
+            row.classList.add('can-level-up');
+        }
+        
+        // Header with name and level up button
+        const header = document.createElement('div');
+        header.className = 'dwarf-header';
         
         const name = document.createElement('div');
         name.className = 'dwarf-name';
         name.textContent = d.name;
+        header.appendChild(name);
         
-        const infoContainer = document.createElement('div');
-        infoContainer.className = 'dwarf-info-container';
+        // Add level up button next to name if XP threshold reached
+        if (canLevelUp) {
+            const levelUpBtn = document.createElement('button');
+            levelUpBtn.className = 'btn-levelup btn-levelup-small';
+            levelUpBtn.textContent = '⭐ Lvl Up';
+            levelUpBtn.dataset.dwarfName = d.name;
+            header.appendChild(levelUpBtn);
+        }
         
-        const info = document.createElement('div');
-        info.className = 'dwarf-info';
-        const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        // Calculate digging power
+        const basePower = d.toolId ? (() => {
+            const tool = toolsInventory.find(t => t.id === d.toolId);
+            return tool ? getToolPower(tool.type, tool.level) : 0.5;
+        })() : 0.5;
+        const digPowerBonus = (d.digPower || 0) * 0.1;
+        const totalPower = basePower * (1 + digPowerBonus);
         
         // Calculate bucket fill
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
         const dwarfCapacity = bucketCapacity + (d.strength || 0);
         
-        info.innerHTML = `📊 Lvl ${currentLevel} (${currentXP}/${xpNeeded} XP)<br>⚡${d.energy || 0}<br>🪣 ${bucketTotal}/${dwarfCapacity}<br>🔨 ${d.status || 'idle'}`;
+        const info = document.createElement('div');
+        info.className = 'dwarf-info';
+        info.innerHTML = `📊 Lvl ${currentLevel} (${currentXP}/${xpNeeded} XP)\n⛏️ ${totalPower.toFixed(2)} | 🔨 ${d.status || 'idle'}\n🪣 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}`;
         
-        infoContainer.appendChild(info);
-        
-        // Add level up button if XP threshold reached
-        if (currentXP >= xpNeeded) {
-            const levelUpBtn = document.createElement('button');
-            levelUpBtn.className = 'btn-levelup btn-levelup-small';
-            levelUpBtn.textContent = 'Level Up!';
-            levelUpBtn.dataset.dwarfName = d.name;
-            infoContainer.appendChild(levelUpBtn);
-        }
-        
-        row.appendChild(name);
-        row.appendChild(infoContainer);
+        row.appendChild(header);
+        row.appendChild(info);
         list.appendChild(row);
     }
 }

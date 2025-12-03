@@ -23,7 +23,7 @@ main {
     backdrop-filter: blur(10px) saturate(120%);
     gap: 0px;
 }
-.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 320px; }
+.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 480px; }
 
 /* the small drop-grid uses smaller cells to visually differentiate it */
 #drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
@@ -520,42 +520,54 @@ header, footer {
     padding-right: 4px;
 }
 
+#materials-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
 .dwarf-row { 
     display: flex; 
     flex-direction: column; 
-    gap: 4px; 
-    padding: 8px; 
+    gap: 6px; 
+    padding: 8px 10px; 
     background: rgba(255,255,255,0.02); 
     border-radius: 6px; 
     border: 1px solid rgba(255,255,255,0.02); 
-    margin-bottom: 4px; 
+}
+
+.dwarf-row.can-level-up {
+    background: rgba(251, 191, 36, 0.08);
+    border-color: rgba(251, 191, 36, 0.2);
+}
+
+.dwarf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
 }
 
 .dwarf-name { 
     font-weight: 700; 
     color: #e6eefc; 
-    font-size: 14px; 
-}
-
-.dwarf-info-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.dwarf-info { 
-    font-size: 12px; 
-    color: #9fbfe0; 
-    font-family: monospace; 
+    font-size: 13px; 
     flex: 1;
 }
 
+.dwarf-info { 
+    font-size: 11px; 
+    color: #9fbfe0; 
+    font-family: monospace; 
+    line-height: 1.4;
+}
+
 .btn-levelup-small {
-    padding: 3px 8px;
-    font-size: 11px;
+    padding: 2px 6px;
+    font-size: 10px;
     font-weight: bold;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Workbench table styles */

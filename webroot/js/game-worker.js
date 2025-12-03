@@ -21,9 +21,9 @@ let toolsInventory = [];
 let activeResearch = null;
 let researchtree = [];
 
-// Reservation maps (coordinate -> dwarf who reserved the cell)
+// Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
-let researchReservedBy = null; // Track which dwarf has reserved the research cell
+let researchReservedBy = null; // Track which dwarf name has reserved the research cell
 
 // Stuck detection tracking
 const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
@@ -256,7 +256,7 @@ function actForDwarf(dwarf) {
                 dwarf.moveTarget = null;
                 // Clear any reservations
                 for (const [key, val] of reservedDigBy.entries()) {
-                    if (val === dwarf) reservedDigBy.delete(key);
+                    if (val === dwarf.name) reservedDigBy.delete(key);
                 }
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 stuckTracking.delete(trackKey);
@@ -410,7 +410,7 @@ function actForDwarf(dwarf) {
                         let chosen = -1;
                         for (let offset = 0; offset < row.length; offset++) {
                             const c = (Math.floor(row.length / 2) + offset) % row.length;
-                            if (row[c] && row[c].hardness > 0 && (!reservedDigBy.get(coordKey(c, rowIdx)) || reservedDigBy.get(coordKey(c, rowIdx)) === dwarf)) {
+                            if (row[c] && row[c].hardness > 0 && (!reservedDigBy.get(coordKey(c, rowIdx)) || reservedDigBy.get(coordKey(c, rowIdx)) === dwarf.name)) {
                                 chosen = c;
                                 break;
                             }
@@ -419,7 +419,7 @@ function actForDwarf(dwarf) {
                             outer: for (let ry = 0; ry < grid.length; ry++) {
                                 const r = grid[ry];
                                 for (let cx = 0; cx < (r ? r.length : 0); cx++) {
-                                    if (r && r[cx] && r[cx].hardness > 0 && (!reservedDigBy.get(coordKey(cx, ry)) || reservedDigBy.get(coordKey(cx, ry)) === dwarf)) {
+                                    if (r && r[cx] && r[cx].hardness > 0 && (!reservedDigBy.get(coordKey(cx, ry)) || reservedDigBy.get(coordKey(cx, ry)) === dwarf.name)) {
                                         chosen = cx;
                                         rowIdx = ry;
                                         break outer;
@@ -518,7 +518,7 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 && 
         !(activeResearch && typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y)) {
         const curKey = coordKey(dwarf.x, dwarf.y);
-        if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf) {
+        if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
             // Check if we can afford to pay the dwarf
             if (gold < 0.01) {
                 // Not enough gold - only 10% chance to dig (striking)
@@ -527,7 +527,7 @@ function actForDwarf(dwarf) {
                     return;
                 }
             }
-            reservedDigBy.set(curKey, dwarf);
+            reservedDigBy.set(curKey, dwarf.name);
             dwarf.status = 'digging';
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
@@ -542,7 +542,7 @@ function actForDwarf(dwarf) {
             }
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
-                if (reservedDigBy.get(curKey) === dwarf) reservedDigBy.delete(curKey);
+                if (reservedDigBy.get(curKey) === dwarf.name) reservedDigBy.delete(curKey);
                 dwarf.status = 'idle';
             }
             return;
@@ -579,7 +579,7 @@ function actForDwarf(dwarf) {
     // Digging state
     if (dwarf.status === 'digging') {
         const curKeyDig = coordKey(dwarf.x, dwarf.y);
-        if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf);
+        if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf.name);
         const curCellDig = grid[dwarf.y][dwarf.x];
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
@@ -603,12 +603,12 @@ function actForDwarf(dwarf) {
             }
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
-                if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
+                if (reservedDigBy.get(curKeyDig) === dwarf.name) reservedDigBy.delete(curKeyDig);
                 dwarf.status = 'idle';
             }
             return;
         } else {
-            if (reservedDigBy.get(curKeyDig) === dwarf) reservedDigBy.delete(curKeyDig);
+            if (reservedDigBy.get(curKeyDig) === dwarf.name) reservedDigBy.delete(curKeyDig);
             dwarf.status = 'idle';
         }
     }
@@ -642,7 +642,7 @@ function actForDwarf(dwarf) {
         for (let offset = 0; offset < row.length; offset++) {
             const c = (originalX + dir * offset + row.length) % row.length;
             if (!(row[c] && row[c].hardness > 0)) continue;
-            if (isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf) continue;
+            if (isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf.name) continue;
             if (isCellOccupiedByStanding(c, rowIndex)) {
                 console.log(`Cell (${c},${rowIndex}) is occupied by a standing dwarf — skipping`);
                 continue;
@@ -666,7 +666,7 @@ function actForDwarf(dwarf) {
         for (let offset = 0; offset < nextRow.length; offset++) {
             const c = (originalX + dir * offset + nextRow.length) % nextRow.length;
             if (!(nextRow[c] && nextRow[c].hardness > 0)) continue;
-            if (isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf) continue;
+            if (isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf.name) continue;
             if (isCellOccupiedByStanding(c, nextRowIndex)) continue;
             foundBelow = c;
             break;
@@ -760,7 +760,7 @@ function actForDwarf(dwarf) {
     }
     //console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
     if (target.hardness === 0) {
-        if (reservedDigBy.get(targetKey) === dwarf) reservedDigBy.delete(targetKey);
+        if (reservedDigBy.get(targetKey) === dwarf.name) reservedDigBy.delete(targetKey);
         dwarf.status = 'idle';
     } else {
         dwarf.status = 'digging';
