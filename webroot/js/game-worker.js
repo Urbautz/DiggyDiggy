@@ -28,6 +28,10 @@ let researchReservedBy = null; // Track which dwarf name has reserved the resear
 // Stuck detection tracking
 const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
 
+// Game loop state
+let gameLoopIntervalId = null;
+let gamePaused = false;
+
 function coordKey(x, y) {
     return `${x},${y}`;
 }
@@ -827,9 +831,31 @@ self.addEventListener('message', (e) => {
             self.postMessage({ type: 'init-complete' });
             break;
             
+        case 'start-loop':
+            // Start the worker's internal game loop
+            if (gameLoopIntervalId) {
+                clearInterval(gameLoopIntervalId);
+            }
+            const interval = e.data.interval || 250;
+            gameLoopIntervalId = setInterval(() => {
+                if (!gamePaused) {
+                    tick();
+                }
+            }, interval);
+            console.log(`Worker game loop started (${interval}ms interval)`);
+            break;
+            
+        case 'set-pause':
+            // Update pause state
+            gamePaused = e.data.paused;
+            console.log(`Worker pause state: ${gamePaused}`);
+            break;
+            
         case 'tick':
-            // Execute game tick
-            tick();
+            // Manual tick (legacy support)
+            if (!gamePaused) {
+                tick();
+            }
             break;
             
         case 'update-state':

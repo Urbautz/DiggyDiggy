@@ -949,9 +949,19 @@ function populateDwarfsInPanel() {
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
         const dwarfCapacity = bucketCapacity + (d.strength || 0);
         
+        // Get tool name for display
+        const toolName = d.toolId ? (() => {
+            const tool = toolsInventory.find(t => t.id === d.toolId);
+            return tool ? tool.type : 'None';
+        })() : 'None';
+        
         const info = document.createElement('div');
         info.className = 'dwarf-info';
-        info.innerHTML = `📊 Lvl ${currentLevel} (${currentXP}/${xpNeeded} XP)\n⛏️ ${totalPower.toFixed(2)} | 🔨 ${d.status || 'idle'}\n🪣 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}`;
+        
+        // Create level display with XP tooltip
+        const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
+        
+        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(2)} (${toolName})`;
         
         row.appendChild(header);
         row.appendChild(info);
@@ -1163,12 +1173,35 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Close the modal after successful level up
-    closeModal('levelup-modal');
-    
     // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
+    
+    // Check if this dwarf can level up again
+    const newXP = actualDwarf.xp || 0;
+    const newLevel = actualDwarf.level || 1;
+    const newXPNeeded = 250 * newLevel;
+    
+    if (newXP >= newXPNeeded) {
+        // Can level up again, refresh the modal with new level
+        openLevelUpModal(actualDwarf);
+    } else {
+        // Check if there are other dwarfs that can level up
+        const dwarfsCanLevelUp = dwarfs.filter(d => {
+            const currentXP = d.xp || 0;
+            const currentLevel = d.level || 1;
+            const xpNeeded = 250 * currentLevel;
+            return currentXP >= xpNeeded;
+        });
+        
+        if (dwarfsCanLevelUp.length > 0) {
+            // Show next dwarf who can level up
+            openLevelUpModal(dwarfsCanLevelUp[0]);
+        } else {
+            // No more dwarfs to level up, close modal
+            closeModal('levelup-modal');
+        }
+    }
     
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
@@ -1754,15 +1787,15 @@ function initWorker() {
             researchtree
         }
     });
+    
+    // Start the worker's internal game loop
+    gameWorker.postMessage({ type: 'start-loop', interval: 250 });
 }
 
 function tick() {
-    // Don't tick if game is paused
-    if (gamePaused) return;
-    
-    // Send tick request to worker
+    // Send tick request to worker (worker will handle pause state)
     if (gameWorker && workerInitialized) {
-        gameWorker.postMessage({ type: 'tick' });
+        gameWorker.postMessage({ type: 'tick', paused: gamePaused });
     } else {
         console.warn('Worker not ready yet');
     }
@@ -1774,6 +1807,10 @@ function togglePause() {
     if (btn) {
         btn.textContent = gamePaused ? '▶️' : '⏸️';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
+    }
+    // Notify worker of pause state change
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({ type: 'set-pause', paused: gamePaused });
     }
     console.log(gamePaused ? 'Game paused' : 'Game resumed');
 }
@@ -1918,7 +1955,6 @@ function activateCheat() {
 
 function initializeGame() {
     initWorker();
-    gameTickIntervalId = setInterval(tick, 250); // Dwarfs dig every 250ms
     gamePaused = false; // Start with game running
     updateGameState();
 }
