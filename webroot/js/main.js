@@ -737,27 +737,12 @@ function upgradeTool(toolId) {
 }
 
 function openSettings() {
-    // Open the settings modal (game will pause automatically)
     openModal('settings-modal');
 }
 
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
-    
-    // Store whether game was paused before opening modal
-    modal.dataset.wasGamePaused = gamePaused.toString();
-    
-    // Pause the game when opening any modal
-    if (!gamePaused) {
-        gamePaused = true;
-        const btn = document.getElementById('pause-button');
-        if (btn) {
-            btn.textContent = '▶️';
-            btn.title = 'Resume game';
-        }
-        console.log('Game paused (modal opened)');
-    }
     
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
@@ -768,18 +753,6 @@ function closeModal(modalName) {
     if (modalName) {
         const m = document.getElementById(modalName);
         if (m) {
-            // Resume game if it wasn't paused before modal opened
-            const wasGamePaused = m.dataset.wasGamePaused === 'true';
-            if (!wasGamePaused && gamePaused) {
-                gamePaused = false;
-                const btn = document.getElementById('pause-button');
-                if (btn) {
-                    btn.textContent = '⏸️';
-                    btn.title = 'Pause game';
-                }
-                console.log('Game resumed (modal closed)');
-            }
-            
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
@@ -790,18 +763,6 @@ function closeModal(modalName) {
     // close any open modal
     document.querySelectorAll('.modal[aria-hidden="false"]').forEach(m => {
         const id = m.id;
-        
-        // Resume game if it wasn't paused before modal opened
-        const wasGamePaused = m.dataset.wasGamePaused === 'true';
-        if (!wasGamePaused && gamePaused) {
-            gamePaused = false;
-            const btn = document.getElementById('pause-button');
-            if (btn) {
-                btn.textContent = '⏸️';
-                btn.title = 'Pause game';
-            }
-            console.log('Game resumed (modal closed)');
-        }
         
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
@@ -1114,7 +1075,7 @@ function openLevelUpModal(dwarf) {
         content.appendChild(nextBtnContainer);
     }
     
-    // Show modal using openModal to auto-pause the game
+    // Show modal
     openModal('levelup-modal');
 }
 
@@ -1171,7 +1132,7 @@ function applyLevelUp(dwarf, upgradeType) {
     // Save game
     saveGame();
     
-    // Close the modal after successful level up (will auto-unpause)
+    // Close the modal after successful level up
     closeModal('levelup-modal');
     
     // Refresh dwarf display
