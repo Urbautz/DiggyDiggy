@@ -786,6 +786,10 @@ function openDwarfs() {
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Dwarfs';
     
+    // Set grid layout for dwarfs
+    const list = document.getElementById('materials-list');
+    if (list) list.setAttribute('data-view', 'dwarfs');
+    
     // Populate dwarfs content in the materials-list container
     populateDwarfsInPanel();
     startDwarfsLiveUpdate();
@@ -807,6 +811,10 @@ function showWarehousePanel() {
     // Update header
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
+    
+    // Remove grid layout for warehouse
+    const list = document.getElementById('materials-list');
+    if (list) list.removeAttribute('data-view');
     
     // Show warehouse content
     stopDwarfsLiveUpdate();
@@ -1420,75 +1428,112 @@ function updateMaterialsPanel() {
     const list = document.getElementById('materials-list');
     if (!list) return;
     
-    // Check if there are any materials to sell
-    const hasAnyMaterials = materials.some(m => {
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
-        return count > 0;
-    });
+    // Calculate total stock value
+    let totalStockValue = 0;
+    const materialsWithStock = [];
     
-    // Update or create Sell All button in header (only in warehouse view)
+    for (const m of materials) {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            const actualWorth = m.worth * tradeBonus;
+            totalStockValue += count * actualWorth;
+            materialsWithStock.push({ material: m, count, actualWorth });
+        }
+    }
+    
+    // Sort by value per piece (low to high)
+    materialsWithStock.sort((a, b) => a.actualWorth - b.actualWorth);
+    
+    const hasAnyMaterials = materialsWithStock.length > 0;
+    
+    // Update or create Sell All button and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let totalValueSpan = document.getElementById('total-stock-value');
     const header = panel.querySelector('.materials-panel-header');
     const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
     
-    if (header && hasAnyMaterials && isWarehouseView) {
-        if (!sellAllHeaderBtn) {
-            sellAllHeaderBtn = document.createElement('button');
-            sellAllHeaderBtn.id = 'sell-all-header-btn';
-            sellAllHeaderBtn.className = 'btn-sell-all-global';
-            sellAllHeaderBtn.textContent = 'Sell All';
-            sellAllHeaderBtn.onclick = sellAllMaterials;
-            header.appendChild(sellAllHeaderBtn);
+    if (header && isWarehouseView) {
+        // Update or create total value display
+        if (!totalValueSpan) {
+            totalValueSpan = document.createElement('span');
+            totalValueSpan.id = 'total-stock-value';
+            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
+            header.appendChild(totalValueSpan);
         }
-    } else if (sellAllHeaderBtn && (!hasAnyMaterials || !isWarehouseView)) {
-        // Remove button if no materials or not in warehouse view
-        sellAllHeaderBtn.remove();
+        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${totalStockValue.toFixed(2)}` : '';
+        
+        if (hasAnyMaterials) {
+            if (!sellAllHeaderBtn) {
+                sellAllHeaderBtn = document.createElement('button');
+                sellAllHeaderBtn.id = 'sell-all-header-btn';
+                sellAllHeaderBtn.className = 'btn-sell-all-global';
+                sellAllHeaderBtn.textContent = 'Sell All';
+                sellAllHeaderBtn.onclick = sellAllMaterials;
+                header.appendChild(sellAllHeaderBtn);
+            }
+        } else if (sellAllHeaderBtn) {
+            sellAllHeaderBtn.remove();
+        }
     }
     
     list.innerHTML = '';
-    for (const m of materials) {
+    
+    // Add table container for warehouse view
+    if (hasAnyMaterials) {
+        const container = document.createElement('div');
+        container.className = 'warehouse-table-container';
+        
+        const tableHeader = document.createElement('div');
+        tableHeader.className = 'warehouse-table-header';
+        tableHeader.innerHTML = `
+            <span class="wh-col-name">MATERIAL</span>
+            <span class="wh-col-price">PRICE</span>
+            <span class="wh-col-count">STOCK</span>
+            <span class="wh-col-total">VALUE</span>
+            <span class="wh-col-actions">SELL</span>
+        `;
+        container.appendChild(tableHeader);
+        list.appendChild(container);
+    }
+    
+    for (const { material: m, count, actualWorth } of materialsWithStock) {
         const id = m.id;
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
-        // Skip materials with 0 stock
-        if (count === 0) continue;
         
         const row = document.createElement('div');
         row.className = 'warehouse-row';
-        
-        const info = document.createElement('div');
-        info.className = 'warehouse-info';
+        // Set material color as background using CSS variable
+        row.style.setProperty('--material-color', m.color || '#888');
         
         const name = document.createElement('span');
-        name.className = 'warehouse-name';
+        name.className = 'wh-col-name';
         name.textContent = m.name;
         
         const worth = document.createElement('span');
-        worth.className = 'warehouse-worth';
-        const actualWorth = m.worth * tradeBonus;
-        worth.textContent = `${actualWorth.toFixed(2)} 💰`;
-        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `Worth: ${m.worth.toFixed(2)} gold each`;
+        worth.className = 'wh-col-price';
+        worth.textContent = `💰 ${actualWorth.toFixed(2)}`;
+        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
         
         const cnt = document.createElement('span');
-        cnt.className = 'warehouse-count';
+        cnt.className = 'wh-col-count';
         cnt.textContent = String(count);
         
-        info.appendChild(name);
-        info.appendChild(worth);
-        info.appendChild(cnt);
+        const totalValue = document.createElement('span');
+        totalValue.className = 'wh-col-total';
+        totalValue.textContent = `💰 ${(count * actualWorth).toFixed(2)}`;
         
-        const buttons = document.createElement('div');
-        buttons.className = 'warehouse-buttons';
+        const buttons = document.createElement('span');
+        buttons.className = 'wh-col-actions';
         
         const sell1Btn = document.createElement('button');
         sell1Btn.className = 'btn-sell';
-        sell1Btn.textContent = 'Sell 1';
+        sell1Btn.textContent = '1';
         sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
         sell1Btn.dataset.materialId = id;
         sell1Btn.dataset.sellAmount = '1';
         
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
-        sellAllBtn.textContent = 'Sell All';
+        sellAllBtn.textContent = 'all';
         sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
         sellAllBtn.dataset.materialId = id;
         sellAllBtn.dataset.sellAmount = count.toString();
@@ -1496,9 +1541,19 @@ function updateMaterialsPanel() {
         buttons.appendChild(sell1Btn);
         buttons.appendChild(sellAllBtn);
         
-        row.appendChild(info);
+        row.appendChild(name);
+        row.appendChild(worth);
+        row.appendChild(cnt);
+        row.appendChild(totalValue);
         row.appendChild(buttons);
-        list.appendChild(row);
+        
+        // Append to container instead of list
+        const container = list.querySelector('.warehouse-table-container');
+        if (container) {
+            container.appendChild(row);
+        } else {
+            list.appendChild(row);
+        }
     }
 }
 
