@@ -15,13 +15,13 @@ main {
 
 /* layout for multiple grids side-by-side */
 .grids { display:flex; gap:28px; align-items:flex-start; justify-content:flex-start; }
-.digging-grid {
+.digging-grid-container {
+    padding: 16px;
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
-    gap: 0px;
 }
 .grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 480px; }
 
@@ -33,7 +33,6 @@ main {
 #drop-grid .cell > * { position: relative; z-index: 1; }
 /* dwarf background marker should be positioned absolutely so it doesn't push layout */
 #drop-grid .has-dwarf::before { content: '👷'; font-size: 20px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; opacity: 0.75; pointer-events: none; }
-#drop-grid .drop-off { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06); }
 /* center the warehouse icon inside the cell so it doesn't move when other content changes */
 #drop-grid .cell .drop-off-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.95; }
 #drop-grid .cell .unloading-marker { z-index: 5; }
@@ -41,7 +40,6 @@ main {
 /* digging grid */
 #digging-grid {
     border-collapse: collapse;
-    margin: 16px 0 16px 24px;
     display: block;
     width: fit-content;
     background-color: #333333;
@@ -254,7 +252,6 @@ header, footer {
     display: none;
 }
 /* drop-off marker styling */
-.cell.drop-off { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.04); }
 .cell .drop-off-marker { position: absolute; right: 4px; top: 4px; font-size: 15px; opacity: 0.95; z-index: 4 }
 
 /* warehouse icon for the drop-off */
@@ -314,7 +311,7 @@ header, footer {
 }
 
 .btn-sell-all-global {
-    background: linear-gradient(180deg, #ef4444, #dc2626);
+    background: linear-gradient(180deg, #10b981, #059669);
     color: #fff;
     border: none;
     padding: 6px 12px;
@@ -323,11 +320,12 @@ header, footer {
     font-size: 12px;
     font-weight: 700;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    margin-left: 12px;
 }
 .btn-sell-all-global:hover {
-    background: linear-gradient(180deg, #dc2626, #b91c1c);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    background: linear-gradient(180deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     transform: translateY(-1px);
 }
 
@@ -363,7 +361,7 @@ header, footer {
 /* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
 
 /* settings button shares similar visual style but is smaller */
-#settings-button, #pause-button {
+#settings-button, #pause-button, #about-button {
     background: #2b2b2b;
     color: #fff;
     border: 1px solid #444;
@@ -373,7 +371,7 @@ header, footer {
     font-size: 14px;
 }
 
-#settings-button:hover, #pause-button:hover, #dig-button:hover {
+#settings-button:hover, #pause-button:hover, #about-button:hover, #dig-button:hover {
     background: #333;
 }
 
@@ -486,7 +484,7 @@ header, footer {
 
 .warehouse-table-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.2fr 1.8fr;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1.8fr;
     gap: 12px;
     padding: 10px 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
@@ -504,11 +502,16 @@ header, footer {
 
 .warehouse-table-header span {
     text-transform: uppercase;
+    color: #bfdbfe !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px;
+    font-family: inherit !important;
 }
 
 .warehouse-row { 
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.2fr 1.8fr;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1.8fr;
     gap: 12px;
     align-items: center;
     padding: 8px 10px; 
@@ -550,9 +553,6 @@ header, footer {
 }
 
 .wh-col-count { 
-    background: rgba(255,255,255,0.06); 
-    padding: 4px 8px; 
-    border-radius: 6px; 
     font-weight: 700; 
     color: #fff; 
     font-size: 12px;
@@ -564,6 +564,7 @@ header, footer {
     color: #ffd700; 
     font-weight: 600;
     font-family: monospace;
+    text-align: right;
 }
 
 .wh-col-actions {
