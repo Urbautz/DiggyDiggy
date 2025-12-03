@@ -127,3 +127,5 @@ const house = { x: dropGridStartX + 1, y: 0 };
 const workbench = { x: dropGridStartX + 2, y: 0 };
 // research: place fourth cell (3,0) in drop-grid coordinates
 const research = { x: dropGridStartX + 3, y: 0 };
+// smelter: place fifth cell (4,0) in drop-grid coordinates
+const smelter = { x: dropGridStartX + 4, y: 0 };

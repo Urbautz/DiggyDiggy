@@ -364,6 +364,19 @@ function updateGridDisplay() {
                         }
                     }
 
+                    // show smelter icon if this is the smelter cell
+                    if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
+                        cell.style.cursor = 'pointer';
+                        cell.dataset.clickAction = 'open-smelter';
+                        
+                        // Add smelter icon
+                        const smelterIcon = document.createElement('span');
+                        smelterIcon.className = 'drop-off-marker smelter';
+                        smelterIcon.textContent = '♨️';
+                        smelterIcon.title = 'Smelter';
+                        cell.appendChild(smelterIcon);
+                    }
+
                     // show resting marker when dwarf is resting here
                     const restersHere = dwarfsHere.filter(d => d.status === 'resting');
                     if (restersHere.length > 0) {
@@ -394,6 +407,8 @@ function updateGridDisplay() {
                     }
 
                     // Show unloading animation when dwarf is unloading here
+                    // (Disabled - visual clutter with warehouse icon)
+                    /*
                     const unloadersHere = dwarfsHere.filter(d => d.status === 'unloading');
                     if (unloadersHere.length > 0) {
                         const anim = document.createElement('span');
@@ -404,6 +419,7 @@ function updateGridDisplay() {
                         anim.appendChild(crate);
                         cell.appendChild(anim);
                     }
+                    */
 
                     rowEl.appendChild(cell);
                 }
@@ -428,6 +444,18 @@ function openWorkbench() {
 function openResearch() {
     openModal('research-modal');
     populateResearch();
+}
+
+function openSmelter() {
+    openModal('smelter-modal');
+    populateSmelter();
+}
+
+function populateSmelter() {
+    const container = document.getElementById('smelter-content');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">Smelter functionality coming soon...</p>';
 }
 
 function populateResearch() {
@@ -738,6 +766,29 @@ function upgradeTool(toolId) {
 
 function openSettings() {
     openModal('settings-modal');
+}
+
+function openAbout() {
+    openModal('about-modal');
+    loadVersionInfo();
+}
+
+async function loadVersionInfo() {
+    const container = document.getElementById('about-content');
+    if (!container) return;
+    
+    try {
+        const response = await fetch('version.html');
+        if (response.ok) {
+            const html = await response.text();
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="color: #ff6b6b;">Failed to load version information.</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p style="color: #ff6b6b;">Error loading version information.</p>';
+        console.error('Error loading version info:', error);
+    }
 }
 
 function openModal(modalname) {
@@ -1260,6 +1311,9 @@ document.addEventListener('click', (ev) => {
         case 'open-research':
             openResearch();
             break;
+        case 'open-smelter':
+            openSmelter();
+            break;
     }
 });
 
@@ -1460,7 +1514,7 @@ function updateMaterialsPanel() {
             totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
             header.appendChild(totalValueSpan);
         }
-        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${totalStockValue.toFixed(2)}` : '';
+        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
         
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
@@ -1510,7 +1564,7 @@ function updateMaterialsPanel() {
         
         const worth = document.createElement('span');
         worth.className = 'wh-col-price';
-        worth.textContent = `💰 ${actualWorth.toFixed(2)}`;
+        worth.textContent = actualWorth.toFixed(2);
         worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
         
         const cnt = document.createElement('span');
@@ -1519,7 +1573,7 @@ function updateMaterialsPanel() {
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
-        totalValue.textContent = `💰 ${(count * actualWorth).toFixed(2)}`;
+        totalValue.textContent = `💰 ${Math.round(count * actualWorth)}`;
         
         const buttons = document.createElement('span');
         buttons.className = 'wh-col-actions';

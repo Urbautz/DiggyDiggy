@@ -40,6 +40,7 @@
     </div>
         <div class="topbar-controls">
             <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸️</button>
+            <button id="about-button" onclick="openAbout()" title="About">ℹ️</button>
             <button id="settings-button" onclick="openSettings()" title="Settings">⚙️</button>
         </div>
         <!-- Stock status: displays global collected material counts -->
@@ -47,6 +48,7 @@
     </header>
     <main>
         <div class="grids">
+        <div class="digging-grid-container">
         <table id="digging-grid" aria-label="Digging grid" class="digging-grid">
             <tbody>
                 <!-- 10x10 static grid -->
@@ -82,6 +84,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <!-- right-side / auxiliary grids container -->
         <div id="side-grids">
@@ -171,6 +174,26 @@
         </div>
     </div>
 
+    <!-- Smelter modal -->
+    <div id="smelter-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Smelter dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>♨️ Smelter</h2>
+                <button class="modal-close" aria-label="Close smelter" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>Smelt raw materials into refined products!</p>
+                <div id="smelter-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- Settings modal -->
     <div id="settings-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Settings dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
@@ -189,6 +212,25 @@
             <footer class="modal-footer">
                 <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()" style="display: none;">🚀 Activate Cheat</button>
                 <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- About modal -->
+    <div id="about-modal" class="modal" aria-hidden="true" role="dialog" aria-label="About dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>ℹ️ About Diggy Diggy Dwarf</h2>
+                <button class="modal-close" aria-label="Close about" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <div id="about-content">
+                    <!-- Version info will be loaded here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
                 <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
         </div>
