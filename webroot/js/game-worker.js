@@ -20,6 +20,7 @@ let gold = 1000;
 let toolsInventory = [];
 let activeResearch = null;
 let researchtree = [];
+let pendingTransactions = []; // Queue of transactions to send to main thread
 
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
@@ -393,7 +394,10 @@ function actForDwarf(dwarf) {
 
     // Full bucket handling
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
-    const dwarfCapacity = bucketCapacity + (dwarf.strength || 0);
+    // Apply bucket research bonus (1 capacity per level)
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
     if (typeof bucketCapacity === 'number' && bucketTotal >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
@@ -540,6 +544,7 @@ function actForDwarf(dwarf) {
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCell.hardness = Math.max(0, curCell.hardness - power);
             if (curCell.hardness === 0) {
@@ -603,6 +608,7 @@ function actForDwarf(dwarf) {
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
             if (curCellDig.hardness === 0) {
@@ -764,6 +770,7 @@ function actForDwarf(dwarf) {
     target.hardness = Math.max(0, target.hardness - power);
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
     gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+    pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
     if (target.hardness === 0) {
         const matId = target.materialId;
         dwarf.bucket = dwarf.bucket || {};
@@ -798,9 +805,13 @@ function tick() {
                 toolsInventory,
                 activeResearch,
                 researchtree,
-                shifted
+                shifted,
+                transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
+        
+        // Clear pending transactions after sending
+        pendingTransactions = [];
     } catch (err) {
         console.error('Worker tick() error:', err);
         self.postMessage({

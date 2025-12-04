@@ -15,7 +15,7 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
-    <div id="gold-display" class="gold-display">
+    <div id="gold-display" class="gold-display" onclick="openTransactions()" style="cursor: pointer;" title="Click to view transaction log">
         <span class="gold-icon">💰</span>
         <span class="gold-amount">1000</span>
     </div>
@@ -185,6 +185,26 @@
             <div class="modal-body">
                 <p>Smelt raw materials into refined products!</p>
                 <div id="smelter-content">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Transaction Log modal -->
+    <div id="transactions-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Transaction log dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>💰 Transaction Log</h2>
+                <button class="modal-close" aria-label="Close transactions" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>View the last 100 money transactions:</p>
+                <div id="transactions-content" style="max-height: 500px; overflow-y: auto;">
                     <!-- Content will be added here -->
                 </div>
             </div>

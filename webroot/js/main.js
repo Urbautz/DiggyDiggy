@@ -451,6 +451,96 @@ function openSmelter() {
     populateSmelter();
 }
 
+function openTransactions() {
+    openModal('transactions-modal');
+    populateTransactions();
+    
+    // Set up auto-refresh every 2 seconds
+    if (window.transactionRefreshInterval) {
+        clearInterval(window.transactionRefreshInterval);
+    }
+    window.transactionRefreshInterval = setInterval(() => {
+        // Only refresh if modal is still open
+        const modal = document.getElementById('transactions-modal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false') {
+            populateTransactions();
+        } else {
+            // Modal closed, stop refreshing
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
+    }, 2000);
+}
+
+function logTransaction(type, amount, description) {
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    transactionLog.unshift({
+        type: type, // 'income' or 'expense'
+        amount: amount,
+        description: description,
+        timestamp: timestamp,
+        balance: gold
+    });
+    
+    // Keep only last 100 transactions
+    if (transactionLog.length > 100) {
+        transactionLog = transactionLog.slice(0, 100);
+    }
+}
+
+function populateTransactions() {
+    const container = document.getElementById('transactions-content');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (transactionLog.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No transactions yet.</p>';
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'transactions-table';
+    table.style.cssText = 'width: 100%; border-collapse: collapse;';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Time</th><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Description</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Amount</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Balance</th></tr>';
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    for (const transaction of transactionLog) {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #3a4a57';
+        
+        const timeTd = document.createElement('td');
+        timeTd.style.padding = '8px';
+        timeTd.textContent = transaction.timestamp;
+        
+        const descTd = document.createElement('td');
+        descTd.style.padding = '8px';
+        descTd.textContent = transaction.description;
+        
+        const amountTd = document.createElement('td');
+        amountTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
+        amountTd.style.color = transaction.type === 'income' ? '#4ade80' : '#ff6b6b';
+        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + transaction.amount.toFixed(5);
+        
+        const balanceTd = document.createElement('td');
+        balanceTd.style.cssText = 'padding: 8px; text-align: right;';
+        balanceTd.textContent = transaction.balance.toFixed(5);
+        
+        tr.appendChild(timeTd);
+        tr.appendChild(descTd);
+        tr.appendChild(amountTd);
+        tr.appendChild(balanceTd);
+        tbody.appendChild(tr);
+    }
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
 function populateSmelter() {
     const container = document.getElementById('smelter-content');
     if (!container) return;
@@ -742,6 +832,9 @@ function upgradeTool(toolId) {
     gold -= upgradeCost;
     toolInstance.level += 1;
     
+    // Log transaction
+    logTransaction('expense', upgradeCost, `Upgraded ${toolInstance.type} to level ${toolInstance.level}`);
+    
     // Update worker state
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -824,6 +917,11 @@ function closeModal(modalName) {
         }
         // If we just closed the dwarfs modal, stop live updates
         if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
+        // If we just closed the transactions modal, stop refresh interval
+        if (modalName === 'transactions-modal' && window.transactionRefreshInterval) {
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
         return;
     }
     // close any open modal
@@ -833,6 +931,10 @@ function closeModal(modalName) {
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
+        if (id === 'transactions-modal' && window.transactionRefreshInterval) {
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
         // Resume game when closing settings modal
         if (id === 'settings-modal' && gamePaused) {
             gamePaused = false;
@@ -1038,7 +1140,10 @@ function populateDwarfsInPanel() {
         
         // Calculate bucket fill
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
-        const dwarfCapacity = bucketCapacity + (d.strength || 0);
+        // Apply bucket research bonus (1 capacity per level)
+        const bucketResearch = researchtree.find(r => r.id === 'buckets');
+        const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+        const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
         
         // Get tool name for display
         const toolName = d.toolId ? (() => {
@@ -1480,6 +1585,9 @@ function sellMaterial(materialId, amount) {
     materialsStock[materialId] -= amount;
     gold += earnings;
     
+    // Log transaction
+    logTransaction('income', earnings, `Sold ${amount}x ${material.name}`);
+    
     // Update the worker's state with new values
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -1665,6 +1773,9 @@ function sellAllMaterials() {
     if (totalItems > 0) {
         gold += totalGold;
         console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        
+        // Log transaction
+        logTransaction('income', totalGold, `Sold all materials (${totalItems} items)`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -1855,6 +1966,13 @@ function initWorker() {
                     gold = data.gold;
                 }
                 
+                // Process transactions from worker
+                if (data.transactions && Array.isArray(data.transactions)) {
+                    for (const transaction of data.transactions) {
+                        logTransaction(transaction.type, transaction.amount, transaction.description);
+                    }
+                }
+                
                 // Update toolsInventory from worker (it might be modified during digging)
                 if (data.toolsInventory) {
                     // Update the array in place to keep the reference
@@ -1971,6 +2089,7 @@ function saveGame() {
             gold: gold,
             researchtree: researchtree,
             activeResearch: activeResearch,
+            transactionLog: transactionLog,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2034,6 +2153,11 @@ function loadGame() {
             activeResearch = gameState.activeResearch;
         }
         
+        // Restore transaction log
+        if (gameState.transactionLog) {
+            transactionLog = gameState.transactionLog;
+        }
+        
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;
     } catch (e) {
@@ -2080,6 +2204,9 @@ window.activateCheat = function activateCheat() {
     
     // Add 5000 gold
     gold += 5000;
+    
+    // Log transaction
+    logTransaction('income', 5000, 'Cheat code activated');
     
     // Sync with worker
     if (gameWorker && workerInitialized) {
