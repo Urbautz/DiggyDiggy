@@ -116,11 +116,10 @@ let researchtree = [
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
         { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
       description: 'Sell Prices for materials are improved by 3% per level' },
-   /* { id: 'advanced-tools', name: 'Advanced Tools', cost: 2000, level: 0, maxlevel: 1,
-      description: 'Unlocks Bronce Shovel for crafting.' },
-    { id: 'superior-tools', name: 'Superior Tools', cost: 50000, level: 0, maxlevel: 1,
-      description: 'Unlocks Copper Shovel for crafting.' } */
-]
+    { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
+      description: 'Increases bucket capacity by 1 per level.' },
+    { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
+      description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
 
 let activeResearch = null; // Track which research is currently being researched
     
