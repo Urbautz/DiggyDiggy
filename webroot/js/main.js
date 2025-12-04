@@ -2017,9 +2017,16 @@ function loadGame() {
             }
         }
         
-        // Restore research tree
+        // Restore research tree - merge saved progress with current definitions
         if (gameState.researchtree) {
-            researchtree = gameState.researchtree;
+            // Update existing research items with saved progress
+            for (const savedResearch of gameState.researchtree) {
+                const currentResearch = researchtree.find(r => r.id === savedResearch.id);
+                if (currentResearch) {
+                    currentResearch.level = savedResearch.level || 0;
+                    currentResearch.progress = savedResearch.progress || 0;
+                }
+            }
         }
         
         // Restore active research

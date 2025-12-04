@@ -120,7 +120,7 @@ let researchtree = [
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-
+    ];
 let activeResearch = null; // Track which research is currently being researched
     
 let grid = [];
