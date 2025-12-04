@@ -49,13 +49,13 @@ function getMaterialById(id) {
 }
 
 function getDwarfToolPower(dwarf) {
-    if (!dwarf.toolId) return 0.5; // default power if no tool
+    if (!dwarf.toolId) return 3; // default power if no tool
     
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance) return 0.5;
+    if (!toolInstance) return 3;
     
     const toolDef = tools.find(t => t.name === toolInstance.type);
-    if (!toolDef) return 0.5;
+    if (!toolDef) return 3;
     
     // Calculate power based on base power, tool level (10% per level), and dwarf's digPower (10% per point)
     const toolBonus = 1 + (toolInstance.level - 1) * 0.1;

@@ -37,7 +37,7 @@ function getToolByType(toolType) {
 
 function getToolPower(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
-    if (!tool) return 0.5;
+    if (!tool) return 3;
     
     // Each level gives 10% bonus: power * (1 + (level - 1) * 0.1)
     return tool.power * (1 + (toolLevel - 1) * 0.1);
@@ -795,6 +795,14 @@ function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
     
+    // Pause game when opening settings modal
+    if (modalname === 'settings-modal' && !gamePaused) {
+        gamePaused = true;
+        if (gameWorker) {
+            gameWorker.postMessage({ type: 'set-pause', paused: true });
+        }
+    }
+    
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
 }
@@ -806,6 +814,13 @@ function closeModal(modalName) {
         if (m) {
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
+        }
+        // Resume game when closing settings modal
+        if (modalName === 'settings-modal' && gamePaused) {
+            gamePaused = false;
+            if (gameWorker) {
+                gameWorker.postMessage({ type: 'set-pause', paused: false });
+            }
         }
         // If we just closed the dwarfs modal, stop live updates
         if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
@@ -999,8 +1014,8 @@ function populateDwarfsInPanel() {
         // Calculate digging power
         const basePower = d.toolId ? (() => {
             const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? getToolPower(tool.type, tool.level) : 0.5;
-        })() : 0.5;
+            return tool ? getToolPower(tool.type, tool.level) : 3;
+        })() : 3;
         const digPowerBonus = (d.digPower || 0) * 0.1;
         const totalPower = basePower * (1 + digPowerBonus);
         
@@ -1925,6 +1940,9 @@ function togglePause() {
 }
 
 function saveGame() {
+    // Don't save when game is paused (e.g., settings modal is open)
+    if (gamePaused) return;
+    
     try {
         const gameState = {
             grid: grid,
@@ -1999,7 +2017,7 @@ function loadGame() {
     }
 }
 
-function deleteSave() {
+window.deleteSave = function() {
     if (confirm('Are you sure you want to delete your saved game? This cannot be undone.')) {
         try {
             localStorage.removeItem('diggyDiggyGameState');
@@ -2012,7 +2030,7 @@ function deleteSave() {
     }
 }
 
-function activateCheat() {
+window.activateCheat = function activateCheat() {
     if (!cheatModeEnabled) {
         console.warn('Cheat mode not enabled');
         return;

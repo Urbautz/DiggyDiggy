@@ -48,10 +48,10 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone Shovel', power: 0.4, upgradecost: 50},
-    { name: 'Bronce Shovel', power: 1.6, upgradecost: 7500},
-    { name: 'Copper Shovel', power: 8, upgradecost: 250000},
-    { name: 'Copper Pickaxe', power: 64, upgradecost: 9900000},
+    { name: 'Stone Shovel', power: 1, upgradecost: 50},
+    { name: 'Bronce Shovel', power: 2.6, upgradecost: 7500},
+    { name: 'Copper Shovel', power: 16, upgradecost: 25000},
+    { name: 'Copper Pickaxe', power: 110, upgradecost: 99000},
 ]
 
 // Tools inventory - array of individual tool instances
