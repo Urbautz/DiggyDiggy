@@ -527,8 +527,10 @@ function actForDwarf(dwarf) {
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
             // Check if we can afford to pay the dwarf
             if (gold < 0.01) {
-                // Not enough gold - only 10% chance to dig (striking)
-                if (Math.random() > 0.1) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -590,8 +592,10 @@ function actForDwarf(dwarf) {
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
             if (gold < 0.01) {
-                // Not enough gold - only 10% chance to dig (striking)
-                if (Math.random() > 0.1) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -749,8 +753,10 @@ function actForDwarf(dwarf) {
     if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
     // Check if we can afford to pay the dwarf
     if (gold < 0.01) {
-        // Not enough gold - only 10% chance to dig (striking)
-        if (Math.random() > 0.1) {
+        // Not enough gold - strike chance reduced by union-busting research
+        const unionBusting = researchtree.find(r => r.id === 'union-busting');
+        const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+        if (Math.random() > continueWorkChance) {
             dwarf.status = 'striking';
             return;
         }
