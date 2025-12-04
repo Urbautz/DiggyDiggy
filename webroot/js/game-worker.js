@@ -49,15 +49,17 @@ function getMaterialById(id) {
 }
 
 function getDwarfToolPower(dwarf) {
-    if (!dwarf.toolId) return 3; // default power if no tool
+    const baseDwarfPower = 3; // dwarf's base damage
+    
+    if (!dwarf.toolId) return baseDwarfPower; // default power if no tool
     
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance) return 3;
+    if (!toolInstance) return baseDwarfPower;
     
     const toolDef = tools.find(t => t.name === toolInstance.type);
-    if (!toolDef) return 3;
+    if (!toolDef) return baseDwarfPower;
     
-    // Calculate power based on base power, tool level (10% per level), and dwarf's digPower (10% per point)
+    // Calculate power: base dwarf power + tool power with bonuses
     const toolBonus = 1 + (toolInstance.level - 1) * 0.1;
     const dwarfBonus = 1 + (dwarf.digPower || 0) * 0.1;
     
@@ -65,7 +67,7 @@ function getDwarfToolPower(dwarf) {
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
     
-    return toolDef.power * toolBonus * dwarfBonus * researchBonus;
+    return baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
 }
 
 function randomMaterial(depthLevel = 0) {

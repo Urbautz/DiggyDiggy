@@ -15,7 +15,7 @@ const materials = [
   { id: 'sandstone', name: 'Sandstone',  type:'Stone Soft', hardness: 80, probability: 400, worth: 2.0,   minlevel: 500, maxlevel: 9999, color: '#9d4d39ff' },
   { id: 'limestone', name: 'Limestone' ,type:'Stone Soft',  hardness: 80, probability: 200, worth: 2.1,   minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' },
   { id: 'Chalk',     name: 'Chalk', type:'Stone Soft',      hardness: 30, probability: 100, worth: 1.1,   minlevel: 2000, maxlevel: 9999, color: '#a6b8adff' },
-  { id: 'ClayStone', name: 'Clay Stone',type:'Stone Soft',  hardness: 100, probability: 300, worth: 1.1, minlevel: 3000, maxlevel: 15999, color: '#a6b8adff' },
+  { id: 'ClayStone', name: 'Clay Stone',type:'Stone Soft',  hardness: 100, probability: 300, worth: 1.1, minlevel: 3000, maxlevel: 15999, color: '#53412fff' },
 
   { id: 'Marble', name: 'Marble', type:'Stone Medium',      hardness: 250, probability: 200, worth: 8,   minlevel: 4000, maxlevel: 29999, color: '#7a706eff' },
   { id: 'Slate', name: 'Slate', type: 'Stone Medium',       hardness: 400, probability: 400, worth: 4,   minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },

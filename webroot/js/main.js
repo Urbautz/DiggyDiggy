@@ -156,8 +156,8 @@ function updateGridDisplay() {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
                 
-                const displayHardness = Math.ceil(rawHardness);
-                // show current hardness value inside the cell (rounded up for clarity)
+                const displayHardness = rawHardness.toFixed(1);
+                // show current hardness value inside the cell with one decimal
                 if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
                     cell.classList.add('has-dwarf');
@@ -833,6 +833,13 @@ function closeModal(modalName) {
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
+        // Resume game when closing settings modal
+        if (id === 'settings-modal' && gamePaused) {
+            gamePaused = false;
+            if (gameWorker) {
+                gameWorker.postMessage({ type: 'set-pause', paused: false });
+            }
+        }
     });
 }
 
@@ -1011,13 +1018,23 @@ function populateDwarfsInPanel() {
             header.appendChild(levelUpBtn);
         }
         
-        // Calculate digging power
-        const basePower = d.toolId ? (() => {
+        // Calculate digging power (matching game-worker.js calculation)
+        const baseDwarfPower = 3;
+        let totalPower = baseDwarfPower;
+        
+        if (d.toolId) {
             const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? getToolPower(tool.type, tool.level) : 3;
-        })() : 3;
-        const digPowerBonus = (d.digPower || 0) * 0.1;
-        const totalPower = basePower * (1 + digPowerBonus);
+            if (tool) {
+                const toolDef = getToolByType(tool.type);
+                if (toolDef) {
+                    const toolBonus = 1 + (tool.level - 1) * 0.1;
+                    const dwarfBonus = 1 + (d.digPower || 0) * 0.1;
+                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
+                    totalPower = baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+                }
+            }
+        }
         
         // Calculate bucket fill
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
@@ -1035,7 +1052,7 @@ function populateDwarfsInPanel() {
         // Create level display with XP tooltip
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
-        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(2)} (${toolName})`;
+        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
         
         row.appendChild(header);
         row.appendChild(info);
@@ -1729,8 +1746,9 @@ function showCellTooltipFromEvent(cell, event) {
     const mouseY = event && typeof event.clientY === 'number' ? event.clientY : tooltipState.lastMouseY;
 
     const material = getMaterialById(cellData.materialId);
-    const hardness = Math.max(0, Math.ceil(Number(cellData.hardness) || 0));
-    const isDugOut = hardness <= 0;
+    const rawHardness = Number(cellData.hardness) || 0;
+    const hardness = Math.max(0, rawHardness).toFixed(1);
+    const isDugOut = rawHardness <= 0;
     const label = isDugOut ? 'Cleared' : (material ? material.name : 'Unknown');
     cellTooltipTitle.textContent = label;
     cellTooltipHardness.textContent = isDugOut ? 'Fully dug out' : `Hardness ${hardness}`;
@@ -1929,7 +1947,7 @@ function togglePause() {
     gamePaused = !gamePaused;
     const btn = document.getElementById('pause-button');
     if (btn) {
-        btn.textContent = gamePaused ? '▶️' : '⏸️';
+        btn.textContent = gamePaused ? '▶' : '⏸';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
     }
     // Notify worker of pause state change
