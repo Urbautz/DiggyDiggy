@@ -6,21 +6,38 @@ const visibleDepth = 10; // show only 10 rows in the UI
 
 // Material registry — easy to extend later
 const materials = [
-    { id: 'earth', name: 'Earth', hardness: 1, probability: 0.01, worth: 0.5, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
-    { id: 'Sand', name: 'Sand', hardness: 1, probability: 0.01, worth: 0.7, minlevel: 0, maxlevel: 100, color: '#e0aa46' },
-    { id: 'mud', name: 'Mud', hardness: 2, probability: 0.01, worth: 0.4, minlevel: 0, maxlevel: 999, color: '#4a2f13ff' },
-    { id: 'clay', name: 'Clay', hardness: 5, probability: 0.015, worth: 1.4, minlevel: 75, maxlevel: 1999, color: '#a57f61' },
-    { id: 'gravel', name: 'Gravel', hardness: 5, probability: 0.025, worth: 0.9, minlevel: 150, maxlevel: 2999, color: '#534f4fff' },
-    { id: 'sandstone', name: 'Sandstone', hardness: 8, probability: 0.025, worth: 2.0, minlevel: 500, maxlevel: 9999, color: '#9d4d39ff' },
-    { id: 'limestone', name: 'Limestone', hardness: 8, probability: 0.05, worth: 2.1, minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' },
-	{ id: 'Coal', name: 'Coal', hardness: 8, probability: 0.01, worth: 2.5, minlevel: 1500, maxlevel: 9999, color: '#191919ff' },
-	{ id: 'Chalk', name: 'Chalk', hardness: 10, probability: 0.03, worth: 1.1, minlevel: 2000, maxlevel: 9999, color: '#a6b8adff' },
-	{ id: 'Salt', name: 'Salt', hardness: 5, probability: 0.005, worth: 4.5, minlevel: 1500, maxlevel: 9999, color: '#efdaedff' },
-	{ id: 'Bronce Ore', name: 'Bronce', hardness: 30, probability: 0.005, worth: 6.5, minlevel: 3000, maxlevel: 99999, color: '#7e6136ff' },
-	{ id: 'Marble', name: 'Marble', hardness: 40, probability: 0.05, worth: 8, minlevel: 4000, maxlevel: 99999, color: '#7a706eff' },
-	{ id: 'Slate', name: 'Slate', hardness: 110, probability: 0.05, worth: 2, minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },
-	{ id: 'Copper Ore', name: 'Copper Ore', hardness: 15, probability: 0.005, worth: 15, minlevel: 4000, maxlevel: 99999, color: '#c75e41ff' },
-    { id: 'Gold Ore', name: 'Gold Ore', hardness: 30, probability: 0.0005, worth: 1000, minlevel: 5000, maxlevel: 99999, color: '#d6a80eff' }
+  { id: 'earth', name: 'Earth', type:'Loose', hardness: 10, probability: 300, worth: 0.5, minlevel: 0, maxlevel: 999, color: '#6b4b2c' },
+  { id: 'Sand', name: 'Sand', type:'Loose', hardness: 10, probability: 200, worth: 0.7, minlevel: 0, maxlevel: 100, color: '#e0aa46' },
+  { id: 'mud', name: 'Mud', type:'Loose', hardness: 15, probability: 100, worth: 0.4, minlevel: 0, maxlevel: 999, color: '#4a2f13ff' },
+  { id: 'clay', name: 'Clay', type:'Loose', hardness: 25, probability: 100, worth: 1.4, minlevel: 75, maxlevel: 1999, color: '#a57f61' },
+  { id: 'gravel', name: 'Gravel',  type:'Loose', hardness: 30, probability: 200, worth: 0.9, minlevel: 150, maxlevel: 2999, color: '#534f4fff' },
+
+  { id: 'sandstone', name: 'Sandstone',  type:'Stone Soft', hardness: 80, probability: 400, worth: 2.0, minlevel: 500, maxlevel: 9999, color: '#9d4d39ff' },
+  { id: 'limestone', name: 'Limestone' ,type:'Stone Soft', hardness: 80, probability: 200, worth: 2.1, minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' },
+  { id: 'Chalk', name: 'Chalk', type:'Stone Soft', hardness: 30, probability: 100, worth: 1.1, minlevel: 2000, maxlevel: 9999, color: '#a6b8adff' },
+  { id: 'ClayStone', name: 'Clay Stone',type:'Stone Soft', hardness: 100, probability: 300, worth: 1.1, minlevel: 3000, maxlevel: 15999, color: '#a6b8adff' },
+
+
+  { id: 'Marble', name: 'Marble', type:'Stone Medium',hardness: 250, probability: 400, worth: 8, minlevel: 4000, maxlevel: 99999, color: '#7a706eff' },
+  { id: 'Slate', name: 'Slate', type: 'Stone Medium', hardness: 400, probability: 200, worth: 2, minlevel: 5000, maxlevel: 599999, color: '#483b37ff' },
+  { id: 'Schist', name: 'Schist', type: 'Stone Medium', hardness: 400, probability: 200, worth: 2, minlevel: 5000, maxlevel: 599999, color: '#1d354dff' },
+  { id: 'Dolomite', name: 'Schist', type: 'Stone Medium', hardness: 400, probability: 200, worth: 2, minlevel: 5000, maxlevel: 599999, color: '#956f88ff' },
+
+
+  { id: 'Granite', name: 'Granite', type:'Stone Hard',hardness: 500, probability: 400, worth: 8, minlevel: 8000, maxlevel: 999999, color: '#280918ff' },
+  { id: 'Basalt', name: 'Basalt', type: 'Stone Hard', hardness: 750, probability: 400, worth: 2, minlevel: 14000, maxlevel: 999999, color: '#484848ff' },
+  { id: 'Obsidian', name: 'Obsidian', type: 'Stone Hard', hardness: 950, probability: 200, worth: 2, minlevel: 22000, maxlevel: 2999999, color: '#184f48ff' },
+  { id: 'Quartzite', name: 'Quartzite', type: 'Stone Hard', hardness: 1500, probability: 200, worth: 2, minlevel: 35000, maxlevel: 2999999, color: '#c35858ff' }, 
+
+  { id: 'Coal', name: 'Coal',type:'Special',  hardness: 8, probability: 150, worth: 2.5, minlevel: 1500, maxlevel: 49999, color: '#191919ff' },
+  { id: 'Magma', name: 'Magma',type:'Special',  hardness: 8, probability: 150, worth: 2.5, minlevel: 1500, maxlevel: 49999, color: '#fa6509ff' },
+
+  { id: 'Bronce Ore', name: 'Bronce', type:'Ore Soft', hardness: 30, probability: 75, worth: 6.5, minlevel: 3000, maxlevel: 99999, color: '#7e6136ff' },
+  { id: 'Copper Ore', name: 'Copper Ore',ype:'Ore Soft', hardness: 15, probability: 50, worth: 15, minlevel: 4000, maxlevel: 99999, color: '#c75e41ff' },
+    { id: 'Silver Ore', name: 'Silver  Ore', ype:'Ore Medium', hardness: 15, probability: 30, worth: 15, minlevel: 4000, maxlevel: 99999, color: '#c75e41ff' },
+  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium', hardness: 30, probability: 25, orth: 1000, minlevel: 5000, color: '#d6a80eff' }
+
+
 ];
 
 
