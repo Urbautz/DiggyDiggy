@@ -71,6 +71,26 @@ function getDwarfToolPower(dwarf) {
     return baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
 }
 
+function calculateWage(dwarf) {
+    // Base wage is 0.01 gold per dig
+    const baseWage = 0.01;
+    
+    // Get wage optimization research level (reduces increase by 1% per level)
+    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+    const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+    
+    // Calculate wage increase rate: starts at 25%, reduced by 1% per research level (minimum 5%)
+    const baseIncreaseRate = 0.25;
+    const researchReduction = researchLevel * 0.01;
+    const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+    
+    // Calculate wage based on dwarf level: baseWage * (1 + level * increaseRate)
+    const dwarfLevel = (dwarf.level || 1) - 1; // Level 1 has no increase, level 2 has 1x increase, etc.
+    const wage = baseWage * (1 + dwarfLevel * increaseRate);
+    
+    return wage;
+}
+
 function randomMaterial(depthLevel = 0) {
     // Filter materials that are valid for this depth level
     const validMaterials = materials.filter(m => 
@@ -530,7 +550,8 @@ function actForDwarf(dwarf) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
             // Check if we can afford to pay the dwarf
-            if (gold < 0.01) {
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
                 const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
@@ -543,8 +564,8 @@ function actForDwarf(dwarf) {
             dwarf.status = 'digging';
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
-            pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
+            gold = Math.max(0, gold - wage); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCell.hardness = Math.max(0, curCell.hardness - power);
             if (curCell.hardness === 0) {
@@ -596,7 +617,8 @@ function actForDwarf(dwarf) {
         const curCellDig = grid[dwarf.y][dwarf.x];
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
-            if (gold < 0.01) {
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
                 const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
@@ -607,8 +629,8 @@ function actForDwarf(dwarf) {
             }
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
-            pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
+            gold = Math.max(0, gold - wage); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
             if (curCellDig.hardness === 0) {
@@ -758,7 +780,8 @@ function actForDwarf(dwarf) {
     const targetKey = coordKey(foundCol, targetRowIndex);
     if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
     // Check if we can afford to pay the dwarf
-    if (gold < 0.01) {
+    const wage = calculateWage(dwarf);
+    if (gold < wage) {
         // Not enough gold - strike chance reduced by union-busting research
         const unionBusting = researchtree.find(r => r.id === 'union-busting');
         const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
@@ -769,8 +792,8 @@ function actForDwarf(dwarf) {
     }
     target.hardness = Math.max(0, target.hardness - power);
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-    gold = Math.max(0, gold - 0.01); // Deduct payment for digging
-    pendingTransactions.push({ type: 'expense', amount: 0.01, description: `Payment to ${dwarf.name}` });
+    gold = Math.max(0, gold - wage); // Deduct payment for digging
+    pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
     if (target.hardness === 0) {
         const matId = target.materialId;
         dwarf.bucket = dwarf.bucket || {};
