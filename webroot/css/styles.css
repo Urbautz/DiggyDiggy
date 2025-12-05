@@ -29,6 +29,14 @@ main {
 #drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
 #drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
 #drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
+
+/* Pause all animations and hide moving markers when hovering over the Functions panel for better responsiveness */
+#drop-grid-panel:hover * {
+    animation-play-state: paused !important;
+}
+#drop-grid-panel:hover .moving-marker {
+    display: none !important;
+}
 /* ensure content within drop-grid cells stacks correctly */
 #drop-grid .cell > * { position: relative; z-index: 1; }
 /* dwarf background marker should be positioned absolutely so it doesn't push layout */
