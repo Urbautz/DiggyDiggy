@@ -114,14 +114,16 @@ let researchtree = [
       description: 'Dwarfs dig 1% harder.' }, 
     { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-        { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
+    { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
       description: 'Sell Prices for materials are improved by 3% per level' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
+    { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
+      description: 'Increases critical hit chance to any stone by 5% per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
     { id: 'wage-optimization', name: 'Wage Negociation', cost: 1000, level: 0, maxlevel: 20,
-      description: 'Reduces wage increase per dwarf level by 1%. Dwarfs normally get +25% wage per level.' },
+      description: 'Reduces wage increase per dwarf level by 1%.' },
     ];
 let activeResearch = null; // Track which research is currently being researched
     

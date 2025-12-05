@@ -554,6 +554,8 @@ function populateResearch() {
     
     container.innerHTML = '';
     
+    //console.log('Populating research, researchtree has', researchtree.length, 'items:', researchtree.map(r => r.id));
+    
     // Show active research if any
     if (activeResearch) {
         const activeDiv = document.createElement('div');
@@ -882,6 +884,26 @@ async function loadVersionInfo() {
         container.innerHTML = '<p style="color: #ff6b6b;">Error loading version information.</p>';
         console.error('Error loading version info:', error);
     }
+}
+
+function triggerCritAnimation(x, y) {
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Critical hit animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+    
+    console.log(`✨ Applying crit-hit class to cell at (${x}, ${y})`);
+    
+    // Add critical hit class
+    cell.classList.add('crit-hit');
+    
+    // Remove class after animation completes
+    setTimeout(() => {
+        cell.classList.remove('crit-hit');
+        console.log(`✅ Removed crit-hit class from cell at (${x}, ${y})`);
+    }, 600);
 }
 
 function openModal(modalname) {
@@ -1979,7 +2001,13 @@ function initWorker() {
                 // Process transactions from worker
                 if (data.transactions && Array.isArray(data.transactions)) {
                     for (const transaction of data.transactions) {
-                        logTransaction(transaction.type, transaction.amount, transaction.description);
+                        if (transaction.type === 'crit-hit') {
+                            // Trigger critical hit animation
+                            console.log(`💥 Critical hit at (${transaction.x}, ${transaction.y})`);
+                            triggerCritAnimation(transaction.x, transaction.y);
+                        } else {
+                            logTransaction(transaction.type, transaction.amount, transaction.description);
+                        }
                     }
                 }
                 
@@ -1995,7 +2023,14 @@ function initWorker() {
                     activeResearch = data.activeResearch;
                 }
                 if (data.researchtree) {
-                    researchtree = data.researchtree;
+                    // Merge research progress from worker with current definitions
+                    for (const workerResearch of data.researchtree) {
+                        const currentResearch = researchtree.find(r => r.id === workerResearch.id);
+                        if (currentResearch) {
+                            currentResearch.level = workerResearch.level || 0;
+                            currentResearch.progress = workerResearch.progress || 0;
+                        }
+                    }
                 }
                 
                 // Update UI to reflect new state

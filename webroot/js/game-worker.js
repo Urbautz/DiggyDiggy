@@ -213,7 +213,7 @@ function checkAndShiftTopRows() {
     }
 
     if (removed > 0) {
-        console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
+       // console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
     }
     return removed > 0;
 }
@@ -237,14 +237,14 @@ function attemptCollapse(x, y) {
         if (!src || src.hardness <= 0) break;
         if (!dst || dst.hardness > 0) break;
 
-        console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
+        //console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
         grid[dstY][ux] = { materialId: src.materialId, hardness: src.hardness };
         grid[scanY][ux] = { materialId: src.materialId, hardness: 0 };
 
         for (const d of dwarfs) {
             if (d.x === ux && d.y === scanY) {
                 d.y = dstY;
-                console.log(`Dwarf ${d.name} fell from (${ux},${scanY}) to (${ux},${dstY})`);
+               // console.log(`Dwarf ${d.name} fell from (${ux},${scanY}) to (${ux},${dstY})`);
             }
         }
 
@@ -389,7 +389,7 @@ function actForDwarf(dwarf) {
                 activeResearch = null;
                 if (researchReservedBy === dwarf.name) {
                     researchReservedBy = null;
-                    console.log(`Research reservation released by ${dwarf.name}`);
+                    //console.log(`Research reservation released by ${dwarf.name}`);
                 }
                 dwarf.status = 'idle';
                 console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
@@ -488,7 +488,7 @@ function actForDwarf(dwarf) {
             if (scheduled) {
                 // Release research reservation if dwarf was heading there
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
-                console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
+                //console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                 return;
             }
         }
@@ -518,7 +518,7 @@ function actForDwarf(dwarf) {
         if (researchReservedBy === dwarf.name || !researchReservedBy) {
             researchReservedBy = dwarf.name;
             dwarf.status = 'researching';
-            console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
+            //console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
             return;
         }
     }
@@ -567,7 +567,19 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
-            curCell.hardness = Math.max(0, curCell.hardness - power);
+            
+            // Check for critical hit (5% base + 5% per research level)
+            const materialScience = researchtree.find(r => r.id === 'material-science');
+            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const isCrit = Math.random() < critChance;
+            const finalPower = isCrit ? power * 2 : power;
+            
+            curCell.hardness = Math.max(0, curCell.hardness - finalPower);
+            
+            // Record critical hit for animation
+            if (isCrit) {
+                pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+            }
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
                 dwarf.bucket = dwarf.bucket || {};
@@ -632,7 +644,19 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
-            curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
+            
+            // Check for critical hit (5% base + 5% per research level)
+            const materialScience = researchtree.find(r => r.id === 'material-science');
+            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const isCrit = Math.random() < critChance;
+            const finalPower = isCrit ? power * 2 : power;
+            
+            curCellDig.hardness = Math.max(0, curCellDig.hardness - finalPower);
+            
+            // Record critical hit for animation
+            if (isCrit) {
+                pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+            }
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;
                 dwarf.bucket = dwarf.bucket || {};
@@ -794,6 +818,19 @@ function actForDwarf(dwarf) {
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
+    
+    // Check for critical hit (5% base + 5% per research level)
+    const materialScience = researchtree.find(r => r.id === 'material-science');
+    const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+    const isCrit = Math.random() < critChance;
+    const finalPower = isCrit ? power * 2 : power;
+    
+    target.hardness = Math.max(0, target.hardness - finalPower);
+    
+    // Record critical hit for animation
+    if (isCrit) {
+        pendingTransactions.push({ type: 'crit-hit', x: foundCol, y: targetRowIndex, dwarf: dwarf.name });
+    }
     if (target.hardness === 0) {
         const matId = target.materialId;
         dwarf.bucket = dwarf.bucket || {};
@@ -868,7 +905,16 @@ self.addEventListener('message', (e) => {
             gold = data.gold !== undefined ? data.gold : 1000;
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
-            researchtree = data.researchtree || [];
+            if (data.researchtree) {
+                // Merge saved research progress with current definitions
+                for (const savedResearch of data.researchtree) {
+                    const currentResearch = researchtree.find(r => r.id === savedResearch.id);
+                    if (currentResearch) {
+                        currentResearch.level = savedResearch.level || 0;
+                        currentResearch.progress = savedResearch.progress || 0;
+                    }
+                }
+            }
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -914,7 +960,16 @@ self.addEventListener('message', (e) => {
                     console.log('Worker: Active research updated:', activeResearch.name);
                 }
             }
-            if (data.researchtree) researchtree = data.researchtree;
+            if (data.researchtree) {
+                // Merge saved research progress with current definitions
+                for (const savedResearch of data.researchtree) {
+                    const currentResearch = researchtree.find(r => r.id === savedResearch.id);
+                    if (currentResearch) {
+                        currentResearch.level = savedResearch.level || 0;
+                        currentResearch.progress = savedResearch.progress || 0;
+                    }
+                }
+            }
             break;
             
         default:
