@@ -2,6 +2,8 @@
 // This worker handles all the heavy computation for the game tick,
 // preventing UI blocking during dwarf actions and grid updates.
 
+const DEFAULT_LOOP_INTERVAL_MS = 400;
+
 let grid = [];
 let dwarfs = [];
 let materials = [];
@@ -906,14 +908,8 @@ self.addEventListener('message', (e) => {
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
             if (data.researchtree) {
-                // Merge saved research progress with current definitions
-                for (const savedResearch of data.researchtree) {
-                    const currentResearch = researchtree.find(r => r.id === savedResearch.id);
-                    if (currentResearch) {
-                        currentResearch.level = savedResearch.level || 0;
-                        currentResearch.progress = savedResearch.progress || 0;
-                    }
-                }
+                // Copy the full researchtree from main thread
+                researchtree = JSON.parse(JSON.stringify(data.researchtree));
             }
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
@@ -924,7 +920,7 @@ self.addEventListener('message', (e) => {
             if (gameLoopIntervalId) {
                 clearInterval(gameLoopIntervalId);
             }
-            const interval = e.data.interval || 250;
+            const interval = typeof e.data.interval === 'number' ? e.data.interval : DEFAULT_LOOP_INTERVAL_MS;
             gameLoopIntervalId = setInterval(() => {
                 if (!gamePaused) {
                     tick();
@@ -961,14 +957,8 @@ self.addEventListener('message', (e) => {
                 }
             }
             if (data.researchtree) {
-                // Merge saved research progress with current definitions
-                for (const savedResearch of data.researchtree) {
-                    const currentResearch = researchtree.find(r => r.id === savedResearch.id);
-                    if (currentResearch) {
-                        currentResearch.level = savedResearch.level || 0;
-                        currentResearch.progress = savedResearch.progress || 0;
-                    }
-                }
+                // Copy the full researchtree from main thread
+                researchtree = JSON.parse(JSON.stringify(data.researchtree));
             }
             break;
             

@@ -1,3 +1,5 @@
+const GAME_LOOP_INTERVAL_MS = 300;
+const activeCritFlashes = new Map();
 
 // pick a random material from the registry based on depth level and probability (probability)
 function randomMaterial(depthLevel = 0) {
@@ -67,6 +69,13 @@ function updateGridDisplay() {
     }
     tbody.innerHTML = '';
 
+    const now = Date.now();
+    for (const [key, expires] of activeCritFlashes) {
+        if (expires <= now) {
+            activeCritFlashes.delete(key);
+        }
+    }
+
     // Render only visibleDepth rows, showing depth label as first column
     for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
         const rowEl = document.createElement('tr');
@@ -88,6 +97,11 @@ function updateGridDisplay() {
             cell.className = 'cell';
             cell.dataset.row = r;
             cell.dataset.col = c;
+
+            const critKey = `${c}:${r}`;
+            if (activeCritFlashes.has(critKey)) {
+                cell.classList.add('crit-hit');
+            }
 
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
             const rawHardness = Number(cellData.hardness || 0);
@@ -887,6 +901,26 @@ async function loadVersionInfo() {
 }
 
 function triggerCritAnimation(x, y) {
+    const critKey = `${x}:${y}`;
+    const expiresAt = Date.now() + 320;
+    activeCritFlashes.set(critKey, expiresAt);
+
+    const scheduleCleanup = () => {
+        const trackedExpiry = activeCritFlashes.get(critKey);
+        if (trackedExpiry && trackedExpiry > expiresAt) {
+            return;
+        }
+
+        activeCritFlashes.delete(critKey);
+        const currentCell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+        if (currentCell) {
+            currentCell.classList.remove('crit-hit');
+            console.log(`✅ Removed crit-hit class from cell at (${x}, ${y})`);
+        }
+    };
+
+    setTimeout(scheduleCleanup, 520);
+
     // Find the cell in the main grid
     const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
     if (!cell) {
@@ -896,14 +930,14 @@ function triggerCritAnimation(x, y) {
     
     console.log(`✨ Applying crit-hit class to cell at (${x}, ${y})`);
     
+    // Restart animation if the class is already applied
+    if (cell.classList.contains('crit-hit')) {
+        cell.classList.remove('crit-hit');
+        void cell.offsetWidth;
+    }
+
     // Add critical hit class
     cell.classList.add('crit-hit');
-    
-    // Remove class after animation completes
-    setTimeout(() => {
-        cell.classList.remove('crit-hit');
-        console.log(`✅ Removed crit-hit class from cell at (${x}, ${y})`);
-    }, 600);
 }
 
 function openModal(modalname) {
@@ -2094,7 +2128,7 @@ function initWorker() {
     });
     
     // Start the worker's internal game loop
-    gameWorker.postMessage({ type: 'start-loop', interval: 250 });
+    gameWorker.postMessage({ type: 'start-loop', interval: GAME_LOOP_INTERVAL_MS });
 }
 
 function tick() {
