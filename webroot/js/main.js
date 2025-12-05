@@ -1157,7 +1157,17 @@ function populateDwarfsInPanel() {
         // Create level display with XP tooltip
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
-        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+        // Calculate wage using same logic as game-worker.js
+        const baseWage = 0.01;
+        const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+        const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+        const baseIncreaseRate = 0.25;
+        const researchReduction = researchLevel * 0.01;
+        const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+        const dwarfLevel = (currentLevel || 1) - 1;
+        const wage = baseWage * (1 + dwarfLevel * increaseRate);
+        
+        info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
         
         row.appendChild(header);
         row.appendChild(info);

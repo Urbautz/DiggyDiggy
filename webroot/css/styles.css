@@ -442,7 +442,7 @@ header, footer {
 .modal-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .modal-header h2 { margin:0; font-size:20px; }
 .modal-close { background:transparent; border:none; color: #fff; font-size:20px; cursor:pointer; }
-.modal-body { margin-top: 12px; color: #eaeaea; }
+.modal-body { margin-top: 12px; color: #eaeaea; max-height: 70vh; overflow-y: auto; }
 .modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top: 16px; }
 
 .btn-primary { background: linear-gradient(180deg,#3b82f6,#2563eb); color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
@@ -798,6 +798,16 @@ header, footer {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.research-table th:nth-child(2),
+.research-table td:nth-child(2) {
+    width: 120px;
+}
+
+.research-table th:nth-child(3),
+.research-table td:nth-child(3) {
+    width: 140px;
 }
 
 .research-table th {
