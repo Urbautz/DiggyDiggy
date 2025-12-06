@@ -99,8 +99,9 @@ function updateGridDisplay() {
             cell.dataset.col = c;
 
             const critKey = `${c}:${r}`;
-            if (activeCritFlashes.has(critKey)) {
-                cell.classList.add('crit-hit');
+            const critData = activeCritFlashes.get(critKey);
+            if (critData) {
+                cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
             }
 
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
@@ -993,11 +994,11 @@ async function loadVersionInfo() {
 function triggerCritAnimation(x, y, isOneHit = false) {
     const critKey = `${x}:${y}`;
     const expiresAt = Date.now() + (isOneHit ? 600 : 320);
-    activeCritFlashes.set(critKey, expiresAt);
+    activeCritFlashes.set(critKey, { expiresAt, isOneHit });
 
     const scheduleCleanup = () => {
-        const trackedExpiry = activeCritFlashes.get(critKey);
-        if (trackedExpiry && trackedExpiry > expiresAt) {
+        const tracked = activeCritFlashes.get(critKey);
+        if (tracked && tracked.expiresAt > expiresAt) {
             return;
         }
 

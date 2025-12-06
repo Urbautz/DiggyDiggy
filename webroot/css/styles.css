@@ -80,15 +80,20 @@ main {
 
 /* show a faint, larger emoji in the background when a dwarf occupies the cell */
 #digging-grid .cell.has-dwarf::before {
-    content: '⛏️';
+    content: '🧎';
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
     font-size: 24px;        /* larger, background-style */
-    opacity: 0;          /* subtle */
+    opacity: 0.8;          /* visible */
     pointer-events: none;   /* doesn't interfere with interactions */
     z-index: 1;             /* behind text content but above moving markers */
+}
+
+/* hide the default dwarf marker when digging (⛏️ marker is shown instead) */
+#digging-grid .cell.has-dwarf.is-digging::before {
+    opacity: 0;
 }
 
 /* ensure cell content sits above the background marker */
