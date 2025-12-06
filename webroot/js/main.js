@@ -1,3 +1,5 @@
+const GAME_LOOP_INTERVAL_MS = 300;
+const activeCritFlashes = new Map();
 
 // pick a random material from the registry based on depth level and probability (probability)
 function randomMaterial(depthLevel = 0) {
@@ -37,7 +39,7 @@ function getToolByType(toolType) {
 
 function getToolPower(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
-    if (!tool) return 0.5;
+    if (!tool) return 3;
     
     // Each level gives 10% bonus: power * (1 + (level - 1) * 0.1)
     return tool.power * (1 + (toolLevel - 1) * 0.1);
@@ -67,6 +69,13 @@ function updateGridDisplay() {
     }
     tbody.innerHTML = '';
 
+    const now = Date.now();
+    for (const [key, expires] of activeCritFlashes) {
+        if (expires <= now) {
+            activeCritFlashes.delete(key);
+        }
+    }
+
     // Render only visibleDepth rows, showing depth label as first column
     for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
         const rowEl = document.createElement('tr');
@@ -88,6 +97,12 @@ function updateGridDisplay() {
             cell.className = 'cell';
             cell.dataset.row = r;
             cell.dataset.col = c;
+
+            const critKey = `${c}:${r}`;
+            const critData = activeCritFlashes.get(critKey);
+            if (critData) {
+                cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
+            }
 
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
             const rawHardness = Number(cellData.hardness || 0);
@@ -156,8 +171,8 @@ function updateGridDisplay() {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
                 
-                const displayHardness = Math.ceil(rawHardness);
-                // show current hardness value inside the cell (rounded up for clarity)
+                const displayHardness = rawHardness.toFixed(1);
+                // show current hardness value inside the cell with one decimal
                 if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
                     cell.classList.add('has-dwarf');
@@ -451,6 +466,96 @@ function openSmelter() {
     populateSmelter();
 }
 
+function openTransactions() {
+    openModal('transactions-modal');
+    populateTransactions();
+    
+    // Set up auto-refresh every 2 seconds
+    if (window.transactionRefreshInterval) {
+        clearInterval(window.transactionRefreshInterval);
+    }
+    window.transactionRefreshInterval = setInterval(() => {
+        // Only refresh if modal is still open
+        const modal = document.getElementById('transactions-modal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false') {
+            populateTransactions();
+        } else {
+            // Modal closed, stop refreshing
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
+    }, 2000);
+}
+
+function logTransaction(type, amount, description) {
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    transactionLog.unshift({
+        type: type, // 'income' or 'expense'
+        amount: amount,
+        description: description,
+        timestamp: timestamp,
+        balance: gold
+    });
+    
+    // Keep only last 100 transactions
+    if (transactionLog.length > 100) {
+        transactionLog = transactionLog.slice(0, 100);
+    }
+}
+
+function populateTransactions() {
+    const container = document.getElementById('transactions-content');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (transactionLog.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No transactions yet.</p>';
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'transactions-table';
+    table.style.cssText = 'width: 100%; border-collapse: collapse;';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Time</th><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Description</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Amount</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Balance</th></tr>';
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    for (const transaction of transactionLog) {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #3a4a57';
+        
+        const timeTd = document.createElement('td');
+        timeTd.style.padding = '8px';
+        timeTd.textContent = transaction.timestamp;
+        
+        const descTd = document.createElement('td');
+        descTd.style.padding = '8px';
+        descTd.textContent = transaction.description;
+        
+        const amountTd = document.createElement('td');
+        amountTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
+        amountTd.style.color = transaction.type === 'income' ? '#4ade80' : '#ff6b6b';
+        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + transaction.amount.toFixed(5);
+        
+        const balanceTd = document.createElement('td');
+        balanceTd.style.cssText = 'padding: 8px; text-align: right;';
+        balanceTd.textContent = transaction.balance.toFixed(5);
+        
+        tr.appendChild(timeTd);
+        tr.appendChild(descTd);
+        tr.appendChild(amountTd);
+        tr.appendChild(balanceTd);
+        tbody.appendChild(tr);
+    }
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
 function populateSmelter() {
     const container = document.getElementById('smelter-content');
     if (!container) return;
@@ -458,11 +563,48 @@ function populateSmelter() {
     container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">Smelter functionality coming soon...</p>';
 }
 
+// Check if research requirements are met
+function checkResearchRequirements(researchItem) {
+    // No requirements - always available
+    if (!researchItem.requires || researchItem.requires.length === 0) {
+        return { met: true };
+    }
+    
+    const missingReqs = [];
+    
+    for (const req of researchItem.requires) {
+        // Each requirement is an object like {'material-science': 1}
+        for (const [reqId, reqLevel] of Object.entries(req)) {
+            const requiredResearch = researchtree.find(r => r.id === reqId);
+            if (!requiredResearch) {
+                missingReqs.push(`Unknown research: ${reqId}`);
+                continue;
+            }
+            
+            const currentLevel = requiredResearch.level || 0;
+            if (currentLevel < reqLevel) {
+                missingReqs.push(`${requiredResearch.name} level ${reqLevel}`);
+            }
+        }
+    }
+    
+    if (missingReqs.length > 0) {
+        return { 
+            met: false, 
+            reason: `Requires: ${missingReqs.join(', ')}`
+        };
+    }
+    
+    return { met: true };
+}
+
 function populateResearch() {
     const container = document.getElementById('research-content');
     if (!container) return;
     
     container.innerHTML = '';
+    
+    //console.log('Populating research, researchtree has', researchtree.length, 'items:', researchtree.map(r => r.id));
     
     // Show active research if any
     if (activeResearch) {
@@ -536,10 +678,19 @@ function populateResearch() {
         // Check if this research is already active
         const isActive = activeResearch && activeResearch.id === researchItem.id;
         
+        // Check if requirements are met
+        const requirementsMet = checkResearchRequirements(researchItem);
+        
         if (isActive) {
             researchBtn.className = 'btn-research active';
             researchBtn.textContent = 'Active';
             researchBtn.disabled = true;
+        } else if (!requirementsMet.met) {
+            // Requirements not met - gray out
+            researchBtn.className = 'btn-research disabled';
+            researchBtn.textContent = 'Locked';
+            researchBtn.disabled = true;
+            researchBtn.title = requirementsMet.reason;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -563,8 +714,54 @@ function populateResearch() {
     
     researchTable.appendChild(tbody);
     container.appendChild(researchTable);
+    
+    // Show completed researches section
+    const completedResearches = researchtree.filter(r => {
+        const currentLevel = r.level || 0;
+        const maxLevel = r.maxlevel || Infinity;
+        return currentLevel >= maxLevel && maxLevel !== Infinity;
+    });
+    
+    if (completedResearches.length > 0) {
+        const completedSection = document.createElement('div');
+        completedSection.className = 'completed-research-section';
+        completedSection.innerHTML = '<h3 style="color: #4CAF50; margin: 20px 0 10px 0;">✓ Completed Researches</h3>';
+        
+        const completedTable = document.createElement('table');
+        completedTable.className = 'research-table completed';
+        
+        const completedThead = document.createElement('thead');
+        completedThead.innerHTML = '<tr><th>Research</th><th>Level</th><th>Status</th></tr>';
+        completedTable.appendChild(completedThead);
+        
+        const completedTbody = document.createElement('tbody');
+        
+        for (const researchItem of completedResearches) {
+            const tr = document.createElement('tr');
+            tr.style.opacity = '0.7';
+            
+            const nameTd = document.createElement('td');
+            const nameDiv = document.createElement('div');
+            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
+            nameTd.appendChild(nameDiv);
+            
+            const levelTd = document.createElement('td');
+            levelTd.textContent = `${researchItem.level} / ${researchItem.maxlevel}`;
+            
+            const statusTd = document.createElement('td');
+            statusTd.innerHTML = '<span style="color: #4CAF50; font-weight: bold;">✓ Maxed</span>';
+            
+            tr.appendChild(nameTd);
+            tr.appendChild(levelTd);
+            tr.appendChild(statusTd);
+            completedTbody.appendChild(tr);
+        }
+        
+        completedTable.appendChild(completedTbody);
+        completedSection.appendChild(completedTable);
+        container.appendChild(completedSection);
+    }
 }
-
 function startResearch(researchId) {
     const researchItem = researchtree.find(r => r.id === researchId);
     if (!researchItem) {
@@ -742,6 +939,9 @@ function upgradeTool(toolId) {
     gold -= upgradeCost;
     toolInstance.level += 1;
     
+    // Log transaction
+    logTransaction('expense', upgradeCost, `Upgraded ${toolInstance.type} to level ${toolInstance.level}`);
+    
     // Update worker state
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -791,9 +991,59 @@ async function loadVersionInfo() {
     }
 }
 
+function triggerCritAnimation(x, y, isOneHit = false) {
+    const critKey = `${x}:${y}`;
+    const expiresAt = Date.now() + (isOneHit ? 600 : 320);
+    activeCritFlashes.set(critKey, { expiresAt, isOneHit });
+
+    const scheduleCleanup = () => {
+        const tracked = activeCritFlashes.get(critKey);
+        if (tracked && tracked.expiresAt > expiresAt) {
+            return;
+        }
+
+        activeCritFlashes.delete(critKey);
+        const currentCell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+        if (currentCell) {
+            currentCell.classList.remove('crit-hit');
+            currentCell.classList.remove('one-hit');
+        }
+    };
+
+    setTimeout(scheduleCleanup, isOneHit ? 800 : 520);
+
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Critical hit animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+    
+    const animClass = isOneHit ? 'one-hit' : 'crit-hit';
+    //console.log(`✨ Applying ${animClass} class to cell at (${x}, ${y})`);
+    
+    // Restart animation if the class is already applied
+    if (cell.classList.contains('crit-hit') || cell.classList.contains('one-hit')) {
+        cell.classList.remove('crit-hit');
+        cell.classList.remove('one-hit');
+        void cell.offsetWidth;
+    }
+
+    // Add animation class
+    cell.classList.add(animClass);
+}
+
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
+    
+    // Pause game when opening settings modal
+    if (modalname === 'settings-modal' && !gamePaused) {
+        gamePaused = true;
+        if (gameWorker) {
+            gameWorker.postMessage({ type: 'set-pause', paused: true });
+        }
+    }
     
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
@@ -807,8 +1057,20 @@ function closeModal(modalName) {
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
+        // Resume game when closing settings modal
+        if (modalName === 'settings-modal' && gamePaused) {
+            gamePaused = false;
+            if (gameWorker) {
+                gameWorker.postMessage({ type: 'set-pause', paused: false });
+            }
+        }
         // If we just closed the dwarfs modal, stop live updates
         if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
+        // If we just closed the transactions modal, stop refresh interval
+        if (modalName === 'transactions-modal' && window.transactionRefreshInterval) {
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
         return;
     }
     // close any open modal
@@ -818,6 +1080,17 @@ function closeModal(modalName) {
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
         if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
+        if (id === 'transactions-modal' && window.transactionRefreshInterval) {
+            clearInterval(window.transactionRefreshInterval);
+            window.transactionRefreshInterval = null;
+        }
+        // Resume game when closing settings modal
+        if (id === 'settings-modal' && gamePaused) {
+            gamePaused = false;
+            if (gameWorker) {
+                gameWorker.postMessage({ type: 'set-pause', paused: false });
+            }
+        }
     });
 }
 
@@ -996,17 +1269,30 @@ function populateDwarfsInPanel() {
             header.appendChild(levelUpBtn);
         }
         
-        // Calculate digging power
-        const basePower = d.toolId ? (() => {
+        // Calculate digging power (matching game-worker.js calculation)
+        const baseDwarfPower = 3;
+        let totalPower = baseDwarfPower;
+        
+        if (d.toolId) {
             const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? getToolPower(tool.type, tool.level) : 0.5;
-        })() : 0.5;
-        const digPowerBonus = (d.digPower || 0) * 0.1;
-        const totalPower = basePower * (1 + digPowerBonus);
+            if (tool) {
+                const toolDef = getToolByType(tool.type);
+                if (toolDef) {
+                    const toolBonus = 1 + (tool.level - 1) * 0.1;
+                    const dwarfBonus = 1 + (d.digPower || 0) * 0.1;
+                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
+                    totalPower = baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+                }
+            }
+        }
         
         // Calculate bucket fill
         const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
-        const dwarfCapacity = bucketCapacity + (d.strength || 0);
+        // Apply bucket research bonus (1 capacity per level)
+        const bucketResearch = researchtree.find(r => r.id === 'buckets');
+        const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+        const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
         
         // Get tool name for display
         const toolName = d.toolId ? (() => {
@@ -1020,7 +1306,17 @@ function populateDwarfsInPanel() {
         // Create level display with XP tooltip
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
-        info.innerHTML = `${levelSpan} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${d.energy || 0}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(2)} (${toolName})`;
+        // Calculate wage using same logic as game-worker.js
+        const baseWage = 0.01;
+        const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+        const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+        const baseIncreaseRate = 0.25;
+        const researchReduction = researchLevel * 0.01;
+        const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+        const dwarfLevel = (currentLevel || 1) - 1;
+        const wage = baseWage * (1 + dwarfLevel * increaseRate);
+        
+        info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
         
         row.appendChild(header);
         row.appendChild(info);
@@ -1448,6 +1744,9 @@ function sellMaterial(materialId, amount) {
     materialsStock[materialId] -= amount;
     gold += earnings;
     
+    // Log transaction
+    logTransaction('income', earnings, `Sold ${amount}x ${material.name}`);
+    
     // Update the worker's state with new values
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -1634,6 +1933,9 @@ function sellAllMaterials() {
         gold += totalGold;
         console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
         
+        // Log transaction
+        logTransaction('income', totalGold, `Sold all materials (${totalItems} items)`);
+        
         // Update worker with new gold amount
         gameWorker.postMessage({
             type: 'update-state',
@@ -1714,8 +2016,9 @@ function showCellTooltipFromEvent(cell, event) {
     const mouseY = event && typeof event.clientY === 'number' ? event.clientY : tooltipState.lastMouseY;
 
     const material = getMaterialById(cellData.materialId);
-    const hardness = Math.max(0, Math.ceil(Number(cellData.hardness) || 0));
-    const isDugOut = hardness <= 0;
+    const rawHardness = Number(cellData.hardness) || 0;
+    const hardness = Math.max(0, rawHardness).toFixed(1);
+    const isDugOut = rawHardness <= 0;
     const label = isDugOut ? 'Cleared' : (material ? material.name : 'Unknown');
     cellTooltipTitle.textContent = label;
     cellTooltipHardness.textContent = isDugOut ? 'Fully dug out' : `Hardness ${hardness}`;
@@ -1822,6 +2125,22 @@ function initWorker() {
                     gold = data.gold;
                 }
                 
+                // Process transactions from worker
+                if (data.transactions && Array.isArray(data.transactions)) {
+                    for (const transaction of data.transactions) {
+                        if (transaction.type === 'crit-hit') {
+                            // Trigger critical hit animation
+                            triggerCritAnimation(transaction.x, transaction.y, false);
+                        } else if (transaction.type === 'one-hit') {
+                            // Trigger one-hit animation (stronger effect)
+                            console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
+                            triggerCritAnimation(transaction.x, transaction.y, true);
+                        } else {
+                            logTransaction(transaction.type, transaction.amount, transaction.description);
+                        }
+                    }
+                }
+                
                 // Update toolsInventory from worker (it might be modified during digging)
                 if (data.toolsInventory) {
                     // Update the array in place to keep the reference
@@ -1834,7 +2153,14 @@ function initWorker() {
                     activeResearch = data.activeResearch;
                 }
                 if (data.researchtree) {
-                    researchtree = data.researchtree;
+                    // Merge research progress from worker with current definitions
+                    for (const workerResearch of data.researchtree) {
+                        const currentResearch = researchtree.find(r => r.id === workerResearch.id);
+                        if (currentResearch) {
+                            currentResearch.level = workerResearch.level || 0;
+                            currentResearch.progress = workerResearch.progress || 0;
+                        }
+                    }
                 }
                 
                 // Update UI to reflect new state
@@ -1898,7 +2224,7 @@ function initWorker() {
     });
     
     // Start the worker's internal game loop
-    gameWorker.postMessage({ type: 'start-loop', interval: 250 });
+    gameWorker.postMessage({ type: 'start-loop', interval: GAME_LOOP_INTERVAL_MS });
 }
 
 function tick() {
@@ -1914,7 +2240,7 @@ function togglePause() {
     gamePaused = !gamePaused;
     const btn = document.getElementById('pause-button');
     if (btn) {
-        btn.textContent = gamePaused ? '▶️' : '⏸️';
+        btn.textContent = gamePaused ? '▶' : '⏸';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
     }
     // Notify worker of pause state change
@@ -1925,6 +2251,9 @@ function togglePause() {
 }
 
 function saveGame() {
+    // Don't save when game is paused (e.g., settings modal is open)
+    if (gamePaused) return;
+    
     try {
         const gameState = {
             grid: grid,
@@ -1935,6 +2264,7 @@ function saveGame() {
             gold: gold,
             researchtree: researchtree,
             activeResearch: activeResearch,
+            transactionLog: transactionLog,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -1981,14 +2311,26 @@ function loadGame() {
             }
         }
         
-        // Restore research tree
+        // Restore research tree - merge saved progress with current definitions
         if (gameState.researchtree) {
-            researchtree = gameState.researchtree;
+            // Update existing research items with saved progress
+            for (const savedResearch of gameState.researchtree) {
+                const currentResearch = researchtree.find(r => r.id === savedResearch.id);
+                if (currentResearch) {
+                    currentResearch.level = savedResearch.level || 0;
+                    currentResearch.progress = savedResearch.progress || 0;
+                }
+            }
         }
         
         // Restore active research
         if (gameState.activeResearch) {
             activeResearch = gameState.activeResearch;
+        }
+        
+        // Restore transaction log
+        if (gameState.transactionLog) {
+            transactionLog = gameState.transactionLog;
         }
         
         console.log('Game loaded from', new Date(gameState.timestamp));
@@ -1999,7 +2341,7 @@ function loadGame() {
     }
 }
 
-function deleteSave() {
+window.deleteSave = function() {
     if (confirm('Are you sure you want to delete your saved game? This cannot be undone.')) {
         try {
             localStorage.removeItem('diggyDiggyGameState');
@@ -2012,7 +2354,7 @@ function deleteSave() {
     }
 }
 
-function activateCheat() {
+window.activateCheat = function activateCheat() {
     if (!cheatModeEnabled) {
         console.warn('Cheat mode not enabled');
         return;
@@ -2037,6 +2379,9 @@ function activateCheat() {
     
     // Add 5000 gold
     gold += 5000;
+    
+    // Log transaction
+    logTransaction('income', 5000, 'Cheat code activated');
     
     // Sync with worker
     if (gameWorker && workerInitialized) {

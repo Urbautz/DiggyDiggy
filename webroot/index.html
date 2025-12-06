@@ -15,7 +15,7 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
-    <div id="gold-display" class="gold-display">
+    <div id="gold-display" class="gold-display" onclick="openTransactions()" style="cursor: pointer;" title="Click to view transaction log">
         <span class="gold-icon">💰</span>
         <span class="gold-amount">1000</span>
     </div>
@@ -39,8 +39,8 @@
         </div>
     </div>
         <div class="topbar-controls">
-            <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸️</button>
-            <button id="about-button" onclick="openAbout()" title="About">ℹ️</button>
+            <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸</button>
+            <button id="about-button" onclick="openAbout()" title="About">📖</button>
             <button id="settings-button" onclick="openSettings()" title="Settings">⚙️</button>
         </div>
         <!-- Stock status: displays global collected material counts -->
@@ -194,6 +194,26 @@
         </div>
     </div>
 
+    <!-- Transaction Log modal -->
+    <div id="transactions-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Transaction log dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>💰 Transaction Log</h2>
+                <button class="modal-close" aria-label="Close transactions" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <p>View the last 100 money transactions:</p>
+                <div id="transactions-content" style="max-height: 500px; overflow-y: auto;">
+                    <!-- Content will be added here -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- Settings modal -->
     <div id="settings-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Settings dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
@@ -222,7 +242,7 @@
         <div class="modal-backdrop" data-action="close-modal"></div>
         <div class="modal-dialog" role="document">
             <header class="modal-header">
-                <h2>ℹ️ About Diggy Diggy Dwarf</h2>
+                <h2>📖 About Diggy Diggy Dwarf</h2>
                 <button class="modal-close" aria-label="Close about" data-action="close-modal">×</button>
             </header>
             <div class="modal-body">

@@ -2,6 +2,8 @@
 // This worker handles all the heavy computation for the game tick,
 // preventing UI blocking during dwarf actions and grid updates.
 
+const DEFAULT_LOOP_INTERVAL_MS = 400;
+
 let grid = [];
 let dwarfs = [];
 let materials = [];
@@ -20,6 +22,7 @@ let gold = 1000;
 let toolsInventory = [];
 let activeResearch = null;
 let researchtree = [];
+let pendingTransactions = []; // Queue of transactions to send to main thread
 
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
@@ -49,15 +52,17 @@ function getMaterialById(id) {
 }
 
 function getDwarfToolPower(dwarf) {
-    if (!dwarf.toolId) return 0.5; // default power if no tool
+    const baseDwarfPower = 3; // dwarf's base damage
+    
+    if (!dwarf.toolId) return baseDwarfPower; // default power if no tool
     
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance) return 0.5;
+    if (!toolInstance) return baseDwarfPower;
     
     const toolDef = tools.find(t => t.name === toolInstance.type);
-    if (!toolDef) return 0.5;
+    if (!toolDef) return baseDwarfPower;
     
-    // Calculate power based on base power, tool level (10% per level), and dwarf's digPower (10% per point)
+    // Calculate power: base dwarf power + tool power with bonuses
     const toolBonus = 1 + (toolInstance.level - 1) * 0.1;
     const dwarfBonus = 1 + (dwarf.digPower || 0) * 0.1;
     
@@ -65,7 +70,27 @@ function getDwarfToolPower(dwarf) {
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
     
-    return toolDef.power * toolBonus * dwarfBonus * researchBonus;
+    return baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+}
+
+function calculateWage(dwarf) {
+    // Base wage is 0.01 gold per dig
+    const baseWage = 0.01;
+    
+    // Get wage optimization research level (reduces increase by 1% per level)
+    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+    const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+    
+    // Calculate wage increase rate: starts at 25%, reduced by 1% per research level (minimum 5%)
+    const baseIncreaseRate = 0.25;
+    const researchReduction = researchLevel * 0.01;
+    const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+    
+    // Calculate wage based on dwarf level: baseWage * (1 + level * increaseRate)
+    const dwarfLevel = (dwarf.level || 1) - 1; // Level 1 has no increase, level 2 has 1x increase, etc.
+    const wage = baseWage * (1 + dwarfLevel * increaseRate);
+    
+    return wage;
 }
 
 function randomMaterial(depthLevel = 0) {
@@ -190,7 +215,7 @@ function checkAndShiftTopRows() {
     }
 
     if (removed > 0) {
-        console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
+       // console.log(`checkAndShiftTopRows: removed ${removed} top row(s), new startX=${startX}`);
     }
     return removed > 0;
 }
@@ -214,14 +239,14 @@ function attemptCollapse(x, y) {
         if (!src || src.hardness <= 0) break;
         if (!dst || dst.hardness > 0) break;
 
-        console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
+        //console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
         grid[dstY][ux] = { materialId: src.materialId, hardness: src.hardness };
         grid[scanY][ux] = { materialId: src.materialId, hardness: 0 };
 
         for (const d of dwarfs) {
             if (d.x === ux && d.y === scanY) {
                 d.y = dstY;
-                console.log(`Dwarf ${d.name} fell from (${ux},${scanY}) to (${ux},${dstY})`);
+               // console.log(`Dwarf ${d.name} fell from (${ux},${scanY}) to (${ux},${dstY})`);
             }
         }
 
@@ -366,7 +391,7 @@ function actForDwarf(dwarf) {
                 activeResearch = null;
                 if (researchReservedBy === dwarf.name) {
                     researchReservedBy = null;
-                    console.log(`Research reservation released by ${dwarf.name}`);
+                    //console.log(`Research reservation released by ${dwarf.name}`);
                 }
                 dwarf.status = 'idle';
                 console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
@@ -391,7 +416,10 @@ function actForDwarf(dwarf) {
 
     // Full bucket handling
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
-    const dwarfCapacity = bucketCapacity + (dwarf.strength || 0);
+    // Apply bucket research bonus (1 capacity per level)
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
     if (typeof bucketCapacity === 'number' && bucketTotal >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
@@ -462,7 +490,7 @@ function actForDwarf(dwarf) {
             if (scheduled) {
                 // Release research reservation if dwarf was heading there
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
-                console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
+                //console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                 return;
             }
         }
@@ -492,7 +520,7 @@ function actForDwarf(dwarf) {
         if (researchReservedBy === dwarf.name || !researchReservedBy) {
             researchReservedBy = dwarf.name;
             dwarf.status = 'researching';
-            console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
+            //console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
             return;
         }
     }
@@ -524,9 +552,12 @@ function actForDwarf(dwarf) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
             // Check if we can afford to pay the dwarf
-            if (gold < 0.01) {
-                // Not enough gold - only 10% chance to dig (striking)
-                if (Math.random() > 0.1) {
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -535,9 +566,48 @@ function actForDwarf(dwarf) {
             dwarf.status = 'digging';
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            gold = Math.max(0, gold - wage); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
-            curCell.hardness = Math.max(0, curCell.hardness - power);
+            
+            // Check for critical hit (5% base + 5% per research level)
+            const materialScience = researchtree.find(r => r.id === 'material-science');
+            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const isCrit = Math.random() < critChance;
+            let finalPower = isCrit ? power * 2 : power;
+            
+            // Check for expertise one-hit on critical
+            if (isCrit) {
+                const mat = materials.find(m => m.id === curCell.materialId);
+                const matType = mat ? mat.type : '';
+                const isStone = matType.startsWith('Stone');
+                const isOre = matType.startsWith('Ore');
+                
+                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
+                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                
+                let oneHitChance = 0;
+                let expertiseType = null;
+                
+                if (isStone && stoneExpertise && stoneExpertise.level > 0) {
+                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    expertiseType = 'Stone';
+                } else if (isOre && oreExpertise && oreExpertise.level > 0) {
+                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    expertiseType = 'Ore';
+                }
+                
+                if (oneHitChance > 0 && Math.random() < oneHitChance) {
+                    finalPower = curCell.hardness; // One-hit!
+                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
+                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+                } else {
+                   // console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCell.materialId} (type: ${matType})`);
+                    pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+                }
+            }
+            
+            curCell.hardness = Math.max(0, curCell.hardness - finalPower);
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
                 dwarf.bucket = dwarf.bucket || {};
@@ -587,18 +657,60 @@ function actForDwarf(dwarf) {
         const curCellDig = grid[dwarf.y][dwarf.x];
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
-            if (gold < 0.01) {
-                // Not enough gold - only 10% chance to dig (striking)
-                if (Math.random() > 0.1) {
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
                 }
             }
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-            gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+            gold = Math.max(0, gold - wage); // Deduct payment for digging
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
-            curCellDig.hardness = Math.max(0, curCellDig.hardness - power);
+            
+            // Check for critical hit (5% base + 5% per research level)
+            const materialScience = researchtree.find(r => r.id === 'material-science');
+            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const isCrit = Math.random() < critChance;
+            let finalPower = isCrit ? power * 2 : power;
+            
+            // Check for expertise one-hit on critical
+            if (isCrit) {
+                const mat = materials.find(m => m.id === curCellDig.materialId);
+                const matType = mat ? mat.type : '';
+                const isStone = matType.startsWith('Stone');
+                const isOre = matType.startsWith('Ore');
+                
+                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
+                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                
+                let oneHitChance = 0;
+                let expertiseType = null;
+                
+                if (isStone && stoneExpertise && stoneExpertise.level > 0) {
+                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    expertiseType = 'Stone';
+                } else if (isOre && oreExpertise && oreExpertise.level > 0) {
+                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    expertiseType = 'Ore';
+                }
+                
+                if (oneHitChance > 0 && Math.random() < oneHitChance) {
+                    finalPower = curCellDig.hardness; // One-hit!
+                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
+                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+                } else {
+                    //console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCellDig.materialId} (type: ${matType})`);
+                    pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+                }
+            }
+            
+            curCellDig.hardness = Math.max(0, curCellDig.hardness - finalPower);
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;
                 dwarf.bucket = dwarf.bucket || {};
@@ -746,16 +858,33 @@ function actForDwarf(dwarf) {
     const targetKey = coordKey(foundCol, targetRowIndex);
     if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
     // Check if we can afford to pay the dwarf
-    if (gold < 0.01) {
-        // Not enough gold - only 10% chance to dig (striking)
-        if (Math.random() > 0.1) {
+    const wage = calculateWage(dwarf);
+    if (gold < wage) {
+        // Not enough gold - strike chance reduced by union-busting research
+        const unionBusting = researchtree.find(r => r.id === 'union-busting');
+        const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+        if (Math.random() > continueWorkChance) {
             dwarf.status = 'striking';
             return;
         }
     }
     target.hardness = Math.max(0, target.hardness - power);
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-    gold = Math.max(0, gold - 0.01); // Deduct payment for digging
+    gold = Math.max(0, gold - wage); // Deduct payment for digging
+    pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
+    
+    // Check for critical hit (5% base + 5% per research level)
+    const materialScience = researchtree.find(r => r.id === 'material-science');
+    const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+    const isCrit = Math.random() < critChance;
+    const finalPower = isCrit ? power * 2 : power;
+    
+    target.hardness = Math.max(0, target.hardness - finalPower);
+    
+    // Record critical hit for animation
+    if (isCrit) {
+        pendingTransactions.push({ type: 'crit-hit', x: foundCol, y: targetRowIndex, dwarf: dwarf.name });
+    }
     if (target.hardness === 0) {
         const matId = target.materialId;
         dwarf.bucket = dwarf.bucket || {};
@@ -790,9 +919,13 @@ function tick() {
                 toolsInventory,
                 activeResearch,
                 researchtree,
-                shifted
+                shifted,
+                transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
+        
+        // Clear pending transactions after sending
+        pendingTransactions = [];
     } catch (err) {
         console.error('Worker tick() error:', err);
         self.postMessage({
@@ -826,7 +959,10 @@ self.addEventListener('message', (e) => {
             gold = data.gold !== undefined ? data.gold : 1000;
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
-            researchtree = data.researchtree || [];
+            if (data.researchtree) {
+                // Copy the full researchtree from main thread
+                researchtree = JSON.parse(JSON.stringify(data.researchtree));
+            }
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -836,7 +972,7 @@ self.addEventListener('message', (e) => {
             if (gameLoopIntervalId) {
                 clearInterval(gameLoopIntervalId);
             }
-            const interval = e.data.interval || 250;
+            const interval = typeof e.data.interval === 'number' ? e.data.interval : DEFAULT_LOOP_INTERVAL_MS;
             gameLoopIntervalId = setInterval(() => {
                 if (!gamePaused) {
                     tick();
@@ -872,7 +1008,10 @@ self.addEventListener('message', (e) => {
                     console.log('Worker: Active research updated:', activeResearch.name);
                 }
             }
-            if (data.researchtree) researchtree = data.researchtree;
+            if (data.researchtree) {
+                // Copy the full researchtree from main thread
+                researchtree = JSON.parse(JSON.stringify(data.researchtree));
+            }
             break;
             
         default:
