@@ -574,14 +574,40 @@ function actForDwarf(dwarf) {
             const materialScience = researchtree.find(r => r.id === 'material-science');
             const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
             const isCrit = Math.random() < critChance;
-            const finalPower = isCrit ? power * 2 : power;
+            let finalPower = isCrit ? power * 2 : power;
+            
+            // Check for expertise one-hit on critical
+            if (isCrit) {
+                const mat = materials.find(m => m.id === curCell.materialId);
+                const matType = mat ? mat.type : '';
+                const isStone = matType.startsWith('Stone');
+                const isOre = matType.startsWith('Ore');
+                
+                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
+                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                
+                let oneHitChance = 0;
+                let expertiseType = null;
+                
+                if (isStone && stoneExpertise && stoneExpertise.level > 0) {
+                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    expertiseType = 'Stone';
+                } else if (isOre && oreExpertise && oreExpertise.level > 0) {
+                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    expertiseType = 'Ore';
+                }
+                
+                if (oneHitChance > 0 && Math.random() < oneHitChance) {
+                    finalPower = curCell.hardness; // One-hit!
+                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
+                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+                } else {
+                   // console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCell.materialId} (type: ${matType})`);
+                    pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+                }
+            }
             
             curCell.hardness = Math.max(0, curCell.hardness - finalPower);
-            
-            // Record critical hit for animation
-            if (isCrit) {
-                pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
-            }
             if (curCell.hardness === 0) {
                 const matId = curCell.materialId;
                 dwarf.bucket = dwarf.bucket || {};
@@ -651,14 +677,40 @@ function actForDwarf(dwarf) {
             const materialScience = researchtree.find(r => r.id === 'material-science');
             const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
             const isCrit = Math.random() < critChance;
-            const finalPower = isCrit ? power * 2 : power;
+            let finalPower = isCrit ? power * 2 : power;
+            
+            // Check for expertise one-hit on critical
+            if (isCrit) {
+                const mat = materials.find(m => m.id === curCellDig.materialId);
+                const matType = mat ? mat.type : '';
+                const isStone = matType.startsWith('Stone');
+                const isOre = matType.startsWith('Ore');
+                
+                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
+                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                
+                let oneHitChance = 0;
+                let expertiseType = null;
+                
+                if (isStone && stoneExpertise && stoneExpertise.level > 0) {
+                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    expertiseType = 'Stone';
+                } else if (isOre && oreExpertise && oreExpertise.level > 0) {
+                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    expertiseType = 'Ore';
+                }
+                
+                if (oneHitChance > 0 && Math.random() < oneHitChance) {
+                    finalPower = curCellDig.hardness; // One-hit!
+                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
+                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+                } else {
+                    //console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCellDig.materialId} (type: ${matType})`);
+                    pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
+                }
+            }
             
             curCellDig.hardness = Math.max(0, curCellDig.hardness - finalPower);
-            
-            // Record critical hit for animation
-            if (isCrit) {
-                pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
-            }
             if (curCellDig.hardness === 0) {
                 const matId = curCellDig.materialId;
                 dwarf.bucket = dwarf.bucket || {};

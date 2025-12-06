@@ -990,9 +990,9 @@ async function loadVersionInfo() {
     }
 }
 
-function triggerCritAnimation(x, y) {
+function triggerCritAnimation(x, y, isOneHit = false) {
     const critKey = `${x}:${y}`;
-    const expiresAt = Date.now() + 320;
+    const expiresAt = Date.now() + (isOneHit ? 600 : 320);
     activeCritFlashes.set(critKey, expiresAt);
 
     const scheduleCleanup = () => {
@@ -1005,11 +1005,11 @@ function triggerCritAnimation(x, y) {
         const currentCell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
         if (currentCell) {
             currentCell.classList.remove('crit-hit');
-            console.log(`✅ Removed crit-hit class from cell at (${x}, ${y})`);
+            currentCell.classList.remove('one-hit');
         }
     };
 
-    setTimeout(scheduleCleanup, 520);
+    setTimeout(scheduleCleanup, isOneHit ? 800 : 520);
 
     // Find the cell in the main grid
     const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
@@ -1018,16 +1018,18 @@ function triggerCritAnimation(x, y) {
         return;
     }
     
-    console.log(`✨ Applying crit-hit class to cell at (${x}, ${y})`);
+    const animClass = isOneHit ? 'one-hit' : 'crit-hit';
+    //console.log(`✨ Applying ${animClass} class to cell at (${x}, ${y})`);
     
     // Restart animation if the class is already applied
-    if (cell.classList.contains('crit-hit')) {
+    if (cell.classList.contains('crit-hit') || cell.classList.contains('one-hit')) {
         cell.classList.remove('crit-hit');
+        cell.classList.remove('one-hit');
         void cell.offsetWidth;
     }
 
-    // Add critical hit class
-    cell.classList.add('crit-hit');
+    // Add animation class
+    cell.classList.add(animClass);
 }
 
 function openModal(modalname) {
@@ -2127,8 +2129,11 @@ function initWorker() {
                     for (const transaction of data.transactions) {
                         if (transaction.type === 'crit-hit') {
                             // Trigger critical hit animation
-                            console.log(`💥 Critical hit at (${transaction.x}, ${transaction.y})`);
-                            triggerCritAnimation(transaction.x, transaction.y);
+                            triggerCritAnimation(transaction.x, transaction.y, false);
+                        } else if (transaction.type === 'one-hit') {
+                            // Trigger one-hit animation (stronger effect)
+                            console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
+                            triggerCritAnimation(transaction.x, transaction.y, true);
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
                         }
