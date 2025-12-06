@@ -1,5 +1,5 @@
 // Base data}
-const gameversion = '0.10.0';
+const gameversion = '0.11.0';
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
