@@ -17,6 +17,8 @@ let bucketCapacity = 4;
 let dropOff = null;
 let house = null;
 let research = null;
+let smelter = null;
+let smelterTasks = [];
 let dropGridStartX = 10;
 let gold = 1000;
 let toolsInventory = [];
@@ -27,6 +29,7 @@ let pendingTransactions = []; // Queue of transactions to send to main thread
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
+let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
 
 // Stuck detection tracking
 const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
@@ -49,6 +52,44 @@ function isReservedForDig(x, y) {
 
 function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
+}
+
+// Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
+function smelterHasWork() {
+    if (!smelterTasks || smelterTasks.length === 0) return false;
+    
+    // Check each task in priority order
+    for (const task of smelterTasks) {
+        if (task.id === 'do-nothing') {
+            // If "do nothing" is encountered, stop checking
+            return false;
+        }
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return true; // Found a task with enough materials
+            }
+        }
+    }
+    return false;
+}
+
+// Find the first actionable smelter task
+function findActionableSmelterTask() {
+    if (!smelterTasks || smelterTasks.length === 0) return null;
+    
+    for (const task of smelterTasks) {
+        if (task.id === 'do-nothing') {
+            return null; // Stop at "do nothing"
+        }
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return task;
+            }
+        }
+    }
+    return null;
 }
 
 function getDwarfToolPower(dwarf) {
@@ -404,6 +445,51 @@ function actForDwarf(dwarf) {
         }
     }
 
+    // Smelting state
+    if (dwarf.status === 'smelting') {
+        // Check if at smelter location
+        if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
+            // Check if dwarf has enough energy
+            if (dwarf.energy < 10) {
+                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                dwarf.status = 'idle';
+                return;
+            }
+            
+            // Find an actionable task from the priority list
+            const task = findActionableSmelterTask();
+            if (!task) {
+                // No work available, release smelter and become idle
+                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                dwarf.status = 'idle';
+                return;
+            }
+            
+            // Perform the smelting action
+            const inputMaterial = task.input.material;
+            const inputAmount = task.input.amount;
+            const outputMaterial = task.output.material;
+            const outputAmount = task.output.amount;
+            
+            // Consume input materials
+            materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+            
+            // Produce output materials
+            materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+            
+            // Consume energy and award XP
+            dwarf.energy = Math.max(0, dwarf.energy - 10);
+            dwarf.xp = (dwarf.xp || 0) + 1;
+            
+            //console.log(`Dwarf ${dwarf.name} smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
+            return;
+        } else {
+            // Not at smelter location, release reservation and become idle
+            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+            dwarf.status = 'idle';
+        }
+    }
+
     // Striking state - dwarf refuses to work without pay
     if (dwarf.status === 'striking') {
         // Check if there's gold available now
@@ -464,13 +550,18 @@ function actForDwarf(dwarf) {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
-                                // Check if there's active research and research is not reserved
-                                if (activeResearch && !researchReservedBy && Math.random() < 0.95 && typeof research === 'object' && research !== null) {
-                                    // 95% chance to go research instead of digging (if research not reserved)
+                                // Check if there's active research and research is not reserved (47.5% chance)
+                                if (activeResearch && !researchReservedBy && Math.random() < 0.475 && typeof research === 'object' && research !== null) {
                                     researchReservedBy = dwarf.name;
                                     scheduleMove(dwarf, research.x, research.y);
                                     dwarf.status = 'moving';
                                     //console.log(`Dwarf ${dwarf.name} reserved research, heading to research lab`);
+                                } else if (smelterHasWork() && !smelterReservedBy && Math.random() < 0.475 && typeof smelter === 'object' && smelter !== null) {
+                                    // Check if there's smelter work available (47.5% chance)
+                                    smelterReservedBy = dwarf.name;
+                                    scheduleMove(dwarf, smelter.x, smelter.y);
+                                    dwarf.status = 'moving';
+                                    //console.log(`Dwarf ${dwarf.name} reserved smelter, heading to smelter`);
                                 } else {
                                     scheduleMove(dwarf, chosen, rowIdx);
                                     //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
@@ -490,6 +581,8 @@ function actForDwarf(dwarf) {
             if (scheduled) {
                 // Release research reservation if dwarf was heading there
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                // Release smelter reservation if dwarf was heading there
+                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 //console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                 return;
             }
@@ -525,15 +618,27 @@ function actForDwarf(dwarf) {
         }
     }
     
+    // Check if dwarf is at smelter location BEFORE accessing grid cells (smelter is outside main grid)
+    if (dwarf.status === 'idle' && typeof smelter === 'object' && smelter !== null && 
+        dwarf.x === smelter.x && dwarf.y === smelter.y && smelterHasWork() && dwarf.energy >= 10) {
+        // Only start smelting if this dwarf has reserved it or it's not reserved
+        if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
+            smelterReservedBy = dwarf.name;
+            dwarf.status = 'smelting';
+            //console.log(`Dwarf ${dwarf.name} started smelting at (${dwarf.x},${dwarf.y})`);
+            return;
+        }
+    }
+    
     const curCell = row[originalX];
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
-    // Idle dwarf with research available - send to research lab (95% chance)
+    // Idle dwarf with research available - send to research lab (47.5% chance, halved from 95%)
     // Only if research is not reserved by another dwarf
     if (dwarf.status === 'idle' && activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && 
-        dwarf.energy >= 10 && Math.random() < 0.95) {
+        dwarf.energy >= 10 && Math.random() < 0.475) {
         // Check if already at research location
         if (dwarf.x !== research.x || dwarf.y !== research.y) {
             // Not at research location, reserve and move there
@@ -541,6 +646,22 @@ function actForDwarf(dwarf) {
                 researchReservedBy = dwarf.name;
                 scheduleMove(dwarf, research.x, research.y);
                 //console.log(`Idle dwarf ${dwarf.name} reserved research, heading to research lab`);
+                return;
+            }
+        }
+    }
+    
+    // Idle dwarf with smelter work available - send to smelter (47.5% chance)
+    // Only if smelter is not reserved by another dwarf
+    if (dwarf.status === 'idle' && smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null && 
+        dwarf.energy >= 10 && Math.random() < 0.475) {
+        // Check if already at smelter location
+        if (dwarf.x !== smelter.x || dwarf.y !== smelter.y) {
+            // Not at smelter location, reserve and move there
+            if (!dwarf.moveTarget || dwarf.moveTarget.x !== smelter.x || dwarf.moveTarget.y !== smelter.y) {
+                smelterReservedBy = dwarf.name;
+                scheduleMove(dwarf, smelter.x, smelter.y);
+                //console.log(`Idle dwarf ${dwarf.name} reserved smelter, heading to smelter`);
                 return;
             }
         }
@@ -955,6 +1076,10 @@ self.addEventListener('message', (e) => {
             dropOff = data.dropOff;
             house = data.house;
             research = data.research;
+            smelter = data.smelter;
+            if (data.smelterTasks) {
+                smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
+            }
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
             toolsInventory = data.toolsInventory || [];
@@ -1011,6 +1136,10 @@ self.addEventListener('message', (e) => {
             if (data.researchtree) {
                 // Copy the full researchtree from main thread
                 researchtree = JSON.parse(JSON.stringify(data.researchtree));
+            }
+            if (data.smelterTasks) {
+                // Copy the smelter tasks from main thread
+                smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
             }
             break;
             

@@ -64,6 +64,39 @@ const toolsInventory = [
     { id: 6, type: 'Stone Shovel', level: 1 }
 ];
 
+// Smelter tasks - ordered list of tasks the smelter will attempt to perform
+let smelterTasks = [
+    { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
+    { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 } }
+];
+
+let researchtree = [
+    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, level: 0,
+      description: 'Dwarfs dig 1% harder.' }, 
+    { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
+      description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
+    { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
+      description: 'Sell Prices for materials are improved by 3% per level' },
+    { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
+      description: 'Increases bucket capacity by 1 per level.' },
+    { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
+      description: 'Increases critical hit chance to any stone by 5% per level.' },
+    { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
+      description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
+    { id: 'wage-optimization', name: 'Wage Negociation', cost: 1000, level: 0, maxlevel: 20,
+      description: 'Reduces wage increase per dwarf level by 1%.' },
+    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
+      description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
+    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
+      description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
+    ];
+let activeResearch = null; // Track which research is currently being researched
+    
+let grid = [];
+let startX = 0;
+let gold = 10;
+
 let dwarfs = [
     { name: "Diggingston", 
       toolId: 1, 
@@ -108,32 +141,6 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100 },
 ]
-
-let researchtree = [
-    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, level: 0,
-      description: 'Dwarfs dig 1% harder.' }, 
-    { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
-      description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-    { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
-      description: 'Sell Prices for materials are improved by 3% per level' },
-    { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
-      description: 'Increases bucket capacity by 1 per level.' },
-    { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
-      description: 'Increases critical hit chance to any stone by 5% per level.' },
-    { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
-      description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-    { id: 'wage-optimization', name: 'Wage Negociation', cost: 1000, level: 0, maxlevel: 20,
-      description: 'Reduces wage increase per dwarf level by 1%.' },
-    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
-      description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
-    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
-      description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
-    ];
-let activeResearch = null; // Track which research is currently being researched
-    
-let grid = [];
-let startX = 0;
-let gold = 10;
 
 // Transaction log - keeps last 100 money transactions
 let transactionLog = [];
