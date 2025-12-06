@@ -579,11 +579,59 @@ function populateSmelter() {
         taskRow.className = 'smelter-task-row';
         taskRow.dataset.taskId = task.id;
         
+        // Check if this task requires research
+        let isUnlocked = true;
+        let requiredResearchName = null;
+        if (task.requires) {
+            const requiredResearch = researchtree.find(r => r.id === task.requires);
+            if (requiredResearch) {
+                isUnlocked = (requiredResearch.level || 0) >= 1;
+                requiredResearchName = requiredResearch.name;
+            }
+        }
+        
+        // Check if this task is actionable (has enough materials)
+        let isActionable = false;
+        let stockAmount = 0;
+        if (task.id === 'do-nothing') {
+            isActionable = true; // "Do nothing" is always "actionable"
+        } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
+            stockAmount = materialsStock[task.input.material] || 0;
+            isActionable = stockAmount >= task.input.amount;
+        }
+        
+        // Add actionable/blocked/locked class
+        if (task.id !== 'do-nothing') {
+            if (!isUnlocked) {
+                taskRow.classList.add('smelter-task-locked');
+            } else {
+                taskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+            }
+        }
+        
         // Priority number
         const priorityNum = document.createElement('span');
         priorityNum.className = 'smelter-task-priority';
         priorityNum.textContent = `${index + 1}.`;
         taskRow.appendChild(priorityNum);
+        
+        // Status indicator
+        const statusIndicator = document.createElement('span');
+        statusIndicator.className = 'smelter-task-status';
+        if (task.id === 'do-nothing') {
+            statusIndicator.textContent = '⏸️';
+            statusIndicator.title = 'Idle task';
+        } else if (!isUnlocked) {
+            statusIndicator.textContent = '🔒';
+            statusIndicator.title = `Locked - requires ${requiredResearchName}`;
+        } else if (isActionable) {
+            statusIndicator.textContent = '✅';
+            statusIndicator.title = 'Ready - materials available';
+        } else {
+            statusIndicator.textContent = '❌';
+            statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount}x`;
+        }
+        taskRow.appendChild(statusIndicator);
         
         // Task info
         const taskInfo = document.createElement('div');
@@ -607,7 +655,14 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}`;
+            // Show current stock vs required
+            const stockInfo = `(${stockAmount}/${task.input.amount})`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
             taskInfo.appendChild(taskRecipe);
         }
         

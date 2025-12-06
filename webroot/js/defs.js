@@ -68,7 +68,7 @@ const toolsInventory = [
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
-    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 } }
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' }
 ];
 
 let researchtree = [
@@ -78,6 +78,8 @@ let researchtree = [
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
     { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
       description: 'Sell Prices for materials are improved by 3% per level' },
+    { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, level: 0, maxlevel: 1,
+      description: 'Unlocks the grind task at the Smelter.' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,

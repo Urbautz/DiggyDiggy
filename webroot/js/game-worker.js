@@ -54,6 +54,14 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
+// Check if a smelter task is unlocked by research
+function isSmelterTaskUnlocked(task) {
+    if (!task.requires) return true; // No requirement, always unlocked
+    const requiredResearch = researchtree.find(r => r.id === task.requires);
+    if (!requiredResearch) return true; // Research not found, assume unlocked
+    return (requiredResearch.level || 0) >= 1;
+}
+
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
     if (!smelterTasks || smelterTasks.length === 0) return false;
@@ -63,6 +71,10 @@ function smelterHasWork() {
         if (task.id === 'do-nothing') {
             // If "do nothing" is encountered, stop checking
             return false;
+        }
+        // Check if task is unlocked
+        if (!isSmelterTaskUnlocked(task)) {
+            continue; // Skip locked tasks
         }
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
@@ -81,6 +93,10 @@ function findActionableSmelterTask() {
     for (const task of smelterTasks) {
         if (task.id === 'do-nothing') {
             return null; // Stop at "do nothing"
+        }
+        // Check if task is unlocked
+        if (!isSmelterTaskUnlocked(task)) {
+            continue; // Skip locked tasks
         }
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
