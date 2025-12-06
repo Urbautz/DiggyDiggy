@@ -86,7 +86,7 @@ let researchtree = [
       description: 'Increases critical hit chance to any stone by 5% per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-    { id: 'wage-optimization', name: 'Wage Negociation', cost: 1000, level: 0, maxlevel: 20,
+    { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, level: 0, maxlevel: 20,
       description: 'Reduces wage increase per dwarf level by 1%.' },
     { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
       description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
