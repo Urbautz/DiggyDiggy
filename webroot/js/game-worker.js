@@ -365,8 +365,9 @@ function actForDwarf(dwarf) {
         }
         if (!(dwarf.x === house.x && dwarf.y === house.y)) {
             if (!dwarf.moveTarget || dwarf.moveTarget.x !== house.x || dwarf.moveTarget.y !== house.y) {
-                // Release research reservation if dwarf was heading there
+                // Release reservations if dwarf was heading elsewhere
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 scheduleMove(dwarf, house.x, house.y);
                 dwarf.status = 'moving';
                 return;
@@ -389,14 +390,31 @@ function actForDwarf(dwarf) {
             dwarf.status = 'idle';
             dwarf.energy = maxEnergy;
             
-            // After resting, check if there's active research and go there (95% chance)
-            // Only if no other dwarf has reserved the research cell
-            if (activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && 
-                Math.random() < 0.95) {
-                researchReservedBy = dwarf.name;
-                scheduleMove(dwarf, research.x, research.y);
-                //console.log(`Dwarf ${dwarf.name} finished resting, reserved research, heading to research lab`);
-                return;
+            // After resting, check for special tasks (50% chance, evenly split)
+            const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+            const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
+            
+            if ((canResearch || canSmelt) && Math.random() < 0.5) {
+                if (canResearch && canSmelt) {
+                    // Both available - 50/50 split
+                    if (Math.random() < 0.5) {
+                        researchReservedBy = dwarf.name;
+                        scheduleMove(dwarf, research.x, research.y);
+                        return;
+                    } else {
+                        smelterReservedBy = dwarf.name;
+                        scheduleMove(dwarf, smelter.x, smelter.y);
+                        return;
+                    }
+                } else if (canResearch) {
+                    researchReservedBy = dwarf.name;
+                    scheduleMove(dwarf, research.x, research.y);
+                    return;
+                } else {
+                    smelterReservedBy = dwarf.name;
+                    scheduleMove(dwarf, smelter.x, smelter.y);
+                    return;
+                }
             }
         }
         return;
@@ -566,18 +584,32 @@ function actForDwarf(dwarf) {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
-                                // Check if there's active research and research is not reserved (47.5% chance)
-                                if (activeResearch && !researchReservedBy && Math.random() < 0.475 && typeof research === 'object' && research !== null) {
-                                    researchReservedBy = dwarf.name;
-                                    scheduleMove(dwarf, research.x, research.y);
-                                    dwarf.status = 'moving';
-                                    //console.log(`Dwarf ${dwarf.name} reserved research, heading to research lab`);
-                                } else if (smelterHasWork() && !smelterReservedBy && Math.random() < 0.475 && typeof smelter === 'object' && smelter !== null) {
-                                    // Check if there's smelter work available (47.5% chance)
-                                    smelterReservedBy = dwarf.name;
-                                    scheduleMove(dwarf, smelter.x, smelter.y);
-                                    dwarf.status = 'moving';
-                                    //console.log(`Dwarf ${dwarf.name} reserved smelter, heading to smelter`);
+                                // Determine available special tasks
+                                const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+                                const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
+                                
+                                // 50% chance to do special task if available, evenly split between research and smelting
+                                if ((canResearch || canSmelt) && Math.random() < 0.5) {
+                                    if (canResearch && canSmelt) {
+                                        // Both available - 50/50 split
+                                        if (Math.random() < 0.5) {
+                                            researchReservedBy = dwarf.name;
+                                            scheduleMove(dwarf, research.x, research.y);
+                                            dwarf.status = 'moving';
+                                        } else {
+                                            smelterReservedBy = dwarf.name;
+                                            scheduleMove(dwarf, smelter.x, smelter.y);
+                                            dwarf.status = 'moving';
+                                        }
+                                    } else if (canResearch) {
+                                        researchReservedBy = dwarf.name;
+                                        scheduleMove(dwarf, research.x, research.y);
+                                        dwarf.status = 'moving';
+                                    } else {
+                                        smelterReservedBy = dwarf.name;
+                                        scheduleMove(dwarf, smelter.x, smelter.y);
+                                        dwarf.status = 'moving';
+                                    }
                                 } else {
                                     scheduleMove(dwarf, chosen, rowIdx);
                                     //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
@@ -651,34 +683,40 @@ function actForDwarf(dwarf) {
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
-    // Idle dwarf with research available - send to research lab (47.5% chance, halved from 95%)
-    // Only if research is not reserved by another dwarf
-    if (dwarf.status === 'idle' && activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && 
-        dwarf.energy >= 10 && Math.random() < 0.475) {
-        // Check if already at research location
-        if (dwarf.x !== research.x || dwarf.y !== research.y) {
-            // Not at research location, reserve and move there
-            if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
-                researchReservedBy = dwarf.name;
-                scheduleMove(dwarf, research.x, research.y);
-                //console.log(`Idle dwarf ${dwarf.name} reserved research, heading to research lab`);
-                return;
+    // Idle dwarf - check for special tasks (research or smelting)
+    // Use a single random check, then evenly distribute between available tasks
+    if (dwarf.status === 'idle' && dwarf.energy >= 10) {
+        const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+        const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
+        
+        // 50% chance to do special task if available
+        if ((canResearch || canSmelt) && Math.random() < 0.5) {
+            let chooseResearch = false;
+            if (canResearch && canSmelt) {
+                // Both available - 50/50 split
+                chooseResearch = Math.random() < 0.5;
+            } else {
+                chooseResearch = canResearch;
             }
-        }
-    }
-    
-    // Idle dwarf with smelter work available - send to smelter (47.5% chance)
-    // Only if smelter is not reserved by another dwarf
-    if (dwarf.status === 'idle' && smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null && 
-        dwarf.energy >= 10 && Math.random() < 0.475) {
-        // Check if already at smelter location
-        if (dwarf.x !== smelter.x || dwarf.y !== smelter.y) {
-            // Not at smelter location, reserve and move there
-            if (!dwarf.moveTarget || dwarf.moveTarget.x !== smelter.x || dwarf.moveTarget.y !== smelter.y) {
-                smelterReservedBy = dwarf.name;
-                scheduleMove(dwarf, smelter.x, smelter.y);
-                //console.log(`Idle dwarf ${dwarf.name} reserved smelter, heading to smelter`);
-                return;
+            
+            if (chooseResearch) {
+                // Check if already at research location
+                if (dwarf.x !== research.x || dwarf.y !== research.y) {
+                    if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
+                        researchReservedBy = dwarf.name;
+                        scheduleMove(dwarf, research.x, research.y);
+                        return;
+                    }
+                }
+            } else if (canSmelt) {
+                // Check if already at smelter location
+                if (dwarf.x !== smelter.x || dwarf.y !== smelter.y) {
+                    if (!dwarf.moveTarget || dwarf.moveTarget.x !== smelter.x || dwarf.moveTarget.y !== smelter.y) {
+                        smelterReservedBy = dwarf.name;
+                        scheduleMove(dwarf, smelter.x, smelter.y);
+                        return;
+                    }
+                }
             }
         }
     }
@@ -772,6 +810,9 @@ function actForDwarf(dwarf) {
         if (!Array.isArray(grid) || dwarf.y < 0 || dwarf.y >= grid.length) {
             dwarf.moveTarget = null;
             dwarf.status = 'idle';
+            // Release any reservations when movement fails
+            if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
@@ -780,6 +821,8 @@ function actForDwarf(dwarf) {
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
                 dwarf.status = 'idle';
+                // Note: Don't release reservation here - dwarf arrived at destination
+                // The reservation will be used when dwarf starts working or released if work not possible
             } else {
                 dwarf.status = 'moving';
             }
