@@ -33,6 +33,35 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
+// Check if a smelter task is unlocked by research
+function isSmelterTaskUnlocked(task) {
+    if (!task.requires) return true;
+    const requiredResearch = researchtree.find(r => r.id === task.requires);
+    if (!requiredResearch) return true;
+    return (requiredResearch.level || 0) >= 1;
+}
+
+// Count how many smelter tasks are currently actionable
+function countActionableSmelterTasks() {
+    let count = 0;
+    for (const task of smelterTasks) {
+        if (task.id === 'do-nothing') continue;
+        if (!isSmelterTaskUnlocked(task)) continue;
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+// Check if the smelter's top task is "do nothing"
+function isSmelterPaused() {
+    return smelterTasks.length > 0 && smelterTasks[0].id === 'do-nothing';
+}
+
 function getToolByType(toolType) {
     return tools.find(t => t.name === toolType) || null;
 }
@@ -299,7 +328,7 @@ function updateGridDisplay() {
                             // Add notification badge
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
                             badge.textContent = dwarfsCanLevelUp.length;
                             bed.appendChild(badge);
                         } else {
@@ -334,7 +363,7 @@ function updateGridDisplay() {
                             // Add notification badge
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
                             badge.textContent = toolsCanUpgrade.length;
                             bench.appendChild(badge);
                         } else {
@@ -384,12 +413,37 @@ function updateGridDisplay() {
                         cell.style.cursor = 'pointer';
                         cell.dataset.clickAction = 'open-smelter';
                         
+                        // Create container for icon and badge with absolute positioning
+                        const iconContainer = document.createElement('span');
+                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                        
                         // Add smelter icon
                         const smelterIcon = document.createElement('span');
-                        smelterIcon.className = 'drop-off-marker smelter';
+                        smelterIcon.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         smelterIcon.textContent = '♨️';
-                        smelterIcon.title = 'Smelter';
-                        cell.appendChild(smelterIcon);
+                        
+                        // Add status badge
+                        const smelterBadge = document.createElement('span');
+                        smelterBadge.className = 'smelter-badge';
+                        
+                        if (isSmelterPaused()) {
+                            smelterBadge.textContent = '⏸';
+                            smelterBadge.classList.add('smelter-badge-paused');
+                            smelterIcon.title = 'Smelter (Paused - Do Nothing is top task)';
+                        } else {
+                            const actionableCount = countActionableSmelterTasks();
+                            smelterBadge.textContent = actionableCount;
+                            if (actionableCount > 0) {
+                                smelterBadge.classList.add('smelter-badge-active');
+                                smelterIcon.title = `Smelter (${actionableCount} task${actionableCount !== 1 ? 's' : ''} ready)`;
+                            } else {
+                                smelterBadge.classList.add('smelter-badge-idle');
+                                smelterIcon.title = 'Smelter (No tasks ready)';
+                            }
+                        }
+                        smelterIcon.appendChild(smelterBadge);
+                        iconContainer.appendChild(smelterIcon);
+                        cell.appendChild(iconContainer);
                     }
 
                     // show resting marker when dwarf is resting here

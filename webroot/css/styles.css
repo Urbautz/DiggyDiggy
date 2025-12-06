@@ -1085,3 +1085,36 @@ header, footer {
 .smelter-task-locked .smelter-task-desc {
     color: #666;
 }
+
+/* Smelter badge on drop grid */
+.smelter-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.smelter-badge-active {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.smelter-badge-idle {
+    background: #757575;
+    color: #fff;
+}
+
+.smelter-badge-paused {
+    background: #ff9800;
+    color: #fff;
+}
