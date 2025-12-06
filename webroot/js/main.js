@@ -562,6 +562,41 @@ function populateSmelter() {
     container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">Smelter functionality coming soon...</p>';
 }
 
+// Check if research requirements are met
+function checkResearchRequirements(researchItem) {
+    // No requirements - always available
+    if (!researchItem.requires || researchItem.requires.length === 0) {
+        return { met: true };
+    }
+    
+    const missingReqs = [];
+    
+    for (const req of researchItem.requires) {
+        // Each requirement is an object like {'material-science': 1}
+        for (const [reqId, reqLevel] of Object.entries(req)) {
+            const requiredResearch = researchtree.find(r => r.id === reqId);
+            if (!requiredResearch) {
+                missingReqs.push(`Unknown research: ${reqId}`);
+                continue;
+            }
+            
+            const currentLevel = requiredResearch.level || 0;
+            if (currentLevel < reqLevel) {
+                missingReqs.push(`${requiredResearch.name} level ${reqLevel}`);
+            }
+        }
+    }
+    
+    if (missingReqs.length > 0) {
+        return { 
+            met: false, 
+            reason: `Requires: ${missingReqs.join(', ')}`
+        };
+    }
+    
+    return { met: true };
+}
+
 function populateResearch() {
     const container = document.getElementById('research-content');
     if (!container) return;
@@ -642,10 +677,19 @@ function populateResearch() {
         // Check if this research is already active
         const isActive = activeResearch && activeResearch.id === researchItem.id;
         
+        // Check if requirements are met
+        const requirementsMet = checkResearchRequirements(researchItem);
+        
         if (isActive) {
             researchBtn.className = 'btn-research active';
             researchBtn.textContent = 'Active';
             researchBtn.disabled = true;
+        } else if (!requirementsMet.met) {
+            // Requirements not met - gray out
+            researchBtn.className = 'btn-research disabled';
+            researchBtn.textContent = 'Locked';
+            researchBtn.disabled = true;
+            researchBtn.title = requirementsMet.reason;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -669,8 +713,54 @@ function populateResearch() {
     
     researchTable.appendChild(tbody);
     container.appendChild(researchTable);
+    
+    // Show completed researches section
+    const completedResearches = researchtree.filter(r => {
+        const currentLevel = r.level || 0;
+        const maxLevel = r.maxlevel || Infinity;
+        return currentLevel >= maxLevel && maxLevel !== Infinity;
+    });
+    
+    if (completedResearches.length > 0) {
+        const completedSection = document.createElement('div');
+        completedSection.className = 'completed-research-section';
+        completedSection.innerHTML = '<h3 style="color: #4CAF50; margin: 20px 0 10px 0;">✓ Completed Researches</h3>';
+        
+        const completedTable = document.createElement('table');
+        completedTable.className = 'research-table completed';
+        
+        const completedThead = document.createElement('thead');
+        completedThead.innerHTML = '<tr><th>Research</th><th>Level</th><th>Status</th></tr>';
+        completedTable.appendChild(completedThead);
+        
+        const completedTbody = document.createElement('tbody');
+        
+        for (const researchItem of completedResearches) {
+            const tr = document.createElement('tr');
+            tr.style.opacity = '0.7';
+            
+            const nameTd = document.createElement('td');
+            const nameDiv = document.createElement('div');
+            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
+            nameTd.appendChild(nameDiv);
+            
+            const levelTd = document.createElement('td');
+            levelTd.textContent = `${researchItem.level} / ${researchItem.maxlevel}`;
+            
+            const statusTd = document.createElement('td');
+            statusTd.innerHTML = '<span style="color: #4CAF50; font-weight: bold;">✓ Maxed</span>';
+            
+            tr.appendChild(nameTd);
+            tr.appendChild(levelTd);
+            tr.appendChild(statusTd);
+            completedTbody.appendChild(tr);
+        }
+        
+        completedTable.appendChild(completedTbody);
+        completedSection.appendChild(completedTable);
+        container.appendChild(completedSection);
+    }
 }
-
 function startResearch(researchId) {
     const researchItem = researchtree.find(r => r.id === researchId);
     if (!researchItem) {

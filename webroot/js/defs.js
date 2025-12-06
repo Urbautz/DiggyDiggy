@@ -124,6 +124,10 @@ let researchtree = [
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
     { id: 'wage-optimization', name: 'Wage Negociation', cost: 1000, level: 0, maxlevel: 20,
       description: 'Reduces wage increase per dwarf level by 1%.' },
+    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
+      description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
+    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
+      description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
     ];
 let activeResearch = null; // Track which research is currently being researched
     
