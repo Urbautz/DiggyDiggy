@@ -918,3 +918,170 @@ header, footer {
         opacity: 0.85;
     }
 }
+
+/* ========== Smelter Task List Styles ========== */
+.smelter-description {
+    color: #9fbfe0;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.smelter-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.smelter-task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.smelter-task-row:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+    border-color: rgba(255,255,255,0.15);
+}
+
+.smelter-task-priority {
+    font-weight: 700;
+    font-size: 16px;
+    color: #ffa726;
+    min-width: 28px;
+}
+
+.smelter-task-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.smelter-task-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #fff;
+}
+
+.smelter-task-desc {
+    font-size: 12px;
+    color: #9fbfe0;
+}
+
+.smelter-task-recipe {
+    font-size: 11px;
+    color: #81d4fa;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(129, 212, 250, 0.1);
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.smelter-task-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.smelter-btn-move {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 28px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.smelter-btn-move:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ffa726, #ff9800);
+    border-color: #ffa726;
+    box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+}
+
+.smelter-btn-move:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Smelter task status indicator */
+.smelter-task-status {
+    font-size: 16px;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Actionable task row styling */
+.smelter-task-actionable {
+    border-color: rgba(76, 175, 80, 0.3);
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+}
+
+.smelter-task-actionable:hover {
+    border-color: rgba(76, 175, 80, 0.5);
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
+}
+
+/* Blocked task row styling */
+.smelter-task-blocked {
+    border-color: rgba(244, 67, 54, 0.2);
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.05), rgba(244, 67, 54, 0.02));
+    opacity: 0.7;
+}
+
+.smelter-task-blocked:hover {
+    opacity: 0.85;
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.smelter-task-blocked .smelter-task-name {
+    color: #ccc;
+}
+
+/* Recipe status colors */
+.smelter-task-recipe.recipe-ready {
+    background: rgba(76, 175, 80, 0.15);
+    color: #81c784;
+}
+
+.smelter-task-recipe.recipe-blocked {
+    background: rgba(244, 67, 54, 0.1);
+    color: #e57373;
+}
+
+.smelter-task-recipe.recipe-locked {
+    background: rgba(158, 158, 158, 0.1);
+    color: #9e9e9e;
+}
+
+/* Locked task row styling */
+.smelter-task-locked {
+    border-color: rgba(158, 158, 158, 0.2);
+    background: linear-gradient(135deg, rgba(158, 158, 158, 0.08), rgba(158, 158, 158, 0.03));
+    opacity: 0.5;
+}
+
+.smelter-task-locked:hover {
+    opacity: 0.65;
+    border-color: rgba(158, 158, 158, 0.3);
+}
+
+.smelter-task-locked .smelter-task-name {
+    color: #888;
+}
+
+.smelter-task-locked .smelter-task-desc {
+    color: #666;
+}

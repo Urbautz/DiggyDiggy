@@ -560,7 +560,170 @@ function populateSmelter() {
     const container = document.getElementById('smelter-content');
     if (!container) return;
     
-    container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">Smelter functionality coming soon...</p>';
+    container.innerHTML = '';
+    
+    // Header description
+    const headerDesc = document.createElement('p');
+    headerDesc.className = 'smelter-description';
+    headerDesc.textContent = 'Set the priority of smelter tasks. The smelter will work on tasks from top to bottom.';
+    container.appendChild(headerDesc);
+    
+    // Task list container
+    const taskList = document.createElement('div');
+    taskList.className = 'smelter-task-list';
+    taskList.id = 'smelter-task-list';
+    
+    // Render each task
+    smelterTasks.forEach((task, index) => {
+        const taskRow = document.createElement('div');
+        taskRow.className = 'smelter-task-row';
+        taskRow.dataset.taskId = task.id;
+        
+        // Check if this task requires research
+        let isUnlocked = true;
+        let requiredResearchName = null;
+        if (task.requires) {
+            const requiredResearch = researchtree.find(r => r.id === task.requires);
+            if (requiredResearch) {
+                isUnlocked = (requiredResearch.level || 0) >= 1;
+                requiredResearchName = requiredResearch.name;
+            }
+        }
+        
+        // Check if this task is actionable (has enough materials)
+        let isActionable = false;
+        let stockAmount = 0;
+        if (task.id === 'do-nothing') {
+            isActionable = true; // "Do nothing" is always "actionable"
+        } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
+            stockAmount = materialsStock[task.input.material] || 0;
+            isActionable = stockAmount >= task.input.amount;
+        }
+        
+        // Add actionable/blocked/locked class
+        if (task.id !== 'do-nothing') {
+            if (!isUnlocked) {
+                taskRow.classList.add('smelter-task-locked');
+            } else {
+                taskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+            }
+        }
+        
+        // Priority number
+        const priorityNum = document.createElement('span');
+        priorityNum.className = 'smelter-task-priority';
+        priorityNum.textContent = `${index + 1}.`;
+        taskRow.appendChild(priorityNum);
+        
+        // Status indicator
+        const statusIndicator = document.createElement('span');
+        statusIndicator.className = 'smelter-task-status';
+        if (task.id === 'do-nothing') {
+            statusIndicator.textContent = '⏸️';
+            statusIndicator.title = 'Idle task';
+        } else if (!isUnlocked) {
+            statusIndicator.textContent = '🔒';
+            statusIndicator.title = `Locked - requires ${requiredResearchName}`;
+        } else if (isActionable) {
+            statusIndicator.textContent = '✅';
+            statusIndicator.title = 'Ready - materials available';
+        } else {
+            statusIndicator.textContent = '❌';
+            statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount}x`;
+        }
+        taskRow.appendChild(statusIndicator);
+        
+        // Task info
+        const taskInfo = document.createElement('div');
+        taskInfo.className = 'smelter-task-info';
+        
+        const taskName = document.createElement('span');
+        taskName.className = 'smelter-task-name';
+        taskName.textContent = task.name;
+        taskInfo.appendChild(taskName);
+        
+        const taskDesc = document.createElement('span');
+        taskDesc.className = 'smelter-task-desc';
+        taskDesc.textContent = task.description;
+        taskInfo.appendChild(taskDesc);
+        
+        // Show input/output if applicable
+        if (task.input && task.output) {
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+            const inputMat = getMaterialById(task.input.material);
+            const outputMat = getMaterialById(task.output.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            // Show current stock vs required
+            const stockInfo = `(${stockAmount}/${task.input.amount})`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
+            taskInfo.appendChild(taskRecipe);
+        }
+        
+        taskRow.appendChild(taskInfo);
+        
+        // Move buttons container
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'smelter-task-buttons';
+        
+        // Move up button
+        const upBtn = document.createElement('button');
+        upBtn.className = 'smelter-btn-move';
+        upBtn.innerHTML = '▲';
+        upBtn.title = 'Move up (higher priority)';
+        upBtn.disabled = index === 0;
+        upBtn.onclick = () => moveSmelterTask(index, -1);
+        btnContainer.appendChild(upBtn);
+        
+        // Move down button
+        const downBtn = document.createElement('button');
+        downBtn.className = 'smelter-btn-move';
+        downBtn.innerHTML = '▼';
+        downBtn.title = 'Move down (lower priority)';
+        downBtn.disabled = index === smelterTasks.length - 1;
+        downBtn.onclick = () => moveSmelterTask(index, 1);
+        btnContainer.appendChild(downBtn);
+        
+        taskRow.appendChild(btnContainer);
+        taskList.appendChild(taskRow);
+    });
+    
+    container.appendChild(taskList);
+}
+
+// Move a smelter task up or down in the priority list
+function moveSmelterTask(index, direction) {
+    const newIndex = index + direction;
+    
+    // Bounds check
+    if (newIndex < 0 || newIndex >= smelterTasks.length) return;
+    
+    // Swap tasks
+    const temp = smelterTasks[index];
+    smelterTasks[index] = smelterTasks[newIndex];
+    smelterTasks[newIndex] = temp;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterTasks: smelterTasks
+            }
+        });
+    }
+    
+    // Save the new order
+    saveGame();
+    
+    // Re-render the list
+    populateSmelter();
 }
 
 // Check if research requirements are met
@@ -2215,6 +2378,8 @@ function initWorker() {
             dropOff,
             house,
             research,
+            smelter,
+            smelterTasks,
             dropGridStartX,
             gold,
             toolsInventory,
@@ -2265,6 +2430,7 @@ function saveGame() {
             researchtree: researchtree,
             activeResearch: activeResearch,
             transactionLog: transactionLog,
+            smelterTasks: smelterTasks,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2331,6 +2497,20 @@ function loadGame() {
         // Restore transaction log
         if (gameState.transactionLog) {
             transactionLog = gameState.transactionLog;
+        }
+        
+        // Restore smelter tasks order
+        if (gameState.smelterTasks && Array.isArray(gameState.smelterTasks)) {
+            // Reorder smelterTasks based on saved order
+            const savedOrder = gameState.smelterTasks.map(t => t.id);
+            smelterTasks.sort((a, b) => {
+                const indexA = savedOrder.indexOf(a.id);
+                const indexB = savedOrder.indexOf(b.id);
+                // Tasks not in saved order go to the end
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
+            });
         }
         
         console.log('Game loaded from', new Date(gameState.timestamp));
