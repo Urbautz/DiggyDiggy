@@ -449,7 +449,20 @@ function actForDwarf(dwarf) {
                 return;
             }
             
-            // Consume energy and generate research point
+            // Check if we can afford to pay the dwarf
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
+            
+            // Pay the dwarf, consume energy and generate research point
+            gold = Math.max(0, gold - wage);
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
@@ -501,6 +514,18 @@ function actForDwarf(dwarf) {
                 return;
             }
             
+            // Check if we can afford to pay the dwarf
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                if (Math.random() > continueWorkChance) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
+            
             // Find an actionable task from the priority list
             const task = findActionableSmelterTask();
             if (!task) {
@@ -522,7 +547,8 @@ function actForDwarf(dwarf) {
             // Produce output materials
             materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
             
-            // Consume energy and award XP
+            // Pay the dwarf, consume energy and award XP
+            gold = Math.max(0, gold - wage);
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             dwarf.xp = (dwarf.xp || 0) + 1;
             
