@@ -463,7 +463,7 @@ function actForDwarf(dwarf) {
             
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
-            logTransaction('expense', wage, 'Research wage for ' + dwarf.name);
+            pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
@@ -570,7 +570,7 @@ function actForDwarf(dwarf) {
             
             // Pay the dwarf, consume energy and award XP
             gold = Math.max(0, gold - wage);
-            logTransaction('expense', wage, 'Smelter wage for ' + dwarf.name);
+            pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             dwarf.xp = (dwarf.xp || 0) + 1;
             
