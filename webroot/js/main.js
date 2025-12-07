@@ -3,9 +3,9 @@ const activeCritFlashes = new Map();
 
 // pick a random material from the registry based on depth level and probability (probability)
 function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level
+    // Filter materials that are valid for this depth level and have probability > 0
     const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
     );
     
     if (validMaterials.length === 0) {
@@ -31,6 +31,35 @@ function randomMaterial(depthLevel = 0) {
 
 function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
+}
+
+// Check if a smelter task is unlocked by research
+function isSmelterTaskUnlocked(task) {
+    if (!task.requires) return true;
+    const requiredResearch = researchtree.find(r => r.id === task.requires);
+    if (!requiredResearch) return true;
+    return (requiredResearch.level || 0) >= 1;
+}
+
+// Count how many smelter tasks are currently actionable
+function countActionableSmelterTasks() {
+    let count = 0;
+    for (const task of smelterTasks) {
+        if (task.id === 'do-nothing') continue;
+        if (!isSmelterTaskUnlocked(task)) continue;
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+// Check if the smelter's top task is "do nothing"
+function isSmelterPaused() {
+    return smelterTasks.length > 0 && smelterTasks[0].id === 'do-nothing';
 }
 
 function getToolByType(toolType) {
@@ -299,7 +328,7 @@ function updateGridDisplay() {
                             // Add notification badge
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
                             badge.textContent = dwarfsCanLevelUp.length;
                             bed.appendChild(badge);
                         } else {
@@ -334,7 +363,7 @@ function updateGridDisplay() {
                             // Add notification badge
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white; animation: pulse 1.5s ease-in-out infinite;';
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
                             badge.textContent = toolsCanUpgrade.length;
                             bench.appendChild(badge);
                         } else {
@@ -384,12 +413,37 @@ function updateGridDisplay() {
                         cell.style.cursor = 'pointer';
                         cell.dataset.clickAction = 'open-smelter';
                         
+                        // Create container for icon and badge with absolute positioning
+                        const iconContainer = document.createElement('span');
+                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                        
                         // Add smelter icon
                         const smelterIcon = document.createElement('span');
-                        smelterIcon.className = 'drop-off-marker smelter';
+                        smelterIcon.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         smelterIcon.textContent = '♨️';
-                        smelterIcon.title = 'Smelter';
-                        cell.appendChild(smelterIcon);
+                        
+                        // Add status badge
+                        const smelterBadge = document.createElement('span');
+                        smelterBadge.className = 'smelter-badge';
+                        
+                        if (isSmelterPaused()) {
+                            smelterBadge.textContent = '⏸';
+                            smelterBadge.classList.add('smelter-badge-paused');
+                            smelterIcon.title = 'Smelter (Paused - Do Nothing is top task)';
+                        } else {
+                            const actionableCount = countActionableSmelterTasks();
+                            smelterBadge.textContent = actionableCount;
+                            if (actionableCount > 0) {
+                                smelterBadge.classList.add('smelter-badge-active');
+                                smelterIcon.title = `Smelter (${actionableCount} task${actionableCount !== 1 ? 's' : ''} ready)`;
+                            } else {
+                                smelterBadge.classList.add('smelter-badge-idle');
+                                smelterIcon.title = 'Smelter (No tasks ready)';
+                            }
+                        }
+                        smelterIcon.appendChild(smelterBadge);
+                        iconContainer.appendChild(smelterIcon);
+                        cell.appendChild(iconContainer);
                     }
 
                     // show resting marker when dwarf is resting here
@@ -573,11 +627,17 @@ function populateSmelter() {
     taskList.className = 'smelter-task-list';
     taskList.id = 'smelter-task-list';
     
+    // Find if there's a "do-nothing" task and track if we're below it
+    const doNothingIndex = smelterTasks.findIndex(t => t.id === 'do-nothing');
+    
     // Render each task
     smelterTasks.forEach((task, index) => {
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
         taskRow.dataset.taskId = task.id;
+        
+        // Check if this task is unreachable (below "do-nothing")
+        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
         
         // Check if this task requires research
         let isUnlocked = true;
@@ -602,7 +662,9 @@ function populateSmelter() {
         
         // Add actionable/blocked/locked class
         if (task.id !== 'do-nothing') {
-            if (!isUnlocked) {
+            if (isUnreachable) {
+                taskRow.classList.add('smelter-task-unreachable');
+            } else if (!isUnlocked) {
                 taskRow.classList.add('smelter-task-locked');
             } else {
                 taskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
@@ -621,6 +683,9 @@ function populateSmelter() {
         if (task.id === 'do-nothing') {
             statusIndicator.textContent = '⏸️';
             statusIndicator.title = 'Idle task';
+        } else if (isUnreachable) {
+            statusIndicator.textContent = '🚫';
+            statusIndicator.title = 'Unreachable - will never execute (below "Do Nothing")';
         } else if (!isUnlocked) {
             statusIndicator.textContent = '🔒';
             statusIndicator.title = `Locked - requires ${requiredResearchName}`;
@@ -1185,11 +1250,9 @@ function triggerCritAnimation(x, y, isOneHit = false) {
     const animClass = isOneHit ? 'one-hit' : 'crit-hit';
     //console.log(`✨ Applying ${animClass} class to cell at (${x}, ${y})`);
     
-    // Restart animation if the class is already applied
+    // If animation is already running, don't restart it
     if (cell.classList.contains('crit-hit') || cell.classList.contains('one-hit')) {
-        cell.classList.remove('crit-hit');
-        cell.classList.remove('one-hit');
-        void cell.offsetWidth;
+        return;
     }
 
     // Add animation class
@@ -1268,6 +1331,14 @@ function openDwarfs() {
     // Remove Sell All button from header
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
+    
+    // Remove Sell Not Craftable button from header
+    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    
+    // Remove total stock value from header
+    const totalValueSpan = document.getElementById('total-stock-value');
+    if (totalValueSpan) totalValueSpan.remove();
     
     // Update header
     const header = panel.querySelector('.materials-panel-header h3');
@@ -1957,16 +2028,32 @@ function updateMaterialsPanel() {
         }
     }
     
-    // Sort by value per piece (low to high)
-    materialsWithStock.sort((a, b) => a.actualWorth - b.actualWorth);
+    // Sort by value per piece (high to low)
+    materialsWithStock.sort((a, b) => b.actualWorth - a.actualWorth);
     
     const hasAnyMaterials = materialsWithStock.length > 0;
     
-    // Update or create Sell All button and total value in header
+    // Update or create Sell All button, Sell Not Craftable button, and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     let totalValueSpan = document.getElementById('total-stock-value');
     const header = panel.querySelector('.materials-panel-header');
     const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
+    
+    // Get materials that are used as smelter inputs and outputs
+    const smelterInputMaterials = new Set();
+    const smelterOutputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+        if (task.output && task.output.material) {
+            smelterOutputMaterials.add(task.output.material);
+        }
+    }
+    
+    // Check if there are any not-craftable materials to sell
+    const hasNotCraftableMaterials = materialsWithStock.some(({ material }) => !smelterInputMaterials.has(material.id));
     
     if (header && isWarehouseView) {
         // Update or create total value display
@@ -1977,6 +2064,21 @@ function updateMaterialsPanel() {
             header.appendChild(totalValueSpan);
         }
         totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
+        
+        // Create or update Sell Not Craftable button
+        if (hasNotCraftableMaterials) {
+            if (!sellNotCraftableBtn) {
+                sellNotCraftableBtn = document.createElement('button');
+                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
+                sellNotCraftableBtn.className = 'btn-sell-all-global';
+                sellNotCraftableBtn.textContent = 'Sell Not Craftable';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
+                header.appendChild(sellNotCraftableBtn);
+            }
+        } else if (sellNotCraftableBtn) {
+            sellNotCraftableBtn.remove();
+        }
         
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
@@ -2006,6 +2108,7 @@ function updateMaterialsPanel() {
             <span class="wh-col-price">PRICE</span>
             <span class="wh-col-count">STOCK</span>
             <span class="wh-col-total">VALUE</span>
+            <span class="wh-col-icons"></span>
             <span class="wh-col-actions">SELL</span>
         `;
         container.appendChild(tableHeader);
@@ -2035,7 +2138,28 @@ function updateMaterialsPanel() {
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
-        totalValue.textContent = `💰 ${Math.round(count * actualWorth)}`;
+        totalValue.textContent = Math.round(count * actualWorth).toString();
+        
+        // Recipe usage icons column
+        const icons = document.createElement('span');
+        icons.className = 'wh-col-icons';
+        const isInput = smelterInputMaterials.has(id);
+        const isOutput = smelterOutputMaterials.has(id);
+        
+        let iconsText = '';
+        const tooltipParts = [];
+        if (isInput) {
+            iconsText += '🔧';
+            tooltipParts.push('Used in smelter recipes');
+        }
+        if (isOutput) {
+            iconsText += '♨️';
+            tooltipParts.push('Produced by smelter');
+        }
+        icons.textContent = iconsText;
+        if (tooltipParts.length > 0) {
+            icons.title = tooltipParts.join(' | ');
+        }
         
         const buttons = document.createElement('span');
         buttons.className = 'wh-col-actions';
@@ -2061,6 +2185,7 @@ function updateMaterialsPanel() {
         row.appendChild(worth);
         row.appendChild(cnt);
         row.appendChild(totalValue);
+        row.appendChild(icons);
         row.appendChild(buttons);
         
         // Append to container instead of list
@@ -2098,6 +2223,58 @@ function sellAllMaterials() {
         
         // Log transaction
         logTransaction('income', totalGold, `Sold all materials (${totalItems} items)`);
+        
+        // Update worker with new gold amount
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { gold, materialsStock }
+        });
+        
+        // Update displays
+        updateGoldDisplay();
+        updateMaterialsPanel();
+        
+        // Save game
+        saveGame();
+    }
+}
+
+function sellNotCraftableMaterials() {
+    // Get materials that are used as smelter inputs
+    const smelterInputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+    }
+    
+    // Calculate trade bonus
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    let totalGold = 0;
+    let totalItems = 0;
+    
+    for (const m of materials) {
+        const id = m.id;
+        // Skip materials that are used as smelter inputs
+        if (smelterInputMaterials.has(id)) continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        if (count > 0) {
+            const goldForThisMaterial = count * m.worth * tradeBonus;
+            totalGold += goldForThisMaterial;
+            totalItems += count;
+            materialsStock[id] = 0;
+        }
+    }
+    
+    if (totalItems > 0) {
+        gold += totalGold;
+        console.log(`Sold not-craftable materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        
+        // Log transaction
+        logTransaction('income', totalGold, `Sold not-craftable materials (${totalItems} items)`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -2334,14 +2511,10 @@ function initWorker() {
                     updateMaterialsPanel();
                 }
                 
-                // Update dwarf panel every 10th tick if in dwarfs view
-                tickCounter++;
-                if (tickCounter >= 10) {
-                    tickCounter = 0;
-                    const panel = document.getElementById('materials-panel');
-                    if (panel && panel.dataset.view === 'dwarfs') {
-                        populateDwarfsInPanel();
-                    }
+                // Update dwarf panel every tick if in dwarfs view
+                const panel = document.getElementById('materials-panel');
+                if (panel && panel.dataset.view === 'dwarfs') {
+                    populateDwarfsInPanel();
                 }
                 
                 // Autosave after each tick

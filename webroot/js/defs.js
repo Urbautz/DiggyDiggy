@@ -13,19 +13,25 @@ const materials = [
   { id: 'gravel',name: 'Gravel',  type:'Loose', hardness: 30, probability: 200, worth: 0.9,               minlevel: 150, maxlevel: 2999, color: '#534f4fff' },
 
   { id: 'sandstone', name: 'Sandstone',  type:'Stone Soft', hardness: 80, probability: 400, worth: 3.0,   minlevel: 500, maxlevel: 9999, color: '#9d4d39ff' },
-  { id: 'limestone', name: 'Limestone' ,type:'Stone Soft',  hardness: 80, probability: 200, worth: 2.5,   minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' },
+  { id: 'limestone', name: 'Limestone' ,type:'Stone Soft',  hardness: 80, probability: 200, worth: 2.5,   minlevel: 1200, maxlevel: 9999, color: '#a8a19fff' }, 
+  { id: 'Lime', name: 'Lime', type:'Processed',             hardness: 0, probability: 0, worth: 8.0,      minlevel: 99999, color: '#e8f4f0ff' },
   { id: 'Chalk',     name: 'Chalk', type:'Stone Soft',      hardness: 30, probability: 100, worth: 2.0,   minlevel: 2000, maxlevel: 9999, color: '#a6b8adff' },
   { id: 'ClayStone', name: 'Clay Stone',type:'Stone Soft',  hardness: 100, probability: 300, worth: 2.0, minlevel: 3000, maxlevel: 15999, color: '#53412fff' },
 
   { id: 'Marble', name: 'Marble', type:'Stone Medium',      hardness: 250, probability: 200, worth: 10,   minlevel: 4000, maxlevel: 29999, color: '#7a706eff' },
+  { id: 'Polished Marble', name: 'Polished Marble', type:'Processed', hardness: 0, probability: 0, worth: 40,  minlevel: 99999, color: '#c8c0beff' },
   { id: 'Slate', name: 'Slate', type: 'Stone Medium',       hardness: 400, probability: 400, worth: 5,   minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },
   { id: 'Schist', name: 'Schist', type: 'Stone Medium',     hardness: 400, probability: 200, worth: 5,   minlevel: 5000, maxlevel: 199999, color: '#1d354dff' },
   { id: 'Dolomite', name: 'Dolomite', type: 'Stone Medium', hardness: 400, probability: 200, worth: 12,   minlevel: 5000, maxlevel: 99999, color: '#956f88ff' },
 
   { id: 'Granite', name: 'Granite', type:'Stone Hard',      hardness: 500, probability: 400, worth: 12,   minlevel: 18000,  color: '#280918ff' },
+  { id: 'Polished Granite', name: 'Polished Granite', type:'Processed', hardness: 0, probability: 0, worth: 50, minlevel: 99999, color: '#4a1828ff' },
+
   { id: 'Basalt', name: 'Basalt', type: 'Stone Hard',       hardness: 750, probability: 400, worth: 17,    minlevel: 95000, color: '#484848ff' },
   { id: 'Obsidian', name: 'Obsidian', type: 'Stone Hard',   hardness: 950, probability: 200, worth: 25,   minlevel: 195000, color: '#184f48ff' },
   { id: 'Quartzite', name: 'Quartzite', type: 'Stone Hard', hardness: 1500, probability: 200, worth: 31,  minlevel: 135000, color: '#c35858ff' }, 
+  { id: 'Polished Obsidian', name: 'Polished Obsidian', type:'Processed', hardness: 0, probability: 0, worth: 100, minlevel: 99999, color: '#2a6f68ff' },
+
 
   { id: 'Coal', name: 'Coal',type:'Special',                hardness: 80, probability: 80, worth: 10.5,   minlevel: 500, color: '#191919ff' },
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
@@ -68,7 +74,11 @@ const toolsInventory = [
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
-    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' }
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
+    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
+    { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'Marble', amount: 1 }, output: { material: 'Polished Marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' }
 ];
 
 let researchtree = [
@@ -80,6 +90,8 @@ let researchtree = [
       description: 'Sell Prices for materials are improved by 3% per level' },
     { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, level: 0, maxlevel: 1,
       description: 'Unlocks the grind task at the Smelter.' },
+    { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
+      description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
