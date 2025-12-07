@@ -1323,6 +1323,14 @@ function openDwarfs() {
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
     
+    // Remove Sell Not Craftable button from header
+    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    
+    // Remove total stock value from header
+    const totalValueSpan = document.getElementById('total-stock-value');
+    if (totalValueSpan) totalValueSpan.remove();
+    
     // Update header
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Dwarfs';
@@ -2016,11 +2024,23 @@ function updateMaterialsPanel() {
     
     const hasAnyMaterials = materialsWithStock.length > 0;
     
-    // Update or create Sell All button and total value in header
+    // Update or create Sell All button, Sell Not Craftable button, and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     let totalValueSpan = document.getElementById('total-stock-value');
     const header = panel.querySelector('.materials-panel-header');
     const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
+    
+    // Get materials that are used as smelter inputs
+    const smelterInputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+    }
+    
+    // Check if there are any not-craftable materials to sell
+    const hasNotCraftableMaterials = materialsWithStock.some(({ material }) => !smelterInputMaterials.has(material.id));
     
     if (header && isWarehouseView) {
         // Update or create total value display
@@ -2031,6 +2051,21 @@ function updateMaterialsPanel() {
             header.appendChild(totalValueSpan);
         }
         totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
+        
+        // Create or update Sell Not Craftable button
+        if (hasNotCraftableMaterials) {
+            if (!sellNotCraftableBtn) {
+                sellNotCraftableBtn = document.createElement('button');
+                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
+                sellNotCraftableBtn.className = 'btn-sell-all-global';
+                sellNotCraftableBtn.textContent = 'Sell Not Craftable';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
+                header.appendChild(sellNotCraftableBtn);
+            }
+        } else if (sellNotCraftableBtn) {
+            sellNotCraftableBtn.remove();
+        }
         
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
@@ -2152,6 +2187,58 @@ function sellAllMaterials() {
         
         // Log transaction
         logTransaction('income', totalGold, `Sold all materials (${totalItems} items)`);
+        
+        // Update worker with new gold amount
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { gold, materialsStock }
+        });
+        
+        // Update displays
+        updateGoldDisplay();
+        updateMaterialsPanel();
+        
+        // Save game
+        saveGame();
+    }
+}
+
+function sellNotCraftableMaterials() {
+    // Get materials that are used as smelter inputs
+    const smelterInputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+    }
+    
+    // Calculate trade bonus
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    let totalGold = 0;
+    let totalItems = 0;
+    
+    for (const m of materials) {
+        const id = m.id;
+        // Skip materials that are used as smelter inputs
+        if (smelterInputMaterials.has(id)) continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        if (count > 0) {
+            const goldForThisMaterial = count * m.worth * tradeBonus;
+            totalGold += goldForThisMaterial;
+            totalItems += count;
+            materialsStock[id] = 0;
+        }
+    }
+    
+    if (totalItems > 0) {
+        gold += totalGold;
+        console.log(`Sold not-craftable materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        
+        // Log transaction
+        logTransaction('income', totalGold, `Sold not-craftable materials (${totalItems} items)`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
