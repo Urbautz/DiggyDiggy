@@ -2028,8 +2028,8 @@ function updateMaterialsPanel() {
         }
     }
     
-    // Sort by value per piece (low to high)
-    materialsWithStock.sort((a, b) => a.actualWorth - b.actualWorth);
+    // Sort by value per piece (high to low)
+    materialsWithStock.sort((a, b) => b.actualWorth - a.actualWorth);
     
     const hasAnyMaterials = materialsWithStock.length > 0;
     
@@ -2040,11 +2040,15 @@ function updateMaterialsPanel() {
     const header = panel.querySelector('.materials-panel-header');
     const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
     
-    // Get materials that are used as smelter inputs
+    // Get materials that are used as smelter inputs and outputs
     const smelterInputMaterials = new Set();
+    const smelterOutputMaterials = new Set();
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.output && task.output.material) {
+            smelterOutputMaterials.add(task.output.material);
         }
     }
     
@@ -2104,6 +2108,7 @@ function updateMaterialsPanel() {
             <span class="wh-col-price">PRICE</span>
             <span class="wh-col-count">STOCK</span>
             <span class="wh-col-total">VALUE</span>
+            <span class="wh-col-icons"></span>
             <span class="wh-col-actions">SELL</span>
         `;
         container.appendChild(tableHeader);
@@ -2133,7 +2138,28 @@ function updateMaterialsPanel() {
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
-        totalValue.textContent = `💰 ${Math.round(count * actualWorth)}`;
+        totalValue.textContent = Math.round(count * actualWorth).toString();
+        
+        // Recipe usage icons column
+        const icons = document.createElement('span');
+        icons.className = 'wh-col-icons';
+        const isInput = smelterInputMaterials.has(id);
+        const isOutput = smelterOutputMaterials.has(id);
+        
+        let iconsText = '';
+        const tooltipParts = [];
+        if (isInput) {
+            iconsText += '🔧';
+            tooltipParts.push('Used in smelter recipes');
+        }
+        if (isOutput) {
+            iconsText += '♨️';
+            tooltipParts.push('Produced by smelter');
+        }
+        icons.textContent = iconsText;
+        if (tooltipParts.length > 0) {
+            icons.title = tooltipParts.join(' | ');
+        }
         
         const buttons = document.createElement('span');
         buttons.className = 'wh-col-actions';
@@ -2159,6 +2185,7 @@ function updateMaterialsPanel() {
         row.appendChild(worth);
         row.appendChild(cnt);
         row.appendChild(totalValue);
+        row.appendChild(icons);
         row.appendChild(buttons);
         
         // Append to container instead of list

@@ -562,7 +562,7 @@ header, footer {
 
 .warehouse-table-header {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1.8fr;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
     gap: 12px;
     padding: 10px 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
@@ -589,7 +589,7 @@ header, footer {
 
 .warehouse-row { 
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1.8fr;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
     gap: 12px;
     align-items: center;
     padding: 8px 10px; 
@@ -628,13 +628,14 @@ header, footer {
     font-size: 12px; 
     color: #ffd700; 
     font-family: monospace;
+    text-align: right;
 }
 
 .wh-col-count { 
     font-weight: 700; 
     color: #fff; 
     font-size: 12px;
-    text-align: center;
+    text-align: right;
 }
 
 .wh-col-total {
@@ -643,6 +644,11 @@ header, footer {
     font-weight: 600;
     font-family: monospace;
     text-align: right;
+}
+
+.wh-col-icons {
+    font-size: 14px;
+    text-align: center;
 }
 
 .wh-col-actions {
@@ -1075,16 +1081,16 @@ header, footer {
 .smelter-task-blocked {
     border-color: rgba(244, 67, 54, 0.2);
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.05), rgba(244, 67, 54, 0.02));
-    opacity: 0.7;
+    opacity: 0.85;
 }
 
 .smelter-task-blocked:hover {
-    opacity: 0.85;
+    opacity: 1;
     border-color: rgba(244, 67, 54, 0.3);
 }
 
 .smelter-task-blocked .smelter-task-name {
-    color: #ccc;
+    color: #e0e0e0;
 }
 
 /* Recipe status colors */
@@ -1107,16 +1113,16 @@ header, footer {
 .smelter-task-locked {
     border-color: rgba(158, 158, 158, 0.2);
     background: linear-gradient(135deg, rgba(158, 158, 158, 0.08), rgba(158, 158, 158, 0.03));
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 .smelter-task-locked:hover {
-    opacity: 0.65;
+    opacity: 0.85;
     border-color: rgba(158, 158, 158, 0.3);
 }
 
 .smelter-task-locked .smelter-task-name {
-    color: #888;
+    color: #aaa;
 }
 
 /* Unreachable task row styling (below "do-nothing") */
