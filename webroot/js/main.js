@@ -1239,11 +1239,9 @@ function triggerCritAnimation(x, y, isOneHit = false) {
     const animClass = isOneHit ? 'one-hit' : 'crit-hit';
     //console.log(`✨ Applying ${animClass} class to cell at (${x}, ${y})`);
     
-    // Restart animation if the class is already applied
+    // If animation is already running, don't restart it
     if (cell.classList.contains('crit-hit') || cell.classList.contains('one-hit')) {
-        cell.classList.remove('crit-hit');
-        cell.classList.remove('one-hit');
-        void cell.offsetWidth;
+        return;
     }
 
     // Add animation class
@@ -2475,14 +2473,10 @@ function initWorker() {
                     updateMaterialsPanel();
                 }
                 
-                // Update dwarf panel every 10th tick if in dwarfs view
-                tickCounter++;
-                if (tickCounter >= 10) {
-                    tickCounter = 0;
-                    const panel = document.getElementById('materials-panel');
-                    if (panel && panel.dataset.view === 'dwarfs') {
-                        populateDwarfsInPanel();
-                    }
+                // Update dwarf panel every tick if in dwarfs view
+                const panel = document.getElementById('materials-panel');
+                if (panel && panel.dataset.view === 'dwarfs') {
+                    populateDwarfsInPanel();
                 }
                 
                 // Autosave after each tick

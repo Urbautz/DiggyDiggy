@@ -102,10 +102,6 @@ main {
     z-index: 3;
 }
 
-#digging-grid .cell.crit-hit {
-    animation: critHitPulse 0.5s ease-out;
-}
-
 #digging-grid .cell.crit-hit::after {
     content: '';
     position: absolute;
@@ -118,10 +114,6 @@ main {
 }
 
 /* One-hit animation - stronger gold/orange effect */
-#digging-grid .cell.one-hit {
-    animation: oneHitPulse 0.5s ease-out;
-}
-
 #digging-grid .cell.one-hit::after {
     content: '💥';
     position: absolute;
