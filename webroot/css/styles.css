@@ -108,7 +108,8 @@ main {
     inset: 0;
     background: radial-gradient(circle, rgba(255, 219, 36, 0.2) 0%, rgba(255, 86, 86, 0.5) 50%, transparent 70%);
     opacity: 0;
-    animation: critHitFlash 0.5s ease-out forwards;
+    animation: critHitFlash 0.2s ease-out forwards;
+    animation-iteration-count: 1;
     pointer-events: none;
     z-index: 2;
 }
@@ -124,7 +125,8 @@ main {
     font-size: 50px;
       background: radial-gradient(circle, rgba(255, 186, 36, 0.6) 0%, rgba(255, 86, 86, 0.8) 50%, transparent 70%);
     opacity: 0;
-    animation: oneHitFlash 0.5s ease-out forwards;
+    animation: oneHitFlash 0.2s ease-out forwards;
+    animation-iteration-count: 1;
     pointer-events: none;
     z-index: 10;
 }
@@ -132,7 +134,7 @@ main {
 @keyframes oneHitFlash {
     0% { opacity: 0; transform: scale(0.5); }
     30% { opacity: 1; transform: scale(0.8); }
-    100% { opacity: 0; transform: scale(1.4); }
+    100% { opacity: 0; transform: scale(1.3); }
 }
 
 @keyframes critHitFlash {

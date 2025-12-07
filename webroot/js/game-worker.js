@@ -34,6 +34,9 @@ let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
 // Stuck detection tracking
 const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
 
+// Failsafe tick counter
+let failsafeTickCounter = 0;
+
 // Game loop state
 let gameLoopIntervalId = null;
 let gamePaused = false;
@@ -345,6 +348,7 @@ function actForDwarf(dwarf) {
                     if (val === dwarf.name) reservedDigBy.delete(key);
                 }
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 stuckTracking.delete(trackKey);
                 return;
             }
@@ -355,6 +359,13 @@ function actForDwarf(dwarf) {
     }
 
     //console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
+
+    // Failsafe: Release smelter reservation if dwarf is at house and not actively working
+    if (typeof house === 'object' && house !== null && dwarf.x === house.x && dwarf.y === house.y) {
+        if (dwarf.status !== 'resting' && dwarf.status !== 'idle' && smelterReservedBy === dwarf.name) {
+            smelterReservedBy = null;
+        }
+    }
 
     // Low energy handling
     if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < 25) {
@@ -1085,6 +1096,33 @@ function tick() {
         for (const d of dwarfs) {
             actForDwarf(d);
         }
+        
+        // Failsafe: Ensure smelter reservation is valid (run every 100 ticks)
+        failsafeTickCounter++;
+        if (failsafeTickCounter >= 100) {
+            failsafeTickCounter = 0;
+            
+            // Release if reserved by a dwarf that's not heading to/at smelter or actively smelting
+            if (smelterReservedBy) {
+                const reservingDwarf = dwarfs.find(d => d.name === smelterReservedBy);
+                if (reservingDwarf) {
+                    const atSmelter = smelter && reservingDwarf.x === smelter.x && reservingDwarf.y === smelter.y;
+                    const headingToSmelter = reservingDwarf.moveTarget && smelter && 
+                        reservingDwarf.moveTarget.x === smelter.x && reservingDwarf.moveTarget.y === smelter.y;
+                    const activelySmelting = reservingDwarf.status === 'smelting';
+                    
+                    if (!atSmelter && !headingToSmelter && !activelySmelting) {
+                        console.log(`Failsafe: Releasing smelter reservation from ${smelterReservedBy} (at house or elsewhere)`);
+                        smelterReservedBy = null;
+                    }
+                } else {
+                    // Reserved by a dwarf that doesn't exist anymore
+                    console.log(`Failsafe: Releasing smelter reservation from non-existent dwarf ${smelterReservedBy}`);
+                    smelterReservedBy = null;
+                }
+            }
+        }
+        
         const shifted = checkAndShiftTopRows();
         
         // Send updated state back to main thread
