@@ -502,7 +502,11 @@ header, footer {
 .modal-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .modal-header h2 { margin:0; font-size:20px; }
 .modal-close { background:transparent; border:none; color: #fff; font-size:20px; cursor:pointer; }
-.modal-body { margin-top: 12px; color: #eaeaea; max-height: 70vh; overflow-y: auto; }
+.modal-body { margin-top: 12px; color: #eaeaea; max-height: 70vh; overflow-y: auto; padding-right: 12px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+.modal-body::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
 .modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top: 16px; }
 
 .btn-primary { background: linear-gradient(180deg,#3b82f6,#2563eb); color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
@@ -539,7 +543,27 @@ header, footer {
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
-    overflow: hidden;
+    max-height: 340px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+.warehouse-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.warehouse-table-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.warehouse-table-container::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+}
+
+.warehouse-table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
 }
 
 .warehouse-table-header {
@@ -649,9 +673,28 @@ header, footer {
 
 /* Dwarf panel rows (when shown in materials panel) */
 #materials-list {
-    max-height: 400px;
+    max-height: 340px;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+#materials-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#materials-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#materials-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+}
+
+#materials-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
 }
 
 #materials-list[data-view="dwarfs"] {
