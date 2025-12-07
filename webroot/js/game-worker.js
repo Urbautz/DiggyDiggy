@@ -569,6 +569,7 @@ function actForDwarf(dwarf) {
             
             // Pay the dwarf, consume energy and award XP
             gold = Math.max(0, gold - wage);
+            logTransaction('expense', wage, 'Smelter wage for ' + dwarf.name);
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             dwarf.xp = (dwarf.xp || 0) + 1;
             
