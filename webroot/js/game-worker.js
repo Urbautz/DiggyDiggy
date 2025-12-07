@@ -463,6 +463,7 @@ function actForDwarf(dwarf) {
             
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
+            logTransaction('expense', wage, 'Research wage for ' + dwarf.name);
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
