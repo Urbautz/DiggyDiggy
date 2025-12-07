@@ -1119,6 +1119,28 @@ header, footer {
     color: #888;
 }
 
+/* Unreachable task row styling (below "do-nothing") */
+.smelter-task-unreachable {
+    border-color: rgba(255, 69, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 69, 0, 0.1), rgba(139, 0, 0, 0.05));
+    opacity: 0.6;
+}
+
+.smelter-task-unreachable:hover {
+    opacity: 0.75;
+    border-color: rgba(255, 69, 0, 0.4);
+}
+
+.smelter-task-unreachable .smelter-task-name {
+    color: #ff6b6b;
+    text-decoration: line-through;
+}
+
+.smelter-task-unreachable .smelter-task-desc,
+.smelter-task-unreachable .smelter-task-recipe {
+    opacity: 0.5;
+}
+
 .smelter-task-locked .smelter-task-desc {
     color: #666;
 }

@@ -154,9 +154,9 @@ function calculateWage(dwarf) {
 }
 
 function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level
+    // Filter materials that are valid for this depth level and have probability > 0
     const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
     );
     
     if (validMaterials.length === 0) {

@@ -3,9 +3,9 @@ const activeCritFlashes = new Map();
 
 // pick a random material from the registry based on depth level and probability (probability)
 function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level
+    // Filter materials that are valid for this depth level and have probability > 0
     const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity)
+        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
     );
     
     if (validMaterials.length === 0) {
@@ -627,11 +627,17 @@ function populateSmelter() {
     taskList.className = 'smelter-task-list';
     taskList.id = 'smelter-task-list';
     
+    // Find if there's a "do-nothing" task and track if we're below it
+    const doNothingIndex = smelterTasks.findIndex(t => t.id === 'do-nothing');
+    
     // Render each task
     smelterTasks.forEach((task, index) => {
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
         taskRow.dataset.taskId = task.id;
+        
+        // Check if this task is unreachable (below "do-nothing")
+        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
         
         // Check if this task requires research
         let isUnlocked = true;
@@ -656,7 +662,9 @@ function populateSmelter() {
         
         // Add actionable/blocked/locked class
         if (task.id !== 'do-nothing') {
-            if (!isUnlocked) {
+            if (isUnreachable) {
+                taskRow.classList.add('smelter-task-unreachable');
+            } else if (!isUnlocked) {
                 taskRow.classList.add('smelter-task-locked');
             } else {
                 taskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
@@ -675,6 +683,9 @@ function populateSmelter() {
         if (task.id === 'do-nothing') {
             statusIndicator.textContent = '⏸️';
             statusIndicator.title = 'Idle task';
+        } else if (isUnreachable) {
+            statusIndicator.textContent = '🚫';
+            statusIndicator.title = 'Unreachable - will never execute (below "Do Nothing")';
         } else if (!isUnlocked) {
             statusIndicator.textContent = '🔒';
             statusIndicator.title = `Locked - requires ${requiredResearchName}`;

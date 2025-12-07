@@ -30,6 +30,8 @@ const materials = [
   { id: 'Coal', name: 'Coal',type:'Special',                hardness: 80, probability: 80, worth: 10.5,   minlevel: 500, color: '#191919ff' },
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
+  { id: 'Lime', name: 'Lime', type:'Processed',             hardness: 0, probability: 0, worth: 8.0,      minlevel: 99999, color: '#e8f4f0ff' },
+
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 50, worth: 18,     minlevel: 2000, maxlevel: 99999, color: '#7e6136ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 8000, maxlevel: 99999, color: '#c75e41ff' },
   { id: 'Silver Ore', name: 'Silver  Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
@@ -68,7 +70,8 @@ const toolsInventory = [
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
-    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' }
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
+    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' }
 ];
 
 let researchtree = [
