@@ -544,8 +544,28 @@ function actForDwarf(dwarf) {
             // Consume input materials
             materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
             
-            // Produce output materials
-            materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+            // Check for break chance (for polishing tasks)
+            let success = true;
+            if (task.breakChance && task.breakChance > 0) {
+                // Get stone polishing research level
+                const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+                const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+                
+                // Calculate actual break chance: base 50% reduced by 8% per level
+                const breakReduction = polishingLevel * 0.08;
+                const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+                
+                // Roll for success
+                success = Math.random() >= actualBreakChance;
+            }
+            
+            // Produce output materials only if successful (or no break chance)
+            if (success) {
+                materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+                //console.log(`Dwarf ${dwarf.name} successfully smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
+            } else {
+                //console.log(`Dwarf ${dwarf.name} broke ${inputAmount}x ${inputMaterial} while trying to polish it!`);
+            }
             
             // Pay the dwarf, consume energy and award XP
             gold = Math.max(0, gold - wage);
