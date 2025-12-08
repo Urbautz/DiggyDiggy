@@ -37,7 +37,7 @@ const materials = [
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 50, worth: 18,     minlevel: 2000, maxlevel: 99999, color: '#7e6136ff' },
-  { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 8000, maxlevel: 99999, color: '#c75e41ff' },
+  { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
   { id: 'Silver Ore', name: 'Silver  Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
@@ -156,8 +156,15 @@ let dwarfs = [
     bucket: {}, energy: 100 },
 ]
 
-// Transaction log - keeps last 100 money transactions
+// Transaction log - keeps detailed transactions from the current hour
 let transactionLog = [];
+
+// Transaction history - hourly cumulative summaries (never deleted, saved to file)
+// Format: [{ hour: timestamp, transactions: { "description": { income: amount, expense: amount, count: number } } }]
+let transactionHistory = [];
+
+// Track the current hour for transaction rollups
+let currentHourTimestamp = null;
 
 // Global stockpile for collected materials (dwarfs must deliver to drop-off to increase these)
 const materialsStock = {};

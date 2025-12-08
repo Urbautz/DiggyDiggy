@@ -801,7 +801,7 @@ function actForDwarf(dwarf) {
             const prev = curCell.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
-            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             
             // Check for critical hit (5% base + 5% per research level)
@@ -909,7 +909,7 @@ function actForDwarf(dwarf) {
             const prev = curCellDig.hardness;
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
-            pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
+            pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
             
             // Check for critical hit (5% base + 5% per research level)
@@ -1110,7 +1110,7 @@ function actForDwarf(dwarf) {
     target.hardness = Math.max(0, target.hardness - power);
     dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
     gold = Math.max(0, gold - wage); // Deduct payment for digging
-    pendingTransactions.push({ type: 'expense', amount: wage, description: `Payment to ${dwarf.name}` });
+    pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
     
     // Check for critical hit (5% base + 5% per research level)
     const materialScience = researchtree.find(r => r.id === 'material-science');

@@ -15,7 +15,7 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
-    <div id="gold-display" class="gold-display" onclick="openTransactions()" style="cursor: pointer;" title="Click to view transaction log">
+    <div id="gold-display" class="gold-display" onclick="openTransactions()" style="cursor: pointer;" title="Click to view finances">
         <span class="gold-icon">💰</span>
         <span class="gold-amount">1000</span>
     </div>
@@ -194,16 +194,21 @@
         </div>
     </div>
 
-    <!-- Transaction Log modal -->
-    <div id="transactions-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Transaction log dialog">
+    <!-- Finances modal -->
+    <div id="transactions-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Finances dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
         <div class="modal-dialog" role="document">
             <header class="modal-header">
-                <h2>💰 Transaction Log</h2>
-                <button class="modal-close" aria-label="Close transactions" data-action="close-modal">×</button>
+                <h2>💰 Finances</h2>
+                <button class="modal-close" aria-label="Close finances" data-action="close-modal">×</button>
             </header>
             <div class="modal-body">
-                <p>View the last 100 money transactions:</p>
+                <!-- Tab buttons -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;">
+                    <button id="finances-tab-summary" class="finances-tab active" onclick="switchFinancesTab('summary')" style="flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;">Hourly Summary</button>
+                    <button id="finances-tab-recent" class="finances-tab" onclick="switchFinancesTab('recent')" style="flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;">Recent Transactions</button>
+                </div>
+                
                 <div id="transactions-content" style="max-height: 500px; overflow-y: auto;">
                     <!-- Content will be added here -->
                 </div>
