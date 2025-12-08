@@ -1009,7 +1009,8 @@ function populateSmelter() {
             stockAmount = materialsStock[task.input.material] || 0;
             // For heating tasks, only actionable if temp is below min and below max
             if (task.type === 'heating') {
-                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
+                // Heating is actionable if enough materials and temperature is below max (hysteresis)
+                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMaxTemp);
             } else if (task.minTemp) {
                 // For smelting tasks with temp requirements, check both materials and temperature
                 isActionable = (stockAmount >= task.input.amount) && (smelterTemperature >= task.minTemp);
