@@ -40,7 +40,7 @@ const materials = [
   { id: 'Bronze', name: 'Bronze', type:'Processed',         hardness: 0, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
   { id: 'Copper', name: 'Copper', type:'Processed',         hardness: 0, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
-  { id: 'Silver Ore', name: 'Silver  Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
+  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
   { id: 'Silver', name: 'Silver', type:'Processed',         hardness: 0, probability: 0, worth: 750,     minlevel: 99999, color: '#c0c0c0ff' },
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
