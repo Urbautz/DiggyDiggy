@@ -1010,6 +1010,9 @@ function populateSmelter() {
             // For heating tasks, only actionable if temp is below min and below max
             if (task.type === 'heating') {
                 isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
+            } else if (task.minTemp) {
+                // For smelting tasks with temp requirements, check both materials and temperature
+                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature >= task.minTemp);
             } else {
                 isActionable = stockAmount >= task.input.amount;
             }
@@ -1048,8 +1051,14 @@ function populateSmelter() {
             statusIndicator.textContent = '✅';
             statusIndicator.title = 'Ready - materials available';
         } else {
-            statusIndicator.textContent = '❌';
-            statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount}x`;
+            // Determine why task is blocked
+            if (task.minTemp && smelterTemperature < task.minTemp) {
+                statusIndicator.textContent = '🌡️';
+                statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+            }
         }
         taskRow.appendChild(statusIndicator);
         
@@ -1077,7 +1086,9 @@ function populateSmelter() {
             const outputName = outputMat ? outputMat.name : task.output.material;
             // Show current stock vs required
             const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}`;
+            // Add temperature requirement if present
+            const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}${tempReq}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -1159,20 +1170,38 @@ function populateSmelter() {
         // Move up button
         const upBtn = document.createElement('button');
         upBtn.className = 'smelter-btn-move';
-        upBtn.innerHTML = '▲';
+        upBtn.innerHTML = '⬆';
         upBtn.title = 'Move up (higher priority)';
         upBtn.disabled = index === 0;
         upBtn.onclick = () => moveSmelterTask(index, -1);
         btnContainer.appendChild(upBtn);
         
+        // Move to top button
+        const topBtn = document.createElement('button');
+        topBtn.className = 'smelter-btn-move';
+        topBtn.innerHTML = '⤊';
+        topBtn.title = 'Move to top (highest priority)';
+        topBtn.disabled = index === 0;
+        topBtn.onclick = () => moveSmelterTaskToTop(index);
+        btnContainer.appendChild(topBtn);
+        
         // Move down button
         const downBtn = document.createElement('button');
         downBtn.className = 'smelter-btn-move';
-        downBtn.innerHTML = '▼';
+        downBtn.innerHTML = '⬇';
         downBtn.title = 'Move down (lower priority)';
         downBtn.disabled = index === smelterTasks.length - 1;
         downBtn.onclick = () => moveSmelterTask(index, 1);
         btnContainer.appendChild(downBtn);
+        
+        // Deactivate button (move to end)
+        const deactivateBtn = document.createElement('button');
+        deactivateBtn.className = 'smelter-btn-move';
+        deactivateBtn.innerHTML = '⤋';
+        deactivateBtn.title = 'Deactivate (move to bottom)';
+        deactivateBtn.disabled = index === smelterTasks.length - 1;
+        deactivateBtn.onclick = () => moveSmelterTaskToBottom(index);
+        btnContainer.appendChild(deactivateBtn);
         
         taskRow.appendChild(btnContainer);
         taskList.appendChild(taskRow);
@@ -1239,6 +1268,58 @@ function updateSmelterTemperatureDisplay() {
             recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
         }
     }
+}
+
+// Move a smelter task to the top of the priority list
+function moveSmelterTaskToTop(index) {
+    // Already at top
+    if (index === 0) return;
+    
+    // Remove task from current position and insert at top
+    const task = smelterTasks.splice(index, 1)[0];
+    smelterTasks.unshift(task);
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterTasks: smelterTasks
+            }
+        });
+    }
+    
+    // Save the new order
+    saveGame();
+    
+    // Re-render the list
+    populateSmelter();
+}
+
+// Move a smelter task to the bottom of the priority list (deactivate)
+function moveSmelterTaskToBottom(index) {
+    // Already at bottom
+    if (index === smelterTasks.length - 1) return;
+    
+    // Remove task from current position and append at end
+    const task = smelterTasks.splice(index, 1)[0];
+    smelterTasks.push(task);
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterTasks: smelterTasks
+            }
+        });
+    }
+    
+    // Save the new order
+    saveGame();
+    
+    // Re-render the list
+    populateSmelter();
 }
 
 // Move a smelter task up or down in the priority list
@@ -3043,6 +3124,7 @@ function initWorker() {
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
                 if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
                 if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
                 
                 // Update UI to reflect new state
                 updateGridDisplay();
@@ -3163,6 +3245,7 @@ function saveGame() {
             smelterTemperature: smelterTemperature,
             smelterMinTemp: smelterMinTemp,
             smelterMaxTemp: smelterMaxTemp,
+            smelterHeatingMode: smelterHeatingMode,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -3259,6 +3342,7 @@ function loadGame() {
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
         if (gameState.smelterMinTemp !== undefined) smelterMinTemp = gameState.smelterMinTemp;
         if (gameState.smelterMaxTemp !== undefined) smelterMaxTemp = gameState.smelterMaxTemp;
+        if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
         
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

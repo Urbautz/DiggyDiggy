@@ -30,6 +30,7 @@ let pendingTransactions = []; // Queue of transactions to send to main thread
 let smelterTemperature = 25; // Current temperature in degrees
 let smelterMinTemp = 25; // Minimum temperature to maintain (user configurable)
 let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable)
+let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
@@ -107,11 +108,23 @@ function findActionableSmelterTask() {
             continue; // Skip locked tasks
         }
         
-        // For heating tasks, only perform if temperature is below min AND below max
+        // For heating tasks, use hysteresis: start heating when below min, stop when above max
         if (task.type === 'heating') {
-            if (smelterTemperature >= smelterMinTemp || smelterTemperature >= smelterMaxTemp) {
-                continue; // Skip heating if at/above min temp or at/above max temp
+            // Update heating mode based on temperature
+            if (smelterTemperature < smelterMinTemp) {
+                smelterHeatingMode = true; // Start heating when below min
+            } else if (smelterTemperature >= smelterMaxTemp) {
+                smelterHeatingMode = false; // Stop heating when at/above max
             }
+            // Skip heating if not in heating mode
+            if (!smelterHeatingMode) {
+                continue;
+            }
+        }
+        
+        // For smelting tasks with temperature requirements, check if furnace is hot enough
+        if (task.minTemp && smelterTemperature < task.minTemp) {
+            continue; // Skip tasks that require higher temperature
         }
         
         if (task.input && task.input.material && task.input.amount) {
@@ -1221,6 +1234,7 @@ function tick() {
                 smelterTemperature,
                 smelterMinTemp,
                 smelterMaxTemp,
+                smelterHeatingMode,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
@@ -1272,6 +1286,7 @@ self.addEventListener('message', (e) => {
             if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
             if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
             if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+            if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -1328,6 +1343,7 @@ self.addEventListener('message', (e) => {
             if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
             if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
             if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+            if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             break;
             
         default:
