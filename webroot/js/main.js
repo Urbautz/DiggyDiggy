@@ -1007,7 +1007,12 @@ function populateSmelter() {
             isActionable = true; // "Do nothing" is always "actionable"
         } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
             stockAmount = materialsStock[task.input.material] || 0;
-            isActionable = stockAmount >= task.input.amount;
+            // For heating tasks, only actionable if temp is below min and below max
+            if (task.type === 'heating') {
+                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
+            } else {
+                isActionable = stockAmount >= task.input.amount;
+            }
         }
         
         // Add actionable/blocked/locked class
@@ -1071,7 +1076,7 @@ function populateSmelter() {
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             // Show current stock vs required
-            const stockInfo = `(${stockAmount}/${task.input.amount})`;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
             taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
@@ -1079,6 +1084,70 @@ function populateSmelter() {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
+        } else if (task.input && task.type === 'heating') {
+            // Show heating task info with temperature display
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
+            taskInfo.appendChild(taskRecipe);
+            
+            // Add temperature display and controls inside the heating task
+            const tempControls = document.createElement('div');
+            tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
+            
+            // Current temperature with bar
+            const tempValue = Math.round(smelterTemperature);
+            const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+            const tempDisplay = document.createElement('div');
+            tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
+            tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
+            tempControls.appendChild(tempDisplay);
+            
+            // Temperature bar
+            const tempBarContainer = document.createElement('div');
+            tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
+            const tempBar = document.createElement('div');
+            const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
+            tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
+            tempBarContainer.appendChild(tempBar);
+            tempControls.appendChild(tempBarContainer);
+            
+            // Temperature range controls
+            const rangeControls = document.createElement('div');
+            rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
+            
+            // Min temperature control
+            const minControl = document.createElement('div');
+            minControl.innerHTML = `
+                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMinTemp}°</label>
+                <div style="display: flex; gap: 3px;">
+                    <button class="temp-btn" onclick="adjustMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                    <button class="temp-btn" onclick="adjustMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                </div>
+            `;
+            rangeControls.appendChild(minControl);
+            
+            // Max temperature control
+            const maxControl = document.createElement('div');
+            maxControl.innerHTML = `
+                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterMaxTemp}°</label>
+                <div style="display: flex; gap: 3px;">
+                    <button class="temp-btn" onclick="adjustMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                    <button class="temp-btn" onclick="adjustMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                </div>
+            `;
+            rangeControls.appendChild(maxControl);
+            
+            tempControls.appendChild(rangeControls);
+            taskInfo.appendChild(tempControls);
         }
         
         taskRow.appendChild(taskInfo);
@@ -1112,6 +1181,66 @@ function populateSmelter() {
     container.appendChild(taskList);
 }
 
+// Efficiently update just the temperature display in smelter (not full rebuild)
+function updateSmelterTemperatureDisplay() {
+    // Find the heating task row
+    const taskList = document.getElementById('smelter-task-list');
+    if (!taskList) return;
+    
+    const heatingTaskRow = taskList.querySelector('[data-task-id="heat-furnace"]');
+    if (!heatingTaskRow) return;
+    
+    // Update temperature display within the heating task
+    const tempValue = Math.round(smelterTemperature);
+    const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+    
+    // Update current temperature text
+    const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
+    if (tempDisplays.length > 0) {
+        tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
+    }
+    
+    // Update temperature bar
+    const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
+    if (tempBars.length > 0) {
+        const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
+        tempBars[0].style.width = `${tempPercent}%`;
+    }
+    
+    // Update task actionability based on temperature
+    const task = smelterTasks.find(t => t.id === 'heat-furnace');
+    if (task) {
+        const stockAmount = materialsStock[task.input.material] || 0;
+        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+        const isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
+        
+        // Update row class
+        heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
+        heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+        
+        // Update status indicator
+        const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
+        if (statusIndicator && isUnlocked) {
+            if (isActionable) {
+                statusIndicator.textContent = '✅';
+                statusIndicator.title = 'Ready - materials available and temperature below minimum';
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+            }
+        }
+        
+        // Update recipe stock info
+        const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
+        if (recipeSpan) {
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+        }
+    }
+}
+
 // Move a smelter task up or down in the priority list
 function moveSmelterTask(index, direction) {
     const newIndex = index + direction;
@@ -1138,6 +1267,50 @@ function moveSmelterTask(index, direction) {
     saveGame();
     
     // Re-render the list
+    populateSmelter();
+}
+
+// Adjust minimum temperature setting
+window.adjustMinTemp = function(amount) {
+    smelterMinTemp = Math.max(25, Math.min(1500, smelterMinTemp + amount));
+    // Ensure min doesn't exceed max
+    if (smelterMinTemp > smelterMaxTemp) {
+        smelterMinTemp = smelterMaxTemp;
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMinTemp: smelterMinTemp
+            }
+        });
+    }
+    
+    saveGame();
+    populateSmelter();
+}
+
+// Adjust maximum temperature setting
+window.adjustMaxTemp = function(amount) {
+    smelterMaxTemp = Math.max(25, Math.min(1500, smelterMaxTemp + amount));
+    // Ensure max doesn't go below min
+    if (smelterMaxTemp < smelterMinTemp) {
+        smelterMaxTemp = smelterMinTemp;
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMaxTemp: smelterMaxTemp
+            }
+        });
+    }
+    
+    saveGame();
     populateSmelter();
 }
 
@@ -2485,7 +2658,7 @@ function updateMaterialsPanel() {
         
         const cnt = document.createElement('span');
         cnt.className = 'wh-col-count';
-        cnt.textContent = String(count);
+        cnt.textContent = count.toFixed(1);
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
@@ -2784,6 +2957,7 @@ let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
+let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
 
 function initWorker() {
@@ -2865,6 +3039,11 @@ function initWorker() {
                     }
                 }
                 
+                // Update smelter temperature state from worker
+                if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
+                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
+                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2877,6 +3056,16 @@ function initWorker() {
                 const panel = document.getElementById('materials-panel');
                 if (panel && panel.dataset.view === 'dwarfs') {
                     populateDwarfsInPanel();
+                }
+                
+                // Update smelter panel every 5 ticks if it's open (for temperature display)
+                const smelterModal = document.getElementById('smelter-modal');
+                if (smelterModal && smelterModal.getAttribute('aria-hidden') === 'false') {
+                    smelterRefreshCounter++;
+                    if (smelterRefreshCounter >= 5) {
+                        updateSmelterTemperatureDisplay();
+                        smelterRefreshCounter = 0;
+                    }
                 }
                 
                 // Autosave after each tick
@@ -2919,7 +3108,10 @@ function initWorker() {
             gold,
             toolsInventory,
             activeResearch,
-            researchtree
+            researchtree,
+            smelterTemperature,
+            smelterMinTemp,
+            smelterMaxTemp
         }
     });
     
@@ -2968,6 +3160,9 @@ function saveGame() {
             transactionHistory: transactionHistory,
             currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
+            smelterTemperature: smelterTemperature,
+            smelterMinTemp: smelterMinTemp,
+            smelterMaxTemp: smelterMaxTemp,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -3059,6 +3254,11 @@ function loadGame() {
                 return indexA - indexB;
             });
         }
+        
+        // Restore smelter temperature state
+        if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
+        if (gameState.smelterMinTemp !== undefined) smelterMinTemp = gameState.smelterMinTemp;
+        if (gameState.smelterMaxTemp !== undefined) smelterMaxTemp = gameState.smelterMaxTemp;
         
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

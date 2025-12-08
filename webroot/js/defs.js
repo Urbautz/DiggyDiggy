@@ -73,6 +73,7 @@ const toolsInventory = [
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
+    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 250°.', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
     { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
     { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
@@ -80,6 +81,11 @@ let smelterTasks = [
     { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' }
 ];
+
+// Smelter temperature system
+let smelterTemperature = 25; // Current temperature in degrees
+let smelterMinTemp = 25; // Minimum temperature to maintain (user configurable)
+let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable)
 
 let researchtree = [
     { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, level: 0,
@@ -92,6 +98,10 @@ let researchtree = [
       description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
+    { id: 'furnace', name: 'Furnace', cost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
+      description: 'Unlocks the furnace for smelting of ores.' },
+    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 1000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
+      description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,

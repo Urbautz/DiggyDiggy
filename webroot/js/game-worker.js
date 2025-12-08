@@ -26,6 +26,11 @@ let activeResearch = null;
 let researchtree = [];
 let pendingTransactions = []; // Queue of transactions to send to main thread
 
+// Smelter temperature system
+let smelterTemperature = 25; // Current temperature in degrees
+let smelterMinTemp = 25; // Minimum temperature to maintain (user configurable)
+let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable)
+
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
@@ -101,6 +106,14 @@ function findActionableSmelterTask() {
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
         }
+        
+        // For heating tasks, only perform if temperature is below min AND below max
+        if (task.type === 'heating') {
+            if (smelterTemperature >= smelterMinTemp || smelterTemperature >= smelterMaxTemp) {
+                continue; // Skip heating if at/above min temp or at/above max temp
+            }
+        }
+        
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
@@ -539,33 +552,42 @@ function actForDwarf(dwarf) {
             // Perform the smelting action
             const inputMaterial = task.input.material;
             const inputAmount = task.input.amount;
-            const outputMaterial = task.output.material;
-            const outputAmount = task.output.amount;
             
             // Consume input materials
             materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
             
-            // Check for break chance (for polishing tasks)
-            let success = true;
-            if (task.breakChance && task.breakChance > 0) {
-                // Get stone polishing research level
-                const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
-                const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+            // Handle heating task
+            if (task.type === 'heating' && task.heatGain) {
+                // Add heat to the furnace (capped at 1500 degrees)
+                smelterTemperature = Math.min(1500, smelterTemperature + task.heatGain);
+                //console.log(`Dwarf ${dwarf.name} heated furnace by ${task.heatGain}° (now ${Math.round(smelterTemperature)}°)`);
+            } else if (task.output) {
+                // Regular smelting task with output
+                const outputMaterial = task.output.material;
+                const outputAmount = task.output.amount;
                 
-                // Calculate actual break chance: base 50% reduced by 8% per level
-                const breakReduction = polishingLevel * 0.08;
-                const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+                // Check for break chance (for polishing tasks)
+                let success = true;
+                if (task.breakChance && task.breakChance > 0) {
+                    // Get stone polishing research level
+                    const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+                    const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+                    
+                    // Calculate actual break chance: base 50% reduced by 8% per level
+                    const breakReduction = polishingLevel * 0.08;
+                    const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+                    
+                    // Roll for success
+                    success = Math.random() >= actualBreakChance;
+                }
                 
-                // Roll for success
-                success = Math.random() >= actualBreakChance;
-            }
-            
-            // Produce output materials only if successful (or no break chance)
-            if (success) {
-                materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
-                //console.log(`Dwarf ${dwarf.name} successfully smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
-            } else {
-                //console.log(`Dwarf ${dwarf.name} broke ${inputAmount}x ${inputMaterial} while trying to polish it!`);
+                // Produce output materials only if successful (or no break chance)
+                if (success) {
+                    materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+                    //console.log(`Dwarf ${dwarf.name} successfully smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
+                } else {
+                    //console.log(`Dwarf ${dwarf.name} broke ${inputAmount}x ${inputMaterial} while trying to polish it!`);
+                }
             }
             
             // Pay the dwarf, consume energy and award XP
@@ -574,7 +596,7 @@ function actForDwarf(dwarf) {
             dwarf.energy = Math.max(0, dwarf.energy - 10);
             dwarf.xp = (dwarf.xp || 0) + 1;
             
-            //console.log(`Dwarf ${dwarf.name} smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
+            //console.log(`Dwarf ${dwarf.name} performed smelting task`);
             return;
         } else {
             // Not at smelter location, release reservation and become idle
@@ -1141,6 +1163,16 @@ function actForDwarf(dwarf) {
 
 function tick() {
     try {
+        // Cool down smelter temperature by 0.05% per tick (minimum 25 degrees)
+        // Reduced by Furnace Insulation research (10% per level)
+        if (smelterTemperature > 25) {
+            const insulationResearch = researchtree.find(r => r.id === 'furnace-insulation');
+            const insulationLevel = insulationResearch ? (insulationResearch.level || 0) : 0;
+            const coolingReduction = insulationLevel * 0.10; // 10% per level
+            const coolingRate = 0.0005 * (1 - coolingReduction); // 0.05% = 0.0005
+            smelterTemperature = Math.max(25, smelterTemperature * (1 - coolingRate));
+        }
+        
         for (const d of dwarfs) {
             actForDwarf(d);
         }
@@ -1186,6 +1218,9 @@ function tick() {
                 activeResearch,
                 researchtree,
                 shifted,
+                smelterTemperature,
+                smelterMinTemp,
+                smelterMaxTemp,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
@@ -1233,6 +1268,10 @@ self.addEventListener('message', (e) => {
                 // Copy the full researchtree from main thread
                 researchtree = JSON.parse(JSON.stringify(data.researchtree));
             }
+            // Initialize smelter temperature state
+            if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
+            if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
+            if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -1286,6 +1325,9 @@ self.addEventListener('message', (e) => {
                 // Copy the smelter tasks from main thread
                 smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
             }
+            if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
+            if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
+            if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
             break;
             
         default:
