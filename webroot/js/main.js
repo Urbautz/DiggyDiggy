@@ -1332,7 +1332,7 @@ function openDwarfs() {
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
     
-    // Remove Sell Not Craftable button from header
+    // Remove Sell Non-Craftables button from header
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
     
@@ -2033,7 +2033,7 @@ function updateMaterialsPanel() {
     
     const hasAnyMaterials = materialsWithStock.length > 0;
     
-    // Update or create Sell All button, Sell Not Craftable button, and total value in header
+    // Update or create Sell All button, Sell Non-Craftables button, and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     let totalValueSpan = document.getElementById('total-stock-value');
@@ -2065,21 +2065,7 @@ function updateMaterialsPanel() {
         }
         totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
         
-        // Create or update Sell Not Craftable button
-        if (hasNotCraftableMaterials) {
-            if (!sellNotCraftableBtn) {
-                sellNotCraftableBtn = document.createElement('button');
-                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
-                sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.textContent = 'Sell Not Craftable';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
-                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.appendChild(sellNotCraftableBtn);
-            }
-        } else if (sellNotCraftableBtn) {
-            sellNotCraftableBtn.remove();
-        }
-        
+        // Create or update Sell All button first (to maintain consistent order)
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
                 sellAllHeaderBtn = document.createElement('button');
@@ -2087,10 +2073,25 @@ function updateMaterialsPanel() {
                 sellAllHeaderBtn.className = 'btn-sell-all-global';
                 sellAllHeaderBtn.textContent = 'Sell All';
                 sellAllHeaderBtn.onclick = sellAllMaterials;
-                header.appendChild(sellAllHeaderBtn);
+                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
             }
         } else if (sellAllHeaderBtn) {
             sellAllHeaderBtn.remove();
+        }
+        
+        // Create or update Sell Non-Craftables button second
+        if (hasNotCraftableMaterials) {
+            if (!sellNotCraftableBtn) {
+                sellNotCraftableBtn = document.createElement('button');
+                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
+                sellNotCraftableBtn.className = 'btn-sell-all-global';
+                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
+                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
+            }
+        } else if (sellNotCraftableBtn) {
+            sellNotCraftableBtn.remove();
         }
     }
     
