@@ -1,8 +1,68 @@
-// Base data}
+// Base data
 const gameversion = '0.11.0';
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
+
+// Game mechanic constants - centralized for easy tweaking
+const TOOL_LEVEL_BONUS = 0.1; // 10% bonus per tool level
+const TOOL_UPGRADE_COST_MULTIPLIER = 2; // Cost doubles with each level
+const DWARF_BASE_POWER = 3; // Base damage without tools
+const DWARF_DIG_POWER_BONUS = 0.1; // 10% bonus per dig power point
+const DWARF_ENERGY_COST_PER_DIG = 5; // Energy consumed per dig action
+const DWARF_ENERGY_COST_PER_MOVE = 1; // Energy consumed per move
+const DWARF_ENERGY_COST_PER_RESEARCH = 10; // Energy consumed per research action
+const DWARF_ENERGY_COST_PER_SMELT = 10; // Energy consumed per smelting action
+const DWARF_LOW_ENERGY_THRESHOLD = 25; // Energy below which dwarf seeks rest
+const DWARF_REST_AMOUNT = 25; // Energy restored per rest tick
+const DWARF_BASE_WAGE = 0.01; // Base gold cost per dig action
+const DWARF_WAGE_INCREASE_RATE = 0.25; // 25% wage increase per level
+const DWARF_WAGE_INCREASE_MIN = 0.05; // Minimum wage increase rate (with research)
+const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
+const DWARF_XP_PER_LEVEL = 250; // XP needed per level
+const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
+const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
+const DWARF_LEVELUP_STRENGTH_BONUS = 1; // Bucket capacity increase per strength point
+
+const CRITICAL_HIT_BASE_CHANCE = 0.02; // 2% base critical hit chance
+const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2; // Critical hits do double damage
+const CRITICAL_HIT_ANIMATION_DURATION = 320; // Milliseconds for crit animation
+const ONE_HIT_ANIMATION_DURATION = 320; // Milliseconds for one-hit animation
+const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02; // 2% per level
+const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03; // 3% per level
+
+const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01; // 1% per level
+const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05; // 5% crit chance per level
+const RESEARCH_UNION_BUSTING_BONUS = 0.05; // 5% less strike chance per level
+const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01; // 1% wage increase reduction per level
+const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
+const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
+const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
+const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
+const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
+const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
+const RESEARCH_COST_MULTIPLIER = 2; // Research cost doubles each level
+
+const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5; // 50% chance to use same material as left tile
+const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5; // 50% chance to use same material as above tile
+const GRID_MOVE_DOWN_CHANCE = 0.3; // 30% chance to move down to dig lower
+const GRID_MOVE_UP_CHANCE = 0.7; // 70% chance to move up after horizontal move
+
+const SMELTER_BASE_TEMPERATURE = 25; // Starting and minimum temperature
+const SMELTER_MAX_TEMPERATURE_LIMIT = 1500; // Absolute maximum temperature
+const SMELTER_COOLING_RATE = 0.0005; // 0.05% cooling per tick
+const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
+
+const TASK_RESEARCH_CHANCE = 0.5; // 50% chance to do research/smelting instead of digging
+const TASK_RESEARCH_SPLIT = 0.5; // 50/50 split between research and smelting
+
+const STUCK_DETECTION_TICKS = 10; // Ticks before teleporting stuck dwarf
+const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
+
+const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
+
+const CHEAT_GOLD_BONUS = 5000; // Gold added by cheat code
+const CHEAT_DEPTH_MULTIPLIER = 2; // Depth multiplier for cheat code
 
 // Material registry — easy to extend later
 const materials = [

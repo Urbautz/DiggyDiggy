@@ -28,8 +28,8 @@ function generateGrid() {
         for (let c = 0; c < gridWidth; c++) {
             let mat;
             
-            // Check left tile (50% chance to use same material)
-            if (c > 0 && Math.random() < 0.5) {
+            // Check left tile
+            if (c > 0 && Math.random() < GRID_CLUSTERING_HORIZONTAL_CHANCE) {
                 const leftCell = row[c - 1];
                 if (leftCell && leftCell.materialId) {
                     const leftMat = materials.find(m => m.id === leftCell.materialId);
@@ -39,8 +39,8 @@ function generateGrid() {
                 }
             }
             
-            // Check above tile (50% chance to use same material if not air/empty)
-            if (!mat && r > 0 && Math.random() < 0.5) {
+            // Check above tile (if not air/empty)
+            if (!mat && r > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
                 const aboveCell = grid[r - 1][c];
                 if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
                     const aboveMat = materials.find(m => m.id === aboveCell.materialId);

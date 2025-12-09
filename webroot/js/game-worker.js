@@ -4,6 +4,45 @@
 
 const DEFAULT_LOOP_INTERVAL_MS = 400;
 
+// Game mechanic constants (must be defined in worker context)
+const TOOL_LEVEL_BONUS = 0.1;
+const DWARF_BASE_POWER = 3;
+const DWARF_DIG_POWER_BONUS = 0.1;
+const DWARF_ENERGY_COST_PER_DIG = 5;
+const DWARF_ENERGY_COST_PER_MOVE = 1;
+const DWARF_ENERGY_COST_PER_RESEARCH = 10;
+const DWARF_ENERGY_COST_PER_SMELT = 10;
+const DWARF_LOW_ENERGY_THRESHOLD = 25;
+const DWARF_REST_AMOUNT = 25;
+const DWARF_BASE_WAGE = 0.01;
+const DWARF_WAGE_INCREASE_RATE = 0.25;
+const DWARF_WAGE_INCREASE_MIN = 0.05;
+const DWARF_XP_PER_ACTION = 1;
+const DWARF_STRIKE_BASE_CHANCE = 0.1;
+const CRITICAL_HIT_BASE_CHANCE = 0.05;
+const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2;
+const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02;
+const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03;
+const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01;
+const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05;
+const RESEARCH_UNION_BUSTING_BONUS = 0.05;
+const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01;
+const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1;
+const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15;
+const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08;
+const RESEARCH_FURNACE_INSULATION_BONUS = 0.10;
+const RESEARCH_COST_MULTIPLIER = 2;
+const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5;
+const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5;
+const GRID_MOVE_DOWN_CHANCE = 0.3;
+const GRID_MOVE_UP_CHANCE = 0.7;
+const SMELTER_BASE_TEMPERATURE = 25;
+const SMELTER_COOLING_RATE = 0.0005;
+const TASK_RESEARCH_CHANCE = 0.5;
+const TASK_RESEARCH_SPLIT = 0.5;
+const STUCK_DETECTION_TICKS = 10;
+const FAILSAFE_CHECK_INTERVAL = 100;
+
 let grid = [];
 let dwarfs = [];
 let materials = [];
@@ -138,43 +177,37 @@ function findActionableSmelterTask() {
 }
 
 function getDwarfToolPower(dwarf) {
-    const baseDwarfPower = 3; // dwarf's base damage
-    
-    if (!dwarf.toolId) return baseDwarfPower; // default power if no tool
+    if (!dwarf.toolId) return DWARF_BASE_POWER; // default power if no tool
     
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance) return baseDwarfPower;
+    if (!toolInstance) return DWARF_BASE_POWER;
     
     const toolDef = tools.find(t => t.name === toolInstance.type);
-    if (!toolDef) return baseDwarfPower;
+    if (!toolDef) return DWARF_BASE_POWER;
     
     // Calculate power: base dwarf power + tool power with bonuses
-    const toolBonus = 1 + (toolInstance.level - 1) * 0.1;
-    const dwarfBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    const toolBonus = 1 + (toolInstance.level - 1) * TOOL_LEVEL_BONUS;
+    const dwarfBonus = 1 + (dwarf.digPower || 0) * DWARF_DIG_POWER_BONUS;
     
-    // Apply improved-digging research bonus (1% per level)
+    // Apply improved-digging research bonus
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
+    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 1;
     
-    return baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+    return DWARF_BASE_POWER + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
 }
 
 function calculateWage(dwarf) {
-    // Base wage is 0.01 gold per dig
-    const baseWage = 0.01;
-    
-    // Get wage optimization research level (reduces increase by 1% per level)
+    // Get wage optimization research level
     const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
     const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
     
-    // Calculate wage increase rate: starts at 25%, reduced by 1% per research level (minimum 5%)
-    const baseIncreaseRate = 0.25;
-    const researchReduction = researchLevel * 0.01;
-    const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+    // Calculate wage increase rate with research reduction
+    const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+    const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
     
-    // Calculate wage based on dwarf level: baseWage * (1 + level * increaseRate)
-    const dwarfLevel = (dwarf.level || 1) - 1; // Level 1 has no increase, level 2 has 1x increase, etc.
-    const wage = baseWage * (1 + dwarfLevel * increaseRate);
+    // Calculate wage based on dwarf level
+    const dwarfLevel = (dwarf.level || 1) - 1; // Level 1 has no increase
+    const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
     
     return wage;
 }
@@ -248,8 +281,8 @@ function checkAndShiftTopRows() {
         for (let c = 0; c < gridWidth; c++) {
             let mat;
             
-            // Check left tile (50% chance to use same material)
-            if (c > 0 && Math.random() < 0.5) {
+            // Check left tile
+            if (c > 0 && Math.random() < GRID_CLUSTERING_HORIZONTAL_CHANCE) {
                 const leftCell = newRow[c - 1];
                 if (leftCell && leftCell.materialId) {
                     const leftMat = materials.find(m => m.id === leftCell.materialId);
@@ -259,8 +292,8 @@ function checkAndShiftTopRows() {
                 }
             }
             
-            // Check above tile (50% chance to use same material if not air/empty)
-            if (!mat && grid.length > 0 && Math.random() < 0.5) {
+            // Check above tile
+            if (!mat && grid.length > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
                 const aboveCell = grid[grid.length - 1][c];
                 if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
                     const aboveMat = materials.find(m => m.id === aboveCell.materialId);
@@ -362,8 +395,8 @@ function actForDwarf(dwarf) {
         } else {
             // Same position and hardness, increment stuck counter
             tracked.ticks++;
-            if (tracked.ticks >= 10) {
-                // Stuck for 10 ticks! Teleport to house and reset
+            if (tracked.ticks >= STUCK_DETECTION_TICKS) {
+                // Stuck! Teleport to house and reset
                 console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
                 dwarf.x = house.x;
                 dwarf.y = house.y;
@@ -394,7 +427,7 @@ function actForDwarf(dwarf) {
     }
 
     // Low energy handling
-    if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < 25) {
+    if (typeof house === 'object' && house !== null && typeof dwarf.energy === 'number' && dwarf.energy < DWARF_LOW_ENERGY_THRESHOLD) {
         if (dwarf.x === house.x && dwarf.y === house.y) {
             if (dwarf.status !== 'resting') {
                 dwarf.status = 'resting';
@@ -416,25 +449,23 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'resting') {
         const maxEnergy = dwarf.maxEnergy || 100;
         // Apply better-housing research bonus with diminishing returns
-        // Formula: bonus = level * 10% / (1 + level * 0.15)
-        // This gives: lvl 1=8.7%, lvl 2=15.4%, lvl 3=20%, lvl 4=23.5%, lvl 5=26%, lvl 10=33%
         const betterHousing = researchtree.find(r => r.id === 'better-housing');
         const housingLevel = betterHousing ? (betterHousing.level || 0) : 0;
-        const restBonus = housingLevel > 0 ? 1 + (housingLevel * 0.1) / (1 + housingLevel * 0.15) : 1;
-        const restAmount = 25 * restBonus;
+        const restBonus = housingLevel > 0 ? 1 + (housingLevel * RESEARCH_BETTER_HOUSING_BASE_BONUS) / (1 + housingLevel * RESEARCH_BETTER_HOUSING_DIMINISH) : 1;
+        const restAmount = DWARF_REST_AMOUNT * restBonus;
         dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + restAmount);
         if (dwarf.energy >= maxEnergy) {
             dwarf.status = 'idle';
             dwarf.energy = maxEnergy;
             
-            // After resting, check for special tasks (50% chance, evenly split)
+            // After resting, check for special tasks
             const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
             const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
             
-            if ((canResearch || canSmelt) && Math.random() < 0.5) {
+            if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
                 if (canResearch && canSmelt) {
-                    // Both available - 50/50 split
-                    if (Math.random() < 0.5) {
+                    // Both available - split evenly
+                    if (Math.random() < TASK_RESEARCH_SPLIT) {
                         researchReservedBy = dwarf.name;
                         scheduleMove(dwarf, research.x, research.y);
                         return;
@@ -469,7 +500,7 @@ function actForDwarf(dwarf) {
             }
             
             // Check if dwarf has enough energy
-            if (dwarf.energy < 10) {
+            if (dwarf.energy < DWARF_ENERGY_COST_PER_RESEARCH) {
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
@@ -480,7 +511,7 @@ function actForDwarf(dwarf) {
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
-                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
@@ -490,17 +521,17 @@ function actForDwarf(dwarf) {
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
-            dwarf.energy = Math.max(0, dwarf.energy - 10);
+            dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_RESEARCH);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
-            // Base 1 point + wisdom bonus
-            const researchPoints = 1 + (dwarf.wisdom || 0);
+            // Base points + wisdom bonus
+            const researchPoints = DWARF_XP_PER_ACTION + (dwarf.wisdom || 0);
             activeResearch.progress += researchPoints;
             //console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
             
             // Check if research is complete (cost doubles each level)
-            const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+            const actualCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level || 0);
             if (activeResearch.progress >= actualCost) {
                 const completedResearch = activeResearch;
                 completedResearch.level = (completedResearch.level || 0) + 1;
@@ -535,7 +566,7 @@ function actForDwarf(dwarf) {
         // Check if at smelter location
         if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
             // Check if dwarf has enough energy
-            if (dwarf.energy < 10) {
+            if (dwarf.energy < DWARF_ENERGY_COST_PER_SMELT) {
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
                 return;
@@ -546,7 +577,7 @@ function actForDwarf(dwarf) {
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
-                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
@@ -586,8 +617,8 @@ function actForDwarf(dwarf) {
                     const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
                     const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
                     
-                    // Calculate actual break chance: base 50% reduced by 8% per level
-                    const breakReduction = polishingLevel * 0.08;
+                    // Calculate actual break chance with research reduction
+                    const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
                     const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
                     
                     // Roll for success
@@ -606,8 +637,8 @@ function actForDwarf(dwarf) {
             // Pay the dwarf, consume energy and award XP
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-            dwarf.energy = Math.max(0, dwarf.energy - 10);
-            dwarf.xp = (dwarf.xp || 0) + 1;
+            dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
             return;
@@ -621,7 +652,7 @@ function actForDwarf(dwarf) {
     // Striking state - dwarf refuses to work without pay
     if (dwarf.status === 'striking') {
         // Check if there's gold available now
-        if (gold >= 0.01) {
+        if (gold >= DWARF_BASE_WAGE) {
             // Gold available, go back to idle and resume work
             dwarf.status = 'idle';
         }
@@ -674,7 +705,7 @@ function actForDwarf(dwarf) {
                             }
                         }
                         if (chosen !== -1) {
-                            if (typeof dwarf.energy === 'number' && dwarf.energy < 25 && typeof house === 'object') {
+                            if (typeof dwarf.energy === 'number' && dwarf.energy < DWARF_LOW_ENERGY_THRESHOLD && typeof house === 'object') {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
@@ -682,11 +713,11 @@ function actForDwarf(dwarf) {
                                 const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
                                 const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
                                 
-                                // 50% chance to do special task if available, evenly split between research and smelting
-                                if ((canResearch || canSmelt) && Math.random() < 0.5) {
+                                // Check for special task
+                                if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
                                     if (canResearch && canSmelt) {
-                                        // Both available - 50/50 split
-                                        if (Math.random() < 0.5) {
+                                        // Both available - split evenly
+                                        if (Math.random() < TASK_RESEARCH_SPLIT) {
                                             researchReservedBy = dwarf.name;
                                             scheduleMove(dwarf, research.x, research.y);
                                             dwarf.status = 'moving';
@@ -750,7 +781,7 @@ function actForDwarf(dwarf) {
     
     // Check if dwarf is at research location BEFORE accessing grid cells (research is outside main grid)
     if (dwarf.status === 'idle' && typeof research === 'object' && research !== null && 
-        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= 10) {
+        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
         // Only start researching if this dwarf has reserved it or it's not reserved
         if (researchReservedBy === dwarf.name || !researchReservedBy) {
             researchReservedBy = dwarf.name;
@@ -762,7 +793,7 @@ function actForDwarf(dwarf) {
     
     // Check if dwarf is at smelter location BEFORE accessing grid cells (smelter is outside main grid)
     if (dwarf.status === 'idle' && typeof smelter === 'object' && smelter !== null && 
-        dwarf.x === smelter.x && dwarf.y === smelter.y && smelterHasWork() && dwarf.energy >= 10) {
+        dwarf.x === smelter.x && dwarf.y === smelter.y && smelterHasWork() && dwarf.energy >= DWARF_ENERGY_COST_PER_SMELT) {
         // Only start smelting if this dwarf has reserved it or it's not reserved
         if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
             smelterReservedBy = dwarf.name;
@@ -779,16 +810,16 @@ function actForDwarf(dwarf) {
 
     // Idle dwarf - check for special tasks (research or smelting)
     // Use a single random check, then evenly distribute between available tasks
-    if (dwarf.status === 'idle' && dwarf.energy >= 10) {
+    if (dwarf.status === 'idle' && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
         const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
         const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
         
-        // 50% chance to do special task if available
-        if ((canResearch || canSmelt) && Math.random() < 0.5) {
+        // Check for special task
+        if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
             let chooseResearch = false;
             if (canResearch && canSmelt) {
-                // Both available - 50/50 split
-                chooseResearch = Math.random() < 0.5;
+                // Both available - split evenly
+                chooseResearch = Math.random() < TASK_RESEARCH_SPLIT;
             } else {
                 chooseResearch = canResearch;
             }
@@ -825,7 +856,7 @@ function actForDwarf(dwarf) {
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
-                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
@@ -834,16 +865,16 @@ function actForDwarf(dwarf) {
             reservedDigBy.set(curKey, dwarf.name);
             dwarf.status = 'digging';
             const prev = curCell.hardness;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-            dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
+            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION; // Award XP for digging
             
-            // Check for critical hit (5% base + 5% per research level)
+            // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
-            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const critChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
             const isCrit = Math.random() < critChance;
-            let finalPower = isCrit ? power * 2 : power;
+            let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
             // Check for expertise one-hit on critical
             if (isCrit) {
@@ -859,10 +890,10 @@ function actForDwarf(dwarf) {
                 let expertiseType = null;
                 
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
-                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
                 } else if (isOre && oreExpertise && oreExpertise.level > 0) {
-                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
                 
@@ -910,7 +941,7 @@ function actForDwarf(dwarf) {
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 1);
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
@@ -935,23 +966,23 @@ function actForDwarf(dwarf) {
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
                 const unionBusting = researchtree.find(r => r.id === 'union-busting');
-                const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
                     return;
                 }
             }
             const prev = curCellDig.hardness;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-            dwarf.xp = (dwarf.xp || 0) + 1; // Award 1 XP for digging
+            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION; // Award XP for digging
             
-            // Check for critical hit (5% base + 5% per research level)
+            // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
-            const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+            const critChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
             const isCrit = Math.random() < critChance;
-            let finalPower = isCrit ? power * 2 : power;
+            let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
             // Check for expertise one-hit on critical
             if (isCrit) {
@@ -967,10 +998,10 @@ function actForDwarf(dwarf) {
                 let expertiseType = null;
                 
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
-                    oneHitChance = stoneExpertise.level * 0.02; // 2% per level
+                    oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
                 } else if (isOre && oreExpertise && oreExpertise.level > 0) {
-                    oneHitChance = oreExpertise.level * 0.03; // 3% per level
+                    oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
                 
@@ -1005,8 +1036,7 @@ function actForDwarf(dwarf) {
 
     // Try moving down if current cell is empty
     if (curCell && curCell.hardness <= 0) {
-        const downChance = 0.3;
-        if (Math.random() < downChance) {
+        if (Math.random() < GRID_MOVE_DOWN_CHANCE) {
             const downRowIndex = rowIndex + 1;
             if (downRowIndex < grid.length) {
                 const downCell = grid[downRowIndex][originalX];
@@ -1097,7 +1127,7 @@ function actForDwarf(dwarf) {
         const aboveCell = grid[aboveRowIndex] && grid[aboveRowIndex][foundCol];
         const occupiedAbove = dwarfs.some(other => other !== dwarf && other.x === foundCol && other.y === aboveRowIndex);
         if (aboveCell && aboveCell.hardness > 0 && !occupiedAbove) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < GRID_MOVE_UP_CHANCE) {
                 dwarf.y = aboveRowIndex;
                 //console.log(`Dwarf ${dwarf.name} moved up to (${foundCol},${aboveRowIndex}) after changing x (70% roll passed)`);
             } else {
@@ -1114,7 +1144,7 @@ function actForDwarf(dwarf) {
         const aboveCell2 = grid[aboveRowIndex2] && grid[aboveRowIndex2][dwarf.x];
         const occupiedAbove2 = dwarfs.some(other => other !== dwarf && other.x === dwarf.x && other.y === aboveRowIndex2);
         if (aboveCell2 && aboveCell2.hardness > 0 && !occupiedAbove2) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < GRID_MOVE_UP_CHANCE) {
                 dwarf.y = aboveRowIndex2;
                 //console.log(`(Safety) Dwarf ${dwarf.name} moved up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll passed)`);
             } else {
@@ -1176,23 +1206,22 @@ function actForDwarf(dwarf) {
 
 function tick() {
     try {
-        // Cool down smelter temperature by 0.05% per tick (minimum 25 degrees)
-        // Reduced by Furnace Insulation research (10% per level)
-        if (smelterTemperature > 25) {
+        // Cool down smelter temperature with insulation research
+        if (smelterTemperature > SMELTER_BASE_TEMPERATURE) {
             const insulationResearch = researchtree.find(r => r.id === 'furnace-insulation');
             const insulationLevel = insulationResearch ? (insulationResearch.level || 0) : 0;
-            const coolingReduction = insulationLevel * 0.10; // 10% per level
-            const coolingRate = 0.0005 * (1 - coolingReduction); // 0.05% = 0.0005
-            smelterTemperature = Math.max(25, smelterTemperature * (1 - coolingRate));
+            const coolingReduction = insulationLevel * RESEARCH_FURNACE_INSULATION_BONUS;
+            const coolingRate = SMELTER_COOLING_RATE * (1 - coolingReduction);
+            smelterTemperature = Math.max(SMELTER_BASE_TEMPERATURE, smelterTemperature * (1 - coolingRate));
         }
         
         for (const d of dwarfs) {
             actForDwarf(d);
         }
         
-        // Failsafe: Ensure smelter reservation is valid (run every 100 ticks)
+        // Failsafe: Ensure smelter reservation is valid
         failsafeTickCounter++;
-        if (failsafeTickCounter >= 100) {
+        if (failsafeTickCounter >= FAILSAFE_CHECK_INTERVAL) {
             failsafeTickCounter = 0;
             
             // Release if reserved by a dwarf that's not heading to/at smelter or actively smelting

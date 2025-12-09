@@ -68,18 +68,18 @@ function getToolByType(toolType) {
 
 function getToolPower(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
-    if (!tool) return 3;
+    if (!tool) return DWARF_BASE_POWER;
     
-    // Each level gives 10% bonus: power * (1 + (level - 1) * 0.1)
-    return tool.power * (1 + (toolLevel - 1) * 0.1);
+    // Each level gives bonus: power * (1 + (level - 1) * TOOL_LEVEL_BONUS)
+    return tool.power * (1 + (toolLevel - 1) * TOOL_LEVEL_BONUS);
 }
 
 function getToolUpgradeCost(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
     if (!tool) return 0;
     
-    // Cost doubles with each level
-    return tool.upgradecost * Math.pow(2, toolLevel - 1);
+    // Cost multiplies with each level
+    return tool.upgradecost * Math.pow(TOOL_UPGRADE_COST_MULTIPLIER, toolLevel - 1);
 }
 
 
@@ -319,7 +319,7 @@ function updateGridDisplay() {
                         const dwarfsCanLevelUp = dwarfs.filter(d => {
                             const currentXP = d.xp || 0;
                             const currentLevel = d.level || 1;
-                            const xpNeeded = 250 * currentLevel;
+                            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
                             return currentXP >= xpNeeded;
                         });
                         
@@ -530,7 +530,7 @@ function openTransactions() {
     
     switchFinancesTab(window.currentFinancesTab);
     
-    // Set up auto-refresh every 2 seconds
+    // Set up auto-refresh
     if (window.transactionRefreshInterval) {
         clearInterval(window.transactionRefreshInterval);
     }
@@ -544,7 +544,7 @@ function openTransactions() {
             clearInterval(window.transactionRefreshInterval);
             window.transactionRefreshInterval = null;
         }
-    }, 2000);
+    }, AUTO_REFRESH_INTERVAL);
 }
 
 function switchFinancesTab(tab) {
@@ -1826,7 +1826,7 @@ async function loadVersionInfo() {
 
 function triggerCritAnimation(x, y, isOneHit = false) {
     const critKey = `${x}:${y}`;
-    const expiresAt = Date.now() + (isOneHit ? 600 : 320);
+    const expiresAt = Date.now() + (isOneHit ? ONE_HIT_ANIMATION_DURATION : CRITICAL_HIT_ANIMATION_DURATION);
     activeCritFlashes.set(critKey, { expiresAt, isOneHit });
 
     const scheduleCleanup = () => {
@@ -1843,7 +1843,7 @@ function triggerCritAnimation(x, y, isOneHit = false) {
         }
     };
 
-    setTimeout(scheduleCleanup, isOneHit ? 800 : 520);
+    setTimeout(scheduleCleanup, isOneHit ? (ONE_HIT_ANIMATION_DURATION + 200) : (CRITICAL_HIT_ANIMATION_DURATION + 200));
 
     // Find the cell in the main grid
     const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
@@ -2009,7 +2009,7 @@ function populateDwarfsOverview() {
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         xpTd.textContent = `${currentXP} / ${xpNeeded}`;
         
         // Find the tool assigned to this dwarf
@@ -2083,7 +2083,7 @@ function populateDwarfsInPanel() {
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         const canLevelUp = currentXP >= xpNeeded;
         
         if (canLevelUp) {
@@ -2146,14 +2146,12 @@ function populateDwarfsInPanel() {
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
         // Calculate wage using same logic as game-worker.js
-        const baseWage = 0.01;
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
-        const baseIncreaseRate = 0.25;
-        const researchReduction = researchLevel * 0.01;
-        const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+        const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+        const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
         const dwarfLevel = (currentLevel || 1) - 1;
-        const wage = baseWage * (1 + dwarfLevel * increaseRate);
+        const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
         info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
         
@@ -2179,7 +2177,7 @@ function openLevelUpModal(dwarf) {
     content.innerHTML = '';
     
     const title = document.createElement('h3');
-    const xpNeeded = 250 * dwarf.level;
+    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
     const currentXP = dwarf.xp || 0;
     const hasEnoughXP = currentXP >= xpNeeded;
     title.textContent = `${dwarf.name} - Level ${dwarf.level} → ${dwarf.level + 1}`;
@@ -2226,8 +2224,8 @@ function openLevelUpModal(dwarf) {
     energyOption.className = 'levelup-option';
     energyOption.innerHTML = `
         <h4>⚡ Max Energy</h4>
-        <p>Increases maximum energy by 20%</p>
-        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * 1.2)}</p>
+        <p>Increases maximum energy by ${(DWARF_LEVELUP_ENERGY_MULTIPLIER - 1) * 100}%</p>
+        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER)}</p>
     `;
     const energyBtn = document.createElement('button');
     energyBtn.className = 'btn-primary';
@@ -2245,8 +2243,8 @@ function openLevelUpModal(dwarf) {
     strengthOption.className = 'levelup-option';
     strengthOption.innerHTML = `
         <h4>💪 Strength</h4>
-        <p>Increases bucket capacity by 1</p>
-        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + 1}</p>
+        <p>Increases bucket capacity by ${DWARF_LEVELUP_STRENGTH_BONUS}</p>
+        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS}</p>
     `;
     const strengthBtn = document.createElement('button');
     strengthBtn.className = 'btn-primary';
@@ -2288,7 +2286,7 @@ function openLevelUpModal(dwarf) {
     const dwarfsCanLevelUp = dwarfs.filter(d => {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         return currentXP >= xpNeeded;
     });
     
@@ -2316,7 +2314,7 @@ function openLevelUpModal(dwarf) {
 
 // Apply the chosen level up upgrade
 function applyLevelUp(dwarf, upgradeType) {
-    const xpNeeded = 250 * dwarf.level;
+    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
     
     if (dwarf.xp < xpNeeded) {
         console.error('Not enough XP to level up');
@@ -2340,11 +2338,11 @@ function applyLevelUp(dwarf, upgradeType) {
             actualDwarf.digPower = (actualDwarf.digPower || 0) + 1;
             break;
         case 'maxEnergy':
-            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * 1.2);
+            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER);
             actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
             break;
         case 'strength':
-            actualDwarf.strength = (actualDwarf.strength || 0) + 1;
+            actualDwarf.strength = (actualDwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS;
             break;
         case 'wisdom':
             actualDwarf.wisdom = (actualDwarf.wisdom || 0) + 1;
@@ -2374,7 +2372,7 @@ function applyLevelUp(dwarf, upgradeType) {
     // Check if this dwarf can level up again
     const newXP = actualDwarf.xp || 0;
     const newLevel = actualDwarf.level || 1;
-    const newXPNeeded = 250 * newLevel;
+    const newXPNeeded = DWARF_XP_PER_LEVEL * newLevel;
     
     if (newXP >= newXPNeeded) {
         // Can level up again, refresh the modal with new level
@@ -2384,7 +2382,7 @@ function applyLevelUp(dwarf, upgradeType) {
         const dwarfsCanLevelUp = dwarfs.filter(d => {
             const currentXP = d.xp || 0;
             const currentLevel = d.level || 1;
-            const xpNeeded = 250 * currentLevel;
+            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
             return currentXP >= xpNeeded;
         });
         
@@ -3372,8 +3370,8 @@ window.activateCheat = function activateCheat() {
         return;
     }
     
-    // Double the current depth (startX)
-    startX = startX * 2;
+    // Multiply the current depth
+    startX = startX * CHEAT_DEPTH_MULTIPLIER;
     
     // Reset all dwarfs to home location
     for (const dwarf of dwarfs) {
@@ -3384,16 +3382,16 @@ window.activateCheat = function activateCheat() {
         dwarf.status = 'idle';
         dwarf.moveTarget = null;
         
-        // Give XP for one level (250 * current level)
-        const xpForLevel = 250 * (dwarf.level || 1);
+        // Give XP for one level
+        const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;
     }
     
-    // Add 5000 gold
-    gold += 5000;
+    // Add gold bonus
+    gold += CHEAT_GOLD_BONUS;
     
     // Log transaction
-    logTransaction('income', 5000, 'Cheat code activated');
+    logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
     // Sync with worker
     if (gameWorker && workerInitialized) {
