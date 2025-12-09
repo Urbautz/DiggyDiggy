@@ -522,7 +522,13 @@ function openSmelter() {
 
 function openTransactions() {
     openModal('transactions-modal');
-    populateTransactions();
+    
+    // Default to summary tab
+    if (!window.currentFinancesTab) {
+        window.currentFinancesTab = 'summary';
+    }
+    
+    switchFinancesTab(window.currentFinancesTab);
     
     // Set up auto-refresh every 2 seconds
     if (window.transactionRefreshInterval) {
@@ -541,20 +547,92 @@ function openTransactions() {
     }, 2000);
 }
 
+function switchFinancesTab(tab) {
+    window.currentFinancesTab = tab;
+    
+    // Update tab button styles
+    const summaryTab = document.getElementById('finances-tab-summary');
+    const recentTab = document.getElementById('finances-tab-recent');
+    
+    if (tab === 'summary') {
+        summaryTab.className = 'finances-tab active';
+        summaryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        recentTab.className = 'finances-tab';
+        recentTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+    } else {
+        recentTab.className = 'finances-tab active';
+        recentTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        summaryTab.className = 'finances-tab';
+        summaryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+    }
+    
+    // Populate content based on selected tab
+    populateTransactions();
+}
+
 function logTransaction(type, amount, description) {
-    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString('en-GB', { hour12: false });
+    
     transactionLog.unshift({
         type: type, // 'income' or 'expense'
         amount: amount,
         description: description,
         timestamp: timestamp,
+        timestampMs: now.getTime(),
         balance: gold
     });
     
-    // Keep only last 100 transactions
-    if (transactionLog.length > 100) {
-        transactionLog = transactionLog.slice(0, 100);
+    // Initialize current hour if not set
+    if (currentHourTimestamp === null) {
+        currentHourTimestamp = getHourTimestamp(now);
     }
+    
+    // Check if we need to roll up to a new hour
+    const currentHour = getHourTimestamp(now);
+    if (currentHour !== currentHourTimestamp) {
+        processHourlyRollup();
+        currentHourTimestamp = currentHour;
+    }
+}
+
+// Get timestamp for the start of the hour
+function getHourTimestamp(date) {
+    const d = new Date(date);
+    d.setMinutes(0, 0, 0);
+    return d.getTime();
+}
+
+// Process hourly rollup: aggregate transactions and clean up old detailed log
+function processHourlyRollup() {
+    if (transactionLog.length === 0) return;
+    
+    // Group transactions by description for the completed hour
+    const hourlyData = {};
+    
+    for (const transaction of transactionLog) {
+        const desc = transaction.description;
+        
+        if (!hourlyData[desc]) {
+            hourlyData[desc] = { income: 0, expense: 0, count: 0 };
+        }
+        
+        if (transaction.type === 'income') {
+            hourlyData[desc].income += transaction.amount;
+        } else {
+            hourlyData[desc].expense += transaction.amount;
+        }
+        hourlyData[desc].count++;
+    }
+    
+    // Add the hourly summary to history
+    transactionHistory.push({
+        hour: currentHourTimestamp,
+        transactions: hourlyData
+    });
+    
+    // Clear the detailed transaction log for the completed hour
+    transactionLog = [];
 }
 
 function populateTransactions() {
@@ -563,14 +641,286 @@ function populateTransactions() {
     
     container.innerHTML = '';
     
-    if (transactionLog.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No transactions yet.</p>';
+    const tab = window.currentFinancesTab || 'summary';
+    
+    if (tab === 'summary') {
+        populateSummaryTab(container);
+    } else {
+        populateRecentTab(container);
+    }
+}
+
+function populateSummaryTab(container) {
+    // Check if we're viewing hour details
+    if (window.viewingHourDetails) {
+        populateHourDetails(container, window.viewingHourDetails);
+        return;
+    }
+    
+    // Calculate current hour totals (if any transactions exist)
+    let currentHourIncome = 0;
+    let currentHourExpense = 0;
+    let currentHourCount = 0;
+    
+    for (const transaction of transactionLog) {
+        if (transaction.type === 'income') {
+            currentHourIncome += transaction.amount;
+        } else {
+            currentHourExpense += transaction.amount;
+        }
+        currentHourCount++;
+    }
+    
+    const hasCurrentHour = currentHourCount > 0;
+    const hasHistory = transactionHistory.length > 0;
+    
+    if (!hasCurrentHour && !hasHistory) {
+        container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No financial data yet.</p>';
         return;
     }
     
     const table = document.createElement('table');
     table.className = 'transactions-table';
-    table.style.cssText = 'width: 100%; border-collapse: collapse;';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; padding-right: 10px;';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Hour</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Income</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Expense</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Net</th><th style="text-align: center; padding: 8px; border-bottom: 2px solid #5b6d7a;">Actions</th></tr>';
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    // Add current hour first (if exists)
+    if (hasCurrentHour) {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #3a4a57';
+        tr.style.background = '#2d3f52';
+        
+        const hourTd = document.createElement('td');
+        hourTd.style.padding = '8px';
+        hourTd.style.fontWeight = 'bold';
+        hourTd.textContent = 'Current Hour';
+        
+        const incomeTd = document.createElement('td');
+        incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80; font-weight: bold;';
+        incomeTd.textContent = '+' + currentHourIncome.toFixed(2);
+        
+        const expenseTd = document.createElement('td');
+        expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b; font-weight: bold;';
+        expenseTd.textContent = '-' + currentHourExpense.toFixed(2);
+        
+        const netTd = document.createElement('td');
+        const net = currentHourIncome - currentHourExpense;
+        netTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
+        netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
+        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        
+        const actionTd = document.createElement('td');
+        actionTd.style.cssText = 'padding: 8px; text-align: center;';
+        const detailsBtn = document.createElement('button');
+        detailsBtn.textContent = 'Details';
+        detailsBtn.className = 'btn-secondary';
+        detailsBtn.style.cssText = 'padding: 4px 12px; font-size: 12px;';
+        detailsBtn.onclick = () => showHourDetails('current');
+        actionTd.appendChild(detailsBtn);
+        
+        tr.appendChild(hourTd);
+        tr.appendChild(incomeTd);
+        tr.appendChild(expenseTd);
+        tr.appendChild(netTd);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    }
+    
+    // Add historical hours (most recent first)
+    const sortedHistory = [...transactionHistory].reverse();
+    
+    for (const hourData of sortedHistory) {
+        const hourDate = new Date(hourData.hour);
+        const hourStr = hourDate.toLocaleString('en-GB', { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+        });
+        
+        // Calculate totals for this hour
+        let hourIncome = 0;
+        let hourExpense = 0;
+        
+        for (const desc in hourData.transactions) {
+            hourIncome += hourData.transactions[desc].income;
+            hourExpense += hourData.transactions[desc].expense;
+        }
+        
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #3a4a57';
+        
+        const hourTd = document.createElement('td');
+        hourTd.style.padding = '8px';
+        hourTd.textContent = hourStr;
+        
+        const incomeTd = document.createElement('td');
+        incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80;';
+        incomeTd.textContent = '+' + hourIncome.toFixed(2);
+        
+        const expenseTd = document.createElement('td');
+        expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b;';
+        expenseTd.textContent = '-' + hourExpense.toFixed(2);
+        
+        const netTd = document.createElement('td');
+        const net = hourIncome - hourExpense;
+        netTd.style.cssText = 'padding: 8px; text-align: right;';
+        netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
+        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        
+        const actionTd = document.createElement('td');
+        actionTd.style.cssText = 'padding: 8px; text-align: center;';
+        const detailsBtn = document.createElement('button');
+        detailsBtn.textContent = 'Details';
+        detailsBtn.className = 'btn-secondary';
+        detailsBtn.style.cssText = 'padding: 4px 12px; font-size: 12px;';
+        detailsBtn.onclick = () => showHourDetails(hourData.hour);
+        actionTd.appendChild(detailsBtn);
+        
+        tr.appendChild(hourTd);
+        tr.appendChild(incomeTd);
+        tr.appendChild(expenseTd);
+        tr.appendChild(netTd);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    }
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+function showHourDetails(hourIdentifier) {
+    window.viewingHourDetails = hourIdentifier;
+    populateTransactions();
+}
+
+function populateHourDetails(container, hourIdentifier) {
+    // Back button - fixed position, doesn't scroll
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← Back to Summary';
+    backBtn.className = 'btn-secondary';
+    backBtn.style.cssText = 'margin-bottom: 15px; position: sticky; top: 0; z-index: 10; background: #2a3f5a;';
+    backBtn.onclick = () => {
+        window.viewingHourDetails = null;
+        populateTransactions();
+    };
+    container.appendChild(backBtn);
+    
+    // Header
+    const header = document.createElement('h3');
+    header.style.cssText = 'color: #ffd700; margin-bottom: 10px; font-size: 16px;';
+    
+    let transactionData = {};
+    
+    if (hourIdentifier === 'current') {
+        header.textContent = 'Current Hour - Transaction Details';
+        
+        // Aggregate current transactions by description
+        for (const transaction of transactionLog) {
+            const desc = transaction.description;
+            if (!transactionData[desc]) {
+                transactionData[desc] = { income: 0, expense: 0, count: 0 };
+            }
+            if (transaction.type === 'income') {
+                transactionData[desc].income += transaction.amount;
+            } else {
+                transactionData[desc].expense += transaction.amount;
+            }
+            transactionData[desc].count++;
+        }
+    } else {
+        // Find the historical hour
+        const hourData = transactionHistory.find(h => h.hour === hourIdentifier);
+        if (hourData) {
+            const hourDate = new Date(hourData.hour);
+            const hourStr = hourDate.toLocaleString('en-GB', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+            header.textContent = `${hourStr} - Transaction Details`;
+            transactionData = hourData.transactions;
+        }
+    }
+    
+    container.appendChild(header);
+    
+    if (Object.keys(transactionData).length === 0) {
+        container.innerHTML += '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No transactions for this hour.</p>';
+        return;
+    }
+    
+    // Create details table
+    const table = document.createElement('table');
+    table.className = 'transactions-table';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; padding-right: 10px;';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Description</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Amount</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Count</th></tr>';
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    // Sort by absolute value descending
+    const descriptions = Object.keys(transactionData).sort((a, b) => {
+        const amountA = Math.max(transactionData[a].income, transactionData[a].expense);
+        const amountB = Math.max(transactionData[b].income, transactionData[b].expense);
+        return amountB - amountA;
+    });
+    
+    for (const desc of descriptions) {
+        const data = transactionData[desc];
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #3a4a57';
+        
+        const descTd = document.createElement('td');
+        descTd.style.padding = '8px';
+        descTd.textContent = desc;
+        
+        const amountTd = document.createElement('td');
+        amountTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
+        
+        if (data.income > 0) {
+            amountTd.style.color = '#4ade80';
+            amountTd.textContent = '+' + data.income.toFixed(2);
+        } else if (data.expense > 0) {
+            amountTd.style.color = '#ff6b6b';
+            amountTd.textContent = '-' + data.expense.toFixed(2);
+        } else {
+            amountTd.textContent = '-';
+        }
+        
+        const countTd = document.createElement('td');
+        countTd.style.cssText = 'padding: 8px; text-align: right;';
+        countTd.textContent = data.count;
+        
+        tr.appendChild(descTd);
+        tr.appendChild(amountTd);
+        tr.appendChild(countTd);
+        tbody.appendChild(tr);
+    }
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+function populateRecentTab(container) {
+    if (transactionLog.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #9fbfe0; padding: 20px;">No recent transactions.</p>';
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'transactions-table';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; padding-right: 10px;';
     
     const thead = document.createElement('thead');
     thead.innerHTML = '<tr><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Time</th><th style="text-align: left; padding: 8px; border-bottom: 2px solid #5b6d7a;">Description</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Amount</th><th style="text-align: right; padding: 8px; border-bottom: 2px solid #5b6d7a;">Balance</th></tr>';
@@ -657,7 +1007,16 @@ function populateSmelter() {
             isActionable = true; // "Do nothing" is always "actionable"
         } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
             stockAmount = materialsStock[task.input.material] || 0;
-            isActionable = stockAmount >= task.input.amount;
+            // For heating tasks, only actionable if temp is below min and below max
+            if (task.type === 'heating') {
+                // Heating is actionable if enough materials and temperature is below max (hysteresis)
+                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMaxTemp);
+            } else if (task.minTemp) {
+                // For smelting tasks with temp requirements, check both materials and temperature
+                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature >= task.minTemp);
+            } else {
+                isActionable = stockAmount >= task.input.amount;
+            }
         }
         
         // Add actionable/blocked/locked class
@@ -693,8 +1052,14 @@ function populateSmelter() {
             statusIndicator.textContent = '✅';
             statusIndicator.title = 'Ready - materials available';
         } else {
-            statusIndicator.textContent = '❌';
-            statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount}x`;
+            // Determine why task is blocked
+            if (task.minTemp && smelterTemperature < task.minTemp) {
+                statusIndicator.textContent = '🌡️';
+                statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+            }
         }
         taskRow.appendChild(statusIndicator);
         
@@ -721,14 +1086,80 @@ function populateSmelter() {
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             // Show current stock vs required
-            const stockInfo = `(${stockAmount}/${task.input.amount})`;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}`;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            // Add temperature requirement if present
+            const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}${tempReq}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
+        } else if (task.input && task.type === 'heating') {
+            // Show heating task info with temperature display
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
+            taskInfo.appendChild(taskRecipe);
+            
+            // Add temperature display and controls inside the heating task
+            const tempControls = document.createElement('div');
+            tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
+            
+            // Current temperature with bar
+            const tempValue = Math.round(smelterTemperature);
+            const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+            const tempDisplay = document.createElement('div');
+            tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
+            tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
+            tempControls.appendChild(tempDisplay);
+            
+            // Temperature bar
+            const tempBarContainer = document.createElement('div');
+            tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
+            const tempBar = document.createElement('div');
+            const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
+            tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
+            tempBarContainer.appendChild(tempBar);
+            tempControls.appendChild(tempBarContainer);
+            
+            // Temperature range controls
+            const rangeControls = document.createElement('div');
+            rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
+            
+            // Min temperature control
+            const minControl = document.createElement('div');
+            minControl.innerHTML = `
+                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMinTemp}°</label>
+                <div style="display: flex; gap: 3px;">
+                    <button class="temp-btn" onclick="adjustMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                    <button class="temp-btn" onclick="adjustMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                </div>
+            `;
+            rangeControls.appendChild(minControl);
+            
+            // Max temperature control
+            const maxControl = document.createElement('div');
+            maxControl.innerHTML = `
+                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterMaxTemp}°</label>
+                <div style="display: flex; gap: 3px;">
+                    <button class="temp-btn" onclick="adjustMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                    <button class="temp-btn" onclick="adjustMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                </div>
+            `;
+            rangeControls.appendChild(maxControl);
+            
+            tempControls.appendChild(rangeControls);
+            taskInfo.appendChild(tempControls);
         }
         
         taskRow.appendChild(taskInfo);
@@ -740,26 +1171,156 @@ function populateSmelter() {
         // Move up button
         const upBtn = document.createElement('button');
         upBtn.className = 'smelter-btn-move';
-        upBtn.innerHTML = '▲';
+        upBtn.innerHTML = '⬆';
         upBtn.title = 'Move up (higher priority)';
         upBtn.disabled = index === 0;
         upBtn.onclick = () => moveSmelterTask(index, -1);
         btnContainer.appendChild(upBtn);
         
+        // Move to top button
+        const topBtn = document.createElement('button');
+        topBtn.className = 'smelter-btn-move';
+        topBtn.innerHTML = '⤊';
+        topBtn.title = 'Move to top (highest priority)';
+        topBtn.disabled = index === 0;
+        topBtn.onclick = () => moveSmelterTaskToTop(index);
+        btnContainer.appendChild(topBtn);
+        
         // Move down button
         const downBtn = document.createElement('button');
         downBtn.className = 'smelter-btn-move';
-        downBtn.innerHTML = '▼';
+        downBtn.innerHTML = '⬇';
         downBtn.title = 'Move down (lower priority)';
         downBtn.disabled = index === smelterTasks.length - 1;
         downBtn.onclick = () => moveSmelterTask(index, 1);
         btnContainer.appendChild(downBtn);
+        
+        // Deactivate button (move to end)
+        const deactivateBtn = document.createElement('button');
+        deactivateBtn.className = 'smelter-btn-move';
+        deactivateBtn.innerHTML = '⤋';
+        deactivateBtn.title = 'Deactivate (move to bottom)';
+        deactivateBtn.disabled = index === smelterTasks.length - 1;
+        deactivateBtn.onclick = () => moveSmelterTaskToBottom(index);
+        btnContainer.appendChild(deactivateBtn);
         
         taskRow.appendChild(btnContainer);
         taskList.appendChild(taskRow);
     });
     
     container.appendChild(taskList);
+}
+
+// Efficiently update just the temperature display in smelter (not full rebuild)
+function updateSmelterTemperatureDisplay() {
+    // Find the heating task row
+    const taskList = document.getElementById('smelter-task-list');
+    if (!taskList) return;
+    
+    const heatingTaskRow = taskList.querySelector('[data-task-id="heat-furnace"]');
+    if (!heatingTaskRow) return;
+    
+    // Update temperature display within the heating task
+    const tempValue = Math.round(smelterTemperature);
+    const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+    
+    // Update current temperature text
+    const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
+    if (tempDisplays.length > 0) {
+        tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
+    }
+    
+    // Update temperature bar
+    const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
+    if (tempBars.length > 0) {
+        const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
+        tempBars[0].style.width = `${tempPercent}%`;
+    }
+    
+    // Update task actionability based on temperature
+    const task = smelterTasks.find(t => t.id === 'heat-furnace');
+    if (task) {
+        const stockAmount = materialsStock[task.input.material] || 0;
+        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+        const isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
+        
+        // Update row class
+        heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
+        heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+        
+        // Update status indicator
+        const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
+        if (statusIndicator && isUnlocked) {
+            if (isActionable) {
+                statusIndicator.textContent = '✅';
+                statusIndicator.title = 'Ready - materials available and temperature below minimum';
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+            }
+        }
+        
+        // Update recipe stock info
+        const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
+        if (recipeSpan) {
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+        }
+    }
+}
+
+// Move a smelter task to the top of the priority list
+function moveSmelterTaskToTop(index) {
+    // Already at top
+    if (index === 0) return;
+    
+    // Remove task from current position and insert at top
+    const task = smelterTasks.splice(index, 1)[0];
+    smelterTasks.unshift(task);
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterTasks: smelterTasks
+            }
+        });
+    }
+    
+    // Save the new order
+    saveGame();
+    
+    // Re-render the list
+    populateSmelter();
+}
+
+// Move a smelter task to the bottom of the priority list (deactivate)
+function moveSmelterTaskToBottom(index) {
+    // Already at bottom
+    if (index === smelterTasks.length - 1) return;
+    
+    // Remove task from current position and append at end
+    const task = smelterTasks.splice(index, 1)[0];
+    smelterTasks.push(task);
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterTasks: smelterTasks
+            }
+        });
+    }
+    
+    // Save the new order
+    saveGame();
+    
+    // Re-render the list
+    populateSmelter();
 }
 
 // Move a smelter task up or down in the priority list
@@ -788,6 +1349,50 @@ function moveSmelterTask(index, direction) {
     saveGame();
     
     // Re-render the list
+    populateSmelter();
+}
+
+// Adjust minimum temperature setting
+window.adjustMinTemp = function(amount) {
+    smelterMinTemp = Math.max(25, Math.min(1500, smelterMinTemp + amount));
+    // Ensure min doesn't exceed max
+    if (smelterMinTemp > smelterMaxTemp) {
+        smelterMinTemp = smelterMaxTemp;
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMinTemp: smelterMinTemp
+            }
+        });
+    }
+    
+    saveGame();
+    populateSmelter();
+}
+
+// Adjust maximum temperature setting
+window.adjustMaxTemp = function(amount) {
+    smelterMaxTemp = Math.max(25, Math.min(1500, smelterMaxTemp + amount));
+    // Ensure max doesn't go below min
+    if (smelterMaxTemp < smelterMinTemp) {
+        smelterMaxTemp = smelterMinTemp;
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMaxTemp: smelterMaxTemp
+            }
+        });
+    }
+    
+    saveGame();
     populateSmelter();
 }
 
@@ -1332,7 +1937,7 @@ function openDwarfs() {
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
     
-    // Remove Sell Not Craftable button from header
+    // Remove Sell Non-Craftables button from header
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
     
@@ -2033,7 +2638,7 @@ function updateMaterialsPanel() {
     
     const hasAnyMaterials = materialsWithStock.length > 0;
     
-    // Update or create Sell All button, Sell Not Craftable button, and total value in header
+    // Update or create Sell All button, Sell Non-Craftables button, and total value in header
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     let totalValueSpan = document.getElementById('total-stock-value');
@@ -2065,21 +2670,7 @@ function updateMaterialsPanel() {
         }
         totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
         
-        // Create or update Sell Not Craftable button
-        if (hasNotCraftableMaterials) {
-            if (!sellNotCraftableBtn) {
-                sellNotCraftableBtn = document.createElement('button');
-                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
-                sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.textContent = 'Sell Not Craftable';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
-                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.appendChild(sellNotCraftableBtn);
-            }
-        } else if (sellNotCraftableBtn) {
-            sellNotCraftableBtn.remove();
-        }
-        
+        // Create or update Sell All button first (to maintain consistent order)
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
                 sellAllHeaderBtn = document.createElement('button');
@@ -2087,10 +2678,25 @@ function updateMaterialsPanel() {
                 sellAllHeaderBtn.className = 'btn-sell-all-global';
                 sellAllHeaderBtn.textContent = 'Sell All';
                 sellAllHeaderBtn.onclick = sellAllMaterials;
-                header.appendChild(sellAllHeaderBtn);
+                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
             }
         } else if (sellAllHeaderBtn) {
             sellAllHeaderBtn.remove();
+        }
+        
+        // Create or update Sell Non-Craftables button second
+        if (hasNotCraftableMaterials) {
+            if (!sellNotCraftableBtn) {
+                sellNotCraftableBtn = document.createElement('button');
+                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
+                sellNotCraftableBtn.className = 'btn-sell-all-global';
+                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
+                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
+            }
+        } else if (sellNotCraftableBtn) {
+            sellNotCraftableBtn.remove();
         }
     }
     
@@ -2134,7 +2740,7 @@ function updateMaterialsPanel() {
         
         const cnt = document.createElement('span');
         cnt.className = 'wh-col-count';
-        cnt.textContent = String(count);
+        cnt.textContent = count.toFixed(1);
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
@@ -2213,6 +2819,10 @@ function sellAllMaterials() {
             const goldForThisMaterial = count * m.worth * tradeBonus;
             totalGold += goldForThisMaterial;
             totalItems += count;
+            
+            // Log individual material transaction
+            logTransaction('income', goldForThisMaterial, `Sold ${count}x ${m.name}`);
+            
             materialsStock[id] = 0;
         }
     }
@@ -2220,9 +2830,6 @@ function sellAllMaterials() {
     if (totalItems > 0) {
         gold += totalGold;
         console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
-        
-        // Log transaction
-        logTransaction('income', totalGold, `Sold all materials (${totalItems} items)`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -2265,6 +2872,10 @@ function sellNotCraftableMaterials() {
             const goldForThisMaterial = count * m.worth * tradeBonus;
             totalGold += goldForThisMaterial;
             totalItems += count;
+            
+            // Log individual material transaction
+            logTransaction('income', goldForThisMaterial, `Sold ${count}x ${m.name}`);
+            
             materialsStock[id] = 0;
         }
     }
@@ -2272,9 +2883,6 @@ function sellNotCraftableMaterials() {
     if (totalItems > 0) {
         gold += totalGold;
         console.log(`Sold not-craftable materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
-        
-        // Log transaction
-        logTransaction('income', totalGold, `Sold not-craftable materials (${totalItems} items)`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -2431,6 +3039,7 @@ let workerInitialized = false;
 let gameTickIntervalId = null;
 let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
+let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
 
 function initWorker() {
@@ -2481,6 +3090,15 @@ function initWorker() {
                     }
                 }
                 
+                // Check if we need to roll up transactions to a new hour
+                if (currentHourTimestamp !== null) {
+                    const currentHour = getHourTimestamp(new Date());
+                    if (currentHour !== currentHourTimestamp) {
+                        processHourlyRollup();
+                        currentHourTimestamp = currentHour;
+                    }
+                }
+                
                 // Update toolsInventory from worker (it might be modified during digging)
                 if (data.toolsInventory) {
                     // Update the array in place to keep the reference
@@ -2503,6 +3121,12 @@ function initWorker() {
                     }
                 }
                 
+                // Update smelter temperature state from worker
+                if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
+                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
+                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+                
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2515,6 +3139,16 @@ function initWorker() {
                 const panel = document.getElementById('materials-panel');
                 if (panel && panel.dataset.view === 'dwarfs') {
                     populateDwarfsInPanel();
+                }
+                
+                // Update smelter panel every 5 ticks if it's open (for temperature display)
+                const smelterModal = document.getElementById('smelter-modal');
+                if (smelterModal && smelterModal.getAttribute('aria-hidden') === 'false') {
+                    smelterRefreshCounter++;
+                    if (smelterRefreshCounter >= 5) {
+                        updateSmelterTemperatureDisplay();
+                        smelterRefreshCounter = 0;
+                    }
                 }
                 
                 // Autosave after each tick
@@ -2557,7 +3191,10 @@ function initWorker() {
             gold,
             toolsInventory,
             activeResearch,
-            researchtree
+            researchtree,
+            smelterTemperature,
+            smelterMinTemp,
+            smelterMaxTemp
         }
     });
     
@@ -2603,7 +3240,13 @@ function saveGame() {
             researchtree: researchtree,
             activeResearch: activeResearch,
             transactionLog: transactionLog,
+            transactionHistory: transactionHistory,
+            currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
+            smelterTemperature: smelterTemperature,
+            smelterMinTemp: smelterMinTemp,
+            smelterMaxTemp: smelterMaxTemp,
+            smelterHeatingMode: smelterHeatingMode,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2672,6 +3315,16 @@ function loadGame() {
             transactionLog = gameState.transactionLog;
         }
         
+        // Restore transaction history
+        if (gameState.transactionHistory) {
+            transactionHistory = gameState.transactionHistory;
+        }
+        
+        // Restore current hour timestamp
+        if (gameState.currentHourTimestamp) {
+            currentHourTimestamp = gameState.currentHourTimestamp;
+        }
+        
         // Restore smelter tasks order
         if (gameState.smelterTasks && Array.isArray(gameState.smelterTasks)) {
             // Reorder smelterTasks based on saved order
@@ -2685,6 +3338,12 @@ function loadGame() {
                 return indexA - indexB;
             });
         }
+        
+        // Restore smelter temperature state
+        if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
+        if (gameState.smelterMinTemp !== undefined) smelterMinTemp = gameState.smelterMinTemp;
+        if (gameState.smelterMaxTemp !== undefined) smelterMaxTemp = gameState.smelterMaxTemp;
+        if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
         
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

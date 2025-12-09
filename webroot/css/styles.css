@@ -1028,8 +1028,8 @@ header, footer {
 }
 
 .smelter-task-buttons {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 4px;
 }
 
@@ -1038,10 +1038,10 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.15);
     color: #fff;
     width: 28px;
-    height: 24px;
+    height: 28px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
