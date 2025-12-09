@@ -37,7 +37,7 @@ const materials = [
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,     minlevel: 2000, maxlevel: 999999, color: '#7e6136ff' },
-  { id: 'Bronze', name: 'Bronze', type:'Processed',         hardness: 0, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
+  { id: 'Bronce', name: 'Bronce', type:'Processed',         hardness: 0, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
   { id: 'Copper', name: 'Copper', type:'Processed',         hardness: 0, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
   { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
