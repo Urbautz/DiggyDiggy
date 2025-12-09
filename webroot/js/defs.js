@@ -173,6 +173,10 @@ let researchtree = [
       description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 1000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
+    { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
+      description: 'Unlocks the forge for crafting and upgrading tools.' },
+    { id: 'forge-temperature', name: 'Forge Temperature', cost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      description: 'Increases maximum forge temperature by 100° per level (from 1500° to 3000°).' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
@@ -264,9 +268,9 @@ const dropGridWidth = 6, dropGridHeight = 1;
 const dropOff = { x: dropGridStartX + 0, y: 0 };
 // bed / house: place second cell (1,0) in drop-grid coordinates
 const house = { x: dropGridStartX + 1, y: 0 };
-// workbench: place third cell (2,0) in drop-grid coordinates
-const workbench = { x: dropGridStartX + 2, y: 0 };
-// research: place fourth cell (3,0) in drop-grid coordinates
-const research = { x: dropGridStartX + 3, y: 0 };
-// smelter: place fifth cell (4,0) in drop-grid coordinates
-const smelter = { x: dropGridStartX + 4, y: 0 };
+// research: place third cell (2,0) in drop-grid coordinates
+const research = { x: dropGridStartX + 2, y: 0 };
+// smelter: place fourth cell (3,0) in drop-grid coordinates
+const smelter = { x: dropGridStartX + 3, y: 0 };
+// forge: place fifth cell (4,0) in drop-grid coordinates
+const forge = { x: dropGridStartX + 4, y: 0 };

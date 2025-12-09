@@ -339,10 +339,10 @@ function updateGridDisplay() {
                         cell.appendChild(iconContainer);
                     }
 
-                    // show workbench icon if this is the workbench cell
-                    if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
+                    // show forge icon if this is the forge cell
+                    if (typeof forge === 'object' && forge !== null && forge.x === gx && forge.y === gy) {
                         cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-workbench';
+                        cell.dataset.clickAction = 'open-forge';
                         
                         // Create container for icon and badge with absolute positioning
                         const iconContainer = document.createElement('span');
@@ -359,7 +359,7 @@ function updateGridDisplay() {
                         });
                         
                         if (toolsCanUpgrade.length > 0) {
-                            bench.title = `Workbench (${toolsCanUpgrade.length} tool(s) can be upgraded!)`;
+                            bench.title = `Forge (${toolsCanUpgrade.length} tool(s) can be upgraded!)`;
                             // Add notification badge
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
@@ -367,7 +367,7 @@ function updateGridDisplay() {
                             badge.textContent = toolsCanUpgrade.length;
                             bench.appendChild(badge);
                         } else {
-                            bench.title = 'Workbench (craft tools)';
+                            bench.title = 'Forge (craft and upgrade tools)';
                         }
                         
                         iconContainer.appendChild(bench);
@@ -505,9 +505,9 @@ function updateGridDisplay() {
 
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
 
-function openWorkbench() {
-    openModal('workbench-modal');
-    populateWorkbench();
+function openForge() {
+    openModal('forge-modal');
+    populateForge();
 }
 
 function openResearch() {
@@ -1670,14 +1670,14 @@ function cancelResearch() {
     console.log(`Cancelled research: ${researchName}`);
 }
 
-function populateWorkbench() {
-    const container = document.getElementById('workbench-content');
+function populateForge() {
+    const container = document.getElementById('forge-content');
     if (!container) return;
     
     container.innerHTML = '';
     
     const toolsTable = document.createElement('table');
-    toolsTable.className = 'workbench-table';
+    toolsTable.className = 'forge-table';
     
     const thead = document.createElement('thead');
     thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Quality</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
@@ -1788,7 +1788,7 @@ function upgradeTool(toolId) {
     
     // Update UI
     updateGoldDisplay();
-    populateWorkbench();
+    populateForge();
     
     // Save game
     saveGame();
@@ -2438,8 +2438,8 @@ document.addEventListener('click', (ev) => {
         case 'open-dwarfs':
             openDwarfs();
             break;
-        case 'open-workbench':
-            openWorkbench();
+        case 'open-forge':
+            openForge();
             break;
         case 'open-research':
             openResearch();
