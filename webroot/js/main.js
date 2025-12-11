@@ -2750,14 +2750,26 @@ function populateDwarfsInPanel() {
         if (d.toolId) {
             const tool = toolsInventory.find(t => t.id === d.toolId);
             if (tool) {
-                const toolDef = getToolByType(tool.type);
-                if (toolDef) {
-                    const levelBonus = 1 + (d.digPower || 0) * 0.1;
-                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-                    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
-                    const toolPower = toolDef.power / 100;
-                    totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+                const levelBonus = 1 + (d.digPower || 0) * 0.1;
+                const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+                
+                // Check if tool has custom power (forged tools) or use base definition
+                let toolPower;
+                if (tool.power !== undefined) {
+                    // Forged tool with custom power
+                    toolPower = tool.power / 100;
+                } else {
+                    // Base tool - look up definition
+                    const toolDef = getToolByType(tool.type);
+                    if (toolDef) {
+                        toolPower = toolDef.power / 100;
+                    } else {
+                        toolPower = 1.0; // Fallback
+                    }
                 }
+                
+                totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
             }
         }
         

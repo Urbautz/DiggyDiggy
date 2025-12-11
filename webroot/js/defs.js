@@ -124,12 +124,12 @@ const tools = [
 
 // Tools inventory - array of individual tool instances
 const toolsInventory = [
-    { id: 1, type: 'Stone', level: 1 },
-    { id: 2, type: 'Stone', level: 1 },
-    { id: 3, type: 'Stone', level: 1 },
-    { id: 4, type: 'Stone', level: 1 },
-    { id: 5, type: 'Stone', level: 1 },
-    { id: 6, type: 'Stone', level: 1 }
+    { id: 1, type: 'Stone', power: 100 },
+    { id: 2, type: 'Stone', power: 100 },
+    { id: 3, type: 'Stone', power: 100 },
+    { id: 4, type: 'Stone', power: 100 },
+    { id: 5, type: 'Stone', power: 100 },
+    { id: 6, type: 'Stone', power: 100 }
 ];
 
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
