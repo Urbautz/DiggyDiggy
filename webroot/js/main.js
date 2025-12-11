@@ -521,7 +521,7 @@ async function startForging() {
     
     // Calculate costs
     const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-    const handleCost = 100 * Math.pow(1.5, forgeState.handleQuality - 1);
+    const handleCost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
     const totalCost = coolingCost + handleCost;
     
     // Check gold
@@ -555,8 +555,21 @@ async function startForging() {
             break;
         }
         
-        // Consume material
+        // Consume material immediately
         materialsStock[forgeState.baseMaterial]--;
+        
+        // Update UI and sync immediately
+        updateStockDisplay();
+        saveGame();
+        
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: {
+                    materialsStock: materialsStock
+                }
+            });
+        }
         
         // Calculate quality components
         const material = materials.find(m => m.id === forgeState.baseMaterial);
@@ -573,7 +586,7 @@ async function startForging() {
         const hammeringSteps = forgeState.hammeringCount;
         let hammeringFailed = false;
         for (let i = 0; i < hammeringSteps; i++) {
-            animationContent.innerHTML = `<div class="forging-anvil shake">🔨</div><div class="forging-message">Hammering... (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${Math.round(currentQuality + (i + 1) * 8)}</div>`;
+            animationContent.innerHTML = `<div class="forging-anvil shake">🔨</div><div class="forging-message">Hammering... (${i + 1}/${hammeringSteps})</div>`;
             await sleep(1200);
             
             // Check if material destroyed during hammering
@@ -584,8 +597,9 @@ async function startForging() {
                 break;
             }
             
-            // Show completion of this hammer strike
-            animationContent.innerHTML = `<div class="forging-anvil">🔨</div><div class="forging-message">Hammering complete (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${Math.round(currentQuality + (i + 1) * 8)}</div>`;
+            // Show completion of this hammer strike with quality
+            const strikeQuality = Math.round(currentQuality + (i + 1) * 8);
+            animationContent.innerHTML = `<div class="forging-anvil">🔨</div><div class="forging-message">Hammering complete (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${strikeQuality}</div>`;
             await sleep(800);
         }
         
@@ -601,7 +615,7 @@ async function startForging() {
         await sleep(1000);
         
         // Cooling step
-        animationContent.innerHTML = `<div class="forging-anvil shake">💧</div><div class="forging-message">Cooling...</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
+        animationContent.innerHTML = `<div class="forging-anvil shake">💧</div><div class="forging-message">Cooling...</div>`;
         await sleep(1800);
         
         const coolingBrittleChance = Math.max(0, 0.30 - (forgeState.coolingOilQuality - 1) * 0.012);
@@ -618,7 +632,7 @@ async function startForging() {
         await sleep(1200);
         
         // Handle mounting step
-        animationContent.innerHTML = `<div class="forging-anvil shake">🪓</div><div class="forging-message">Mounting handle...</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
+        animationContent.innerHTML = `<div class="forging-anvil shake">🪓</div><div class="forging-message">Mounting handle...</div>`;
         await sleep(1800);
         
         currentQuality += handleBonus;
@@ -627,17 +641,31 @@ async function startForging() {
         animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Handle mounted!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
         await sleep(1200);
         
-        // Sharpening step
-        animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Sharpening...</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
-        await sleep(1800);
+        // Sharpening step - 3 iterations
+        let sharpeningQuality = currentQuality;
+        const sharpeningIterations = 3;
         
-        // Apply sharpening variance
-        const sharpeningVariance = (Math.random() - 0.5) * 20; // +/- 10
-        finalQuality = baseQuality + materialHardness + hammeringBonus + coolingBonus + handleBonus + sharpeningVariance;
-        finalQuality = Math.max(1, Math.round(finalQuality));
+        for (let i = 0; i < sharpeningIterations; i++) {
+            animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Sharpening... (${i + 1}/${sharpeningIterations})</div>`;
+            await sleep(1200);
+            
+            // Apply percentage-based sharpening variance: -5% to +20% of current quality
+            const variancePercent = (Math.random() * 0.25) - 0.05; // Random value from -0.05 to +0.20
+            const iterationVariance = sharpeningQuality * variancePercent;
+            sharpeningQuality += iterationVariance;
+            
+            // Show completion of this sharpening pass
+            const changePercent = (variancePercent * 100).toFixed(1);
+            const changeSign = variancePercent >= 0 ? '+' : '';
+            animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message">Sharpening pass ${i + 1} complete (${changeSign}${changePercent}%)</div><div class="forging-quality">Current Power: ${Math.round(sharpeningQuality)}</div>`;
+            await sleep(800);
+        }
         
-        // Show sharpening completion
-        animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message">Sharpening complete!</div><div class="forging-quality">Current Power: ${finalQuality}</div>`;
+        // Calculate final quality
+        finalQuality = Math.max(1, Math.round(sharpeningQuality));
+        
+        // Show final sharpening completion
+        animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message forging-success">Sharpening complete!</div><div class="forging-quality">Final Power: ${finalQuality}</div>`;
         await sleep(1200);
         
         success = true;
@@ -682,11 +710,10 @@ async function startForging() {
         `;
     }
     
-    // Update UI
-    updateStockPanel();
+    // Final save and sync after forging completes
+    updateStockDisplay();
     saveGame();
     
-    // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
@@ -701,6 +728,7 @@ async function startForging() {
 
 function closeForging() {
     closeModal('forging-animation-modal');
+    updateStockDisplay(); // Update stock display
     openModal('forge-modal');
     populateForge(); // Refresh forge UI with updated stock
 }
@@ -1875,8 +1903,74 @@ function populateForge() {
     
     container.innerHTML = '';
     
-    // Create forge interface
-    createForgeInterface(container);
+    // Default to create tab
+    if (!window.currentForgeTab) {
+        window.currentForgeTab = 'create';
+    }
+    
+    // Create tabs with finance-style design
+    const tabsContainer = document.createElement('div');
+    tabsContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;';
+    
+    const createTabBtn = document.createElement('button');
+    createTabBtn.id = 'forge-tab-create';
+    createTabBtn.className = 'forge-tab';
+    createTabBtn.textContent = 'Create Tool';
+    createTabBtn.onclick = () => switchForgeTab('create');
+    
+    const inventoryTabBtn = document.createElement('button');
+    inventoryTabBtn.id = 'forge-tab-inventory';
+    inventoryTabBtn.className = 'forge-tab';
+    inventoryTabBtn.textContent = 'Tools Inventory';
+    inventoryTabBtn.onclick = () => switchForgeTab('inventory');
+    
+    tabsContainer.appendChild(createTabBtn);
+    tabsContainer.appendChild(inventoryTabBtn);
+    container.appendChild(tabsContainer);
+    
+    // Create tab content containers
+    const createTabContent = document.createElement('div');
+    createTabContent.id = 'forge-create-tab';
+    createTabContent.className = 'forge-tab-content';
+    container.appendChild(createTabContent);
+    
+    const inventoryTabContent = document.createElement('div');
+    inventoryTabContent.id = 'forge-inventory-tab';
+    inventoryTabContent.className = 'forge-tab-content';
+    container.appendChild(inventoryTabContent);
+    
+    // Create forge interface in create tab
+    createForgeInterface(createTabContent);
+    
+    // Create inventory interface in inventory tab
+    createInventoryInterface(inventoryTabContent);
+    
+    // Apply initial tab state
+    switchForgeTab(window.currentForgeTab);
+}
+
+function switchForgeTab(tab) {
+    window.currentForgeTab = tab;
+    
+    // Update tab button styles
+    const createTab = document.getElementById('forge-tab-create');
+    const inventoryTab = document.getElementById('forge-tab-inventory');
+    const createContent = document.getElementById('forge-create-tab');
+    const inventoryContent = document.getElementById('forge-inventory-tab');
+    
+    if (tab === 'create') {
+        createTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+        createContent.style.display = 'block';
+        inventoryContent.style.display = 'none';
+    } else {
+        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        createTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+        inventoryContent.style.display = 'block';
+        createContent.style.display = 'none';
+        // Refresh inventory when switching to it
+        createInventoryInterface(inventoryContent);
+    }
 }
 
 // Forge state - tracks the current forging process
@@ -2097,8 +2191,8 @@ function updateForgeState() {
             handleValue.textContent = forgeState.handleQuality;
         }
         if (handleCost) {
-            // Calculate handle cost: level 1 = 100, increasing by 50% each level
-            const cost = 100 * Math.pow(1.5, forgeState.handleQuality - 1);
+            // Calculate handle cost: level 1 = 100, increasing by 15% each level
+            const cost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
             handleCost.textContent = cost.toFixed(0);
             
             // Show affordability indicator
@@ -2189,6 +2283,149 @@ function updateForgeState() {
             }
         }
     }
+}
+
+function createInventoryInterface(container) {
+    container.innerHTML = '';
+    
+    const inventoryList = document.createElement('div');
+    inventoryList.className = 'inventory-list';
+    
+    if (toolsInventory.length === 0) {
+        inventoryList.innerHTML = '<p class="empty-message">No tools in inventory. Forge some tools first!</p>';
+    } else {
+        // Sort tools by quality/power descending
+        const sortedTools = [...toolsInventory].sort((a, b) => {
+            const powerA = a.power || a.level || 0;
+            const powerB = b.power || b.level || 0;
+            return powerB - powerA;
+        });
+        
+        sortedTools.forEach(tool => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'tool-card';
+            
+            // Check if tool is assigned to a dwarf
+            const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
+            const isAssigned = !!assignedDwarf;
+            
+            toolCard.innerHTML = `
+                <div class="tool-header">
+                    <h4>${tool.type} #${tool.id}</h4>
+                    <span class="tool-power">⚒️ ${tool.power || tool.level}</span>
+                </div>
+                <div class="tool-details">
+                    ${isAssigned 
+                        ? `<div class="tool-assigned">📌 Assigned to: <strong>${assignedDwarf.name}</strong></div>`
+                        : `<div class="tool-unassigned">🔓 Not assigned</div>`
+                    }
+                </div>
+                <div class="tool-actions">
+                    ${isAssigned 
+                        ? `<div class="tool-assigned-note">Tool is equipped and in use</div>`
+                        : `<select id="assign-select-${tool.id}" class="assign-select">
+                            <option value="">-- Assign to Dwarf --</option>
+                            ${dwarfs.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}
+                        </select>
+                        <button class="btn-primary btn-small" onclick="assignToolToDwarf(${tool.id})">Assign</button>`
+                    }
+                    <button class="btn-danger btn-small" onclick="scrapTool(${tool.id})" ${isAssigned ? 'disabled title="Cannot scrap assigned tool"' : ''}>🗑️ Scrap</button>
+                </div>
+            `;
+            
+            inventoryList.appendChild(toolCard);
+        });
+    }
+    
+    container.appendChild(inventoryList);
+}
+
+function assignToolToDwarf(toolId) {
+    const selectElement = document.getElementById(`assign-select-${toolId}`);
+    if (!selectElement || !selectElement.value) {
+        alert('Please select a dwarf first!');
+        return;
+    }
+    
+    const dwarfName = selectElement.value;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    
+    if (!dwarf) {
+        alert('Dwarf not found!');
+        return;
+    }
+    
+    // Check if dwarf already has a tool
+    if (dwarf.toolId) {
+        const confirm = window.confirm(`${dwarfName} already has a tool. Replace it with this one?`);
+        if (!confirm) return;
+    }
+    
+    // Assign the tool
+    dwarf.toolId = toolId;
+    
+    // Sync with worker
+    if (gameWorker) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            dwarfs: dwarfs,
+            toolsInventory: toolsInventory
+        });
+    }
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the inventory display
+    const inventoryContainer = document.getElementById('forge-inventory-tab');
+    if (inventoryContainer) {
+        createInventoryInterface(inventoryContainer);
+    }
+    
+    logTransaction('income', 0, `Assigned tool #${toolId} to ${dwarfName}`);
+}
+
+function scrapTool(toolId) {
+    // Check if tool is assigned
+    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
+    if (assignedDwarf) {
+        alert(`Cannot scrap tool #${toolId} - it is assigned to ${assignedDwarf.name}. Unassign it first!`);
+        return;
+    }
+    
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const confirm = window.confirm(`Scrap ${tool.type} #${toolId}? This cannot be undone!`);
+    if (!confirm) return;
+    
+    // Remove tool from inventory
+    const index = toolsInventory.findIndex(t => t.id === toolId);
+    if (index !== -1) {
+        toolsInventory.splice(index, 1);
+    }
+    
+    // Sync with worker
+    if (gameWorker) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            toolsInventory: toolsInventory
+        });
+    }
+    
+    // Refresh the inventory display
+    const inventoryContainer = document.getElementById('forge-inventory-tab');
+    if (inventoryContainer) {
+        createInventoryInterface(inventoryContainer);
+    }
+    
+    logTransaction('income', 0, `Scrapped tool #${toolId}`);
+    
+    // Trigger autosave
+    saveGame();
 }
 
 function openSettings() {
@@ -3445,7 +3682,23 @@ function initWorker() {
             case 'tick-complete':
                 // Update game state with worker results
                 grid = data.grid;
-                dwarfs = data.dwarfs;
+                
+                // Update dwarfs while preserving toolId assignments (managed by main thread)
+                if (data.dwarfs) {
+                    data.dwarfs.forEach((workerDwarf, index) => {
+                        if (dwarfs[index]) {
+                            // Preserve toolId from main thread
+                            const toolId = dwarfs[index].toolId;
+                            dwarfs[index] = workerDwarf;
+                            if (toolId !== undefined) {
+                                dwarfs[index].toolId = toolId;
+                            }
+                        } else {
+                            dwarfs[index] = workerDwarf;
+                        }
+                    });
+                }
+                
                 startX = data.startX;
                 
                 // Check if materialsStock changed to update warehouse panel
@@ -3487,12 +3740,8 @@ function initWorker() {
                     }
                 }
                 
-                // Update toolsInventory from worker (it might be modified during digging)
-                if (data.toolsInventory) {
-                    // Update the array in place to keep the reference
-                    toolsInventory.length = 0;
-                    toolsInventory.push(...data.toolsInventory);
-                }
+                // Note: toolsInventory is managed by main thread (forge interface)
+                // Worker does not modify toolsInventory, so we don't sync it back
                 
                 // Update research state from worker
                 if (data.activeResearch !== undefined) {
@@ -3676,9 +3925,8 @@ function loadGame() {
         
         // Restore tools inventory
         if (gameState.toolsInventory) {
-            for (const key in gameState.toolsInventory) {
-                toolsInventory[key] = gameState.toolsInventory[key];
-            }
+            toolsInventory.length = 0;
+            toolsInventory.push(...gameState.toolsInventory);
         }
         
         // Restore research tree - merge saved progress with current definitions

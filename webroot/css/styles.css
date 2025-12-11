@@ -1318,7 +1318,15 @@ header, footer {
 /* Forging Animation Modal */
 .forging-dialog {
     max-width: 500px;
+    min-height: 400px;
     text-align: center;
+}
+
+.forging-dialog .modal-body {
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .forging-anvil {
@@ -1444,4 +1452,119 @@ header, footer {
 
 .outcome-value.success-low {
     color: #f44336;
+}
+
+/* Forge Tabs - using inline styles like finance tabs for consistency */
+
+/* Tool Inventory */
+.inventory-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 4px;
+}
+
+.tool-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.tool-card:hover {
+    border-color: rgba(255, 152, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
+}
+
+.tool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tool-header h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #ff9800;
+}
+
+.tool-power {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.tool-details {
+    margin-bottom: 12px;
+}
+
+.tool-assigned {
+    color: #64b5f6;
+    font-size: 13px;
+}
+
+.tool-unassigned {
+    color: #9e9e9e;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.tool-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.assign-select {
+    flex: 1;
+    min-width: 150px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 13px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.8), rgba(211, 47, 47, 0.8));
+    border: 1px solid rgba(244, 67, 54, 0.5);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.9), rgba(211, 47, 47, 0.9));
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.btn-danger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: #9e9e9e;
+    font-style: italic;
+}
+
+.tool-assigned-note {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(100, 181, 246, 0.15);
+    border: 1px solid rgba(100, 181, 246, 0.3);
+    border-radius: 4px;
+    color: #64b5f6;
+    font-size: 13px;
+    text-align: center;
 }
