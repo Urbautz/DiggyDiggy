@@ -1315,6 +1315,77 @@ header, footer {
     opacity: 0.5;
 }
 
+/* Forging Animation Modal */
+.forging-dialog {
+    max-width: 500px;
+    text-align: center;
+}
+
+.forging-anvil {
+    font-size: 100px;
+    margin: 40px 0;
+    animation: none;
+}
+
+.forging-anvil.shake {
+    animation: shake 1s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) rotate(-5deg); }
+    20%, 40%, 60%, 80% { transform: translateX(10px) rotate(5deg); }
+}
+
+.forging-message {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 20px 0;
+    color: #ffa726;
+}
+
+.forging-quality {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 15px 0;
+    color: #64b5f6;
+    text-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+}
+
+.forging-message.forging-success {
+    color: #4caf50;
+    font-size: 32px;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+}
+
+.forging-message.forging-failure {
+    color: #f44336;
+    font-size: 28px;
+    text-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+    animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.forging-result {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 18px;
+}
+
+.forging-result p {
+    margin: 10px 0;
+}
+
+.forging-result strong {
+    color: #ffa726;
+}
+
 /* Forge Outcomes Section */
 .forge-outcomes {
     margin-top: 12px;

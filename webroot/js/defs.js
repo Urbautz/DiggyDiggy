@@ -119,20 +119,17 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone Shovel', power: 1, upgradecost: 50},
-    { name: 'Bronce Shovel', power: 2.6, upgradecost: 7500},
-    { name: 'Copper Shovel', power: 16, upgradecost: 25000},
-    { name: 'Copper Pickaxe', power: 110, upgradecost: 99000},
+    { name: 'Stone', power: 1},
 ]
 
 // Tools inventory - array of individual tool instances
 const toolsInventory = [
-    { id: 1, type: 'Stone Shovel', level: 1 },
-    { id: 2, type: 'Stone Shovel', level: 1 },
-    { id: 3, type: 'Stone Shovel', level: 1 },
-    { id: 4, type: 'Stone Shovel', level: 1 },
-    { id: 5, type: 'Stone Shovel', level: 1 },
-    { id: 6, type: 'Stone Shovel', level: 1 }
+    { id: 1, type: 'Stone', level: 1 },
+    { id: 2, type: 'Stone', level: 1 },
+    { id: 3, type: 'Stone', level: 1 },
+    { id: 4, type: 'Stone', level: 1 },
+    { id: 5, type: 'Stone', level: 1 },
+    { id: 6, type: 'Stone', level: 1 }
 ];
 
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
