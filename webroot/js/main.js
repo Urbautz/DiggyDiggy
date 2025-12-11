@@ -339,39 +339,34 @@ function updateGridDisplay() {
                         cell.appendChild(iconContainer);
                     }
 
-                    // show forge icon if this is the forge cell
+                    // show forge icon if this is the forge cell and forge research is unlocked
                     if (typeof forge === 'object' && forge !== null && forge.x === gx && forge.y === gy) {
-                        cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-forge';
+                        const forgeResearch = researchtree.find(r => r.id === 'forge');
+                        const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
                         
-                        // Create container for icon and badge with absolute positioning
-                        const iconContainer = document.createElement('span');
-                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
-                        
-                        const bench = document.createElement('span');
-                        bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
-                        bench.textContent = '🔨';
-                        
-                        // Check if any tool can be upgraded
-                        const toolsCanUpgrade = toolsInventory.filter(toolInstance => {
-                            const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
-                            return gold >= upgradeCost;
-                        });
-                        
-                        if (toolsCanUpgrade.length > 0) {
-                            bench.title = `Forge (${toolsCanUpgrade.length} tool(s) can be upgraded!)`;
-                            // Add notification badge
-                            const badge = document.createElement('span');
-                            badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                            badge.textContent = toolsCanUpgrade.length;
-                            bench.appendChild(badge);
+                        if (isForgeUnlocked) {
+                            cell.style.cursor = 'pointer';
+                            cell.dataset.clickAction = 'open-forge';
+                            
+                            // Create container for icon and badge with absolute positioning
+                            const iconContainer = document.createElement('span');
+                            iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                            
+                            const bench = document.createElement('span');
+                            bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
+                            bench.textContent = '🔨';
+                            bench.title = 'Forge (craft new tools)';
+                            
+                            iconContainer.appendChild(bench);
+                            cell.appendChild(iconContainer);
                         } else {
-                            bench.title = 'Forge (craft and upgrade tools)';
+                            // Show locked icon
+                            const lockedIcon = document.createElement('span');
+                            lockedIcon.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.5;';
+                            lockedIcon.textContent = '🔒';
+                            lockedIcon.title = 'Forge (requires Forge research)';
+                            cell.appendChild(lockedIcon);
                         }
-                        
-                        iconContainer.appendChild(bench);
-                        cell.appendChild(iconContainer);
                     }
 
                     // show research icon if this is the research cell
@@ -1676,125 +1671,320 @@ function populateForge() {
     
     container.innerHTML = '';
     
-    const toolsTable = document.createElement('table');
-    toolsTable.className = 'forge-table';
-    
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Quality</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
-    toolsTable.appendChild(thead);
-    
-    const tbody = document.createElement('tbody');
-    
-    // Show each individual tool in inventory
-    for (const toolInstance of toolsInventory) {
-        const tr = document.createElement('tr');
-        
-        // Find which dwarf has this tool
-        const dwarf = dwarfs.find(d => d.toolId === toolInstance.id);
-        const dwarfTd = document.createElement('td');
-        dwarfTd.textContent = dwarf ? dwarf.name : 'Unassigned';
-        dwarfTd.className = 'dwarf-name';
-        
-        const nameTd = document.createElement('td');
-        nameTd.textContent = `${toolInstance.type} #${toolInstance.id}`;
-        nameTd.className = 'tool-name';
-        
-        const levelTd = document.createElement('td');
-        levelTd.textContent = toolInstance.level;
-        levelTd.className = 'tool-level';
-        
-        const powerTd = document.createElement('td');
-        const power = getToolPower(toolInstance.type, toolInstance.level);
-        powerTd.textContent = power.toFixed(2);
-        powerTd.className = 'tool-power';
-        
-        const costTd = document.createElement('td');
-        const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
-        costTd.textContent = `${upgradeCost.toFixed(0)} 💰`;
-        costTd.className = 'tool-cost';
-        
-        const actionTd = document.createElement('td');
-        const upgradeBtn = document.createElement('button');
-        upgradeBtn.className = 'btn-upgrade';
-        upgradeBtn.textContent = `Upgrade`;
-        const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
-        upgradeBtn.title = `Upgrade to quality ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
-        upgradeBtn.dataset.toolId = toolInstance.id;
-        
-        if (gold < upgradeCost) {
-            upgradeBtn.disabled = true;
-            upgradeBtn.classList.add('disabled');
-        }
-        
-        actionTd.appendChild(upgradeBtn);
-        
-        tr.appendChild(dwarfTd);
-        tr.appendChild(nameTd);
-        tr.appendChild(levelTd);
-        tr.appendChild(powerTd);
-        tr.appendChild(costTd);
-        tr.appendChild(actionTd);
-        
-        tbody.appendChild(tr);
-    }
-    
-    if (tbody.children.length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 5;
-        td.textContent = 'No tools in inventory';
-        td.style.textAlign = 'center';
-        td.style.padding = '20px';
-        td.style.opacity = '0.6';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-    }
-    
-    toolsTable.appendChild(tbody);
-    container.appendChild(toolsTable);
+    // Create forge interface
+    createForgeInterface(container);
 }
 
-function upgradeTool(toolId) {
-    const toolInstance = toolsInventory.find(t => t.id === toolId);
-    if (!toolInstance) {
-        console.warn('Tool not found in inventory', toolId);
-        return;
+// Forge state - tracks the current forging process
+let forgeState = {
+    baseMaterial: null,      // Selected ingot material
+    hammeringCount: 1,       // 1-10 iterations
+    coolingOilQuality: 1,    // 1-25 quality
+    handleQuality: 1,        // 1-100 quality
+    retryCount: 1            // 1-stock amount
+};
+
+function createForgeInterface(container) {
+    // Expected outcomes section at the top
+    const outcomes = document.createElement('div');
+    outcomes.className = 'forge-outcomes forge-outcomes-top';
+    outcomes.innerHTML = `
+        <h3>Expected Outcomes</h3>
+        <div class="outcome-row">
+            <span class="outcome-label">Total Cost:</span>
+            <span id="total-forge-cost" class="outcome-value">0 💰</span>
+        </div>
+        <div class="outcome-row">
+            <span class="outcome-label">Success Probability:</span>
+            <span id="success-probability" class="outcome-value">0%</span>
+        </div>
+        <div class="outcome-row">
+            <span class="outcome-label">Expected Quality (if successful):</span>
+            <span id="expected-quality" class="outcome-value">-</span>
+        </div>
+    `;
+    container.appendChild(outcomes);
+    
+    // Step 1: Heat Material
+    const step1 = document.createElement('div');
+    step1.className = 'forge-step';
+    step1.innerHTML = `
+        <h3>Step 1: Heat Material</h3>
+        <label for="base-material">Select Base Material (Ingot):</label>
+        <select id="base-material">
+            <option value="">-- Select Ingot --</option>
+        </select>
+    `;
+    container.appendChild(step1);
+    
+    // Populate ingot dropdown with hardness and stock info
+    const materialSelect = step1.querySelector('#base-material');
+    const ingots = materials.filter(m => m.type === 'Ingot');
+    for (const ingot of ingots) {
+        const stockAmount = materialsStock[ingot.id] || 0;
+        const option = document.createElement('option');
+        option.value = ingot.id;
+        option.textContent = `${ingot.name} (Hardness: ${ingot.hardness}, Stock: ${stockAmount})`;
+        option.dataset.hardness = ingot.hardness;
+        option.disabled = stockAmount <= 0;
+        if (stockAmount <= 0) {
+            option.textContent += ' - OUT OF STOCK';
+        }
+        materialSelect.appendChild(option);
     }
     
-    const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
+    // Step 2: Hammering
+    const step2 = document.createElement('div');
+    step2.className = 'forge-step';
+    step2.innerHTML = `
+        <h3>Step 2: Hammering</h3>
+        <label for="hammering-slider">Hammering Iterations: <span id="hammering-value">1</span></label>
+        <input type="range" id="hammering-slider" min="1" max="10" value="1" step="1">
+        <p class="forge-warning">⚠️ There is a 10% chance to destroy the material during each iteration, but the outcome quality will improve with more iterations.</p>
+    `;
+    container.appendChild(step2);
     
-    if (gold < upgradeCost) {
-        console.warn('Not enough gold to upgrade', toolInstance.type);
-        return;
+    // Step 3: Cooling
+    const step3 = document.createElement('div');
+    step3.className = 'forge-step';
+    step3.innerHTML = `
+        <h3>Step 3: Cooling</h3>
+        <label for="cooling-slider">Cooling Oil Quality: <span id="cooling-value">1</span> (Cost: <span id="cooling-cost">0</span> 💰) <span id="cooling-affordable" class="affordability-indicator"></span></label>
+        <input type="range" id="cooling-slider" min="1" max="25" value="1" step="1">
+        <p class="forge-warning">⚠️ 30% chance the material will become brittle when cooling. Better coolant will decrease this probability.</p>
+    `;
+    container.appendChild(step3);
+    
+    // Step 4: Sharpening
+    const step4 = document.createElement('div');
+    step4.className = 'forge-step';
+    step4.innerHTML = `
+        <h3>Step 4: Sharpening</h3>
+        <p class="forge-info">This will improve the sharpness of the item - or make it worse, good luck!</p>
+    `;
+    container.appendChild(step4);
+    
+    // Step 5: Mount Handle
+    const step5 = document.createElement('div');
+    step5.className = 'forge-step';
+    step5.innerHTML = `
+        <h3>Step 5: Mount Handle</h3>
+        <label for="handle-slider">Handle Quality: <span id="handle-value">1</span> (Cost: <span id="handle-cost">100</span> 💰) <span id="handle-affordable" class="affordability-indicator"></span></label>
+        <input type="range" id="handle-slider" min="1" max="100" value="1" step="1">
+        <p class="forge-info">The handle determines comfort and durability. Better handles improve the overall tool quality.</p>
+    `;
+    container.appendChild(step5);
+    
+    // Step 6: Retries
+    const step6 = document.createElement('div');
+    step6.className = 'forge-step';
+    step6.innerHTML = `
+        <h3>Step 6: Retry Attempts</h3>
+        <label for="retry-slider">Number of Retries: <span id="retry-value">1</span> (Max: <span id="retry-max">1</span> based on stock)</label>
+        <input type="range" id="retry-slider" min="1" max="1" value="1" step="1">
+        <p class="forge-info">If forging fails, automatically retry with another ingot. Limited by available stock.</p>
+    `;
+    container.appendChild(step6);
+    
+    // Forge button
+    const forgeAction = document.createElement('div');
+    forgeAction.className = 'forge-action';
+    forgeAction.innerHTML = `
+        <button id="forge-button" class="btn-primary" disabled>Forge Tool</button>
+    `;
+    container.appendChild(forgeAction);
+    
+    // Wire up event listeners
+    setupForgeListeners();
+}
+
+function setupForgeListeners() {
+    const materialSelect = document.getElementById('base-material');
+    const hammeringSlider = document.getElementById('hammering-slider');
+    const coolingSlider = document.getElementById('cooling-slider');
+    const handleSlider = document.getElementById('handle-slider');
+    const retrySlider = document.getElementById('retry-slider');
+    
+    if (materialSelect) {
+        materialSelect.addEventListener('change', updateForgeState);
     }
+    if (hammeringSlider) {
+        hammeringSlider.addEventListener('input', updateForgeState);
+    }
+    if (coolingSlider) {
+        coolingSlider.addEventListener('input', updateForgeState);
+    }
+    if (handleSlider) {
+        handleSlider.addEventListener('input', updateForgeState);
+    }
+    if (retrySlider) {
+        retrySlider.addEventListener('input', updateForgeState);
+    }
+}
+
+function updateForgeState() {
+    // Get current selections
+    const materialSelect = document.getElementById('base-material');
+    const hammeringSlider = document.getElementById('hammering-slider');
+    const coolingSlider = document.getElementById('cooling-slider');
+    const handleSlider = document.getElementById('handle-slider');
+    const retrySlider = document.getElementById('retry-slider');
     
-    // Deduct gold and increase level
-    gold -= upgradeCost;
-    toolInstance.level += 1;
-    
-    // Log transaction
-    logTransaction('expense', upgradeCost, `Upgraded ${toolInstance.type} to level ${toolInstance.level}`);
-    
-    // Update worker state
-    if (gameWorker && workerInitialized) {
-        gameWorker.postMessage({
-            type: 'update-state',
-            data: {
-                gold: gold,
-                toolsInventory: toolsInventory
+    // Update forge state
+    if (materialSelect) {
+        forgeState.baseMaterial = materialSelect.value;
+        
+        // Update retry slider max based on stock
+        if (retrySlider && forgeState.baseMaterial) {
+            const stockAmount = materialsStock[forgeState.baseMaterial] || 0;
+            const maxRetries = Math.max(1, stockAmount);
+            retrySlider.max = maxRetries;
+            const retryMax = document.getElementById('retry-max');
+            if (retryMax) {
+                retryMax.textContent = maxRetries;
             }
-        });
+            // Reset retry value if it exceeds new max
+            if (parseInt(retrySlider.value) > maxRetries) {
+                retrySlider.value = maxRetries;
+            }
+        }
     }
     
-    // Update UI
-    updateGoldDisplay();
-    populateForge();
+    if (hammeringSlider) {
+        forgeState.hammeringCount = parseInt(hammeringSlider.value);
+        const hammeringValue = document.getElementById('hammering-value');
+        if (hammeringValue) {
+            hammeringValue.textContent = forgeState.hammeringCount;
+        }
+    }
     
-    // Save game
-    saveGame();
+    if (coolingSlider) {
+        forgeState.coolingOilQuality = parseInt(coolingSlider.value);
+        const coolingValue = document.getElementById('cooling-value');
+        const coolingCost = document.getElementById('cooling-cost');
+        const coolingAffordable = document.getElementById('cooling-affordable');
+        if (coolingValue) {
+            coolingValue.textContent = forgeState.coolingOilQuality;
+        }
+        if (coolingCost) {
+            // Calculate cooling oil cost: level 1 = 0, level 2 = 500, increasing by 25% each level
+            const cost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
+            coolingCost.textContent = cost.toFixed(0);
+            
+            // Show affordability indicator
+            if (coolingAffordable) {
+                if (gold >= cost) {
+                    coolingAffordable.textContent = '✓';
+                    coolingAffordable.className = 'affordability-indicator affordable';
+                } else {
+                    coolingAffordable.textContent = '✗';
+                    coolingAffordable.className = 'affordability-indicator not-affordable';
+                }
+            }
+        }
+    }
     
-    const newPower = getToolPower(toolInstance.type, toolInstance.level);
-    console.log(`Upgraded ${toolInstance.type} #${toolId} to level ${toolInstance.level} (power: ${newPower.toFixed(2)})`);
+    if (handleSlider) {
+        forgeState.handleQuality = parseInt(handleSlider.value);
+        const handleValue = document.getElementById('handle-value');
+        const handleCost = document.getElementById('handle-cost');
+        const handleAffordable = document.getElementById('handle-affordable');
+        if (handleValue) {
+            handleValue.textContent = forgeState.handleQuality;
+        }
+        if (handleCost) {
+            // Calculate handle cost: level 1 = 100, increasing by 50% each level
+            const cost = 100 * Math.pow(1.5, forgeState.handleQuality - 1);
+            handleCost.textContent = cost.toFixed(0);
+            
+            // Show affordability indicator
+            if (handleAffordable) {
+                if (gold >= cost) {
+                    handleAffordable.textContent = '✓';
+                    handleAffordable.className = 'affordability-indicator affordable';
+                } else {
+                    handleAffordable.textContent = '✗';
+                    handleAffordable.className = 'affordability-indicator not-affordable';
+                }
+            }
+        }
+    }
+    
+    if (retrySlider) {
+        forgeState.retryCount = parseInt(retrySlider.value);
+        const retryValue = document.getElementById('retry-value');
+        if (retryValue) {
+            retryValue.textContent = forgeState.retryCount;
+        }
+    }
+    
+    // Calculate and display total cost
+    const totalCostDisplay = document.getElementById('total-forge-cost');
+    const forgeButton = document.getElementById('forge-button');
+    
+    if (totalCostDisplay) {
+        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
+        const handleCost = 100 * Math.pow(1.5, forgeState.handleQuality - 1);
+        const totalCost = coolingCost + handleCost;
+        totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
+        
+        // Calculate success probability
+        // Base: 90% chance to survive hammering per iteration
+        const hammeringSuccessRate = Math.pow(0.90, forgeState.hammeringCount);
+        
+        // Cooling: 70% base success rate, improved by coolant quality
+        // Each level reduces brittleness chance by ~1.2%
+        const coolingBrittleChance = Math.max(0, 0.30 - (forgeState.coolingOilQuality - 1) * 0.012);
+        const coolingSuccessRate = 1 - coolingBrittleChance;
+        
+        // Overall success probability
+        const totalSuccessRate = hammeringSuccessRate * coolingSuccessRate;
+        
+        // Calculate expected quality (simplified model)
+        // Quality improves with: base material hardness, hammering iterations, cooling oil quality, handle quality
+        const baseQuality = 10;
+        let materialHardness = 0;
+        if (forgeState.baseMaterial) {
+            const material = materials.find(m => m.id === forgeState.baseMaterial);
+            materialHardness = material ? material.hardness : 0;
+        }
+        const hammeringBonus = forgeState.hammeringCount * 8;
+        const coolingBonus = forgeState.coolingOilQuality * 2;
+        const handleBonus = forgeState.handleQuality * 1.5;
+        const expectedQuality = baseQuality + materialHardness + hammeringBonus + coolingBonus + handleBonus;
+        
+        // Update success probability display
+        const successProbDisplay = document.getElementById('success-probability');
+        if (successProbDisplay) {
+            successProbDisplay.textContent = `${(totalSuccessRate * 100).toFixed(1)}%`;
+            if (totalSuccessRate >= 0.7) {
+                successProbDisplay.className = 'outcome-value success-high';
+            } else if (totalSuccessRate >= 0.4) {
+                successProbDisplay.className = 'outcome-value success-medium';
+            } else {
+                successProbDisplay.className = 'outcome-value success-low';
+            }
+        }
+        
+        // Update expected quality display
+        const qualityDisplay = document.getElementById('expected-quality');
+        if (qualityDisplay) {
+            if (forgeState.baseMaterial) {
+                qualityDisplay.textContent = expectedQuality.toFixed(0);
+            } else {
+                qualityDisplay.textContent = '-';
+            }
+        }
+        
+        // Enable/disable forge button
+        if (forgeButton) {
+            if (forgeState.baseMaterial && gold >= totalCost) {
+                forgeButton.disabled = false;
+            } else {
+                forgeButton.disabled = true;
+            }
+        }
+    }
 }
 
 function openSettings() {
@@ -2464,16 +2654,13 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for upgrade buttons
+// Delegated event handler for forge button
 document.addEventListener('click', (ev) => {
-    const upgradeBtn = ev.target.closest('.btn-upgrade');
-    if (!upgradeBtn || upgradeBtn.disabled) return;
+    const forgeBtn = ev.target.closest('#forge-button');
+    if (!forgeBtn || forgeBtn.disabled) return;
     
-    const toolId = parseInt(upgradeBtn.dataset.toolId, 10);
-    if (!isNaN(toolId)) {
-        console.log(`Upgrade button clicked for tool ${toolId}`);
-        upgradeTool(toolId);
-    }
+    console.log('Forge button clicked - tool forging will be implemented later');
+    // TODO: Implement tool forging logic
 });
 
 // Delegated event handler for research buttons
@@ -3393,14 +3580,32 @@ window.activateCheat = function activateCheat() {
     // Log transaction
     logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
-    // Sync with worker
+    // Set active research to 1 point before completion
+    if (activeResearch) {
+        const researchCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level);
+        activeResearch.progress = researchCost - 1;
+        console.log(`Active research "${activeResearch.name}" set to 1 point before completion (${activeResearch.progress}/${researchCost})`);
+    }
+    
+    // Give 5 of each material
+    let materialsAdded = 0;
+    for (const material of materials) {
+        materialsStock[material.id] = (materialsStock[material.id] || 0) + 5;
+        materialsAdded++;
+    }
+    console.log(`Added 5 of each material (${materialsAdded} materials)`);
+    
+    // Sync with worker - send ALL updated state
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
                 startX: startX,
                 dwarfs: dwarfs,
-                gold: gold
+                gold: gold,
+                materialsStock: materialsStock,
+                activeResearch: activeResearch,
+                researchtree: researchtree
             }
         });
     }
@@ -3409,12 +3614,14 @@ window.activateCheat = function activateCheat() {
     updateGridDisplay();
     updateGoldDisplay();
     populateDwarfsInPanel();
+    updateStockPanel();
+    populateResearch();
     
     // Save game
     saveGame();
     
-    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Dwarfs: reset to home with XP`);
-    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\nAll dwarfs reset to home with XP bonus`);
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus`);
 }
 
 function initializeGame() {
