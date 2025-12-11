@@ -2365,11 +2365,13 @@ function assignToolToDwarf(toolId) {
     dwarf.toolId = toolId;
     
     // Sync with worker
-    if (gameWorker) {
+    if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            dwarfs: dwarfs,
-            toolsInventory: toolsInventory
+            data: {
+                dwarfs: dwarfs,
+                toolsInventory: toolsInventory
+            }
         });
     }
     
@@ -2409,10 +2411,12 @@ function scrapTool(toolId) {
     }
     
     // Sync with worker
-    if (gameWorker) {
+    if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            toolsInventory: toolsInventory
+            data: {
+                toolsInventory: toolsInventory
+            }
         });
     }
     

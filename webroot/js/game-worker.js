@@ -1349,30 +1349,33 @@ self.addEventListener('message', (e) => {
             
         case 'update-state':
             // Update specific parts of state from main thread
-            if (data.grid) grid = data.grid;
-            if (data.dwarfs) dwarfs = data.dwarfs;
-            if (data.startX !== undefined) startX = data.startX;
-            if (data.materialsStock) materialsStock = data.materialsStock;
-            if (data.gold !== undefined) gold = data.gold;
-            if (data.toolsInventory) toolsInventory = data.toolsInventory;
-            if (data.activeResearch !== undefined) {
-                activeResearch = data.activeResearch;
-                if (activeResearch) {
-                    console.log('Worker: Active research updated:', activeResearch.name);
+            // data may be undefined if message has no data payload
+            if (data) {
+                if (data.grid) grid = data.grid;
+                if (data.dwarfs) dwarfs = data.dwarfs;
+                if (data.startX !== undefined) startX = data.startX;
+                if (data.materialsStock) materialsStock = data.materialsStock;
+                if (data.gold !== undefined) gold = data.gold;
+                if (data.toolsInventory) toolsInventory = data.toolsInventory;
+                if (data.activeResearch !== undefined) {
+                    activeResearch = data.activeResearch;
+                    if (activeResearch) {
+                        console.log('Worker: Active research updated:', activeResearch.name);
+                    }
                 }
+                if (data.researchtree) {
+                    // Copy the full researchtree from main thread
+                    researchtree = JSON.parse(JSON.stringify(data.researchtree));
+                }
+                if (data.smelterTasks) {
+                    // Copy the smelter tasks from main thread
+                    smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
+                }
+                if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
+                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
+                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             }
-            if (data.researchtree) {
-                // Copy the full researchtree from main thread
-                researchtree = JSON.parse(JSON.stringify(data.researchtree));
-            }
-            if (data.smelterTasks) {
-                // Copy the smelter tasks from main thread
-                smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
-            }
-            if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
-            if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
-            if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
-            if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             break;
             
         default:
