@@ -40,7 +40,7 @@ const SMELTER_BASE_TEMPERATURE = 25;
 const SMELTER_COOLING_RATE = 0.0005;
 const TASK_RESEARCH_CHANCE = 0.5;
 const TASK_RESEARCH_SPLIT = 0.5;
-const STUCK_DETECTION_TICKS = 10;
+const STUCK_DETECTION_TICKS = 100;
 const FAILSAFE_CHECK_INTERVAL = 100;
 
 let grid = [];
@@ -185,15 +185,15 @@ function getDwarfToolPower(dwarf) {
     const toolDef = tools.find(t => t.name === toolInstance.type);
     if (!toolDef) return DWARF_BASE_POWER;
     
-    // Calculate power: base dwarf power + tool power with bonuses
-    const toolBonus = 1 + (toolInstance.level - 1) * TOOL_LEVEL_BONUS;
-    const dwarfBonus = 1 + (dwarf.digPower || 0) * DWARF_DIG_POWER_BONUS;
+    // Calculate power: (Dwarf Base Power * Level Bonus) * Research Bonus * Tool Power
+    const levelBonus = 1 + (dwarf.digPower || 0) * DWARF_DIG_POWER_BONUS;
     
     // Apply improved-digging research bonus
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 1;
+    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 0);
     
-    return DWARF_BASE_POWER + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+    const toolPower = toolDef.power / 100;
+    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower;
 }
 
 function calculateWage(dwarf) {

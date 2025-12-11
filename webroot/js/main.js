@@ -2752,11 +2752,11 @@ function populateDwarfsInPanel() {
             if (tool) {
                 const toolDef = getToolByType(tool.type);
                 if (toolDef) {
-                    const toolBonus = 1 + (tool.level - 1) * 0.1;
-                    const dwarfBonus = 1 + (d.digPower || 0) * 0.1;
+                    const levelBonus = 1 + (d.digPower || 0) * 0.1;
                     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-                    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
-                    totalPower = baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+                    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+                    const toolPower = toolDef.power / 100;
+                    totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
                 }
             }
         }

@@ -1242,7 +1242,7 @@ header, footer {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 4px;
     outline: none;
-    -webkit-appearance: none;
+    appearance: none;
     margin-bottom: 8px;
 }
 

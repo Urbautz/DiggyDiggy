@@ -56,7 +56,7 @@ const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
 const TASK_RESEARCH_CHANCE = 0.5; // 50% chance to do research/smelting instead of digging
 const TASK_RESEARCH_SPLIT = 0.5; // 50/50 split between research and smelting
 
-const STUCK_DETECTION_TICKS = 10; // Ticks before teleporting stuck dwarf
+const STUCK_DETECTION_TICKS = 100; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
 
 const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
@@ -119,7 +119,7 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone', power: 1},
+    { name: 'Stone', power: 100},
 ]
 
 // Tools inventory - array of individual tool instances
