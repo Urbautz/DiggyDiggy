@@ -114,23 +114,31 @@
         <!-- controls moved to header topbar -->
     </main>
 
-    <!-- Workbench modal -->
-    <div id="workbench-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Workbench dialog">
+    <!-- Forge modal -->
+    <div id="forge-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Forge dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
         <div class="modal-dialog" role="document">
             <header class="modal-header">
-                <h2>🔨 Workbench</h2>
-                <button class="modal-close" aria-label="Close workbench" data-action="close-modal">×</button>
+                <h2>🔥 Forge</h2>
+                <button class="modal-close" aria-label="Close forge" data-action="close-modal">×</button>
             </header>
             <div class="modal-body">
-                <p>Craft tools and upgrades for your dwarfs here!</p>
-                <div id="workbench-content">
+                <div id="forge-content">
                     <!-- Content will be added here -->
                 </div>
             </div>
-            <footer class="modal-footer">
-                <button class="btn-secondary" data-action="close-modal">Close</button>
-            </footer>
+        </div>
+    </div>
+
+    <!-- Forging Animation modal -->
+    <div id="forging-animation-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Forging animation">
+        <div class="modal-backdrop"></div>
+        <div class="modal-dialog forging-dialog" role="document">
+            <div class="modal-body">
+                <div id="forging-animation-content">
+                    <!-- Animation content will be added here -->
+                </div>
+            </div>
         </div>
     </div>
 

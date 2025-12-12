@@ -1,8 +1,89 @@
-// Base data}
-const gameversion = '0.11.0';
+// Base data
+const gameversion = '0.12.0';
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
+
+// Game mechanic constants - centralized for easy tweaking
+const TOOL_LEVEL_BONUS = 0.1; // 10% bonus per tool level
+const TOOL_UPGRADE_COST_MULTIPLIER = 2; // Cost doubles with each level
+const DWARF_BASE_POWER = 3; // Base damage without tools
+const DWARF_DIG_POWER_BONUS = 0.1; // 10% bonus per dig power point
+const DWARF_ENERGY_COST_PER_DIG = 5; // Energy consumed per dig action
+const DWARF_ENERGY_COST_PER_MOVE = 1; // Energy consumed per move
+const DWARF_ENERGY_COST_PER_RESEARCH = 10; // Energy consumed per research action
+const DWARF_ENERGY_COST_PER_SMELT = 10; // Energy consumed per smelting action
+const DWARF_LOW_ENERGY_THRESHOLD = 25; // Energy below which dwarf seeks rest
+const DWARF_REST_AMOUNT = 25; // Energy restored per rest tick
+const DWARF_BASE_WAGE = 0.01; // Base gold cost per dig action
+const DWARF_WAGE_INCREASE_RATE = 0.25; // 25% wage increase per level
+const DWARF_WAGE_INCREASE_MIN = 0.05; // Minimum wage increase rate (with research)
+const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
+const DWARF_XP_PER_LEVEL = 250; // XP needed per level
+const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
+const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
+const DWARF_LEVELUP_STRENGTH_BONUS = 1; // Bucket capacity increase per strength point
+
+const CRITICAL_HIT_BASE_CHANCE = 0.02; // 2% base critical hit chance
+const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2; // Critical hits do double damage
+const CRITICAL_HIT_ANIMATION_DURATION = 320; // Milliseconds for crit animation
+const ONE_HIT_ANIMATION_DURATION = 320; // Milliseconds for one-hit animation
+const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02; // 2% per level
+const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03; // 3% per level
+
+const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01; // 1% per level
+const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05; // 5% crit chance per level
+const RESEARCH_UNION_BUSTING_BONUS = 0.05; // 5% less strike chance per level
+const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01; // 1% wage increase reduction per level
+const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
+const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
+const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
+const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
+const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
+const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
+const RESEARCH_COST_MULTIPLIER = 2; // Research cost doubles each level
+
+const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5; // 50% chance to use same material as left tile
+const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5; // 50% chance to use same material as above tile
+const GRID_MOVE_DOWN_CHANCE = 0.3; // 30% chance to move down to dig lower
+const GRID_MOVE_UP_CHANCE = 0.7; // 70% chance to move up after horizontal move
+
+const SMELTER_BASE_TEMPERATURE = 25; // Starting and minimum temperature
+const SMELTER_MAX_TEMPERATURE_LIMIT = 1500; // Absolute maximum temperature
+const SMELTER_COOLING_RATE = 0.0005; // 0.05% cooling per tick
+const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
+
+const TASK_RESEARCH_CHANCE = 0.5; // 50% chance to do research/smelting instead of digging
+const TASK_RESEARCH_SPLIT = 0.5; // 50/50 split between research and smelting
+
+// Forging constants
+const FORGE_BASE_QUALITY = 10; // Base quality before material hardness
+const FORGE_HAMMERING_BONUS_PER_ITERATION = 8; // Quality bonus per hammering iteration
+const FORGE_HAMMERING_SUCCESS_RATE = 0.90; // 90% success rate per hammering iteration
+const FORGE_HAMMERING_MAX_ITERATIONS = 10; // Maximum hammering iterations
+const FORGE_COOLING_BONUS_PER_QUALITY = 2; // Quality bonus per cooling oil quality point
+const FORGE_COOLING_BASE_BRITTLE_CHANCE = 0.30; // 30% base chance of brittle failure
+const FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY = 0.012; // 1.2% brittle chance reduction per quality
+const FORGE_COOLING_MAX_QUALITY = 25; // Maximum cooling oil quality
+const FORGE_COOLING_BASE_COST = 500; // Base cost for quality 2+ cooling oil
+const FORGE_COOLING_COST_MULTIPLIER = 1.25; // Cost multiplier per quality level
+const FORGE_HANDLE_BONUS_PER_QUALITY = 1.5; // Quality bonus per handle quality point
+const FORGE_HANDLE_MAX_QUALITY = 100; // Maximum handle quality
+const FORGE_HANDLE_BASE_COST = 100; // Base cost for handle quality
+const FORGE_HANDLE_COST_MULTIPLIER = 1.15; // Cost multiplier per quality level
+const FORGE_SHARPENING_ITERATIONS = 3; // Fixed number of sharpening passes
+const FORGE_SHARPENING_MIN_VARIANCE = -0.05; // -5% minimum sharpening variance
+const FORGE_SHARPENING_MAX_VARIANCE = 0.20; // +20% maximum sharpening variance
+const FORGE_SUCCESS_RATE_HIGH_THRESHOLD = 0.7; // 70% success rate threshold for "high" rating
+const FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD = 0.4; // 40% success rate threshold for "medium" rating
+
+const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
+const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
+
+const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
+
+const CHEAT_GOLD_BONUS = 5000; // Gold added by cheat code
+const CHEAT_DEPTH_MULTIPLIER = 2; // Depth multiplier for cheat code
 
 // Material registry — easy to extend later
 const materials = [
@@ -37,16 +118,16 @@ const materials = [
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,     minlevel: 2000, maxlevel: 999999, color: '#7e6136ff' },
-  { id: 'Bronce', name: 'Bronce', type:'Processed',         hardness: 0, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
+  { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',         hardness:100, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
-  { id: 'Copper', name: 'Copper', type:'Processed',         hardness: 0, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
+  { id: 'Copper', name: 'Copper Ingot', type:'Ingot',         hardness:180, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
   { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
-  { id: 'Silver', name: 'Silver', type:'Processed',         hardness: 0, probability: 0, worth: 750,     minlevel: 99999, color: '#c0c0c0ff' },
+  { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 750,     minlevel: 99999, color: '#c0c0c0ff' },
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
-  { id: 'Gold', name: 'Gold', type:'Processed',             hardness: 0, probability: 0, worth: 500000,  minlevel: 99999, color: '#ffd700ff' },
+  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 500000,  minlevel: 99999, color: '#ffd700ff' },
   { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 77000, maxlevel: 99999, color: '#572012ff' },
-  { id: 'Pig Iron', name: 'Pig Iron', type:'Processed',     hardness: 0, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
+  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
   
   { id: 'Platinum Ore', name: 'Platinum Ore', type:'Ore Hard',    hardness: 1000, probability: 15, worth: 2500, minlevel: 75000, color: '#c75e41ff' },
@@ -59,20 +140,17 @@ const materials = [
 
 // Tools
 const tools = [
-    { name: 'Stone Shovel', power: 1, upgradecost: 50},
-    { name: 'Bronce Shovel', power: 2.6, upgradecost: 7500},
-    { name: 'Copper Shovel', power: 16, upgradecost: 25000},
-    { name: 'Copper Pickaxe', power: 110, upgradecost: 99000},
+    { name: 'Stone', power: 100},
 ]
 
 // Tools inventory - array of individual tool instances
 const toolsInventory = [
-    { id: 1, type: 'Stone Shovel', level: 1 },
-    { id: 2, type: 'Stone Shovel', level: 1 },
-    { id: 3, type: 'Stone Shovel', level: 1 },
-    { id: 4, type: 'Stone Shovel', level: 1 },
-    { id: 5, type: 'Stone Shovel', level: 1 },
-    { id: 6, type: 'Stone Shovel', level: 1 }
+    { id: 1, type: 'Stone', power: 100 },
+    { id: 2, type: 'Stone', power: 100 },
+    { id: 3, type: 'Stone', power: 100 },
+    { id: 4, type: 'Stone', power: 100 },
+    { id: 5, type: 'Stone', power: 100 },
+    { id: 6, type: 'Stone', power: 100 }
 ];
 
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
@@ -85,7 +163,7 @@ let smelterTasks = [
     { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'Marble', amount: 1 }, output: { material: 'Polished Marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'smelt-bronze', name: 'Smelt Bronze', description: 'Smelt bronze ore (requires 950°).', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronze', amount: 1 }, minTemp: 950, requires: 'furnace' },
+    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore (requires 950°).', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
     { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore (requires 1085°).', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
     { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore (requires 962°).', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
     { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore (requires 1064°).', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
@@ -113,6 +191,10 @@ let researchtree = [
       description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 1000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
+    { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
+      description: 'Unlocks the forge for crafting and upgrading tools.' },
+    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
@@ -204,9 +286,9 @@ const dropGridWidth = 6, dropGridHeight = 1;
 const dropOff = { x: dropGridStartX + 0, y: 0 };
 // bed / house: place second cell (1,0) in drop-grid coordinates
 const house = { x: dropGridStartX + 1, y: 0 };
-// workbench: place third cell (2,0) in drop-grid coordinates
-const workbench = { x: dropGridStartX + 2, y: 0 };
-// research: place fourth cell (3,0) in drop-grid coordinates
-const research = { x: dropGridStartX + 3, y: 0 };
-// smelter: place fifth cell (4,0) in drop-grid coordinates
-const smelter = { x: dropGridStartX + 4, y: 0 };
+// research: place third cell (2,0) in drop-grid coordinates
+const research = { x: dropGridStartX + 2, y: 0 };
+// smelter: place fourth cell (3,0) in drop-grid coordinates
+const smelter = { x: dropGridStartX + 3, y: 0 };
+// forge: place fifth cell (4,0) in drop-grid coordinates
+const forge = { x: dropGridStartX + 4, y: 0 };

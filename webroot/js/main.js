@@ -68,18 +68,18 @@ function getToolByType(toolType) {
 
 function getToolPower(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
-    if (!tool) return 3;
+    if (!tool) return DWARF_BASE_POWER;
     
-    // Each level gives 10% bonus: power * (1 + (level - 1) * 0.1)
-    return tool.power * (1 + (toolLevel - 1) * 0.1);
+    // Each level gives bonus: power * (1 + (level - 1) * TOOL_LEVEL_BONUS)
+    return tool.power * (1 + (toolLevel - 1) * TOOL_LEVEL_BONUS);
 }
 
 function getToolUpgradeCost(toolType, toolLevel = 1) {
     const tool = getToolByType(toolType);
     if (!tool) return 0;
     
-    // Cost doubles with each level
-    return tool.upgradecost * Math.pow(2, toolLevel - 1);
+    // Cost multiplies with each level
+    return tool.upgradecost * Math.pow(TOOL_UPGRADE_COST_MULTIPLIER, toolLevel - 1);
 }
 
 
@@ -319,7 +319,7 @@ function updateGridDisplay() {
                         const dwarfsCanLevelUp = dwarfs.filter(d => {
                             const currentXP = d.xp || 0;
                             const currentLevel = d.level || 1;
-                            const xpNeeded = 250 * currentLevel;
+                            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
                             return currentXP >= xpNeeded;
                         });
                         
@@ -339,39 +339,34 @@ function updateGridDisplay() {
                         cell.appendChild(iconContainer);
                     }
 
-                    // show workbench icon if this is the workbench cell
-                    if (typeof workbench === 'object' && workbench !== null && workbench.x === gx && workbench.y === gy) {
-                        cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-workbench';
+                    // show forge icon if this is the forge cell and forge research is unlocked
+                    if (typeof forge === 'object' && forge !== null && forge.x === gx && forge.y === gy) {
+                        const forgeResearch = researchtree.find(r => r.id === 'forge');
+                        const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
                         
-                        // Create container for icon and badge with absolute positioning
-                        const iconContainer = document.createElement('span');
-                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
-                        
-                        const bench = document.createElement('span');
-                        bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
-                        bench.textContent = '🔨';
-                        
-                        // Check if any tool can be upgraded
-                        const toolsCanUpgrade = toolsInventory.filter(toolInstance => {
-                            const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
-                            return gold >= upgradeCost;
-                        });
-                        
-                        if (toolsCanUpgrade.length > 0) {
-                            bench.title = `Workbench (${toolsCanUpgrade.length} tool(s) can be upgraded!)`;
-                            // Add notification badge
-                            const badge = document.createElement('span');
-                            badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4CAF50; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                            badge.textContent = toolsCanUpgrade.length;
-                            bench.appendChild(badge);
+                        if (isForgeUnlocked) {
+                            cell.style.cursor = 'pointer';
+                            cell.dataset.clickAction = 'open-forge';
+                            
+                            // Create container for icon and badge with absolute positioning
+                            const iconContainer = document.createElement('span');
+                            iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                            
+                            const bench = document.createElement('span');
+                            bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
+                            bench.textContent = '🔨';
+                            bench.title = 'Forge (craft new tools)';
+                            
+                            iconContainer.appendChild(bench);
+                            cell.appendChild(iconContainer);
                         } else {
-                            bench.title = 'Workbench (craft tools)';
+                            // Show locked icon
+                            const lockedIcon = document.createElement('span');
+                            lockedIcon.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.5;';
+                            lockedIcon.textContent = '🔒';
+                            lockedIcon.title = 'Forge (requires Forge research)';
+                            cell.appendChild(lockedIcon);
                         }
-                        
-                        iconContainer.appendChild(bench);
-                        cell.appendChild(iconContainer);
                     }
 
                     // show research icon if this is the research cell
@@ -505,9 +500,267 @@ function updateGridDisplay() {
 
     // dwarf-status UI removed from header; the Dwarfs modal shows this information when requested
 
-function openWorkbench() {
-    openModal('workbench-modal');
-    populateWorkbench();
+function openForge() {
+    openModal('forge-modal');
+    populateForge();
+}
+
+async function startForging() {
+    // Validate we have material selected
+    if (!forgeState.baseMaterial) {
+        alert('Please select a base material first!');
+        return;
+    }
+    
+    // Check stock
+    const stockAmount = materialsStock[forgeState.baseMaterial] || 0;
+    if (stockAmount < forgeState.retryCount) {
+        alert(`Not enough ${forgeState.baseMaterial} in stock! Need ${forgeState.retryCount}, have ${stockAmount}.`);
+        return;
+    }
+    
+    // Calculate costs for validation
+    const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+    const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
+    const totalCost = coolingCost + handleCost;
+    
+    // Check gold upfront
+    if (gold < totalCost) {
+        alert(`Not enough gold! Need ${totalCost.toFixed(0)}, have ${gold.toFixed(0)}.`);
+        return;
+    }
+    
+    // Costs will be deducted during the forging process:
+    // - Cooling cost after successful hammering
+    // - Handle cost before mounting handle
+    
+    // Close forge modal and show animation modal
+    closeModal('forge-modal');
+    openModal('forging-animation-modal');
+    
+    const animationContent = document.getElementById('forging-animation-content');
+    animationContent.innerHTML = '<div class="forging-anvil">🔨</div><div class="forging-message">Forging...</div>';
+    
+    // Try forging up to retryCount times
+    let success = false;
+    let finalQuality = 0;
+    let attemptsUsed = 0;
+    
+    for (let attempt = 0; attempt < forgeState.retryCount; attempt++) {
+        attemptsUsed++;
+        
+        // Check if we have material
+        if ((materialsStock[forgeState.baseMaterial] || 0) <= 0) {
+            break;
+        }
+        
+        // Consume material immediately
+        materialsStock[forgeState.baseMaterial]--;
+        
+        // Update UI and sync immediately
+        updateStockDisplay();
+        saveGame();
+        
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: {
+                    materialsStock: materialsStock
+                }
+            });
+        }
+        
+        // Calculate quality components
+        const material = materials.find(m => m.id === forgeState.baseMaterial);
+        const materialHardness = material ? material.hardness : 0;
+        const baseQuality = FORGE_BASE_QUALITY;
+        const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
+        const coolingBonus = forgeState.coolingOilQuality * FORGE_COOLING_BONUS_PER_QUALITY;
+        const handleBonus = forgeState.handleQuality * FORGE_HANDLE_BONUS_PER_QUALITY;
+        
+        let currentQuality = baseQuality + materialHardness;
+        
+        // Animate hammering
+        const hammeringSteps = forgeState.hammeringCount;
+        let hammeringFailed = false;
+        for (let i = 0; i < hammeringSteps; i++) {
+            animationContent.innerHTML = `<div class="forging-anvil shake">🔨</div><div class="forging-message">Hammering... (${i + 1}/${hammeringSteps})</div>`;
+            await sleep(1200);
+            
+            // Check if material destroyed during hammering
+            if (Math.random() > FORGE_HAMMERING_SUCCESS_RATE) {
+                animationContent.innerHTML = `<div class="forging-anvil">💥</div><div class="forging-message forging-failure">Material destroyed during hammering!</div>`;
+                await sleep(2000);
+                hammeringFailed = true;
+                break;
+            }
+            
+            // Show completion of this hammer strike with quality
+            const strikeQuality = Math.round(currentQuality + (i + 1) * FORGE_HAMMERING_BONUS_PER_ITERATION);
+            animationContent.innerHTML = `<div class="forging-anvil">🔨</div><div class="forging-message">Hammering complete (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${strikeQuality}</div>`;
+            await sleep(800);
+        }
+        
+        // Check if we broke during hammering
+        if (hammeringFailed) {
+            continue; // Try next attempt
+        }
+        
+        currentQuality += hammeringBonus;
+        
+        // Show hammering success
+        animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Hammering successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
+        await sleep(1000);
+        
+        // Deduct cooling cost (only after successful hammering)
+        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+        if (coolingCost > 0) {
+            gold -= coolingCost;
+            updateGoldDisplay();
+            logTransaction('expense', coolingCost, 'Cooling oil for forging');
+            saveGame();
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: { gold: gold }
+                });
+            }
+        }
+        
+        // Cooling step
+        animationContent.innerHTML = `<div class="forging-anvil shake">💧</div><div class="forging-message">Cooling...</div>`;
+        await sleep(1800);
+        
+        const coolingBrittleChance = Math.max(0, FORGE_COOLING_BASE_BRITTLE_CHANCE - (forgeState.coolingOilQuality - 1) * FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY);
+        if (Math.random() < coolingBrittleChance) {
+            animationContent.innerHTML = `<div class="forging-anvil">💔</div><div class="forging-message forging-failure">Material became brittle during cooling!</div>`;
+            await sleep(2000);
+            continue; // Try next attempt
+        }
+        
+        currentQuality += coolingBonus;
+        
+        // Show cooling success
+        animationContent.innerHTML = `<div class="forging-anvil">❄️</div><div class="forging-message forging-success">Cooling successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
+        await sleep(1200);
+        
+        // Deduct handle cost before mounting
+        const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
+        gold -= handleCost;
+        updateGoldDisplay();
+        logTransaction('expense', handleCost, 'Handle for forging');
+        saveGame();
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gold: gold }
+            });
+        }
+        
+        // Handle mounting step
+        animationContent.innerHTML = `<div class="forging-anvil shake">🪓</div><div class="forging-message">Mounting handle...</div>`;
+        await sleep(1800);
+        
+        currentQuality += handleBonus;
+        
+        // Show handle mounting success
+        animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Handle mounted!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
+        await sleep(1200);
+        
+        // Sharpening step - 3 iterations
+        let sharpeningQuality = currentQuality;
+        const sharpeningIterations = FORGE_SHARPENING_ITERATIONS;
+        
+        for (let i = 0; i < sharpeningIterations; i++) {
+            animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Sharpening... (${i + 1}/${sharpeningIterations})</div>`;
+            await sleep(1200);
+            
+            // Apply percentage-based sharpening variance: -5% to +20% of current quality
+            const variancePercent = (Math.random() * (FORGE_SHARPENING_MAX_VARIANCE - FORGE_SHARPENING_MIN_VARIANCE)) + FORGE_SHARPENING_MIN_VARIANCE;
+            const iterationVariance = sharpeningQuality * variancePercent;
+            sharpeningQuality += iterationVariance;
+            
+            // Show completion of this sharpening pass
+            const changePercent = (variancePercent * 100).toFixed(1);
+            const changeSign = variancePercent >= 0 ? '+' : '';
+            animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message">Sharpening pass ${i + 1} complete (${changeSign}${changePercent}%)</div><div class="forging-quality">Current Power: ${Math.round(sharpeningQuality)}</div>`;
+            await sleep(800);
+        }
+        
+        // Calculate final quality
+        finalQuality = Math.max(1, Math.round(sharpeningQuality));
+        
+        // Show final sharpening completion
+        animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message forging-success">Sharpening complete!</div><div class="forging-quality">Final Power: ${finalQuality}</div>`;
+        await sleep(1200);
+        
+        success = true;
+        break;
+    }
+    
+    // Show result
+    if (success) {
+        // Create new tool with material name in type
+        const material = materials.find(m => m.id === forgeState.baseMaterial);
+        const materialName = material ? material.name.replace(' Ingot', '') : 'Unknown';
+        const newToolId = Math.max(...toolsInventory.map(t => t.id), 0) + 1;
+        const newTool = {
+            id: newToolId,
+            type: `${materialName} Pickaxe`,
+            level: finalQuality,
+            power: finalQuality
+        };
+        toolsInventory.push(newTool);
+        
+        animationContent.innerHTML = `
+            <div class="forging-anvil">⚒️</div>
+            <div class="forging-message forging-success">Success!</div>
+            <div class="forging-result">
+                <p><strong>${materialName} Pickaxe #${newToolId}</strong></p>
+                <p>Power: ${finalQuality}</p>
+                <p>Attempts used: ${attemptsUsed}</p>
+            </div>
+            <button class="btn-primary" onclick="closeForging()">Return to Forge</button>
+        `;
+        
+        logTransaction('income', 0, `Forged new tool with quality ${finalQuality}`);
+    } else {
+        animationContent.innerHTML = `
+            <div class="forging-anvil">💀</div>
+            <div class="forging-message forging-failure">All forging attempts failed!</div>
+            <div class="forging-result">
+                <p>Used ${attemptsUsed} materials</p>
+                <p>No tool created</p>
+            </div>
+            <button class="btn-primary" onclick="closeForging()">Return to Forge</button>
+        `;
+    }
+    
+    // Final save and sync after forging completes
+    updateStockDisplay();
+    saveGame();
+    
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gold: gold,
+                materialsStock: materialsStock,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+}
+
+function closeForging() {
+    closeModal('forging-animation-modal');
+    updateStockDisplay(); // Update stock display
+    openModal('forge-modal');
+    populateForge(); // Refresh forge UI with updated stock
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function openResearch() {
@@ -530,7 +783,7 @@ function openTransactions() {
     
     switchFinancesTab(window.currentFinancesTab);
     
-    // Set up auto-refresh every 2 seconds
+    // Set up auto-refresh
     if (window.transactionRefreshInterval) {
         clearInterval(window.transactionRefreshInterval);
     }
@@ -544,7 +797,7 @@ function openTransactions() {
             clearInterval(window.transactionRefreshInterval);
             window.transactionRefreshInterval = null;
         }
-    }, 2000);
+    }, AUTO_REFRESH_INTERVAL);
 }
 
 function switchFinancesTab(tab) {
@@ -1670,131 +1923,539 @@ function cancelResearch() {
     console.log(`Cancelled research: ${researchName}`);
 }
 
-function populateWorkbench() {
-    const container = document.getElementById('workbench-content');
+function populateForge() {
+    const container = document.getElementById('forge-content');
     if (!container) return;
     
     container.innerHTML = '';
     
-    const toolsTable = document.createElement('table');
-    toolsTable.className = 'workbench-table';
-    
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Dwarf</th><th>Tool</th><th>Quality</th><th>Power</th><th>Upgrade Cost</th><th>Action</th></tr>';
-    toolsTable.appendChild(thead);
-    
-    const tbody = document.createElement('tbody');
-    
-    // Show each individual tool in inventory
-    for (const toolInstance of toolsInventory) {
-        const tr = document.createElement('tr');
-        
-        // Find which dwarf has this tool
-        const dwarf = dwarfs.find(d => d.toolId === toolInstance.id);
-        const dwarfTd = document.createElement('td');
-        dwarfTd.textContent = dwarf ? dwarf.name : 'Unassigned';
-        dwarfTd.className = 'dwarf-name';
-        
-        const nameTd = document.createElement('td');
-        nameTd.textContent = `${toolInstance.type} #${toolInstance.id}`;
-        nameTd.className = 'tool-name';
-        
-        const levelTd = document.createElement('td');
-        levelTd.textContent = toolInstance.level;
-        levelTd.className = 'tool-level';
-        
-        const powerTd = document.createElement('td');
-        const power = getToolPower(toolInstance.type, toolInstance.level);
-        powerTd.textContent = power.toFixed(2);
-        powerTd.className = 'tool-power';
-        
-        const costTd = document.createElement('td');
-        const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
-        costTd.textContent = `${upgradeCost.toFixed(0)} 💰`;
-        costTd.className = 'tool-cost';
-        
-        const actionTd = document.createElement('td');
-        const upgradeBtn = document.createElement('button');
-        upgradeBtn.className = 'btn-upgrade';
-        upgradeBtn.textContent = `Upgrade`;
-        const newPower = getToolPower(toolInstance.type, toolInstance.level + 1);
-        upgradeBtn.title = `Upgrade to quality ${toolInstance.level + 1}\nNew power: ${newPower.toFixed(2)}`;
-        upgradeBtn.dataset.toolId = toolInstance.id;
-        
-        if (gold < upgradeCost) {
-            upgradeBtn.disabled = true;
-            upgradeBtn.classList.add('disabled');
-        }
-        
-        actionTd.appendChild(upgradeBtn);
-        
-        tr.appendChild(dwarfTd);
-        tr.appendChild(nameTd);
-        tr.appendChild(levelTd);
-        tr.appendChild(powerTd);
-        tr.appendChild(costTd);
-        tr.appendChild(actionTd);
-        
-        tbody.appendChild(tr);
+    // Default to create tab
+    if (!window.currentForgeTab) {
+        window.currentForgeTab = 'create';
     }
     
-    if (tbody.children.length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 5;
-        td.textContent = 'No tools in inventory';
-        td.style.textAlign = 'center';
-        td.style.padding = '20px';
-        td.style.opacity = '0.6';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-    }
+    // Create tabs with finance-style design
+    const tabsContainer = document.createElement('div');
+    tabsContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;';
     
-    toolsTable.appendChild(tbody);
-    container.appendChild(toolsTable);
+    const createTabBtn = document.createElement('button');
+    createTabBtn.id = 'forge-tab-create';
+    createTabBtn.className = 'forge-tab';
+    createTabBtn.textContent = 'Create Tool';
+    createTabBtn.onclick = () => switchForgeTab('create');
+    
+    const inventoryTabBtn = document.createElement('button');
+    inventoryTabBtn.id = 'forge-tab-inventory';
+    inventoryTabBtn.className = 'forge-tab';
+    inventoryTabBtn.textContent = 'Tools Inventory';
+    inventoryTabBtn.onclick = () => switchForgeTab('inventory');
+    
+    tabsContainer.appendChild(createTabBtn);
+    tabsContainer.appendChild(inventoryTabBtn);
+    container.appendChild(tabsContainer);
+    
+    // Create tab content containers
+    const createTabContent = document.createElement('div');
+    createTabContent.id = 'forge-create-tab';
+    createTabContent.className = 'forge-tab-content';
+    container.appendChild(createTabContent);
+    
+    const inventoryTabContent = document.createElement('div');
+    inventoryTabContent.id = 'forge-inventory-tab';
+    inventoryTabContent.className = 'forge-tab-content';
+    container.appendChild(inventoryTabContent);
+    
+    // Create forge interface in create tab
+    createForgeInterface(createTabContent);
+    
+    // Create inventory interface in inventory tab
+    createInventoryInterface(inventoryTabContent);
+    
+    // Apply initial tab state
+    switchForgeTab(window.currentForgeTab);
 }
 
-function upgradeTool(toolId) {
-    const toolInstance = toolsInventory.find(t => t.id === toolId);
-    if (!toolInstance) {
-        console.warn('Tool not found in inventory', toolId);
+function switchForgeTab(tab) {
+    window.currentForgeTab = tab;
+    
+    // Update tab button styles
+    const createTab = document.getElementById('forge-tab-create');
+    const inventoryTab = document.getElementById('forge-tab-inventory');
+    const createContent = document.getElementById('forge-create-tab');
+    const inventoryContent = document.getElementById('forge-inventory-tab');
+    
+    if (tab === 'create') {
+        createTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+        createContent.style.display = 'block';
+        inventoryContent.style.display = 'none';
+    } else {
+        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
+        createTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+        inventoryContent.style.display = 'block';
+        createContent.style.display = 'none';
+        // Refresh inventory when switching to it
+        createInventoryInterface(inventoryContent);
+    }
+}
+
+// Forge state - tracks the current forging process
+let forgeState = {
+    baseMaterial: null,      // Selected ingot material
+    hammeringCount: 1,       // 1-10 iterations
+    coolingOilQuality: 1,    // 1-25 quality
+    handleQuality: 1,        // 1-100 quality
+    retryCount: 1            // 1-stock amount
+};
+
+function createForgeInterface(container) {
+    // Expected outcomes section at the top
+    const outcomes = document.createElement('div');
+    outcomes.className = 'forge-outcomes forge-outcomes-top';
+    outcomes.innerHTML = `
+        <h3>Expected Outcomes</h3>
+        <div class="outcome-row">
+            <span class="outcome-label">Total Cost:</span>
+            <span id="total-forge-cost" class="outcome-value">0 💰</span>
+        </div>
+        <div class="outcome-row">
+            <span class="outcome-label">Success Probability:</span>
+            <span id="success-probability" class="outcome-value">0%</span>
+        </div>
+        <div class="outcome-row">
+            <span class="outcome-label">Expected Quality (if successful):</span>
+            <span id="expected-quality" class="outcome-value">-</span>
+        </div>
+    `;
+    container.appendChild(outcomes);
+    
+    // Step 1: Heat Material
+    const step1 = document.createElement('div');
+    step1.className = 'forge-step';
+    step1.innerHTML = `
+        <h3>Step 1: Heat Material</h3>
+        <label for="base-material">Select Base Material (Ingot):</label>
+        <select id="base-material">
+            <option value="">-- Select Ingot --</option>
+        </select>
+    `;
+    container.appendChild(step1);
+    
+    // Populate ingot dropdown with hardness and stock info
+    const materialSelect = step1.querySelector('#base-material');
+    const ingots = materials.filter(m => m.type === 'Ingot');
+    for (const ingot of ingots) {
+        const stockAmount = materialsStock[ingot.id] || 0;
+        const option = document.createElement('option');
+        option.value = ingot.id;
+        option.textContent = `${ingot.name} (Hardness: ${ingot.hardness}, Stock: ${stockAmount})`;
+        option.dataset.hardness = ingot.hardness;
+        option.disabled = stockAmount <= 0;
+        if (stockAmount <= 0) {
+            option.textContent += ' - OUT OF STOCK';
+        }
+        materialSelect.appendChild(option);
+    }
+    
+    // Step 2: Hammering
+    const step2 = document.createElement('div');
+    step2.className = 'forge-step';
+    step2.innerHTML = `
+        <h3>Step 2: Hammering</h3>
+        <label for="hammering-slider">Hammering Iterations: <span id="hammering-value">1</span></label>
+        <input type="range" id="hammering-slider" min="1" max="${FORGE_HAMMERING_MAX_ITERATIONS}" value="1" step="1">
+        <p class="forge-warning">⚠️ There is a ${((1 - FORGE_HAMMERING_SUCCESS_RATE) * 100).toFixed(0)}% chance to destroy the material during each iteration, but the outcome quality will improve with more iterations.</p>
+    `;
+    container.appendChild(step2);
+    
+    // Step 3: Cooling
+    const step3 = document.createElement('div');
+    step3.className = 'forge-step';
+    step3.innerHTML = `
+        <h3>Step 3: Cooling</h3>
+        <label for="cooling-slider">Cooling Oil Quality: <span id="cooling-value">1</span> (Cost: <span id="cooling-cost">0</span> 💰) <span id="cooling-affordable" class="affordability-indicator"></span></label>
+        <input type="range" id="cooling-slider" min="1" max="${FORGE_COOLING_MAX_QUALITY}" value="1" step="1">
+        <p class="forge-warning">⚠️ ${(FORGE_COOLING_BASE_BRITTLE_CHANCE * 100).toFixed(0)}% chance the material will become brittle when cooling. Better coolant will decrease this probability.</p>
+    `;
+    container.appendChild(step3);
+    
+    // Step 4: Sharpening
+    const step4 = document.createElement('div');
+    step4.className = 'forge-step';
+    step4.innerHTML = `
+        <h3>Step 4: Sharpening</h3>
+        <p class="forge-info">This will improve the sharpness of the item - or make it worse, good luck!</p>
+    `;
+    container.appendChild(step4);
+    
+    // Step 5: Mount Handle
+    const step5 = document.createElement('div');
+    step5.className = 'forge-step';
+    step5.innerHTML = `
+        <h3>Step 5: Mount Handle</h3>
+        <label for="handle-slider">Handle Quality: <span id="handle-value">1</span> (Cost: <span id="handle-cost">${FORGE_HANDLE_BASE_COST}</span> 💰) <span id="handle-affordable" class="affordability-indicator"></span></label>
+        <input type="range" id="handle-slider" min="1" max="${FORGE_HANDLE_MAX_QUALITY}" value="1" step="1">
+        <p class="forge-info">The handle determines comfort and durability. Better handles improve the overall tool quality.</p>
+    `;
+    container.appendChild(step5);
+    
+    // Step 6: Retries
+    const step6 = document.createElement('div');
+    step6.className = 'forge-step';
+    step6.innerHTML = `
+        <h3>Step 6: Retry Attempts</h3>
+        <label for="retry-slider">Number of Retries: <span id="retry-value">1</span> (Max: <span id="retry-max">1</span> based on stock)</label>
+        <input type="range" id="retry-slider" min="1" max="1" value="1" step="1">
+        <p class="forge-info">If forging fails, automatically retry with another ingot. Limited by available stock.</p>
+    `;
+    container.appendChild(step6);
+    
+    // Forge button
+    const forgeAction = document.createElement('div');
+    forgeAction.className = 'forge-action';
+    forgeAction.innerHTML = `
+        <button id="forge-button" class="btn-primary" disabled>Forge Tool</button>
+    `;
+    container.appendChild(forgeAction);
+    
+    // Wire up event listeners
+    setupForgeListeners();
+}
+
+function setupForgeListeners() {
+    const materialSelect = document.getElementById('base-material');
+    const hammeringSlider = document.getElementById('hammering-slider');
+    const coolingSlider = document.getElementById('cooling-slider');
+    const handleSlider = document.getElementById('handle-slider');
+    const retrySlider = document.getElementById('retry-slider');
+    
+    if (materialSelect) {
+        materialSelect.addEventListener('change', updateForgeState);
+    }
+    if (hammeringSlider) {
+        hammeringSlider.addEventListener('input', updateForgeState);
+    }
+    if (coolingSlider) {
+        coolingSlider.addEventListener('input', updateForgeState);
+    }
+    if (handleSlider) {
+        handleSlider.addEventListener('input', updateForgeState);
+    }
+    if (retrySlider) {
+        retrySlider.addEventListener('input', updateForgeState);
+    }
+}
+
+function updateForgeState() {
+    // Get current selections
+    const materialSelect = document.getElementById('base-material');
+    const hammeringSlider = document.getElementById('hammering-slider');
+    const coolingSlider = document.getElementById('cooling-slider');
+    const handleSlider = document.getElementById('handle-slider');
+    const retrySlider = document.getElementById('retry-slider');
+    
+    // Update forge state
+    if (materialSelect) {
+        forgeState.baseMaterial = materialSelect.value;
+        
+        // Update retry slider max based on stock
+        if (retrySlider && forgeState.baseMaterial) {
+            const stockAmount = materialsStock[forgeState.baseMaterial] || 0;
+            const maxRetries = Math.max(1, stockAmount);
+            retrySlider.max = maxRetries;
+            const retryMax = document.getElementById('retry-max');
+            if (retryMax) {
+                retryMax.textContent = maxRetries;
+            }
+            // Reset retry value if it exceeds new max
+            if (parseInt(retrySlider.value) > maxRetries) {
+                retrySlider.value = maxRetries;
+            }
+        }
+    }
+    
+    if (hammeringSlider) {
+        forgeState.hammeringCount = parseInt(hammeringSlider.value);
+        const hammeringValue = document.getElementById('hammering-value');
+        if (hammeringValue) {
+            hammeringValue.textContent = forgeState.hammeringCount;
+        }
+    }
+    
+    if (coolingSlider) {
+        forgeState.coolingOilQuality = parseInt(coolingSlider.value);
+        const coolingValue = document.getElementById('cooling-value');
+        const coolingCost = document.getElementById('cooling-cost');
+        const coolingAffordable = document.getElementById('cooling-affordable');
+        if (coolingValue) {
+            coolingValue.textContent = forgeState.coolingOilQuality;
+        }
+        if (coolingCost) {
+            // Calculate cooling oil cost: level 1 = 0, level 2 = 500, increasing by 25% each level
+            const cost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
+            coolingCost.textContent = cost.toFixed(0);
+            
+            // Show affordability indicator
+            if (coolingAffordable) {
+                if (gold >= cost) {
+                    coolingAffordable.textContent = '✓';
+                    coolingAffordable.className = 'affordability-indicator affordable';
+                } else {
+                    coolingAffordable.textContent = '✗';
+                    coolingAffordable.className = 'affordability-indicator not-affordable';
+                }
+            }
+        }
+    }
+    
+    if (handleSlider) {
+        forgeState.handleQuality = parseInt(handleSlider.value);
+        const handleValue = document.getElementById('handle-value');
+        const handleCost = document.getElementById('handle-cost');
+        const handleAffordable = document.getElementById('handle-affordable');
+        if (handleValue) {
+            handleValue.textContent = forgeState.handleQuality;
+        }
+        if (handleCost) {
+            // Calculate handle cost: level 1 = 100, increasing by 15% each level
+            const cost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
+            handleCost.textContent = cost.toFixed(0);
+            
+            // Show affordability indicator
+            if (handleAffordable) {
+                if (gold >= cost) {
+                    handleAffordable.textContent = '✓';
+                    handleAffordable.className = 'affordability-indicator affordable';
+                } else {
+                    handleAffordable.textContent = '✗';
+                    handleAffordable.className = 'affordability-indicator not-affordable';
+                }
+            }
+        }
+    }
+    
+    if (retrySlider) {
+        forgeState.retryCount = parseInt(retrySlider.value);
+        const retryValue = document.getElementById('retry-value');
+        if (retryValue) {
+            retryValue.textContent = forgeState.retryCount;
+        }
+    }
+    
+    // Calculate and display total cost
+    const totalCostDisplay = document.getElementById('total-forge-cost');
+    const forgeButton = document.getElementById('forge-button');
+    
+    if (totalCostDisplay) {
+        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+        const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
+        const totalCost = coolingCost + handleCost;
+        totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
+        
+        // Calculate success probability
+        // Base: 90% chance to survive hammering per iteration
+        const hammeringSuccessRate = Math.pow(FORGE_HAMMERING_SUCCESS_RATE, forgeState.hammeringCount);
+        
+        // Cooling: 70% base success rate, improved by coolant quality
+        // Each level reduces brittleness chance by ~1.2%
+        const coolingBrittleChance = Math.max(0, FORGE_COOLING_BASE_BRITTLE_CHANCE - (forgeState.coolingOilQuality - 1) * FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY);
+        const coolingSuccessRate = 1 - coolingBrittleChance;
+        
+        // Overall success probability
+        const totalSuccessRate = hammeringSuccessRate * coolingSuccessRate;
+        
+        // Calculate expected quality (simplified model)
+        // Quality improves with: base material hardness, hammering iterations, cooling oil quality, handle quality
+        const baseQuality = FORGE_BASE_QUALITY;
+        let materialHardness = 0;
+        if (forgeState.baseMaterial) {
+            const material = materials.find(m => m.id === forgeState.baseMaterial);
+            materialHardness = material ? material.hardness : 0;
+        }
+        const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
+        const coolingBonus = forgeState.coolingOilQuality * FORGE_COOLING_BONUS_PER_QUALITY;
+        const handleBonus = forgeState.handleQuality * FORGE_HANDLE_BONUS_PER_QUALITY;
+        const expectedQuality = baseQuality + materialHardness + hammeringBonus + coolingBonus + handleBonus;
+        
+        // Update success probability display
+        const successProbDisplay = document.getElementById('success-probability');
+        if (successProbDisplay) {
+            successProbDisplay.textContent = `${(totalSuccessRate * 100).toFixed(1)}%`;
+            if (totalSuccessRate >= FORGE_SUCCESS_RATE_HIGH_THRESHOLD) {
+                successProbDisplay.className = 'outcome-value success-high';
+            } else if (totalSuccessRate >= FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD) {
+                successProbDisplay.className = 'outcome-value success-medium';
+            } else {
+                successProbDisplay.className = 'outcome-value success-low';
+            }
+        }
+        
+        // Update expected quality display
+        const qualityDisplay = document.getElementById('expected-quality');
+        if (qualityDisplay) {
+            if (forgeState.baseMaterial) {
+                qualityDisplay.textContent = expectedQuality.toFixed(0);
+            } else {
+                qualityDisplay.textContent = '-';
+            }
+        }
+        
+        // Enable/disable forge button
+        if (forgeButton) {
+            if (forgeState.baseMaterial && gold >= totalCost) {
+                forgeButton.disabled = false;
+            } else {
+                forgeButton.disabled = true;
+            }
+        }
+    }
+}
+
+function createInventoryInterface(container) {
+    container.innerHTML = '';
+    
+    const inventoryList = document.createElement('div');
+    inventoryList.className = 'inventory-list';
+    
+    if (toolsInventory.length === 0) {
+        inventoryList.innerHTML = '<p class="empty-message">No tools in inventory. Forge some tools first!</p>';
+    } else {
+        // Sort tools by quality/power descending
+        const sortedTools = [...toolsInventory].sort((a, b) => {
+            const powerA = a.power || a.level || 0;
+            const powerB = b.power || b.level || 0;
+            return powerB - powerA;
+        });
+        
+        sortedTools.forEach(tool => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'tool-card';
+            
+            // Check if tool is assigned to a dwarf
+            const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
+            const isAssigned = !!assignedDwarf;
+            
+            toolCard.innerHTML = `
+                <div class="tool-header">
+                    <h4>${tool.type} #${tool.id}</h4>
+                    <span class="tool-power">⚒️ ${tool.power || tool.level}</span>
+                </div>
+                <div class="tool-details">
+                    ${isAssigned 
+                        ? `<div class="tool-assigned">📌 Assigned to: <strong>${assignedDwarf.name}</strong></div>`
+                        : `<div class="tool-unassigned">🔓 Not assigned</div>`
+                    }
+                </div>
+                <div class="tool-actions">
+                    ${isAssigned 
+                        ? `<div class="tool-assigned-note">Tool is equipped and in use</div>`
+                        : `<select id="assign-select-${tool.id}" class="assign-select">
+                            <option value="">-- Assign to Dwarf --</option>
+                            ${dwarfs.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}
+                        </select>
+                        <button class="btn-primary btn-small" onclick="assignToolToDwarf(${tool.id})">Assign</button>`
+                    }
+                    <button class="btn-danger btn-small" onclick="scrapTool(${tool.id})" ${isAssigned ? 'disabled title="Cannot scrap assigned tool"' : ''}>🗑️ Scrap</button>
+                </div>
+            `;
+            
+            inventoryList.appendChild(toolCard);
+        });
+    }
+    
+    container.appendChild(inventoryList);
+}
+
+function assignToolToDwarf(toolId) {
+    const selectElement = document.getElementById(`assign-select-${toolId}`);
+    if (!selectElement || !selectElement.value) {
+        alert('Please select a dwarf first!');
         return;
     }
     
-    const upgradeCost = getToolUpgradeCost(toolInstance.type, toolInstance.level);
+    const dwarfName = selectElement.value;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
     
-    if (gold < upgradeCost) {
-        console.warn('Not enough gold to upgrade', toolInstance.type);
+    if (!dwarf) {
+        alert('Dwarf not found!');
         return;
     }
     
-    // Deduct gold and increase level
-    gold -= upgradeCost;
-    toolInstance.level += 1;
+    // Check if dwarf already has a tool
+    if (dwarf.toolId) {
+        const confirm = window.confirm(`${dwarfName} already has a tool. Replace it with this one?`);
+        if (!confirm) return;
+    }
     
-    // Log transaction
-    logTransaction('expense', upgradeCost, `Upgraded ${toolInstance.type} to level ${toolInstance.level}`);
+    // Assign the tool
+    dwarf.toolId = toolId;
     
-    // Update worker state
+    // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                gold: gold,
+                dwarfs: dwarfs,
                 toolsInventory: toolsInventory
             }
         });
     }
     
-    // Update UI
-    updateGoldDisplay();
-    populateWorkbench();
-    
-    // Save game
+    // Trigger autosave
     saveGame();
     
-    const newPower = getToolPower(toolInstance.type, toolInstance.level);
-    console.log(`Upgraded ${toolInstance.type} #${toolId} to level ${toolInstance.level} (power: ${newPower.toFixed(2)})`);
+    // Refresh the inventory display
+    const inventoryContainer = document.getElementById('forge-inventory-tab');
+    if (inventoryContainer) {
+        createInventoryInterface(inventoryContainer);
+    }
+    
+    logTransaction('income', 0, `Assigned tool #${toolId} to ${dwarfName}`);
+}
+
+function scrapTool(toolId) {
+    // Check if tool is assigned
+    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
+    if (assignedDwarf) {
+        alert(`Cannot scrap tool #${toolId} - it is assigned to ${assignedDwarf.name}. Unassign it first!`);
+        return;
+    }
+    
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const confirm = window.confirm(`Scrap ${tool.type} #${toolId}? This cannot be undone!`);
+    if (!confirm) return;
+    
+    // Remove tool from inventory
+    const index = toolsInventory.findIndex(t => t.id === toolId);
+    if (index !== -1) {
+        toolsInventory.splice(index, 1);
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Refresh the inventory display
+    const inventoryContainer = document.getElementById('forge-inventory-tab');
+    if (inventoryContainer) {
+        createInventoryInterface(inventoryContainer);
+    }
+    
+    logTransaction('income', 0, `Scrapped tool #${toolId}`);
+    
+    // Trigger autosave
+    saveGame();
 }
 
 function openSettings() {
@@ -1826,7 +2487,7 @@ async function loadVersionInfo() {
 
 function triggerCritAnimation(x, y, isOneHit = false) {
     const critKey = `${x}:${y}`;
-    const expiresAt = Date.now() + (isOneHit ? 600 : 320);
+    const expiresAt = Date.now() + (isOneHit ? ONE_HIT_ANIMATION_DURATION : CRITICAL_HIT_ANIMATION_DURATION);
     activeCritFlashes.set(critKey, { expiresAt, isOneHit });
 
     const scheduleCleanup = () => {
@@ -1843,7 +2504,7 @@ function triggerCritAnimation(x, y, isOneHit = false) {
         }
     };
 
-    setTimeout(scheduleCleanup, isOneHit ? 800 : 520);
+    setTimeout(scheduleCleanup, isOneHit ? (ONE_HIT_ANIMATION_DURATION + 200) : (CRITICAL_HIT_ANIMATION_DURATION + 200));
 
     // Find the cell in the main grid
     const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
@@ -1869,7 +2530,7 @@ function openModal(modalname) {
     if (!modal) return;
     
     // Pause game when opening settings modal
-    if (modalname === 'settings-modal' && !gamePaused) {
+    if ((modalname === 'settings-modal') && !gamePaused) {
         gamePaused = true;
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
@@ -1889,7 +2550,7 @@ function closeModal(modalName) {
             m.style.display = 'none';
         }
         // Resume game when closing settings modal
-        if (modalName === 'settings-modal' && gamePaused) {
+        if ((modalName === 'settings-modal') && gamePaused) {
             gamePaused = false;
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
@@ -2009,7 +2670,7 @@ function populateDwarfsOverview() {
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         xpTd.textContent = `${currentXP} / ${xpNeeded}`;
         
         // Find the tool assigned to this dwarf
@@ -2083,7 +2744,7 @@ function populateDwarfsInPanel() {
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         const canLevelUp = currentXP >= xpNeeded;
         
         if (canLevelUp) {
@@ -2115,14 +2776,26 @@ function populateDwarfsInPanel() {
         if (d.toolId) {
             const tool = toolsInventory.find(t => t.id === d.toolId);
             if (tool) {
-                const toolDef = getToolByType(tool.type);
-                if (toolDef) {
-                    const toolBonus = 1 + (tool.level - 1) * 0.1;
-                    const dwarfBonus = 1 + (d.digPower || 0) * 0.1;
-                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-                    const researchBonus = improvedDigging ? 1 + (improvedDigging.level || 0) * 0.01 : 1;
-                    totalPower = baseDwarfPower + (toolDef.power * toolBonus * dwarfBonus * researchBonus);
+                const levelBonus = 1 + (d.digPower || 0) * 0.1;
+                const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+                
+                // Check if tool has custom power (forged tools) or use base definition
+                let toolPower;
+                if (tool.power !== undefined) {
+                    // Forged tool with custom power
+                    toolPower = tool.power / 100;
+                } else {
+                    // Base tool - look up definition
+                    const toolDef = getToolByType(tool.type);
+                    if (toolDef) {
+                        toolPower = toolDef.power / 100;
+                    } else {
+                        toolPower = 1.0; // Fallback
+                    }
                 }
+                
+                totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
             }
         }
         
@@ -2146,14 +2819,12 @@ function populateDwarfsInPanel() {
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
         
         // Calculate wage using same logic as game-worker.js
-        const baseWage = 0.01;
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
-        const baseIncreaseRate = 0.25;
-        const researchReduction = researchLevel * 0.01;
-        const increaseRate = Math.max(0.05, baseIncreaseRate - researchReduction);
+        const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+        const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
         const dwarfLevel = (currentLevel || 1) - 1;
-        const wage = baseWage * (1 + dwarfLevel * increaseRate);
+        const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
         info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
         
@@ -2179,7 +2850,7 @@ function openLevelUpModal(dwarf) {
     content.innerHTML = '';
     
     const title = document.createElement('h3');
-    const xpNeeded = 250 * dwarf.level;
+    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
     const currentXP = dwarf.xp || 0;
     const hasEnoughXP = currentXP >= xpNeeded;
     title.textContent = `${dwarf.name} - Level ${dwarf.level} → ${dwarf.level + 1}`;
@@ -2226,8 +2897,8 @@ function openLevelUpModal(dwarf) {
     energyOption.className = 'levelup-option';
     energyOption.innerHTML = `
         <h4>⚡ Max Energy</h4>
-        <p>Increases maximum energy by 20%</p>
-        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * 1.2)}</p>
+        <p>Increases maximum energy by ${(DWARF_LEVELUP_ENERGY_MULTIPLIER - 1) * 100}%</p>
+        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER)}</p>
     `;
     const energyBtn = document.createElement('button');
     energyBtn.className = 'btn-primary';
@@ -2245,8 +2916,8 @@ function openLevelUpModal(dwarf) {
     strengthOption.className = 'levelup-option';
     strengthOption.innerHTML = `
         <h4>💪 Strength</h4>
-        <p>Increases bucket capacity by 1</p>
-        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + 1}</p>
+        <p>Increases bucket capacity by ${DWARF_LEVELUP_STRENGTH_BONUS}</p>
+        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS}</p>
     `;
     const strengthBtn = document.createElement('button');
     strengthBtn.className = 'btn-primary';
@@ -2288,7 +2959,7 @@ function openLevelUpModal(dwarf) {
     const dwarfsCanLevelUp = dwarfs.filter(d => {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = 250 * currentLevel;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
         return currentXP >= xpNeeded;
     });
     
@@ -2316,7 +2987,7 @@ function openLevelUpModal(dwarf) {
 
 // Apply the chosen level up upgrade
 function applyLevelUp(dwarf, upgradeType) {
-    const xpNeeded = 250 * dwarf.level;
+    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
     
     if (dwarf.xp < xpNeeded) {
         console.error('Not enough XP to level up');
@@ -2340,11 +3011,11 @@ function applyLevelUp(dwarf, upgradeType) {
             actualDwarf.digPower = (actualDwarf.digPower || 0) + 1;
             break;
         case 'maxEnergy':
-            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * 1.2);
+            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER);
             actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
             break;
         case 'strength':
-            actualDwarf.strength = (actualDwarf.strength || 0) + 1;
+            actualDwarf.strength = (actualDwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS;
             break;
         case 'wisdom':
             actualDwarf.wisdom = (actualDwarf.wisdom || 0) + 1;
@@ -2374,7 +3045,7 @@ function applyLevelUp(dwarf, upgradeType) {
     // Check if this dwarf can level up again
     const newXP = actualDwarf.xp || 0;
     const newLevel = actualDwarf.level || 1;
-    const newXPNeeded = 250 * newLevel;
+    const newXPNeeded = DWARF_XP_PER_LEVEL * newLevel;
     
     if (newXP >= newXPNeeded) {
         // Can level up again, refresh the modal with new level
@@ -2384,7 +3055,7 @@ function applyLevelUp(dwarf, upgradeType) {
         const dwarfsCanLevelUp = dwarfs.filter(d => {
             const currentXP = d.xp || 0;
             const currentLevel = d.level || 1;
-            const xpNeeded = 250 * currentLevel;
+            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
             return currentXP >= xpNeeded;
         });
         
@@ -2440,8 +3111,8 @@ document.addEventListener('click', (ev) => {
         case 'open-dwarfs':
             openDwarfs();
             break;
-        case 'open-workbench':
-            openWorkbench();
+        case 'open-forge':
+            openForge();
             break;
         case 'open-research':
             openResearch();
@@ -2466,16 +3137,12 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for upgrade buttons
+// Delegated event handler for forge button
 document.addEventListener('click', (ev) => {
-    const upgradeBtn = ev.target.closest('.btn-upgrade');
-    if (!upgradeBtn || upgradeBtn.disabled) return;
+    const forgeBtn = ev.target.closest('#forge-button');
+    if (!forgeBtn || forgeBtn.disabled) return;
     
-    const toolId = parseInt(upgradeBtn.dataset.toolId, 10);
-    if (!isNaN(toolId)) {
-        console.log(`Upgrade button clicked for tool ${toolId}`);
-        upgradeTool(toolId);
-    }
+    startForging();
 });
 
 // Delegated event handler for research buttons
@@ -3057,7 +3724,23 @@ function initWorker() {
             case 'tick-complete':
                 // Update game state with worker results
                 grid = data.grid;
-                dwarfs = data.dwarfs;
+                
+                // Update dwarfs while preserving toolId assignments (managed by main thread)
+                if (data.dwarfs) {
+                    data.dwarfs.forEach((workerDwarf, index) => {
+                        if (dwarfs[index]) {
+                            // Preserve toolId from main thread
+                            const toolId = dwarfs[index].toolId;
+                            dwarfs[index] = workerDwarf;
+                            if (toolId !== undefined) {
+                                dwarfs[index].toolId = toolId;
+                            }
+                        } else {
+                            dwarfs[index] = workerDwarf;
+                        }
+                    });
+                }
+                
                 startX = data.startX;
                 
                 // Check if materialsStock changed to update warehouse panel
@@ -3099,12 +3782,8 @@ function initWorker() {
                     }
                 }
                 
-                // Update toolsInventory from worker (it might be modified during digging)
-                if (data.toolsInventory) {
-                    // Update the array in place to keep the reference
-                    toolsInventory.length = 0;
-                    toolsInventory.push(...data.toolsInventory);
-                }
+                // Note: toolsInventory is managed by main thread (forge interface)
+                // Worker does not modify toolsInventory, so we don't sync it back
                 
                 // Update research state from worker
                 if (data.activeResearch !== undefined) {
@@ -3288,9 +3967,8 @@ function loadGame() {
         
         // Restore tools inventory
         if (gameState.toolsInventory) {
-            for (const key in gameState.toolsInventory) {
-                toolsInventory[key] = gameState.toolsInventory[key];
-            }
+            toolsInventory.length = 0;
+            toolsInventory.push(...gameState.toolsInventory);
         }
         
         // Restore research tree - merge saved progress with current definitions
@@ -3372,8 +4050,8 @@ window.activateCheat = function activateCheat() {
         return;
     }
     
-    // Double the current depth (startX)
-    startX = startX * 2;
+    // Multiply the current depth
+    startX = startX * CHEAT_DEPTH_MULTIPLIER;
     
     // Reset all dwarfs to home location
     for (const dwarf of dwarfs) {
@@ -3384,25 +4062,43 @@ window.activateCheat = function activateCheat() {
         dwarf.status = 'idle';
         dwarf.moveTarget = null;
         
-        // Give XP for one level (250 * current level)
-        const xpForLevel = 250 * (dwarf.level || 1);
+        // Give XP for one level
+        const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;
     }
     
-    // Add 5000 gold
-    gold += 5000;
+    // Add gold bonus
+    gold += CHEAT_GOLD_BONUS;
     
     // Log transaction
-    logTransaction('income', 5000, 'Cheat code activated');
+    logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
-    // Sync with worker
+    // Set active research to 1 point before completion
+    if (activeResearch) {
+        const researchCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level);
+        activeResearch.progress = researchCost - 1;
+        console.log(`Active research "${activeResearch.name}" set to 1 point before completion (${activeResearch.progress}/${researchCost})`);
+    }
+    
+    // Give 5 of each material
+    let materialsAdded = 0;
+    for (const material of materials) {
+        materialsStock[material.id] = (materialsStock[material.id] || 0) + 5;
+        materialsAdded++;
+    }
+    console.log(`Added 5 of each material (${materialsAdded} materials)`);
+    
+    // Sync with worker - send ALL updated state
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
                 startX: startX,
                 dwarfs: dwarfs,
-                gold: gold
+                gold: gold,
+                materialsStock: materialsStock,
+                activeResearch: activeResearch,
+                researchtree: researchtree
             }
         });
     }
@@ -3411,12 +4107,14 @@ window.activateCheat = function activateCheat() {
     updateGridDisplay();
     updateGoldDisplay();
     populateDwarfsInPanel();
+    updateStockPanel();
+    populateResearch();
     
     // Save game
     saveGame();
     
-    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Dwarfs: reset to home with XP`);
-    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\nAll dwarfs reset to home with XP bonus`);
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus`);
 }
 
 function initializeGame() {
