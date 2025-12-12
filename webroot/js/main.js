@@ -585,7 +585,6 @@ async function startForging() {
         // Calculate quality components
         const material = materials.find(m => m.id === forgeState.baseMaterial);
         const materialHardness = material ? material.hardness : 0;
-        const materialName = material ? material.name : 'Unknown';
         const baseQuality = 10;
         const hammeringBonus = forgeState.hammeringCount * 8;
         const coolingBonus = forgeState.coolingOilQuality * 2;
