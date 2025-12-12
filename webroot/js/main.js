@@ -535,6 +535,17 @@ async function startForging() {
     updateGoldDisplay();
     logTransaction('expense', totalCost, 'Forging materials and tools');
     
+    // Immediately sync gold deduction with worker to prevent it being overwritten
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gold: gold
+            }
+        });
+    }
+    saveGame();
+    
     // Close forge modal and show animation modal
     closeModal('forge-modal');
     openModal('forging-animation-modal');
@@ -2503,8 +2514,8 @@ function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
     
-    // Pause game when opening settings modal
-    if (modalname === 'settings-modal' && !gamePaused) {
+    // Pause game when opening settings modal or forge modal
+    if ((modalname === 'settings-modal' || modalname === 'forge-modal') && !gamePaused) {
         gamePaused = true;
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
@@ -2523,8 +2534,8 @@ function closeModal(modalName) {
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
-        // Resume game when closing settings modal
-        if (modalName === 'settings-modal' && gamePaused) {
+        // Resume game when closing settings modal or forge modal
+        if ((modalName === 'settings-modal' || modalName === 'forge-modal') && gamePaused) {
             gamePaused = false;
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
