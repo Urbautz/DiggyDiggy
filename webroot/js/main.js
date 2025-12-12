@@ -2233,7 +2233,7 @@ function updateForgeState() {
     
     if (totalCostDisplay) {
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-        const handleCost = 100 * Math.pow(1.5, forgeState.handleQuality - 1);
+        const handleCost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
         const totalCost = coolingCost + handleCost;
         totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
         
