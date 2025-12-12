@@ -519,32 +519,20 @@ async function startForging() {
         return;
     }
     
-    // Calculate costs
-    const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-    const handleCost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
+    // Calculate costs for validation
+    const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+    const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
     const totalCost = coolingCost + handleCost;
     
-    // Check gold
+    // Check gold upfront
     if (gold < totalCost) {
         alert(`Not enough gold! Need ${totalCost.toFixed(0)}, have ${gold.toFixed(0)}.`);
         return;
     }
     
-    // Deduct costs
-    gold -= totalCost;
-    updateGoldDisplay();
-    logTransaction('expense', totalCost, 'Forging materials and tools');
-    
-    // Immediately sync gold deduction with worker to prevent it being overwritten
-    if (gameWorker && workerInitialized) {
-        gameWorker.postMessage({
-            type: 'update-state',
-            data: {
-                gold: gold
-            }
-        });
-    }
-    saveGame();
+    // Costs will be deducted during the forging process:
+    // - Cooling cost after successful hammering
+    // - Handle cost before mounting handle
     
     // Close forge modal and show animation modal
     closeModal('forge-modal');
@@ -585,10 +573,10 @@ async function startForging() {
         // Calculate quality components
         const material = materials.find(m => m.id === forgeState.baseMaterial);
         const materialHardness = material ? material.hardness : 0;
-        const baseQuality = 10;
-        const hammeringBonus = forgeState.hammeringCount * 8;
-        const coolingBonus = forgeState.coolingOilQuality * 2;
-        const handleBonus = forgeState.handleQuality * 1.5;
+        const baseQuality = FORGE_BASE_QUALITY;
+        const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
+        const coolingBonus = forgeState.coolingOilQuality * FORGE_COOLING_BONUS_PER_QUALITY;
+        const handleBonus = forgeState.handleQuality * FORGE_HANDLE_BONUS_PER_QUALITY;
         
         let currentQuality = baseQuality + materialHardness;
         
@@ -600,7 +588,7 @@ async function startForging() {
             await sleep(1200);
             
             // Check if material destroyed during hammering
-            if (Math.random() > 0.90) {
+            if (Math.random() > FORGE_HAMMERING_SUCCESS_RATE) {
                 animationContent.innerHTML = `<div class="forging-anvil">💥</div><div class="forging-message forging-failure">Material destroyed during hammering!</div>`;
                 await sleep(2000);
                 hammeringFailed = true;
@@ -608,7 +596,7 @@ async function startForging() {
             }
             
             // Show completion of this hammer strike with quality
-            const strikeQuality = Math.round(currentQuality + (i + 1) * 8);
+            const strikeQuality = Math.round(currentQuality + (i + 1) * FORGE_HAMMERING_BONUS_PER_ITERATION);
             animationContent.innerHTML = `<div class="forging-anvil">🔨</div><div class="forging-message">Hammering complete (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${strikeQuality}</div>`;
             await sleep(800);
         }
@@ -624,11 +612,26 @@ async function startForging() {
         animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Hammering successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
         await sleep(1000);
         
+        // Deduct cooling cost (only after successful hammering)
+        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+        if (coolingCost > 0) {
+            gold -= coolingCost;
+            updateGoldDisplay();
+            logTransaction('expense', coolingCost, 'Cooling oil for forging');
+            saveGame();
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: { gold: gold }
+                });
+            }
+        }
+        
         // Cooling step
         animationContent.innerHTML = `<div class="forging-anvil shake">💧</div><div class="forging-message">Cooling...</div>`;
         await sleep(1800);
         
-        const coolingBrittleChance = Math.max(0, 0.30 - (forgeState.coolingOilQuality - 1) * 0.012);
+        const coolingBrittleChance = Math.max(0, FORGE_COOLING_BASE_BRITTLE_CHANCE - (forgeState.coolingOilQuality - 1) * FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY);
         if (Math.random() < coolingBrittleChance) {
             animationContent.innerHTML = `<div class="forging-anvil">💔</div><div class="forging-message forging-failure">Material became brittle during cooling!</div>`;
             await sleep(2000);
@@ -640,6 +643,19 @@ async function startForging() {
         // Show cooling success
         animationContent.innerHTML = `<div class="forging-anvil">❄️</div><div class="forging-message forging-success">Cooling successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
         await sleep(1200);
+        
+        // Deduct handle cost before mounting
+        const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
+        gold -= handleCost;
+        updateGoldDisplay();
+        logTransaction('expense', handleCost, 'Handle for forging');
+        saveGame();
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gold: gold }
+            });
+        }
         
         // Handle mounting step
         animationContent.innerHTML = `<div class="forging-anvil shake">🪓</div><div class="forging-message">Mounting handle...</div>`;
@@ -653,14 +669,14 @@ async function startForging() {
         
         // Sharpening step - 3 iterations
         let sharpeningQuality = currentQuality;
-        const sharpeningIterations = 3;
+        const sharpeningIterations = FORGE_SHARPENING_ITERATIONS;
         
         for (let i = 0; i < sharpeningIterations; i++) {
             animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Sharpening... (${i + 1}/${sharpeningIterations})</div>`;
             await sleep(1200);
             
             // Apply percentage-based sharpening variance: -5% to +20% of current quality
-            const variancePercent = (Math.random() * 0.25) - 0.05; // Random value from -0.05 to +0.20
+            const variancePercent = (Math.random() * (FORGE_SHARPENING_MAX_VARIANCE - FORGE_SHARPENING_MIN_VARIANCE)) + FORGE_SHARPENING_MIN_VARIANCE;
             const iterationVariance = sharpeningQuality * variancePercent;
             sharpeningQuality += iterationVariance;
             
@@ -2047,8 +2063,8 @@ function createForgeInterface(container) {
     step2.innerHTML = `
         <h3>Step 2: Hammering</h3>
         <label for="hammering-slider">Hammering Iterations: <span id="hammering-value">1</span></label>
-        <input type="range" id="hammering-slider" min="1" max="10" value="1" step="1">
-        <p class="forge-warning">⚠️ There is a 10% chance to destroy the material during each iteration, but the outcome quality will improve with more iterations.</p>
+        <input type="range" id="hammering-slider" min="1" max="${FORGE_HAMMERING_MAX_ITERATIONS}" value="1" step="1">
+        <p class="forge-warning">⚠️ There is a ${((1 - FORGE_HAMMERING_SUCCESS_RATE) * 100).toFixed(0)}% chance to destroy the material during each iteration, but the outcome quality will improve with more iterations.</p>
     `;
     container.appendChild(step2);
     
@@ -2058,8 +2074,8 @@ function createForgeInterface(container) {
     step3.innerHTML = `
         <h3>Step 3: Cooling</h3>
         <label for="cooling-slider">Cooling Oil Quality: <span id="cooling-value">1</span> (Cost: <span id="cooling-cost">0</span> 💰) <span id="cooling-affordable" class="affordability-indicator"></span></label>
-        <input type="range" id="cooling-slider" min="1" max="25" value="1" step="1">
-        <p class="forge-warning">⚠️ 30% chance the material will become brittle when cooling. Better coolant will decrease this probability.</p>
+        <input type="range" id="cooling-slider" min="1" max="${FORGE_COOLING_MAX_QUALITY}" value="1" step="1">
+        <p class="forge-warning">⚠️ ${(FORGE_COOLING_BASE_BRITTLE_CHANCE * 100).toFixed(0)}% chance the material will become brittle when cooling. Better coolant will decrease this probability.</p>
     `;
     container.appendChild(step3);
     
@@ -2077,8 +2093,8 @@ function createForgeInterface(container) {
     step5.className = 'forge-step';
     step5.innerHTML = `
         <h3>Step 5: Mount Handle</h3>
-        <label for="handle-slider">Handle Quality: <span id="handle-value">1</span> (Cost: <span id="handle-cost">100</span> 💰) <span id="handle-affordable" class="affordability-indicator"></span></label>
-        <input type="range" id="handle-slider" min="1" max="100" value="1" step="1">
+        <label for="handle-slider">Handle Quality: <span id="handle-value">1</span> (Cost: <span id="handle-cost">${FORGE_HANDLE_BASE_COST}</span> 💰) <span id="handle-affordable" class="affordability-indicator"></span></label>
+        <input type="range" id="handle-slider" min="1" max="${FORGE_HANDLE_MAX_QUALITY}" value="1" step="1">
         <p class="forge-info">The handle determines comfort and durability. Better handles improve the overall tool quality.</p>
     `;
     container.appendChild(step5);
@@ -2231,18 +2247,18 @@ function updateForgeState() {
     const forgeButton = document.getElementById('forge-button');
     
     if (totalCostDisplay) {
-        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-        const handleCost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
+        const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
+        const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
         const totalCost = coolingCost + handleCost;
         totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
         
         // Calculate success probability
         // Base: 90% chance to survive hammering per iteration
-        const hammeringSuccessRate = Math.pow(0.90, forgeState.hammeringCount);
+        const hammeringSuccessRate = Math.pow(FORGE_HAMMERING_SUCCESS_RATE, forgeState.hammeringCount);
         
         // Cooling: 70% base success rate, improved by coolant quality
         // Each level reduces brittleness chance by ~1.2%
-        const coolingBrittleChance = Math.max(0, 0.30 - (forgeState.coolingOilQuality - 1) * 0.012);
+        const coolingBrittleChance = Math.max(0, FORGE_COOLING_BASE_BRITTLE_CHANCE - (forgeState.coolingOilQuality - 1) * FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY);
         const coolingSuccessRate = 1 - coolingBrittleChance;
         
         // Overall success probability
@@ -2250,24 +2266,24 @@ function updateForgeState() {
         
         // Calculate expected quality (simplified model)
         // Quality improves with: base material hardness, hammering iterations, cooling oil quality, handle quality
-        const baseQuality = 10;
+        const baseQuality = FORGE_BASE_QUALITY;
         let materialHardness = 0;
         if (forgeState.baseMaterial) {
             const material = materials.find(m => m.id === forgeState.baseMaterial);
             materialHardness = material ? material.hardness : 0;
         }
-        const hammeringBonus = forgeState.hammeringCount * 8;
-        const coolingBonus = forgeState.coolingOilQuality * 2;
-        const handleBonus = forgeState.handleQuality * 1.5;
+        const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
+        const coolingBonus = forgeState.coolingOilQuality * FORGE_COOLING_BONUS_PER_QUALITY;
+        const handleBonus = forgeState.handleQuality * FORGE_HANDLE_BONUS_PER_QUALITY;
         const expectedQuality = baseQuality + materialHardness + hammeringBonus + coolingBonus + handleBonus;
         
         // Update success probability display
         const successProbDisplay = document.getElementById('success-probability');
         if (successProbDisplay) {
             successProbDisplay.textContent = `${(totalSuccessRate * 100).toFixed(1)}%`;
-            if (totalSuccessRate >= 0.7) {
+            if (totalSuccessRate >= FORGE_SUCCESS_RATE_HIGH_THRESHOLD) {
                 successProbDisplay.className = 'outcome-value success-high';
-            } else if (totalSuccessRate >= 0.4) {
+            } else if (totalSuccessRate >= FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD) {
                 successProbDisplay.className = 'outcome-value success-medium';
             } else {
                 successProbDisplay.className = 'outcome-value success-low';
@@ -2513,8 +2529,8 @@ function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
     
-    // Pause game when opening settings modal or forge modal
-    if ((modalname === 'settings-modal' || modalname === 'forge-modal') && !gamePaused) {
+    // Pause game when opening settings modal
+    if ((modalname === 'settings-modal') && !gamePaused) {
         gamePaused = true;
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
@@ -2533,8 +2549,8 @@ function closeModal(modalName) {
             m.setAttribute('aria-hidden', 'true');
             m.style.display = 'none';
         }
-        // Resume game when closing settings modal or forge modal
-        if ((modalName === 'settings-modal' || modalName === 'forge-modal') && gamePaused) {
+        // Resume game when closing settings modal
+        if ((modalName === 'settings-modal') && gamePaused) {
             gamePaused = false;
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });

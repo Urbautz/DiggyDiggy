@@ -56,6 +56,27 @@ const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
 const TASK_RESEARCH_CHANCE = 0.5; // 50% chance to do research/smelting instead of digging
 const TASK_RESEARCH_SPLIT = 0.5; // 50/50 split between research and smelting
 
+// Forging constants
+const FORGE_BASE_QUALITY = 10; // Base quality before material hardness
+const FORGE_HAMMERING_BONUS_PER_ITERATION = 8; // Quality bonus per hammering iteration
+const FORGE_HAMMERING_SUCCESS_RATE = 0.90; // 90% success rate per hammering iteration
+const FORGE_HAMMERING_MAX_ITERATIONS = 10; // Maximum hammering iterations
+const FORGE_COOLING_BONUS_PER_QUALITY = 2; // Quality bonus per cooling oil quality point
+const FORGE_COOLING_BASE_BRITTLE_CHANCE = 0.30; // 30% base chance of brittle failure
+const FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY = 0.012; // 1.2% brittle chance reduction per quality
+const FORGE_COOLING_MAX_QUALITY = 25; // Maximum cooling oil quality
+const FORGE_COOLING_BASE_COST = 500; // Base cost for quality 2+ cooling oil
+const FORGE_COOLING_COST_MULTIPLIER = 1.25; // Cost multiplier per quality level
+const FORGE_HANDLE_BONUS_PER_QUALITY = 1.5; // Quality bonus per handle quality point
+const FORGE_HANDLE_MAX_QUALITY = 100; // Maximum handle quality
+const FORGE_HANDLE_BASE_COST = 100; // Base cost for handle quality
+const FORGE_HANDLE_COST_MULTIPLIER = 1.15; // Cost multiplier per quality level
+const FORGE_SHARPENING_ITERATIONS = 3; // Fixed number of sharpening passes
+const FORGE_SHARPENING_MIN_VARIANCE = -0.05; // -5% minimum sharpening variance
+const FORGE_SHARPENING_MAX_VARIANCE = 0.20; // +20% maximum sharpening variance
+const FORGE_SUCCESS_RATE_HIGH_THRESHOLD = 0.7; // 70% success rate threshold for "high" rating
+const FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD = 0.4; // 40% success rate threshold for "medium" rating
+
 const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
 
@@ -172,8 +193,8 @@ let researchtree = [
       description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'forge-temperature', name: 'Forge Temperature', cost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
-      description: 'Increases maximum forge temperature by 100° per level (from 1500° to 3000°).' },
+    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
