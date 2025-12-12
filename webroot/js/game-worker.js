@@ -390,39 +390,46 @@ function actForDwarf(dwarf) {
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
     if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
 
-    // Check for stuck dwarf
+    // Check for stuck dwarf - only track when actively moving or digging
+    const shouldTrackStuck = (dwarf.status === 'moving' || dwarf.status === 'digging' || dwarf.status === 'idle');
     const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
     const trackKey = dwarf.name; // Use name as unique key
     const tracked = stuckTracking.get(trackKey);
     
-    if (tracked) {
-        // Check if position or hardness changed
-        if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
-            // Dwarf moved or made progress, reset tracking
-            stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
-        } else {
-            // Same position and hardness, increment stuck counter
-            tracked.ticks++;
-            if (tracked.ticks >= STUCK_DETECTION_TICKS) {
-                // Stuck! Teleport to house and reset
-                console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
-                dwarf.x = house.x;
-                dwarf.y = house.y;
-                dwarf.status = 'idle';
-                dwarf.moveTarget = null;
-                // Clear any reservations
-                for (const [key, val] of reservedDigBy.entries()) {
-                    if (val === dwarf.name) reservedDigBy.delete(key);
+    if (shouldTrackStuck) {
+        if (tracked) {
+            // Check if position or hardness changed
+            if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
+                // Dwarf moved or made progress, reset tracking
+                stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+            } else {
+                // Same position and hardness, increment stuck counter
+                tracked.ticks++;
+                if (tracked.ticks >= STUCK_DETECTION_TICKS) {
+                    // Stuck! Teleport to house and reset
+                    console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    dwarf.x = house.x;
+                    dwarf.y = house.y;
+                    dwarf.status = 'idle';
+                    dwarf.moveTarget = null;
+                    dwarf.bucket = {}; // Clear bucket to prevent stuck with full bucket
+                    // Clear any reservations
+                    for (const [key, val] of reservedDigBy.entries()) {
+                        if (val === dwarf.name) reservedDigBy.delete(key);
+                    }
+                    if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                    if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                    stuckTracking.delete(trackKey);
+                    return;
                 }
-                if (researchReservedBy === dwarf.name) researchReservedBy = null;
-                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                stuckTracking.delete(trackKey);
-                return;
             }
+        } else {
+            // First time tracking this dwarf
+            stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
         }
     } else {
-        // First time tracking this dwarf
-        stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
+        // Not tracking (resting, researching, etc.) - clear stuck tracking
+        if (tracked) stuckTracking.delete(trackKey);
     }
 
     //console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
@@ -1067,12 +1074,16 @@ function actForDwarf(dwarf) {
     const dir = Math.random() < 0.5 ? 1 : -1;
     if (movedDownByChance) foundCol = originalX;
     if (!skipHorizontalScan) {
+        // Check if dwarf has been stuck for a while - allow overriding reservations
+        const tracked = stuckTracking.get(dwarf.name);
+        const isNearStuck = tracked && tracked.ticks > STUCK_DETECTION_TICKS * 0.5;
+        
         for (let offset = 0; offset < row.length; offset++) {
             const c = (originalX + dir * offset + row.length) % row.length;
             if (!(row[c] && row[c].hardness > 0)) continue;
-            if (isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf.name) continue;
+            // Allow near-stuck dwarfs to override reservations
+            if (!isNearStuck && isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf.name) continue;
             if (isCellOccupiedByStanding(c, rowIndex)) {
-                console.log(`Cell (${c},${rowIndex}) is occupied by a standing dwarf — skipping`);
                 continue;
             }
             foundCol = c;
@@ -1085,16 +1096,22 @@ function actForDwarf(dwarf) {
         const nextRowIndex = rowIndex + 1;
         if (nextRowIndex >= grid.length) {
             console.log(`No diggable cell found on row ${rowIndex} and no row below for dwarf ${dwarf.name}`);
+            // Fallback: move to random adjacent cell to break stuck state
+            const randomCol = (dwarf.x + (Math.random() < 0.5 ? 1 : -1) + gridWidth) % gridWidth;
+            scheduleMove(dwarf, randomCol, dwarf.y);
             return;
         }
 
         const nextRow = grid[nextRowIndex];
         let foundBelow = -1;
+        const tracked = stuckTracking.get(dwarf.name);
+        const isNearStuck = tracked && tracked.ticks > STUCK_DETECTION_TICKS * 0.5;
 
         for (let offset = 0; offset < nextRow.length; offset++) {
             const c = (originalX + dir * offset + nextRow.length) % nextRow.length;
             if (!(nextRow[c] && nextRow[c].hardness > 0)) continue;
-            if (isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf.name) continue;
+            // Allow near-stuck dwarfs to override reservations
+            if (!isNearStuck && isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf.name) continue;
             if (isCellOccupiedByStanding(c, nextRowIndex)) continue;
             foundBelow = c;
             break;
@@ -1102,6 +1119,14 @@ function actForDwarf(dwarf) {
 
         if (foundBelow === -1) {
             console.log(`No diggable cell found on row ${rowIndex} or row ${nextRowIndex} for dwarf ${dwarf.name}`);
+            // Fallback: try moving to house or random location
+            if (house && Math.random() < 0.7) {
+                scheduleMove(dwarf, house.x, house.y);
+            } else {
+                const randomCol = Math.floor(Math.random() * gridWidth);
+                const randomRow = Math.min(rowIndex + Math.floor(Math.random() * 3), grid.length - 1);
+                scheduleMove(dwarf, randomCol, randomRow);
+            }
             return;
         }
 
@@ -1121,6 +1146,13 @@ function actForDwarf(dwarf) {
         if (!dwarf.moveTarget) {
             if (!scheduleMove(dwarf, foundCol, dwarf.y)) {
                 console.log(`Dwarf ${dwarf.name} can't reserve (${foundCol},${dwarf.y}) — already reserved or not visible`);
+                // Try adjacent column as fallback
+                const altCol = (foundCol + 1) % gridWidth;
+                if (!scheduleMove(dwarf, altCol, dwarf.y)) {
+                    // Last resort: random movement
+                    const randomCol = Math.floor(Math.random() * gridWidth);
+                    scheduleMove(dwarf, randomCol, dwarf.y);
+                }
                 return;
             }
             //console.log(`Dwarf ${dwarf.name} planning move to (${foundCol},${dwarf.y})`);
