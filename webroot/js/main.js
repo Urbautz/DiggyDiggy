@@ -712,6 +712,21 @@ async function startForging() {
         };
         toolsInventory.push(newTool);
         
+        // Build dwarf options with current tool info
+        const dwarfOptions = dwarfs.map(d => {
+            let label = d.name;
+            if (d.toolId) {
+                const currentTool = toolsInventory.find(t => t.id === d.toolId);
+                if (currentTool) {
+                    const currentPower = currentTool.power || currentTool.level || 0;
+                    label += ` (⚒️ ${currentPower})`;
+                }
+            } else {
+                label += ' (no tool)';
+            }
+            return `<option value="${d.name}">${label}</option>`;
+        }).join('');
+        
         animationContent.innerHTML = `
             <div class="forging-anvil">⚒️</div>
             <div class="forging-message forging-success">Success!</div>
@@ -720,7 +735,18 @@ async function startForging() {
                 <p>Power: ${finalQuality}</p>
                 <p>Attempts used: ${attemptsUsed}</p>
             </div>
-            <button class="btn-primary" onclick="closeForging()">Return to Forge</button>
+            <div class="forging-assign">
+                <label>Name your tool:</label>
+                <input type="text" id="forge-name-input" class="forge-name-input" placeholder="${materialName} Pickaxe" maxlength="30">
+            </div>
+            <div class="forging-assign">
+                <label>Assign to dwarf:</label>
+                <select id="forge-assign-select" class="assign-select-small">
+                    <option value="">-- Don't assign --</option>
+                    ${dwarfOptions}
+                </select>
+            </div>
+            <button class="btn-primary" onclick="closeForging(${newToolId}, '${materialName} Pickaxe')">Done</button>
         `;
         
         logTransaction('income', 0, `Forged new tool with quality ${finalQuality}`);
@@ -752,7 +778,42 @@ async function startForging() {
     }
 }
 
-function closeForging() {
+function closeForging(newToolId, defaultName) {
+    // Check if a custom name was entered
+    const nameInput = document.getElementById('forge-name-input');
+    if (nameInput && newToolId) {
+        const customName = nameInput.value.trim();
+        if (customName) {
+            const tool = toolsInventory.find(t => t.id === newToolId);
+            if (tool) {
+                tool.name = customName;
+            }
+        }
+    }
+    
+    // Check if a dwarf was selected for assignment
+    const selectElement = document.getElementById('forge-assign-select');
+    if (selectElement && selectElement.value && newToolId) {
+        const dwarfName = selectElement.value;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            dwarf.toolId = newToolId;
+            logTransaction('income', 0, `Assigned tool #${newToolId} to ${dwarfName}`);
+            
+            // Sync with worker
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: {
+                        dwarfs: dwarfs,
+                        toolsInventory: toolsInventory
+                    }
+                });
+            }
+            saveGame();
+        }
+    }
+    
     closeModal('forging-animation-modal');
     updateStockDisplay(); // Update stock display
     openModal('forge-modal');
@@ -1929,74 +1990,8 @@ function populateForge() {
     
     container.innerHTML = '';
     
-    // Default to create tab
-    if (!window.currentForgeTab) {
-        window.currentForgeTab = 'create';
-    }
-    
-    // Create tabs with finance-style design
-    const tabsContainer = document.createElement('div');
-    tabsContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;';
-    
-    const createTabBtn = document.createElement('button');
-    createTabBtn.id = 'forge-tab-create';
-    createTabBtn.className = 'forge-tab';
-    createTabBtn.textContent = 'Create Tool';
-    createTabBtn.onclick = () => switchForgeTab('create');
-    
-    const inventoryTabBtn = document.createElement('button');
-    inventoryTabBtn.id = 'forge-tab-inventory';
-    inventoryTabBtn.className = 'forge-tab';
-    inventoryTabBtn.textContent = 'Tools Inventory';
-    inventoryTabBtn.onclick = () => switchForgeTab('inventory');
-    
-    tabsContainer.appendChild(createTabBtn);
-    tabsContainer.appendChild(inventoryTabBtn);
-    container.appendChild(tabsContainer);
-    
-    // Create tab content containers
-    const createTabContent = document.createElement('div');
-    createTabContent.id = 'forge-create-tab';
-    createTabContent.className = 'forge-tab-content';
-    container.appendChild(createTabContent);
-    
-    const inventoryTabContent = document.createElement('div');
-    inventoryTabContent.id = 'forge-inventory-tab';
-    inventoryTabContent.className = 'forge-tab-content';
-    container.appendChild(inventoryTabContent);
-    
-    // Create forge interface in create tab
-    createForgeInterface(createTabContent);
-    
-    // Create inventory interface in inventory tab
-    createInventoryInterface(inventoryTabContent);
-    
-    // Apply initial tab state
-    switchForgeTab(window.currentForgeTab);
-}
-
-function switchForgeTab(tab) {
-    window.currentForgeTab = tab;
-    
-    // Update tab button styles
-    const createTab = document.getElementById('forge-tab-create');
-    const inventoryTab = document.getElementById('forge-tab-inventory');
-    const createContent = document.getElementById('forge-create-tab');
-    const inventoryContent = document.getElementById('forge-inventory-tab');
-    
-    if (tab === 'create') {
-        createTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
-        createContent.style.display = 'block';
-        inventoryContent.style.display = 'none';
-    } else {
-        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        createTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
-        inventoryContent.style.display = 'block';
-        createContent.style.display = 'none';
-        // Refresh inventory when switching to it
-        createInventoryInterface(inventoryContent);
-    }
+    // Create forge interface directly (no tabs)
+    createForgeInterface(container);
 }
 
 // Forge state - tracks the current forging process
@@ -2594,6 +2589,16 @@ function openDwarfs() {
     // Mark panel as showing dwarfs view
     panel.dataset.view = 'dwarfs';
     
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === 'dwarfs') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
     // Remove Sell All button from header
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
@@ -2605,10 +2610,6 @@ function openDwarfs() {
     // Remove total stock value from header
     const totalValueSpan = document.getElementById('total-stock-value');
     if (totalValueSpan) totalValueSpan.remove();
-    
-    // Update header
-    const header = panel.querySelector('.materials-panel-header h3');
-    if (header) header.textContent = 'Dwarfs';
     
     // Set grid layout for dwarfs
     const list = document.getElementById('materials-list');
@@ -2632,17 +2633,327 @@ function showWarehousePanel() {
     // Mark panel as showing warehouse view
     panel.dataset.view = 'warehouse';
     
-    // Update header
+    // Reset initialized flag and clear content so warehouse structure gets rebuilt
+    const list = document.getElementById('materials-list');
+    if (list) {
+        list.dataset.initialized = 'false';
+        list.innerHTML = '';
+        list.removeAttribute('data-view');
+    }
+    
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === 'warehouse') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
-    
-    // Remove grid layout for warehouse
-    const list = document.getElementById('materials-list');
-    if (list) list.removeAttribute('data-view');
     
     // Show warehouse content
     stopDwarfsLiveUpdate();
     updateMaterialsPanel();
+}
+
+// Show tools inventory in the materials panel
+function showToolsPanel() {
+    const panel = document.getElementById('materials-panel');
+    if (!panel) return;
+    
+    // Mark panel as showing tools view
+    panel.dataset.view = 'tools';
+    
+    // Stop dwarfs live update
+    stopDwarfsLiveUpdate();
+    
+    // Remove header buttons that are specific to warehouse
+    const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+    
+    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    
+    const totalValueSpan = document.getElementById('total-stock-value');
+    if (totalValueSpan) totalValueSpan.remove();
+    
+    // Clear and populate tools
+    const list = document.getElementById('materials-list');
+    if (list) {
+        list.dataset.initialized = 'false';
+        list.innerHTML = '';
+        list.setAttribute('data-view', 'tools');
+    }
+    
+    populateToolsInPanel();
+}
+
+// Populate tools inventory in the materials panel
+function populateToolsInPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    if (toolsInventory.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'empty-message';
+        emptyMsg.innerHTML = '<p>No tools in inventory.</p><p>Open the Forge to create tools!</p>';
+        list.appendChild(emptyMsg);
+        return;
+    }
+    
+    // Sort tools by quality/power descending
+    const sortedTools = [...toolsInventory].sort((a, b) => {
+        const powerA = a.power || a.level || 0;
+        const powerB = b.power || b.level || 0;
+        return powerB - powerA;
+    });
+    
+    sortedTools.forEach(tool => {
+        const toolCard = document.createElement('div');
+        toolCard.className = 'tool-card-panel';
+        
+        // Check if tool is assigned to a dwarf
+        const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
+        const isAssigned = !!assignedDwarf;
+        const toolPower = tool.power || tool.level || 0;
+        
+        const header = document.createElement('div');
+        header.className = 'tool-card-header';
+        const displayName = tool.name || `${tool.type} #${tool.id}`;
+        header.innerHTML = `
+            <span class="tool-name">${displayName}</span>
+            <span class="tool-power">⚒️ ${toolPower}</span>
+        `;
+        
+        const actions = document.createElement('div');
+        actions.className = 'tool-card-actions';
+        
+        // Rename button
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'btn-secondary btn-tiny';
+        renameBtn.textContent = '✏️';
+        renameBtn.title = 'Rename tool';
+        renameBtn.onclick = () => renameToolFromPanel(tool.id);
+        actions.appendChild(renameBtn);
+        
+        // Dropdown for assigning (shows current assignment or allows selection)
+        const select = document.createElement('select');
+        select.id = `panel-assign-select-${tool.id}`;
+        select.className = 'assign-select-small';
+        select.innerHTML = `<option value="">-- Unassigned --</option>` + 
+            dwarfs.map(d => `<option value="${d.name}"${d.name === (assignedDwarf?.name || '') ? ' selected' : ''}>${d.name}</option>`).join('');
+        select.onchange = () => assignToolFromPanel(tool.id, toolPower);
+        actions.appendChild(select);
+        
+        // Enchant button (placeholder)
+        const enchantBtn = document.createElement('button');
+        enchantBtn.className = 'btn-secondary btn-tiny';
+        enchantBtn.textContent = '✨ Enchant';
+        enchantBtn.title = 'Enchant (coming soon)';
+        enchantBtn.style.opacity = '0.5';
+        enchantBtn.style.cursor = 'not-allowed';
+        actions.appendChild(enchantBtn);
+        
+        // Gems button (placeholder)
+        const gemsBtn = document.createElement('button');
+        gemsBtn.className = 'btn-secondary btn-tiny';
+        gemsBtn.textContent = '💎 Gems';
+        gemsBtn.title = 'Add Gems (coming soon)';
+        gemsBtn.style.opacity = '0.5';
+        gemsBtn.style.cursor = 'not-allowed';
+        actions.appendChild(gemsBtn);
+        
+        // Sell button
+        const sellBtn = document.createElement('button');
+        sellBtn.className = 'btn-sell btn-tiny';
+        sellBtn.textContent = `💰 Sell (${toolPower})`;
+        sellBtn.title = isAssigned ? 'Cannot sell assigned tool' : `Sell for ${toolPower} gold`;
+        sellBtn.disabled = isAssigned;
+        sellBtn.onclick = () => sellToolFromPanel(tool.id);
+        actions.appendChild(sellBtn);
+        
+        toolCard.appendChild(header);
+        toolCard.appendChild(actions);
+        
+        list.appendChild(toolCard);
+    });
+}
+
+// Assign tool from tools panel
+function assignToolFromPanel(toolId, newToolPower) {
+    const selectElement = document.getElementById(`panel-assign-select-${toolId}`);
+    if (!selectElement) return;
+    
+    const dwarfName = selectElement.value;
+    
+    // If selecting "Unassigned", remove tool from any dwarf that has it
+    if (!dwarfName) {
+        const currentOwner = dwarfs.find(d => d.toolId === toolId);
+        if (currentOwner) {
+            currentOwner.toolId = null;
+            
+            // Sync with worker
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: {
+                        dwarfs: dwarfs,
+                        toolsInventory: toolsInventory
+                    }
+                });
+            }
+            
+            saveGame();
+            populateToolsInPanel();
+            logTransaction('income', 0, `Unassigned tool #${toolId} from ${currentOwner.name}`);
+        }
+        return;
+    }
+    
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    
+    if (!dwarf) {
+        alert('Dwarf not found!');
+        return;
+    }
+    
+    // Check if dwarf already has a tool with higher power
+    if (dwarf.toolId) {
+        const currentTool = toolsInventory.find(t => t.id === dwarf.toolId);
+        const currentPower = currentTool ? (currentTool.power || currentTool.level || 0) : 0;
+        
+        if (currentPower > newToolPower) {
+            const confirm = window.confirm(`${dwarfName} has a better tool (⚒️ ${currentPower}). Replace with this weaker one (⚒️ ${newToolPower})?`);
+            if (!confirm) {
+                // Reset dropdown to previous value
+                populateToolsInPanel();
+                return;
+            }
+        }
+    }
+    
+    // Remove tool from previous owner if any
+    const previousOwner = dwarfs.find(d => d.toolId === toolId);
+    if (previousOwner && previousOwner.name !== dwarfName) {
+        previousOwner.toolId = null;
+    }
+    
+    // Assign the tool
+    dwarf.toolId = toolId;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                dwarfs: dwarfs,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+    
+    logTransaction('income', 0, `Assigned tool #${toolId} to ${dwarfName}`);
+}
+
+// Rename tool from tools panel
+function renameToolFromPanel(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const currentName = tool.name || `${tool.type} #${tool.id}`;
+    const newName = prompt('Enter a new name for this tool:', currentName);
+    
+    if (newName === null) return; // Cancelled
+    
+    const trimmedName = newName.trim();
+    if (trimmedName === '') {
+        // Clear custom name, revert to default
+        delete tool.name;
+    } else {
+        tool.name = trimmedName;
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+}
+
+// Sell tool from tools panel
+function sellToolFromPanel(toolId) {
+    // Check if tool is assigned
+    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
+    if (assignedDwarf) {
+        alert(`Cannot sell tool #${toolId} - it is assigned to ${assignedDwarf.name}.`);
+        return;
+    }
+    
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const toolPower = tool.power || tool.level || 0;
+    const sellValue = toolPower;
+    
+    const confirmSell = window.confirm(`Sell ${tool.type} #${toolId} for ${sellValue} gold?`);
+    if (!confirmSell) return;
+    
+    // Add gold
+    gold += sellValue;
+    
+    // Remove tool from inventory
+    const index = toolsInventory.findIndex(t => t.id === toolId);
+    if (index !== -1) {
+        toolsInventory.splice(index, 1);
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gold: gold,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Update gold display
+    updateGoldDisplay();
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+    
+    logTransaction('income', sellValue, `Sold ${tool.type} #${toolId}`);
 }
 
 // Populate the dwarfs modal with a compact table showing state for each dwarf
@@ -3275,42 +3586,12 @@ function sellMaterial(materialId, amount) {
     console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)`);
 }
 
-function updateMaterialsPanel() {
-    const panel = document.getElementById('materials-panel');
-    // Only update if we're in warehouse view (or view not set)
-    if (panel && panel.dataset.view === 'dwarfs') return;
-    
-    // Calculate trade bonus once for display
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
-    
+// Initialize the materials panel structure once (called on game load)
+function initMaterialsPanel() {
     const list = document.getElementById('materials-list');
-    if (!list) return;
+    if (!list || list.dataset.initialized === 'true') return;
     
-    // Calculate total stock value
-    let totalStockValue = 0;
-    const materialsWithStock = [];
-    
-    for (const m of materials) {
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
-        if (count > 0) {
-            const actualWorth = m.worth * tradeBonus;
-            totalStockValue += count * actualWorth;
-            materialsWithStock.push({ material: m, count, actualWorth });
-        }
-    }
-    
-    // Sort by value per piece (high to low)
-    materialsWithStock.sort((a, b) => b.actualWorth - a.actualWorth);
-    
-    const hasAnyMaterials = materialsWithStock.length > 0;
-    
-    // Update or create Sell All button, Sell Non-Craftables button, and total value in header
-    let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
-    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    let totalValueSpan = document.getElementById('total-stock-value');
-    const header = panel.querySelector('.materials-panel-header');
-    const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
+    list.innerHTML = '';
     
     // Get materials that are used as smelter inputs and outputs
     const smelterInputMaterials = new Set();
@@ -3324,10 +3605,189 @@ function updateMaterialsPanel() {
         }
     }
     
-    // Check if there are any not-craftable materials to sell
-    const hasNotCraftableMaterials = materialsWithStock.some(({ material }) => !smelterInputMaterials.has(material.id));
+    // Create container and header
+    const container = document.createElement('div');
+    container.className = 'warehouse-table-container';
     
-    if (header && isWarehouseView) {
+    const tableHeader = document.createElement('div');
+    tableHeader.className = 'warehouse-table-header';
+    tableHeader.innerHTML = `
+        <span class="wh-col-name">MATERIAL</span>
+        <span class="wh-col-price">PRICE</span>
+        <span class="wh-col-count">STOCK</span>
+        <span class="wh-col-total">VALUE</span>
+        <span class="wh-col-icons"></span>
+        <span class="wh-col-actions">SELL</span>
+    `;
+    container.appendChild(tableHeader);
+    
+    // Sort materials by worth (high to low) for consistent display order
+    const sortedMaterials = [...materials].sort((a, b) => b.worth - a.worth);
+    
+    // Create a row for each material (hidden by default)
+    for (const m of sortedMaterials) {
+        const id = m.id;
+        
+        const row = document.createElement('div');
+        row.className = 'warehouse-row';
+        row.dataset.materialId = id;
+        row.style.display = 'none'; // Hidden by default
+        row.style.setProperty('--material-color', m.color || '#888');
+        
+        const name = document.createElement('span');
+        name.className = 'wh-col-name';
+        name.textContent = m.name;
+        
+        const worth = document.createElement('span');
+        worth.className = 'wh-col-price';
+        worth.dataset.baseWorth = m.worth;
+        
+        const cnt = document.createElement('span');
+        cnt.className = 'wh-col-count';
+        
+        const totalValue = document.createElement('span');
+        totalValue.className = 'wh-col-total';
+        
+        // Recipe usage icons column
+        const icons = document.createElement('span');
+        icons.className = 'wh-col-icons';
+        const isInput = smelterInputMaterials.has(id);
+        const isOutput = smelterOutputMaterials.has(id);
+        const isForgeInput = m.type === 'Ingot';
+        
+        let iconsText = '';
+        const tooltipParts = [];
+        if (isInput) {
+            iconsText = '🪨';
+            tooltipParts.push('Used in smelter recipes');
+        }
+        if (isOutput) {
+            iconsText = '♨️';
+            tooltipParts.push('Produced by smelter');
+        }
+        if (isForgeInput) {
+            iconsText = '🔩';
+            tooltipParts.push('Used in forge');
+        }
+        icons.textContent = iconsText;
+        if (tooltipParts.length > 0) {
+            icons.title = tooltipParts.join(' | ');
+        }
+        
+        const buttons = document.createElement('span');
+        buttons.className = 'wh-col-actions';
+        
+        const sell1Btn = document.createElement('button');
+        sell1Btn.className = 'btn-sell';
+        sell1Btn.textContent = '1';
+        sell1Btn.dataset.materialId = id;
+        sell1Btn.dataset.sellAmount = '1';
+        
+        const sellAllBtn = document.createElement('button');
+        sellAllBtn.className = 'btn-sell-all';
+        sellAllBtn.textContent = 'all';
+        sellAllBtn.dataset.materialId = id;
+        
+        buttons.appendChild(sell1Btn);
+        buttons.appendChild(sellAllBtn);
+        
+        row.appendChild(name);
+        row.appendChild(worth);
+        row.appendChild(cnt);
+        row.appendChild(totalValue);
+        row.appendChild(icons);
+        row.appendChild(buttons);
+        
+        container.appendChild(row);
+    }
+    
+    list.appendChild(container);
+    list.dataset.initialized = 'true';
+}
+
+function updateMaterialsPanel() {
+    const panel = document.getElementById('materials-panel');
+    // Only update if we're in warehouse view (not dwarfs or tools)
+    if (panel && (panel.dataset.view === 'dwarfs' || panel.dataset.view === 'tools')) return;
+    
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    
+    // Initialize structure if needed
+    if (list.dataset.initialized !== 'true') {
+        initMaterialsPanel();
+    }
+    
+    // Calculate trade bonus once for display
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    // Get materials that are used as smelter inputs
+    const smelterInputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+    }
+    
+    // Calculate total stock value and update rows
+    let totalStockValue = 0;
+    let hasAnyMaterials = false;
+    let hasNotCraftableMaterials = false;
+    
+    const rows = list.querySelectorAll('.warehouse-row');
+    for (const row of rows) {
+        const id = row.dataset.materialId;
+        const m = materials.find(mat => mat.id === id);
+        if (!m) continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        const actualWorth = m.worth * tradeBonus;
+        
+        if (count > 0) {
+            hasAnyMaterials = true;
+            totalStockValue += count * actualWorth;
+            
+            if (!smelterInputMaterials.has(id) && m.type !== 'Ingot') {
+                hasNotCraftableMaterials = true;
+            }
+            
+            // Show row and update values
+            row.style.display = '';
+            
+            const worthSpan = row.querySelector('.wh-col-price');
+            worthSpan.textContent = actualWorth.toFixed(2);
+            worthSpan.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
+            
+            row.querySelector('.wh-col-count').textContent = count.toFixed(1);
+            row.querySelector('.wh-col-total').textContent = Math.round(count * actualWorth).toString();
+            
+            // Update sell button tooltips and data
+            const sell1Btn = row.querySelector('.btn-sell');
+            sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
+            
+            const sellAllBtn = row.querySelector('.btn-sell-all');
+            sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
+            sellAllBtn.dataset.sellAmount = count.toString();
+        } else {
+            // Hide row
+            row.style.display = 'none';
+        }
+    }
+    
+    // Show/hide header based on whether we have materials
+    const tableHeader = list.querySelector('.warehouse-table-header');
+    if (tableHeader) {
+        tableHeader.style.display = hasAnyMaterials ? '' : 'none';
+    }
+    
+    // Update header buttons and total value
+    const header = panel.querySelector('.materials-panel-header');
+    let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    let totalValueSpan = document.getElementById('total-stock-value');
+    
+    if (header) {
         // Update or create total value display
         if (!totalValueSpan) {
             totalValueSpan = document.createElement('span');
@@ -3337,7 +3797,7 @@ function updateMaterialsPanel() {
         }
         totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
         
-        // Create or update Sell All button first (to maintain consistent order)
+        // Create or update Sell All button
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
                 sellAllHeaderBtn = document.createElement('button');
@@ -3351,7 +3811,7 @@ function updateMaterialsPanel() {
             sellAllHeaderBtn.remove();
         }
         
-        // Create or update Sell Non-Craftables button second
+        // Create or update Sell Non-Craftables button
         if (hasNotCraftableMaterials) {
             if (!sellNotCraftableBtn) {
                 sellNotCraftableBtn = document.createElement('button');
@@ -3366,115 +3826,30 @@ function updateMaterialsPanel() {
             sellNotCraftableBtn.remove();
         }
     }
-    
-    list.innerHTML = '';
-    
-    // Add table container for warehouse view
-    if (hasAnyMaterials) {
-        const container = document.createElement('div');
-        container.className = 'warehouse-table-container';
-        
-        const tableHeader = document.createElement('div');
-        tableHeader.className = 'warehouse-table-header';
-        tableHeader.innerHTML = `
-            <span class="wh-col-name">MATERIAL</span>
-            <span class="wh-col-price">PRICE</span>
-            <span class="wh-col-count">STOCK</span>
-            <span class="wh-col-total">VALUE</span>
-            <span class="wh-col-icons"></span>
-            <span class="wh-col-actions">SELL</span>
-        `;
-        container.appendChild(tableHeader);
-        list.appendChild(container);
-    }
-    
-    for (const { material: m, count, actualWorth } of materialsWithStock) {
-        const id = m.id;
-        
-        const row = document.createElement('div');
-        row.className = 'warehouse-row';
-        // Set material color as background using CSS variable
-        row.style.setProperty('--material-color', m.color || '#888');
-        
-        const name = document.createElement('span');
-        name.className = 'wh-col-name';
-        name.textContent = m.name;
-        
-        const worth = document.createElement('span');
-        worth.className = 'wh-col-price';
-        worth.textContent = actualWorth.toFixed(2);
-        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
-        
-        const cnt = document.createElement('span');
-        cnt.className = 'wh-col-count';
-        cnt.textContent = count.toFixed(1);
-        
-        const totalValue = document.createElement('span');
-        totalValue.className = 'wh-col-total';
-        totalValue.textContent = Math.round(count * actualWorth).toString();
-        
-        // Recipe usage icons column
-        const icons = document.createElement('span');
-        icons.className = 'wh-col-icons';
-        const isInput = smelterInputMaterials.has(id);
-        const isOutput = smelterOutputMaterials.has(id);
-        
-        let iconsText = '';
-        const tooltipParts = [];
-        if (isInput) {
-            iconsText += '🔧';
-            tooltipParts.push('Used in smelter recipes');
-        }
-        if (isOutput) {
-            iconsText += '♨️';
-            tooltipParts.push('Produced by smelter');
-        }
-        icons.textContent = iconsText;
-        if (tooltipParts.length > 0) {
-            icons.title = tooltipParts.join(' | ');
-        }
-        
-        const buttons = document.createElement('span');
-        buttons.className = 'wh-col-actions';
-        
-        const sell1Btn = document.createElement('button');
-        sell1Btn.className = 'btn-sell';
-        sell1Btn.textContent = '1';
-        sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
-        sell1Btn.dataset.materialId = id;
-        sell1Btn.dataset.sellAmount = '1';
-        
-        const sellAllBtn = document.createElement('button');
-        sellAllBtn.className = 'btn-sell-all';
-        sellAllBtn.textContent = 'all';
-        sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
-        sellAllBtn.dataset.materialId = id;
-        sellAllBtn.dataset.sellAmount = count.toString();
-        
-        buttons.appendChild(sell1Btn);
-        buttons.appendChild(sellAllBtn);
-        
-        row.appendChild(name);
-        row.appendChild(worth);
-        row.appendChild(cnt);
-        row.appendChild(totalValue);
-        row.appendChild(icons);
-        row.appendChild(buttons);
-        
-        // Append to container instead of list
-        const container = list.querySelector('.warehouse-table-container');
-        if (container) {
-            container.appendChild(row);
-        } else {
-            list.appendChild(row);
-        }
-    }
 }
 
 function sellAllMaterials() {
     // Calculate total gold from all materials
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    // First calculate totals for confirmation
+    let previewGold = 0;
+    let previewItems = 0;
+    for (const m of materials) {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            previewGold += count * m.worth * tradeBonus;
+            previewItems += count;
+        }
+    }
+    
+    if (previewItems === 0) return;
+    
+    // Confirmation dialog
+    if (!confirm(`Sell ALL materials?\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+        return;
+    }
     
     let totalGold = 0;
     let totalItems = 0;
@@ -3526,13 +3901,36 @@ function sellNotCraftableMaterials() {
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
     
+    // First calculate totals for confirmation
+    let previewGold = 0;
+    let previewItems = 0;
+    for (const m of materials) {
+        // Skip materials that are used as smelter inputs or forge inputs (ingots)
+        if (smelterInputMaterials.has(m.id)) continue;
+        if (m.type === 'Ingot') continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            previewGold += count * m.worth * tradeBonus;
+            previewItems += count;
+        }
+    }
+    
+    if (previewItems === 0) return;
+    
+    // Confirmation dialog
+    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+        return;
+    }
+    
     let totalGold = 0;
     let totalItems = 0;
     
     for (const m of materials) {
         const id = m.id;
-        // Skip materials that are used as smelter inputs
+        // Skip materials that are used as smelter inputs or forge inputs (ingots)
         if (smelterInputMaterials.has(id)) continue;
+        if (m.type === 'Ingot') continue;
         
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
@@ -3830,6 +4228,12 @@ function initWorker() {
                     }
                 }
                 
+                // Update research modal if it's open and research is active
+                const researchModal = document.getElementById('research-modal');
+                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && activeResearch) {
+                    populateResearch();
+                }
+                
                 // Autosave after each tick
                 saveGame();
                 break;
@@ -4123,6 +4527,83 @@ function initializeGame() {
     updateGameState();
 }
 
+// Populate the functions list with clickable links (static, won't be re-rendered)
+function populateFunctionsList() {
+    const list = document.getElementById('functions-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    // Research function
+    const researchLink = document.createElement('a');
+    researchLink.href = '#';
+    researchLink.className = 'function-link';
+    researchLink.innerHTML = '<span class="icon">🔬</span><span>Research</span>';
+    researchLink.onclick = (e) => {
+        e.preventDefault();
+        openResearch();
+    };
+    list.appendChild(researchLink);
+    
+    // Smelter function
+    const smelterLink = document.createElement('a');
+    smelterLink.href = '#';
+    smelterLink.className = 'function-link';
+    smelterLink.innerHTML = '<span class="icon">♨️</span><span>Smelter</span>';
+    smelterLink.onclick = (e) => {
+        e.preventDefault();
+        openSmelter();
+    };
+    list.appendChild(smelterLink);
+    
+    // Forge function
+    const forgeLink = document.createElement('a');
+    forgeLink.href = '#';
+    forgeLink.className = 'function-link';
+    forgeLink.innerHTML = '<span class="icon">🔨</span><span>Forge</span>';
+    forgeLink.onclick = (e) => {
+        e.preventDefault();
+        openForge();
+    };
+    list.appendChild(forgeLink);
+    
+    // Automation function (placeholder for future) - last position
+    const automationLink = document.createElement('a');
+    automationLink.href = '#';
+    automationLink.className = 'function-link';
+    automationLink.innerHTML = '<span class="icon">⚙️</span><span>Automation</span>';
+    automationLink.onclick = (e) => {
+        e.preventDefault();
+        // TODO: Open automation modal
+    };
+    automationLink.style.opacity = '0.5';
+    automationLink.style.cursor = 'not-allowed';
+    automationLink.title = 'Coming soon';
+    list.appendChild(automationLink);
+}
+
+// Switch between Warehouse and Dwarfs tabs in the materials panel
+function switchMaterialsTab(tab) {
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Switch content based on tab
+    if (tab === 'warehouse') {
+        showWarehousePanel();
+    } else if (tab === 'dwarfs') {
+        openDwarfs();
+    } else if (tab === 'tools') {
+        showToolsPanel();
+    }
+}
+
 // Initialize the game state
 function initGame() {
     // Try to load saved game first
@@ -4136,6 +4617,7 @@ function initGame() {
     updateGridDisplay();
     updateGoldDisplay();
     updateMaterialsPanel(); // Initialize materials panel on load
+    populateFunctionsList(); // Initialize functions list (one time, won't be re-rendered)
 }
 
 // Check for cheat mode in URL

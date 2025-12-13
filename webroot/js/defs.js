@@ -189,7 +189,7 @@ let researchtree = [
       description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
     { id: 'furnace', name: 'Furnace', cost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
       description: 'Unlocks the furnace for smelting of ores.' },
-    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 1000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
+    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       description: 'Unlocks the forge for crafting and upgrading tools.' },
@@ -278,17 +278,14 @@ for (const m of materials) materialsStock[m.id] = 0;
 const bucketCapacity = 4;
 
 // Drop-off location (where dwarfs should deliver their bucket contents).
-// Place the small 3x3 drop-area to the right of the digging grid. Default
-// the drop-off to the top-left cell of that 3x3 area (1/1 in 1-based coordinates).
-const dropGridStartX = gridWidth; // six-column grid placed immediately to the right
-const dropGridWidth = 6, dropGridHeight = 1;
-// drop-off inside the 6x1 grid: first cell (0,0) in drop-grid coordinates
+// Place the small 2x2 drop-area to the right of the digging grid.
+const dropGridStartX = gridWidth; // 2x2 grid placed immediately to the right
+const dropGridWidth = 2, dropGridHeight = 2;
+// drop-off inside the 2x2 grid: first cell (0,0) in drop-grid coordinates
 const dropOff = { x: dropGridStartX + 0, y: 0 };
 // bed / house: place second cell (1,0) in drop-grid coordinates
 const house = { x: dropGridStartX + 1, y: 0 };
-// research: place third cell (2,0) in drop-grid coordinates
-const research = { x: dropGridStartX + 2, y: 0 };
-// smelter: place fourth cell (3,0) in drop-grid coordinates
-const smelter = { x: dropGridStartX + 3, y: 0 };
-// forge: place fifth cell (4,0) in drop-grid coordinates
-const forge = { x: dropGridStartX + 4, y: 0 };
+// research: place third cell (0,1) in drop-grid coordinates
+const research = { x: dropGridStartX + 0, y: 1 };
+// smelter: place fourth cell (1,1) in drop-grid coordinates
+const smelter = { x: dropGridStartX + 1, y: 1 };

@@ -89,23 +89,33 @@
         <!-- right-side / auxiliary grids container -->
         <div id="side-grids">
             <div id="drop-grid-panel" class="materials-panel" aria-live="polite">
-            <h3>Functions</h3>
-            <table id="drop-grid" aria-label="Functions grid">
-                <tbody>
-                    <tr>
-                        <td class="cell" data-row="0" data-col="0"></td>
-                        <td class="cell" data-row="0" data-col="1"></td>
-                        <td class="cell" data-row="0" data-col="2"></td>
-                        <td class="cell" data-row="0" data-col="3"></td>
-                        <td class="cell" data-row="0" data-col="4"></td>
-                        <td class="cell" data-row="0" data-col="5"></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="functions-container">
+                <div class="functions-grid-wrapper">
+                    <table id="drop-grid" aria-label="Functions grid">
+                        <tbody>
+                            <tr>
+                                <td class="cell" data-row="0" data-col="0"></td>
+                                <td class="cell" data-row="0" data-col="1"></td>
+                            </tr>
+                            <tr>
+                                <td class="cell" data-row="1" data-col="0"></td>
+                                <td class="cell" data-row="1" data-col="1"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="functions-list" class="functions-list" aria-label="Functions menu">
+                    <!-- populated dynamically by JS -->
+                </div>
+            </div>
             </div>
             <div id="materials-panel" class="materials-panel" aria-live="polite">
                 <div class="materials-panel-header">
-                    <h3>Warehouse</h3>
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="warehouse" onclick="switchMaterialsTab('warehouse')">📦 Warehouse</button>
+                        <button class="tab-btn" data-tab="dwarfs" onclick="switchMaterialsTab('dwarfs')">👷 Dwarfs</button>
+                        <button class="tab-btn" data-tab="tools" onclick="switchMaterialsTab('tools')">🔨 Tools</button>
+                    </div>
                 </div>
                 <div id="materials-list" class="warehouse-stock-list"></div>
             </div>
