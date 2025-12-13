@@ -2594,6 +2594,16 @@ function openDwarfs() {
     // Mark panel as showing dwarfs view
     panel.dataset.view = 'dwarfs';
     
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === 'dwarfs') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
     // Remove Sell All button from header
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
@@ -2605,10 +2615,6 @@ function openDwarfs() {
     // Remove total stock value from header
     const totalValueSpan = document.getElementById('total-stock-value');
     if (totalValueSpan) totalValueSpan.remove();
-    
-    // Update header
-    const header = panel.querySelector('.materials-panel-header h3');
-    if (header) header.textContent = 'Dwarfs';
     
     // Set grid layout for dwarfs
     const list = document.getElementById('materials-list');
@@ -2632,7 +2638,15 @@ function showWarehousePanel() {
     // Mark panel as showing warehouse view
     panel.dataset.view = 'warehouse';
     
-    // Update header
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === 'warehouse') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
     
@@ -4123,6 +4137,81 @@ function initializeGame() {
     updateGameState();
 }
 
+// Populate the functions list with clickable links (static, won't be re-rendered)
+function populateFunctionsList() {
+    const list = document.getElementById('functions-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    // Research function
+    const researchLink = document.createElement('a');
+    researchLink.href = '#';
+    researchLink.className = 'function-link';
+    researchLink.innerHTML = '<span class="icon">🔬</span><span>Research</span>';
+    researchLink.onclick = (e) => {
+        e.preventDefault();
+        openResearch();
+    };
+    list.appendChild(researchLink);
+    
+    // Smelter function
+    const smelterLink = document.createElement('a');
+    smelterLink.href = '#';
+    smelterLink.className = 'function-link';
+    smelterLink.innerHTML = '<span class="icon">♨️</span><span>Smelter</span>';
+    smelterLink.onclick = (e) => {
+        e.preventDefault();
+        openSmelter();
+    };
+    list.appendChild(smelterLink);
+    
+    // Forge function
+    const forgeLink = document.createElement('a');
+    forgeLink.href = '#';
+    forgeLink.className = 'function-link';
+    forgeLink.innerHTML = '<span class="icon">🔨</span><span>Forge</span>';
+    forgeLink.onclick = (e) => {
+        e.preventDefault();
+        openForge();
+    };
+    list.appendChild(forgeLink);
+    
+    // Automation function (placeholder for future) - last position
+    const automationLink = document.createElement('a');
+    automationLink.href = '#';
+    automationLink.className = 'function-link';
+    automationLink.innerHTML = '<span class="icon">⚙️</span><span>Automation</span>';
+    automationLink.onclick = (e) => {
+        e.preventDefault();
+        // TODO: Open automation modal
+    };
+    automationLink.style.opacity = '0.5';
+    automationLink.style.cursor = 'not-allowed';
+    automationLink.title = 'Coming soon';
+    list.appendChild(automationLink);
+}
+
+// Switch between Warehouse and Dwarfs tabs in the materials panel
+function switchMaterialsTab(tab) {
+    // Update tab button states
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Switch content based on tab
+    if (tab === 'warehouse') {
+        showWarehousePanel();
+    } else if (tab === 'dwarfs') {
+        openDwarfs();
+    }
+}
+
 // Initialize the game state
 function initGame() {
     // Try to load saved game first
@@ -4136,6 +4225,7 @@ function initGame() {
     updateGridDisplay();
     updateGoldDisplay();
     updateMaterialsPanel(); // Initialize materials panel on load
+    populateFunctionsList(); // Initialize functions list (one time, won't be re-rendered)
 }
 
 // Check for cheat mode in URL

@@ -23,7 +23,18 @@ main {
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
 }
-.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 480px; }
+.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 auto; }
+
+/* Functions container with grid + links side by side */
+.functions-container {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.functions-grid-wrapper {
+    flex: 0 0 auto;
+}
 
 /* the small drop-grid uses smaller cells to visually differentiate it */
 #drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
@@ -44,6 +55,53 @@ main {
 /* center the warehouse icon inside the cell so it doesn't move when other content changes */
 #drop-grid .cell .drop-off-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.95; }
 #drop-grid .cell .unloading-marker { z-index: 5; }
+
+/* Functions list with clickable links (4 per row grid layout) */
+.functions-list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 8px;
+    flex: 0 0 auto;
+    xxxbackground: #494949a0;
+    border-radius: 6px;
+}
+
+.functions-list a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    aspect-ratio: 1 / 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.functions-list a:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.functions-list a:active {
+    transform: translateY(0px);
+}
+
+.functions-list a .icon {
+    font-size: 16px;
+    min-width: 16px;
+}
 
 /* digging grid */
 #digging-grid {
@@ -318,7 +376,7 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    margin-top: 12px;
+    xmargin-top: 12px;
     padding: 16px;
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -342,7 +400,9 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 100%;
+    width: 280px;
+    min-width: 500px;
+    max-width: 500px;
 }
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
@@ -352,7 +412,42 @@ header, footer {
     align-items: center;
     justify-content: space-between;
     gap: 3px;
+    flex-wrap: wrap;
 }
+
+.tab-buttons {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    color: #9fbfe0;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.tab-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+    color: #dbeafe;
+}
+
+.tab-btn.active {
+    background: rgba(100,181,246,0.2);
+    border-color: rgba(100,181,246,0.4);
+    color: #fff;
+    font-weight: 600;
+}
+
 .materials-panel h3 {
     margin: 0;
     font-size: 16px;
@@ -368,7 +463,7 @@ header, footer {
     background: linear-gradient(180deg, #10b981, #059669);
     color: #fff;
     border: none;
-    padding: 6px 12px;
+    padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
@@ -590,13 +685,14 @@ header, footer {
 .warehouse-row { 
     display: grid;
     grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
-    padding: 8px 10px; 
+    padding: 12px 14px; 
     border: 1px solid rgba(0,0,0,0.3); 
     border-top: none;
     position: relative;
     overflow: hidden;
+    margin-bottom: 4px;
 }
 
 .warehouse-row:last-child {
@@ -653,14 +749,15 @@ header, footer {
 
 .wh-col-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     justify-content: flex-end;
+    padding: 0 4px;
 }
 .btn-sell, .btn-sell-all {
     background: linear-gradient(180deg, #10b981, #059669);
     color: #fff;
     border: none;
-    padding: 4px 8px;
+    padding: 4px 6px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 11px;
