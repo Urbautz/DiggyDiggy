@@ -2658,51 +2658,55 @@ function populateToolsInPanel() {
         // Check if tool is assigned to a dwarf
         const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
         const isAssigned = !!assignedDwarf;
+        const toolPower = tool.power || tool.level || 0;
         
         const header = document.createElement('div');
         header.className = 'tool-card-header';
         header.innerHTML = `
             <span class="tool-name">${tool.type} #${tool.id}</span>
-            <span class="tool-power">⚒️ ${tool.power || tool.level}</span>
+            <span class="tool-power">⚒️ ${toolPower}</span>
         `;
-        
-        const details = document.createElement('div');
-        details.className = 'tool-card-details';
-        if (isAssigned) {
-            details.innerHTML = `<span class="tool-assigned">📌 ${assignedDwarf.name}</span>`;
-        } else {
-            details.innerHTML = `<span class="tool-unassigned">🔓 Unassigned</span>`;
-        }
         
         const actions = document.createElement('div');
         actions.className = 'tool-card-actions';
         
-        if (!isAssigned) {
-            const select = document.createElement('select');
-            select.id = `panel-assign-select-${tool.id}`;
-            select.className = 'assign-select-small';
-            select.innerHTML = `<option value="">-- Dwarf --</option>` + 
-                dwarfs.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
-            
-            const assignBtn = document.createElement('button');
-            assignBtn.className = 'btn-primary btn-tiny';
-            assignBtn.textContent = 'Assign';
-            assignBtn.onclick = () => assignToolFromPanel(tool.id);
-            
-            actions.appendChild(select);
-            actions.appendChild(assignBtn);
-        }
+        // Dropdown for assigning (shows current assignment or allows selection)
+        const select = document.createElement('select');
+        select.id = `panel-assign-select-${tool.id}`;
+        select.className = 'assign-select-small';
+        select.innerHTML = `<option value="">-- Unassigned --</option>` + 
+            dwarfs.map(d => `<option value="${d.name}"${d.name === (assignedDwarf?.name || '') ? ' selected' : ''}>${d.name}</option>`).join('');
+        select.onchange = () => assignToolFromPanel(tool.id, toolPower);
+        actions.appendChild(select);
         
+        // Enchant button (placeholder)
+        const enchantBtn = document.createElement('button');
+        enchantBtn.className = 'btn-secondary btn-tiny';
+        enchantBtn.textContent = '✨ Enchant';
+        enchantBtn.title = 'Enchant (coming soon)';
+        enchantBtn.style.opacity = '0.5';
+        enchantBtn.style.cursor = 'not-allowed';
+        actions.appendChild(enchantBtn);
+        
+        // Gems button (placeholder)
+        const gemsBtn = document.createElement('button');
+        gemsBtn.className = 'btn-secondary btn-tiny';
+        gemsBtn.textContent = '💎 Gems';
+        gemsBtn.title = 'Add Gems (coming soon)';
+        gemsBtn.style.opacity = '0.5';
+        gemsBtn.style.cursor = 'not-allowed';
+        actions.appendChild(gemsBtn);
+        
+        // Scrap button
         const scrapBtn = document.createElement('button');
         scrapBtn.className = 'btn-danger btn-tiny';
-        scrapBtn.textContent = '🗑️';
+        scrapBtn.textContent = '🗑️ Destroy';
         scrapBtn.title = isAssigned ? 'Cannot scrap assigned tool' : 'Scrap tool';
         scrapBtn.disabled = isAssigned;
         scrapBtn.onclick = () => scrapToolFromPanel(tool.id);
         actions.appendChild(scrapBtn);
         
         toolCard.appendChild(header);
-        toolCard.appendChild(details);
         toolCard.appendChild(actions);
         
         list.appendChild(toolCard);
@@ -2710,14 +2714,36 @@ function populateToolsInPanel() {
 }
 
 // Assign tool from tools panel
-function assignToolFromPanel(toolId) {
+function assignToolFromPanel(toolId, newToolPower) {
     const selectElement = document.getElementById(`panel-assign-select-${toolId}`);
-    if (!selectElement || !selectElement.value) {
-        alert('Please select a dwarf first!');
+    if (!selectElement) return;
+    
+    const dwarfName = selectElement.value;
+    
+    // If selecting "Unassigned", remove tool from any dwarf that has it
+    if (!dwarfName) {
+        const currentOwner = dwarfs.find(d => d.toolId === toolId);
+        if (currentOwner) {
+            currentOwner.toolId = null;
+            
+            // Sync with worker
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: {
+                        dwarfs: dwarfs,
+                        toolsInventory: toolsInventory
+                    }
+                });
+            }
+            
+            saveGame();
+            populateToolsInPanel();
+            logTransaction('income', 0, `Unassigned tool #${toolId} from ${currentOwner.name}`);
+        }
         return;
     }
     
-    const dwarfName = selectElement.value;
     const dwarf = dwarfs.find(d => d.name === dwarfName);
     
     if (!dwarf) {
@@ -2725,10 +2751,25 @@ function assignToolFromPanel(toolId) {
         return;
     }
     
-    // Check if dwarf already has a tool
+    // Check if dwarf already has a tool with higher power
     if (dwarf.toolId) {
-        const confirm = window.confirm(`${dwarfName} already has a tool. Replace it with this one?`);
-        if (!confirm) return;
+        const currentTool = toolsInventory.find(t => t.id === dwarf.toolId);
+        const currentPower = currentTool ? (currentTool.power || currentTool.level || 0) : 0;
+        
+        if (currentPower > newToolPower) {
+            const confirm = window.confirm(`${dwarfName} has a better tool (⚒️ ${currentPower}). Replace with this weaker one (⚒️ ${newToolPower})?`);
+            if (!confirm) {
+                // Reset dropdown to previous value
+                populateToolsInPanel();
+                return;
+            }
+        }
+    }
+    
+    // Remove tool from previous owner if any
+    const previousOwner = dwarfs.find(d => d.toolId === toolId);
+    if (previousOwner && previousOwner.name !== dwarfName) {
+        previousOwner.toolId = null;
     }
     
     // Assign the tool
@@ -3543,8 +3584,8 @@ function initMaterialsPanel() {
 
 function updateMaterialsPanel() {
     const panel = document.getElementById('materials-panel');
-    // Only update if we're in warehouse view (or view not set)
-    if (panel && panel.dataset.view === 'dwarfs') return;
+    // Only update if we're in warehouse view (not dwarfs or tools)
+    if (panel && (panel.dataset.view === 'dwarfs' || panel.dataset.view === 'tools')) return;
     
     const list = document.getElementById('materials-list');
     if (!list) return;
@@ -4021,6 +4062,12 @@ function initWorker() {
                         updateSmelterTemperatureDisplay();
                         smelterRefreshCounter = 0;
                     }
+                }
+                
+                // Update research modal if it's open and research is active
+                const researchModal = document.getElementById('research-modal');
+                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && activeResearch) {
+                    populateResearch();
                 }
                 
                 // Autosave after each tick

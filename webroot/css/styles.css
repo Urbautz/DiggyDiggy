@@ -23,7 +23,7 @@ main {
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
 }
-.grids #side-grids { display:flex; flex-direction:column; gap:12px; flex: 0 0 auto; }
+.grids #side-grids { display:flex; flex-direction:column; margin:-12px; flex: 0 0 auto; }
 
 /* Functions container with grid + links side by side */
 .functions-container {
@@ -901,9 +901,14 @@ header, footer {
     min-width: 80px;
     padding: 4px 6px;
     font-size: 11px;
-    background: rgba(0,0,0,0.3);
+    background: #2a3a4a;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 4px;
+    color: #dbeafe;
+}
+
+.assign-select-small option {
+    background: #2a3a4a;
     color: #dbeafe;
 }
 
@@ -915,6 +920,13 @@ header, footer {
 
 .btn-primary.btn-tiny {
     background: linear-gradient(180deg, #3b82f6, #2563eb);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-secondary.btn-tiny {
+    background: linear-gradient(180deg, #6b7280, #4b5563);
     color: #fff;
     border: none;
     cursor: pointer;
