@@ -30,6 +30,7 @@ main {
     display: flex;
     gap: 16px;
     align-items: flex-start;
+    height: 100px;
 }
 
 .functions-grid-wrapper {

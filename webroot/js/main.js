@@ -2638,6 +2638,14 @@ function showWarehousePanel() {
     // Mark panel as showing warehouse view
     panel.dataset.view = 'warehouse';
     
+    // Reset initialized flag and clear content so warehouse structure gets rebuilt
+    const list = document.getElementById('materials-list');
+    if (list) {
+        list.dataset.initialized = 'false';
+        list.innerHTML = '';
+        list.removeAttribute('data-view');
+    }
+    
     // Update tab button states
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
@@ -2649,10 +2657,6 @@ function showWarehousePanel() {
     });
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
-    
-    // Remove grid layout for warehouse
-    const list = document.getElementById('materials-list');
-    if (list) list.removeAttribute('data-view');
     
     // Show warehouse content
     stopDwarfsLiveUpdate();
@@ -3289,42 +3293,12 @@ function sellMaterial(materialId, amount) {
     console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)`);
 }
 
-function updateMaterialsPanel() {
-    const panel = document.getElementById('materials-panel');
-    // Only update if we're in warehouse view (or view not set)
-    if (panel && panel.dataset.view === 'dwarfs') return;
-    
-    // Calculate trade bonus once for display
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
-    
+// Initialize the materials panel structure once (called on game load)
+function initMaterialsPanel() {
     const list = document.getElementById('materials-list');
-    if (!list) return;
+    if (!list || list.dataset.initialized === 'true') return;
     
-    // Calculate total stock value
-    let totalStockValue = 0;
-    const materialsWithStock = [];
-    
-    for (const m of materials) {
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
-        if (count > 0) {
-            const actualWorth = m.worth * tradeBonus;
-            totalStockValue += count * actualWorth;
-            materialsWithStock.push({ material: m, count, actualWorth });
-        }
-    }
-    
-    // Sort by value per piece (high to low)
-    materialsWithStock.sort((a, b) => b.actualWorth - a.actualWorth);
-    
-    const hasAnyMaterials = materialsWithStock.length > 0;
-    
-    // Update or create Sell All button, Sell Non-Craftables button, and total value in header
-    let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
-    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    let totalValueSpan = document.getElementById('total-stock-value');
-    const header = panel.querySelector('.materials-panel-header');
-    const isWarehouseView = !panel || panel.dataset.view !== 'dwarfs';
+    list.innerHTML = '';
     
     // Get materials that are used as smelter inputs and outputs
     const smelterInputMaterials = new Set();
@@ -3338,76 +3312,33 @@ function updateMaterialsPanel() {
         }
     }
     
-    // Check if there are any not-craftable materials to sell
-    const hasNotCraftableMaterials = materialsWithStock.some(({ material }) => !smelterInputMaterials.has(material.id));
+    // Create container and header
+    const container = document.createElement('div');
+    container.className = 'warehouse-table-container';
     
-    if (header && isWarehouseView) {
-        // Update or create total value display
-        if (!totalValueSpan) {
-            totalValueSpan = document.createElement('span');
-            totalValueSpan.id = 'total-stock-value';
-            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
-            header.appendChild(totalValueSpan);
-        }
-        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
-        
-        // Create or update Sell All button first (to maintain consistent order)
-        if (hasAnyMaterials) {
-            if (!sellAllHeaderBtn) {
-                sellAllHeaderBtn = document.createElement('button');
-                sellAllHeaderBtn.id = 'sell-all-header-btn';
-                sellAllHeaderBtn.className = 'btn-sell-all-global';
-                sellAllHeaderBtn.textContent = 'Sell All';
-                sellAllHeaderBtn.onclick = sellAllMaterials;
-                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
-            }
-        } else if (sellAllHeaderBtn) {
-            sellAllHeaderBtn.remove();
-        }
-        
-        // Create or update Sell Non-Craftables button second
-        if (hasNotCraftableMaterials) {
-            if (!sellNotCraftableBtn) {
-                sellNotCraftableBtn = document.createElement('button');
-                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
-                sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
-                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
-            }
-        } else if (sellNotCraftableBtn) {
-            sellNotCraftableBtn.remove();
-        }
-    }
+    const tableHeader = document.createElement('div');
+    tableHeader.className = 'warehouse-table-header';
+    tableHeader.innerHTML = `
+        <span class="wh-col-name">MATERIAL</span>
+        <span class="wh-col-price">PRICE</span>
+        <span class="wh-col-count">STOCK</span>
+        <span class="wh-col-total">VALUE</span>
+        <span class="wh-col-icons"></span>
+        <span class="wh-col-actions">SELL</span>
+    `;
+    container.appendChild(tableHeader);
     
-    list.innerHTML = '';
+    // Sort materials by worth (high to low) for consistent display order
+    const sortedMaterials = [...materials].sort((a, b) => b.worth - a.worth);
     
-    // Add table container for warehouse view
-    if (hasAnyMaterials) {
-        const container = document.createElement('div');
-        container.className = 'warehouse-table-container';
-        
-        const tableHeader = document.createElement('div');
-        tableHeader.className = 'warehouse-table-header';
-        tableHeader.innerHTML = `
-            <span class="wh-col-name">MATERIAL</span>
-            <span class="wh-col-price">PRICE</span>
-            <span class="wh-col-count">STOCK</span>
-            <span class="wh-col-total">VALUE</span>
-            <span class="wh-col-icons"></span>
-            <span class="wh-col-actions">SELL</span>
-        `;
-        container.appendChild(tableHeader);
-        list.appendChild(container);
-    }
-    
-    for (const { material: m, count, actualWorth } of materialsWithStock) {
+    // Create a row for each material (hidden by default)
+    for (const m of sortedMaterials) {
         const id = m.id;
         
         const row = document.createElement('div');
         row.className = 'warehouse-row';
-        // Set material color as background using CSS variable
+        row.dataset.materialId = id;
+        row.style.display = 'none'; // Hidden by default
         row.style.setProperty('--material-color', m.color || '#888');
         
         const name = document.createElement('span');
@@ -3416,16 +3347,13 @@ function updateMaterialsPanel() {
         
         const worth = document.createElement('span');
         worth.className = 'wh-col-price';
-        worth.textContent = actualWorth.toFixed(2);
-        worth.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
+        worth.dataset.baseWorth = m.worth;
         
         const cnt = document.createElement('span');
         cnt.className = 'wh-col-count';
-        cnt.textContent = count.toFixed(1);
         
         const totalValue = document.createElement('span');
         totalValue.className = 'wh-col-total';
-        totalValue.textContent = Math.round(count * actualWorth).toString();
         
         // Recipe usage icons column
         const icons = document.createElement('span');
@@ -3454,16 +3382,13 @@ function updateMaterialsPanel() {
         const sell1Btn = document.createElement('button');
         sell1Btn.className = 'btn-sell';
         sell1Btn.textContent = '1';
-        sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
         sell1Btn.dataset.materialId = id;
         sell1Btn.dataset.sellAmount = '1';
         
         const sellAllBtn = document.createElement('button');
         sellAllBtn.className = 'btn-sell-all';
         sellAllBtn.textContent = 'all';
-        sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
         sellAllBtn.dataset.materialId = id;
-        sellAllBtn.dataset.sellAmount = count.toString();
         
         buttons.appendChild(sell1Btn);
         buttons.appendChild(sellAllBtn);
@@ -3475,12 +3400,132 @@ function updateMaterialsPanel() {
         row.appendChild(icons);
         row.appendChild(buttons);
         
-        // Append to container instead of list
-        const container = list.querySelector('.warehouse-table-container');
-        if (container) {
-            container.appendChild(row);
+        container.appendChild(row);
+    }
+    
+    list.appendChild(container);
+    list.dataset.initialized = 'true';
+}
+
+function updateMaterialsPanel() {
+    const panel = document.getElementById('materials-panel');
+    // Only update if we're in warehouse view (or view not set)
+    if (panel && panel.dataset.view === 'dwarfs') return;
+    
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    
+    // Initialize structure if needed
+    if (list.dataset.initialized !== 'true') {
+        initMaterialsPanel();
+    }
+    
+    // Calculate trade bonus once for display
+    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    
+    // Get materials that are used as smelter inputs
+    const smelterInputMaterials = new Set();
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+    }
+    
+    // Calculate total stock value and update rows
+    let totalStockValue = 0;
+    let hasAnyMaterials = false;
+    let hasNotCraftableMaterials = false;
+    
+    const rows = list.querySelectorAll('.warehouse-row');
+    for (const row of rows) {
+        const id = row.dataset.materialId;
+        const m = materials.find(mat => mat.id === id);
+        if (!m) continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
+        const actualWorth = m.worth * tradeBonus;
+        
+        if (count > 0) {
+            hasAnyMaterials = true;
+            totalStockValue += count * actualWorth;
+            
+            if (!smelterInputMaterials.has(id)) {
+                hasNotCraftableMaterials = true;
+            }
+            
+            // Show row and update values
+            row.style.display = '';
+            
+            const worthSpan = row.querySelector('.wh-col-price');
+            worthSpan.textContent = actualWorth.toFixed(2);
+            worthSpan.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
+            
+            row.querySelector('.wh-col-count').textContent = count.toFixed(1);
+            row.querySelector('.wh-col-total').textContent = Math.round(count * actualWorth).toString();
+            
+            // Update sell button tooltips and data
+            const sell1Btn = row.querySelector('.btn-sell');
+            sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
+            
+            const sellAllBtn = row.querySelector('.btn-sell-all');
+            sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
+            sellAllBtn.dataset.sellAmount = count.toString();
         } else {
-            list.appendChild(row);
+            // Hide row
+            row.style.display = 'none';
+        }
+    }
+    
+    // Show/hide header based on whether we have materials
+    const tableHeader = list.querySelector('.warehouse-table-header');
+    if (tableHeader) {
+        tableHeader.style.display = hasAnyMaterials ? '' : 'none';
+    }
+    
+    // Update header buttons and total value
+    const header = panel.querySelector('.materials-panel-header');
+    let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    let totalValueSpan = document.getElementById('total-stock-value');
+    
+    if (header) {
+        // Update or create total value display
+        if (!totalValueSpan) {
+            totalValueSpan = document.createElement('span');
+            totalValueSpan.id = 'total-stock-value';
+            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
+            header.appendChild(totalValueSpan);
+        }
+        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
+        
+        // Create or update Sell All button
+        if (hasAnyMaterials) {
+            if (!sellAllHeaderBtn) {
+                sellAllHeaderBtn = document.createElement('button');
+                sellAllHeaderBtn.id = 'sell-all-header-btn';
+                sellAllHeaderBtn.className = 'btn-sell-all-global';
+                sellAllHeaderBtn.textContent = 'Sell All';
+                sellAllHeaderBtn.onclick = sellAllMaterials;
+                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
+            }
+        } else if (sellAllHeaderBtn) {
+            sellAllHeaderBtn.remove();
+        }
+        
+        // Create or update Sell Non-Craftables button
+        if (hasNotCraftableMaterials) {
+            if (!sellNotCraftableBtn) {
+                sellNotCraftableBtn = document.createElement('button');
+                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
+                sellNotCraftableBtn.className = 'btn-sell-all-global';
+                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
+                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
+            }
+        } else if (sellNotCraftableBtn) {
+            sellNotCraftableBtn.remove();
         }
     }
 }
