@@ -845,6 +845,104 @@ header, footer {
     flex-shrink: 0;
 }
 
+/* Tool cards in panel */
+.tool-card-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tool-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tool-card-header .tool-name {
+    font-weight: 600;
+    color: #e6eefc;
+    font-size: 13px;
+}
+
+.tool-card-header .tool-power {
+    font-weight: 700;
+    color: #ffd700;
+    font-size: 13px;
+}
+
+.tool-card-details {
+    font-size: 11px;
+}
+
+.tool-card-details .tool-assigned {
+    color: #10b981;
+}
+
+.tool-card-details .tool-unassigned {
+    color: #9fbfe0;
+}
+
+.tool-card-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.assign-select-small {
+    flex: 1;
+    min-width: 80px;
+    padding: 4px 6px;
+    font-size: 11px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    color: #dbeafe;
+}
+
+.btn-tiny {
+    padding: 4px 8px;
+    font-size: 10px;
+    border-radius: 4px;
+}
+
+.btn-primary.btn-tiny {
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger.btn-tiny {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger.btn-tiny:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.empty-message {
+    text-align: center;
+    color: #9fbfe0;
+    padding: 20px;
+    font-size: 13px;
+}
+
+.empty-message p {
+    margin: 5px 0;
+}
+
 /* Workbench table styles */
 .workbench-table {
     width: 100%;

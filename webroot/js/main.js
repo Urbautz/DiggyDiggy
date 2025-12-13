@@ -1929,74 +1929,8 @@ function populateForge() {
     
     container.innerHTML = '';
     
-    // Default to create tab
-    if (!window.currentForgeTab) {
-        window.currentForgeTab = 'create';
-    }
-    
-    // Create tabs with finance-style design
-    const tabsContainer = document.createElement('div');
-    tabsContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;';
-    
-    const createTabBtn = document.createElement('button');
-    createTabBtn.id = 'forge-tab-create';
-    createTabBtn.className = 'forge-tab';
-    createTabBtn.textContent = 'Create Tool';
-    createTabBtn.onclick = () => switchForgeTab('create');
-    
-    const inventoryTabBtn = document.createElement('button');
-    inventoryTabBtn.id = 'forge-tab-inventory';
-    inventoryTabBtn.className = 'forge-tab';
-    inventoryTabBtn.textContent = 'Tools Inventory';
-    inventoryTabBtn.onclick = () => switchForgeTab('inventory');
-    
-    tabsContainer.appendChild(createTabBtn);
-    tabsContainer.appendChild(inventoryTabBtn);
-    container.appendChild(tabsContainer);
-    
-    // Create tab content containers
-    const createTabContent = document.createElement('div');
-    createTabContent.id = 'forge-create-tab';
-    createTabContent.className = 'forge-tab-content';
-    container.appendChild(createTabContent);
-    
-    const inventoryTabContent = document.createElement('div');
-    inventoryTabContent.id = 'forge-inventory-tab';
-    inventoryTabContent.className = 'forge-tab-content';
-    container.appendChild(inventoryTabContent);
-    
-    // Create forge interface in create tab
-    createForgeInterface(createTabContent);
-    
-    // Create inventory interface in inventory tab
-    createInventoryInterface(inventoryTabContent);
-    
-    // Apply initial tab state
-    switchForgeTab(window.currentForgeTab);
-}
-
-function switchForgeTab(tab) {
-    window.currentForgeTab = tab;
-    
-    // Update tab button styles
-    const createTab = document.getElementById('forge-tab-create');
-    const inventoryTab = document.getElementById('forge-tab-inventory');
-    const createContent = document.getElementById('forge-create-tab');
-    const inventoryContent = document.getElementById('forge-inventory-tab');
-    
-    if (tab === 'create') {
-        createTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
-        createContent.style.display = 'block';
-        inventoryContent.style.display = 'none';
-    } else {
-        inventoryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        createTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
-        inventoryContent.style.display = 'block';
-        createContent.style.display = 'none';
-        // Refresh inventory when switching to it
-        createInventoryInterface(inventoryContent);
-    }
+    // Create forge interface directly (no tabs)
+    createForgeInterface(container);
 }
 
 // Forge state - tracks the current forging process
@@ -2661,6 +2595,206 @@ function showWarehousePanel() {
     // Show warehouse content
     stopDwarfsLiveUpdate();
     updateMaterialsPanel();
+}
+
+// Show tools inventory in the materials panel
+function showToolsPanel() {
+    const panel = document.getElementById('materials-panel');
+    if (!panel) return;
+    
+    // Mark panel as showing tools view
+    panel.dataset.view = 'tools';
+    
+    // Stop dwarfs live update
+    stopDwarfsLiveUpdate();
+    
+    // Remove header buttons that are specific to warehouse
+    const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
+    if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+    
+    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
+    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    
+    const totalValueSpan = document.getElementById('total-stock-value');
+    if (totalValueSpan) totalValueSpan.remove();
+    
+    // Clear and populate tools
+    const list = document.getElementById('materials-list');
+    if (list) {
+        list.dataset.initialized = 'false';
+        list.innerHTML = '';
+        list.setAttribute('data-view', 'tools');
+    }
+    
+    populateToolsInPanel();
+}
+
+// Populate tools inventory in the materials panel
+function populateToolsInPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    if (toolsInventory.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'empty-message';
+        emptyMsg.innerHTML = '<p>No tools in inventory.</p><p>Open the Forge to create tools!</p>';
+        list.appendChild(emptyMsg);
+        return;
+    }
+    
+    // Sort tools by quality/power descending
+    const sortedTools = [...toolsInventory].sort((a, b) => {
+        const powerA = a.power || a.level || 0;
+        const powerB = b.power || b.level || 0;
+        return powerB - powerA;
+    });
+    
+    sortedTools.forEach(tool => {
+        const toolCard = document.createElement('div');
+        toolCard.className = 'tool-card-panel';
+        
+        // Check if tool is assigned to a dwarf
+        const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
+        const isAssigned = !!assignedDwarf;
+        
+        const header = document.createElement('div');
+        header.className = 'tool-card-header';
+        header.innerHTML = `
+            <span class="tool-name">${tool.type} #${tool.id}</span>
+            <span class="tool-power">⚒️ ${tool.power || tool.level}</span>
+        `;
+        
+        const details = document.createElement('div');
+        details.className = 'tool-card-details';
+        if (isAssigned) {
+            details.innerHTML = `<span class="tool-assigned">📌 ${assignedDwarf.name}</span>`;
+        } else {
+            details.innerHTML = `<span class="tool-unassigned">🔓 Unassigned</span>`;
+        }
+        
+        const actions = document.createElement('div');
+        actions.className = 'tool-card-actions';
+        
+        if (!isAssigned) {
+            const select = document.createElement('select');
+            select.id = `panel-assign-select-${tool.id}`;
+            select.className = 'assign-select-small';
+            select.innerHTML = `<option value="">-- Dwarf --</option>` + 
+                dwarfs.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+            
+            const assignBtn = document.createElement('button');
+            assignBtn.className = 'btn-primary btn-tiny';
+            assignBtn.textContent = 'Assign';
+            assignBtn.onclick = () => assignToolFromPanel(tool.id);
+            
+            actions.appendChild(select);
+            actions.appendChild(assignBtn);
+        }
+        
+        const scrapBtn = document.createElement('button');
+        scrapBtn.className = 'btn-danger btn-tiny';
+        scrapBtn.textContent = '🗑️';
+        scrapBtn.title = isAssigned ? 'Cannot scrap assigned tool' : 'Scrap tool';
+        scrapBtn.disabled = isAssigned;
+        scrapBtn.onclick = () => scrapToolFromPanel(tool.id);
+        actions.appendChild(scrapBtn);
+        
+        toolCard.appendChild(header);
+        toolCard.appendChild(details);
+        toolCard.appendChild(actions);
+        
+        list.appendChild(toolCard);
+    });
+}
+
+// Assign tool from tools panel
+function assignToolFromPanel(toolId) {
+    const selectElement = document.getElementById(`panel-assign-select-${toolId}`);
+    if (!selectElement || !selectElement.value) {
+        alert('Please select a dwarf first!');
+        return;
+    }
+    
+    const dwarfName = selectElement.value;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    
+    if (!dwarf) {
+        alert('Dwarf not found!');
+        return;
+    }
+    
+    // Check if dwarf already has a tool
+    if (dwarf.toolId) {
+        const confirm = window.confirm(`${dwarfName} already has a tool. Replace it with this one?`);
+        if (!confirm) return;
+    }
+    
+    // Assign the tool
+    dwarf.toolId = toolId;
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                dwarfs: dwarfs,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+    
+    logTransaction('income', 0, `Assigned tool #${toolId} to ${dwarfName}`);
+}
+
+// Scrap tool from tools panel
+function scrapToolFromPanel(toolId) {
+    // Check if tool is assigned
+    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
+    if (assignedDwarf) {
+        alert(`Cannot scrap tool #${toolId} - it is assigned to ${assignedDwarf.name}.`);
+        return;
+    }
+    
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const confirm = window.confirm(`Scrap ${tool.type} #${toolId}? This cannot be undone!`);
+    if (!confirm) return;
+    
+    // Remove tool from inventory
+    const index = toolsInventory.findIndex(t => t.id === toolId);
+    if (index !== -1) {
+        toolsInventory.splice(index, 1);
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+    
+    logTransaction('expense', 0, `Scrapped ${tool.type} #${toolId}`);
 }
 
 // Populate the dwarfs modal with a compact table showing state for each dwarf
@@ -4254,6 +4388,8 @@ function switchMaterialsTab(tab) {
         showWarehousePanel();
     } else if (tab === 'dwarfs') {
         openDwarfs();
+    } else if (tab === 'tools') {
+        showToolsPanel();
     }
 }
 
