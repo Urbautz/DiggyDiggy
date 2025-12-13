@@ -189,7 +189,7 @@ let researchtree = [
       description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
     { id: 'furnace', name: 'Furnace', cost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
       description: 'Unlocks the furnace for smelting of ores.' },
-    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 1000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
+    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       description: 'Unlocks the forge for crafting and upgrading tools.' },

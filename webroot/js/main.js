@@ -712,6 +712,21 @@ async function startForging() {
         };
         toolsInventory.push(newTool);
         
+        // Build dwarf options with current tool info
+        const dwarfOptions = dwarfs.map(d => {
+            let label = d.name;
+            if (d.toolId) {
+                const currentTool = toolsInventory.find(t => t.id === d.toolId);
+                if (currentTool) {
+                    const currentPower = currentTool.power || currentTool.level || 0;
+                    label += ` (⚒️ ${currentPower})`;
+                }
+            } else {
+                label += ' (no tool)';
+            }
+            return `<option value="${d.name}">${label}</option>`;
+        }).join('');
+        
         animationContent.innerHTML = `
             <div class="forging-anvil">⚒️</div>
             <div class="forging-message forging-success">Success!</div>
@@ -720,7 +735,18 @@ async function startForging() {
                 <p>Power: ${finalQuality}</p>
                 <p>Attempts used: ${attemptsUsed}</p>
             </div>
-            <button class="btn-primary" onclick="closeForging()">Return to Forge</button>
+            <div class="forging-assign">
+                <label>Name your tool:</label>
+                <input type="text" id="forge-name-input" class="forge-name-input" placeholder="${materialName} Pickaxe" maxlength="30">
+            </div>
+            <div class="forging-assign">
+                <label>Assign to dwarf:</label>
+                <select id="forge-assign-select" class="assign-select-small">
+                    <option value="">-- Don't assign --</option>
+                    ${dwarfOptions}
+                </select>
+            </div>
+            <button class="btn-primary" onclick="closeForging(${newToolId}, '${materialName} Pickaxe')">Done</button>
         `;
         
         logTransaction('income', 0, `Forged new tool with quality ${finalQuality}`);
@@ -752,7 +778,42 @@ async function startForging() {
     }
 }
 
-function closeForging() {
+function closeForging(newToolId, defaultName) {
+    // Check if a custom name was entered
+    const nameInput = document.getElementById('forge-name-input');
+    if (nameInput && newToolId) {
+        const customName = nameInput.value.trim();
+        if (customName) {
+            const tool = toolsInventory.find(t => t.id === newToolId);
+            if (tool) {
+                tool.name = customName;
+            }
+        }
+    }
+    
+    // Check if a dwarf was selected for assignment
+    const selectElement = document.getElementById('forge-assign-select');
+    if (selectElement && selectElement.value && newToolId) {
+        const dwarfName = selectElement.value;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            dwarf.toolId = newToolId;
+            logTransaction('income', 0, `Assigned tool #${newToolId} to ${dwarfName}`);
+            
+            // Sync with worker
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: {
+                        dwarfs: dwarfs,
+                        toolsInventory: toolsInventory
+                    }
+                });
+            }
+            saveGame();
+        }
+    }
+    
     closeModal('forging-animation-modal');
     updateStockDisplay(); // Update stock display
     openModal('forge-modal');
@@ -2662,13 +2723,22 @@ function populateToolsInPanel() {
         
         const header = document.createElement('div');
         header.className = 'tool-card-header';
+        const displayName = tool.name || `${tool.type} #${tool.id}`;
         header.innerHTML = `
-            <span class="tool-name">${tool.type} #${tool.id}</span>
+            <span class="tool-name">${displayName}</span>
             <span class="tool-power">⚒️ ${toolPower}</span>
         `;
         
         const actions = document.createElement('div');
         actions.className = 'tool-card-actions';
+        
+        // Rename button
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'btn-secondary btn-tiny';
+        renameBtn.textContent = '✏️';
+        renameBtn.title = 'Rename tool';
+        renameBtn.onclick = () => renameToolFromPanel(tool.id);
+        actions.appendChild(renameBtn);
         
         // Dropdown for assigning (shows current assignment or allows selection)
         const select = document.createElement('select');
@@ -2697,14 +2767,14 @@ function populateToolsInPanel() {
         gemsBtn.style.cursor = 'not-allowed';
         actions.appendChild(gemsBtn);
         
-        // Scrap button
-        const scrapBtn = document.createElement('button');
-        scrapBtn.className = 'btn-danger btn-tiny';
-        scrapBtn.textContent = '🗑️ Destroy';
-        scrapBtn.title = isAssigned ? 'Cannot scrap assigned tool' : 'Scrap tool';
-        scrapBtn.disabled = isAssigned;
-        scrapBtn.onclick = () => scrapToolFromPanel(tool.id);
-        actions.appendChild(scrapBtn);
+        // Sell button
+        const sellBtn = document.createElement('button');
+        sellBtn.className = 'btn-sell btn-tiny';
+        sellBtn.textContent = `💰 Sell (${toolPower})`;
+        sellBtn.title = isAssigned ? 'Cannot sell assigned tool' : `Sell for ${toolPower} gold`;
+        sellBtn.disabled = isAssigned;
+        sellBtn.onclick = () => sellToolFromPanel(tool.id);
+        actions.appendChild(sellBtn);
         
         toolCard.appendChild(header);
         toolCard.appendChild(actions);
@@ -2795,28 +2865,25 @@ function assignToolFromPanel(toolId, newToolPower) {
     logTransaction('income', 0, `Assigned tool #${toolId} to ${dwarfName}`);
 }
 
-// Scrap tool from tools panel
-function scrapToolFromPanel(toolId) {
-    // Check if tool is assigned
-    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
-    if (assignedDwarf) {
-        alert(`Cannot scrap tool #${toolId} - it is assigned to ${assignedDwarf.name}.`);
-        return;
-    }
-    
+// Rename tool from tools panel
+function renameToolFromPanel(toolId) {
     const tool = toolsInventory.find(t => t.id === toolId);
     if (!tool) {
         alert('Tool not found!');
         return;
     }
     
-    const confirm = window.confirm(`Scrap ${tool.type} #${toolId}? This cannot be undone!`);
-    if (!confirm) return;
+    const currentName = tool.name || `${tool.type} #${tool.id}`;
+    const newName = prompt('Enter a new name for this tool:', currentName);
     
-    // Remove tool from inventory
-    const index = toolsInventory.findIndex(t => t.id === toolId);
-    if (index !== -1) {
-        toolsInventory.splice(index, 1);
+    if (newName === null) return; // Cancelled
+    
+    const trimmedName = newName.trim();
+    if (trimmedName === '') {
+        // Clear custom name, revert to default
+        delete tool.name;
+    } else {
+        tool.name = trimmedName;
     }
     
     // Sync with worker
@@ -2834,8 +2901,59 @@ function scrapToolFromPanel(toolId) {
     
     // Refresh the tools panel
     populateToolsInPanel();
+}
+
+// Sell tool from tools panel
+function sellToolFromPanel(toolId) {
+    // Check if tool is assigned
+    const assignedDwarf = dwarfs.find(d => d.toolId === toolId);
+    if (assignedDwarf) {
+        alert(`Cannot sell tool #${toolId} - it is assigned to ${assignedDwarf.name}.`);
+        return;
+    }
     
-    logTransaction('expense', 0, `Scrapped ${tool.type} #${toolId}`);
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+    
+    const toolPower = tool.power || tool.level || 0;
+    const sellValue = toolPower;
+    
+    const confirmSell = window.confirm(`Sell ${tool.type} #${toolId} for ${sellValue} gold?`);
+    if (!confirmSell) return;
+    
+    // Add gold
+    gold += sellValue;
+    
+    // Remove tool from inventory
+    const index = toolsInventory.findIndex(t => t.id === toolId);
+    if (index !== -1) {
+        toolsInventory.splice(index, 1);
+    }
+    
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gold: gold,
+                toolsInventory: toolsInventory
+            }
+        });
+    }
+    
+    // Update gold display
+    updateGoldDisplay();
+    
+    // Trigger autosave
+    saveGame();
+    
+    // Refresh the tools panel
+    populateToolsInPanel();
+    
+    logTransaction('income', sellValue, `Sold ${tool.type} #${toolId}`);
 }
 
 // Populate the dwarfs modal with a compact table showing state for each dwarf
@@ -3535,16 +3653,21 @@ function initMaterialsPanel() {
         icons.className = 'wh-col-icons';
         const isInput = smelterInputMaterials.has(id);
         const isOutput = smelterOutputMaterials.has(id);
+        const isForgeInput = m.type === 'Ingot';
         
         let iconsText = '';
         const tooltipParts = [];
         if (isInput) {
-            iconsText += '🔧';
+            iconsText = '🪨';
             tooltipParts.push('Used in smelter recipes');
         }
         if (isOutput) {
-            iconsText += '♨️';
+            iconsText = '♨️';
             tooltipParts.push('Produced by smelter');
+        }
+        if (isForgeInput) {
+            iconsText = '🔩';
+            tooltipParts.push('Used in forge');
         }
         icons.textContent = iconsText;
         if (tooltipParts.length > 0) {
@@ -3625,7 +3748,7 @@ function updateMaterialsPanel() {
             hasAnyMaterials = true;
             totalStockValue += count * actualWorth;
             
-            if (!smelterInputMaterials.has(id)) {
+            if (!smelterInputMaterials.has(id) && m.type !== 'Ingot') {
                 hasNotCraftableMaterials = true;
             }
             
@@ -3710,6 +3833,24 @@ function sellAllMaterials() {
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
     
+    // First calculate totals for confirmation
+    let previewGold = 0;
+    let previewItems = 0;
+    for (const m of materials) {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            previewGold += count * m.worth * tradeBonus;
+            previewItems += count;
+        }
+    }
+    
+    if (previewItems === 0) return;
+    
+    // Confirmation dialog
+    if (!confirm(`Sell ALL materials?\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+        return;
+    }
+    
     let totalGold = 0;
     let totalItems = 0;
     
@@ -3760,13 +3901,36 @@ function sellNotCraftableMaterials() {
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
     
+    // First calculate totals for confirmation
+    let previewGold = 0;
+    let previewItems = 0;
+    for (const m of materials) {
+        // Skip materials that are used as smelter inputs or forge inputs (ingots)
+        if (smelterInputMaterials.has(m.id)) continue;
+        if (m.type === 'Ingot') continue;
+        
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        if (count > 0) {
+            previewGold += count * m.worth * tradeBonus;
+            previewItems += count;
+        }
+    }
+    
+    if (previewItems === 0) return;
+    
+    // Confirmation dialog
+    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+        return;
+    }
+    
     let totalGold = 0;
     let totalItems = 0;
     
     for (const m of materials) {
         const id = m.id;
-        // Skip materials that are used as smelter inputs
+        // Skip materials that are used as smelter inputs or forge inputs (ingots)
         if (smelterInputMaterials.has(id)) continue;
+        if (m.type === 'Ingot') continue;
         
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {

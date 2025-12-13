@@ -685,7 +685,7 @@ header, footer {
 
 .warehouse-row { 
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr 1.8fr;
     gap: 14px;
     align-items: center;
     padding: 12px 14px; 
@@ -746,6 +746,10 @@ header, footer {
 .wh-col-icons {
     font-size: 14px;
     text-align: center;
+    white-space: nowrap;
+    display: inline-flex;
+    gap: 2px;
+    justify-content: center;
 }
 
 .wh-col-actions {
@@ -939,7 +943,8 @@ header, footer {
     cursor: pointer;
 }
 
-.btn-danger.btn-tiny:disabled {
+.btn-danger.btn-tiny:disabled,
+.btn-sell.btn-tiny:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
@@ -1600,6 +1605,49 @@ header, footer {
 
 .forging-result strong {
     color: #ffa726;
+}
+
+.forging-assign {
+    margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.forging-assign label {
+    font-size: 14px;
+    color: #9fbfe0;
+}
+
+.forging-assign select {
+    width: 200px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: #2a3a4a;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    color: #dbeafe;
+}
+
+.forging-assign select option {
+    background: #2a3a4a;
+    color: #dbeafe;
+}
+
+.forge-name-input {
+    width: 200px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: #2a3a4a;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    color: #dbeafe;
+    text-align: center;
+}
+
+.forge-name-input::placeholder {
+    color: #6b7a8a;
 }
 
 /* Forge Outcomes Section */
