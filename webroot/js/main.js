@@ -3048,6 +3048,93 @@ function populateDwarfsOverview() {
     container.appendChild(table);
 }
 
+// Efficiently update dwarf info in the panel without rebuilding the whole thing
+function updateDwarfsInPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+
+    // This function will be called every tick. It should not re-sort to avoid elements jumping around.
+    for (const d of dwarfs) {
+        const row = document.getElementById(`dwarf-row-${d.name}`);
+        if (!row) {
+            // Dwarf is new since the panel was opened. For now, we'll let populateDwarfsInPanel handle this
+            // by re-running when the tab is re-opened. This avoids complexity of inserting into a sorted list.
+            continue;
+        }
+
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const canLevelUp = currentXP >= xpNeeded;
+
+        // Update level up highlight and class
+        row.classList.toggle('can-level-up', canLevelUp);
+
+        // Update header (for level up button)
+        const header = document.getElementById(`dwarf-header-${d.name}`);
+        if (header) {
+            let levelUpBtn = header.querySelector('.btn-levelup');
+            if (canLevelUp) {
+                if (!levelUpBtn) {
+                    levelUpBtn = document.createElement('button');
+                    levelUpBtn.className = 'btn-levelup btn-levelup-small';
+                    levelUpBtn.textContent = '⭐ Lvl Up';
+                    levelUpBtn.dataset.dwarfName = d.name;
+                    header.appendChild(levelUpBtn);
+                }
+            } else {
+                if (levelUpBtn) {
+                    levelUpBtn.remove();
+                }
+            }
+        }
+
+        // Update info panel
+        const info = document.getElementById(`dwarf-info-${d.name}`);
+        if (info) {
+            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+            const bucketResearch = researchtree.find(r => r.id === 'buckets');
+            const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+            const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
+
+            const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+            const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+            const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+            const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
+            const dwarfLevel = (d.level || 1) - 1;
+            const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
+
+            const baseDwarfPower = 3;
+            let totalPower = baseDwarfPower;
+            let toolName = 'None';
+            if (d.toolId) {
+                const tool = toolsInventory.find(t => t.id === d.toolId);
+                if (tool) {
+                    toolName = tool.name || tool.type;
+                    const levelBonus = 1 + (d.digPower || 0) * 0.1;
+                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+                    let toolPower;
+                    if (tool.power !== undefined) {
+                        toolPower = tool.power / 100;
+                    } else {
+                        const toolDef = getToolByType(tool.type);
+                        toolPower = toolDef ? toolDef.power / 100 : 1.0;
+                    }
+                    totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+                }
+            }
+            
+            const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${d.level || 1}</span>`;
+            const newHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+
+            if (info.innerHTML !== newHTML) {
+                info.innerHTML = newHTML;
+            }
+        }
+    }
+}
+
 // Populate dwarfs in the materials panel (not modal)
 function populateDwarfsInPanel() {
     const list = document.getElementById('materials-list');
@@ -3076,6 +3163,7 @@ function populateDwarfsInPanel() {
     for (const d of sortedDwarfs) {
         const row = document.createElement('div');
         row.className = 'dwarf-row';
+        row.id = `dwarf-row-${d.name}`;
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
@@ -3089,6 +3177,7 @@ function populateDwarfsInPanel() {
         // Header with name and level up button
         const header = document.createElement('div');
         header.className = 'dwarf-header';
+        header.id = `dwarf-header-${d.name}`;
         
         const name = document.createElement('div');
         name.className = 'dwarf-name';
@@ -3144,11 +3233,12 @@ function populateDwarfsInPanel() {
         // Get tool name for display
         const toolName = d.toolId ? (() => {
             const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? tool.type : 'None';
+            return tool ? (tool.name || tool.type) : 'None';
         })() : 'None';
         
         const info = document.createElement('div');
         info.className = 'dwarf-info';
+        info.id = `dwarf-info-${d.name}`;
         
         // Create level display with XP tooltip
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
@@ -4239,7 +4329,7 @@ function initWorker() {
                 // Update dwarf panel every tick if in dwarfs view
                 const panel = document.getElementById('materials-panel');
                 if (panel && panel.dataset.view === 'dwarfs') {
-                    populateDwarfsInPanel();
+                    updateDwarfsInPanel();
                 }
                 
                 // Update smelter panel every 5 ticks if it's open (for temperature display)
