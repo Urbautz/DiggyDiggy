@@ -367,6 +367,18 @@ function attemptCollapse(x, y) {
 
         //console.log(`Collapse: moving cell (${ux},${scanY}) down to (${ux},${dstY})`);
         grid[dstY][ux] = { materialId: src.materialId, hardness: src.hardness };
+        // If a material is destroyed by collapse (set to hardness 0), award XP to any dwarf standing at that cell
+        if (src.hardness > 0) {
+            for (const d of dwarfs) {
+                if (d.x === ux && d.y === scanY) {
+                    const mat = materials.find(m => m.id === src.materialId);
+                    if (mat && typeof mat.hardness === 'number') {
+                        const xpGain = Math.ceil(Math.sqrt(mat.hardness));
+                        d.xp = (d.xp || 0) + xpGain;
+                    }
+                }
+            }
+        }
         grid[scanY][ux] = { materialId: src.materialId, hardness: 0 };
 
         for (const d of dwarfs) {
@@ -882,7 +894,7 @@ function actForDwarf(dwarf) {
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION; // Award XP for digging
+            // XP is now only awarded when a material is destroyed
             
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
@@ -926,7 +938,14 @@ function actForDwarf(dwarf) {
                 const matId = curCell.materialId;
                 dwarf.bucket = dwarf.bucket || {};
                 dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-                //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                // Award XP only when material is destroyed
+                const mat = materials.find(m => m.id === matId);
+                if (mat && typeof mat.hardness === 'number') {
+                    const xpGain = Math.ceil(Math.sqrt(mat.hardness));
+                    dwarf.xp = (dwarf.xp || 0) + xpGain;
+                    console.log(`Dwarf ${dwarf.name} gained ${xpGain} XP and has now ${dwarf.xp} XP total`);
+                }
+                console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
@@ -990,7 +1009,7 @@ function actForDwarf(dwarf) {
             dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION; // Award XP for digging
+            // XP is now only awarded when a material is destroyed (see above)
             
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
@@ -1034,6 +1053,12 @@ function actForDwarf(dwarf) {
                 const matId = curCellDig.materialId;
                 dwarf.bucket = dwarf.bucket || {};
                 dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+                const mat = materials.find(m => m.id === matId);
+                if (mat && typeof mat.hardness === 'number') {
+                    const xpGain = Math.ceil(Math.sqrt(mat.hardness));
+                    dwarf.xp = (dwarf.xp || 0) + xpGain;
+                    console.log(`Dwarf ${dwarf.name} gained ${xpGain} XP and has now ${dwarf.xp} XP total`);
+                }
                 //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
