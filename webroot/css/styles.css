@@ -1176,24 +1176,24 @@ header, footer {
 /* ========== Smelter Task List Styles ========== */
 .smelter-description {
     color: #9fbfe0;
-    margin-bottom: 16px;
-    font-size: 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
 }
 
 .smelter-task-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .smelter-task-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 6px;
+    padding: 6px;
     background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s ease;
 }
 
@@ -1204,21 +1204,22 @@ header, footer {
 
 .smelter-task-priority {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 14px;
     color: #ffa726;
-    min-width: 28px;
+    min-width: 24px;
+    text-align: center;
 }
 
 .smelter-task-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 
 .smelter-task-name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     color: #fff;
 }
 
@@ -1228,10 +1229,10 @@ header, footer {
 }
 
 .smelter-task-recipe {
-    font-size: 11px;
+    font-size: 10px;
     color: #81d4fa;
-    margin-top: 4px;
-    padding: 4px 8px;
+    margin-top: 2px;
+    padding: 3px 6px;
     background: rgba(129, 212, 250, 0.1);
     border-radius: 4px;
     display: inline-block;
@@ -1248,11 +1249,11 @@ header, footer {
     background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
     border: 1px solid rgba(255,255,255,0.15);
     color: #fff;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1272,8 +1273,8 @@ header, footer {
 
 /* Smelter task status indicator */
 .smelter-task-status {
-    font-size: 16px;
-    min-width: 24px;
+    font-size: 14px;
+    min-width: 20px;
     text-align: center;
 }
 
@@ -1397,15 +1398,15 @@ header, footer {
 
 /* Forge Interface Styles */
 .forge-step {
-    margin-bottom: 24px;
-    padding: 16px;
+    margin-bottom: 16px;
+    padding: 12px;
     border-radius: 8px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .affordability-indicator {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     margin-left: 8px;
 }
@@ -1420,26 +1421,27 @@ header, footer {
 
 .forge-step h3 {
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: #ffa726;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .forge-step label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 500;
+    font-size: 13px;
 }
 
 .forge-step select {
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
-    font-size: 14px;
-    margin-bottom: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
 }
 
 .forge-step select:focus {
@@ -1449,19 +1451,19 @@ header, footer {
 
 .forge-step input[type="range"] {
     width: 100%;
-    height: 8px;
+    height: 6px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border-radius: 3px;
     outline: none;
     appearance: none;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .forge-step input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #ffa726;
     border-radius: 50%;
     cursor: pointer;
@@ -1469,8 +1471,8 @@ header, footer {
 }
 
 .forge-step input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #ffa726;
     border-radius: 50%;
     cursor: pointer;
@@ -1479,32 +1481,32 @@ header, footer {
 
 .forge-info {
     color: #90caf9;
-    font-size: 14px;
-    margin: 8px 0 0 0;
+    font-size: 12px;
+    margin: 6px 0 0 0;
 }
 
 .forge-warning {
     color: #ffb74d;
-    font-size: 13px;
-    margin: 8px 0 0 0;
-    padding: 8px;
+    font-size: 12px;
+    margin: 6px 0 0 0;
+    padding: 6px;
     background: rgba(255, 152, 0, 0.1);
     border-left: 3px solid #ff9800;
     border-radius: 4px;
 }
 
 .forge-action {
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 #forge-button {
-    padding: 12px 32px;
-    font-size: 16px;
+    padding: 10px 24px;
+    font-size: 14px;
     font-weight: bold;
     background: linear-gradient(135deg, #ff6f00, #ff9800);
     color: #fff;
@@ -1528,21 +1530,21 @@ header, footer {
 
 /* Forging Animation Modal */
 .forging-dialog {
-    max-width: 500px;
-    min-height: 400px;
+    max-width: 450px;
+    min-height: 350px;
     text-align: center;
 }
 
 .forging-dialog .modal-body {
-    min-height: 350px;
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
 .forging-anvil {
-    font-size: 100px;
-    margin: 40px 0;
+    font-size: 80px;
+    margin: 30px 0;
     animation: none;
 }
 
@@ -1552,53 +1554,53 @@ header, footer {
 
 @keyframes shake {
     0%, 100% { transform: translateX(0) rotate(0deg); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) rotate(-5deg); }
-    20%, 40%, 60%, 80% { transform: translateX(10px) rotate(5deg); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-4deg); }
+    20%, 40%, 60%, 80% { transform: translateX(8px) rotate(4deg); }
 }
 
 .forging-message {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
-    margin: 20px 0;
+    margin: 16px 0;
     color: #ffa726;
 }
 
 .forging-quality {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
-    margin: 15px 0;
+    margin: 12px 0;
     color: #64b5f6;
-    text-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+    text-shadow: 0 0 8px rgba(100, 181, 246, 0.3);
 }
 
 .forging-message.forging-success {
     color: #4caf50;
-    font-size: 32px;
-    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    font-size: 28px;
+    text-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
 }
 
 .forging-message.forging-failure {
     color: #f44336;
-    font-size: 28px;
-    text-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+    font-size: 24px;
+    text-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
     animation: pulse 0.5s ease-in-out;
 }
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    50% { transform: scale(1.08); }
 }
 
 .forging-result {
-    margin-top: 30px;
-    padding: 20px;
+    margin-top: 20px;
+    padding: 15px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .forging-result p {
-    margin: 10px 0;
+    margin: 8px 0;
 }
 
 .forging-result strong {
@@ -1606,22 +1608,22 @@ header, footer {
 }
 
 .forging-assign {
-    margin: 15px 0;
+    margin: 12px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .forging-assign label {
-    font-size: 14px;
+    font-size: 13px;
     color: #9fbfe0;
 }
 
 .forging-assign select {
-    width: 200px;
-    padding: 8px 12px;
-    font-size: 13px;
+    width: 180px;
+    padding: 6px 10px;
+    font-size: 12px;
     background: #2a3a4a;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 6px;
@@ -1634,9 +1636,9 @@ header, footer {
 }
 
 .forge-name-input {
-    width: 200px;
-    padding: 8px 12px;
-    font-size: 13px;
+    width: 180px;
+    padding: 6px 10px;
+    font-size: 12px;
     background: #2a3a4a;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 6px;
@@ -1650,16 +1652,16 @@ header, footer {
 
 /* Forge Outcomes Section */
 .forge-outcomes {
-    margin-top: 12px;
-    padding: 20px;
-    background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
-    border: 2px solid rgba(33, 150, 243, 0.3);
+    margin-top: 10px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+    border: 1px solid rgba(33, 150, 243, 0.2);
     border-radius: 8px;
 }
 
 .forge-outcomes-top {
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -1669,17 +1671,17 @@ header, footer {
 
 .forge-outcomes h3 {
     margin-top: 0;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #64b5f6;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .outcome-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .outcome-row:last-child {
@@ -1689,10 +1691,11 @@ header, footer {
 .outcome-label {
     font-weight: 500;
     color: #e0e0e0;
+    font-size: 13px;
 }
 
 .outcome-value {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: bold;
 }
 
@@ -1821,4 +1824,9 @@ header, footer {
     color: #64b5f6;
     font-size: 13px;
     text-align: center;
+}
+
+/* Custom width for the Smelter Modal */
+#smelter-modal .modal-dialog {
+    width: clamp(280px, 40vw, 500px);
 }

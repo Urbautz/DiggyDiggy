@@ -396,14 +396,6 @@ function updateGridDisplay() {
                         researchIcon.className = 'drop-off-marker research';
                         researchIcon.textContent = '🔬';
                         researchIcon.title = 'Research Lab';
-                        // Add warning if no active research
-                        if (!activeResearch) {
-                            const warn = document.createElement('span');
-                            warn.textContent = '⚠️';
-                            warn.style.cssText = 'position: absolute; top: -8px; right: -8px; font-size: 14px; color: #ff6b6b;';
-                            researchIcon.appendChild(warn);
-                            researchIcon.title = 'No active research!';
-                        }
                         cell.appendChild(researchIcon);
                         
                         // Add progress bar if research is active
@@ -1417,7 +1409,7 @@ function populateSmelter() {
         taskDesc.textContent = task.description;
         taskInfo.appendChild(taskDesc);
         
-        // Show input/output if applicable
+        // Show input/output if applicable (compact, no stock info)
         if (task.input && task.output) {
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
@@ -1425,11 +1417,8 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
-            // Show current stock vs required
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
-            // Add temperature requirement if present
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}${tempReq}`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -1437,24 +1426,21 @@ function populateSmelter() {
             }
             taskInfo.appendChild(taskRecipe);
         } else if (task.input && task.type === 'heating') {
-            // Show heating task info with temperature display
+            // Show heating task info with temperature display (compact, no stock info)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
-            
             // Add temperature display and controls inside the heating task
             const tempControls = document.createElement('div');
             tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
-            
             // Current temperature with bar
             const tempValue = Math.round(smelterTemperature);
             const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
@@ -1462,7 +1448,6 @@ function populateSmelter() {
             tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
             tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
             tempControls.appendChild(tempDisplay);
-            
             // Temperature bar
             const tempBarContainer = document.createElement('div');
             tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
@@ -1471,11 +1456,9 @@ function populateSmelter() {
             tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
             tempBarContainer.appendChild(tempBar);
             tempControls.appendChild(tempBarContainer);
-            
             // Temperature range controls
             const rangeControls = document.createElement('div');
             rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
-            
             // Min temperature control
             const minControl = document.createElement('div');
             minControl.innerHTML = `
@@ -1486,7 +1469,6 @@ function populateSmelter() {
                 </div>
             `;
             rangeControls.appendChild(minControl);
-            
             // Max temperature control
             const maxControl = document.createElement('div');
             maxControl.innerHTML = `
@@ -1497,7 +1479,6 @@ function populateSmelter() {
                 </div>
             `;
             rangeControls.appendChild(maxControl);
-            
             tempControls.appendChild(rangeControls);
             taskInfo.appendChild(tempControls);
         }
