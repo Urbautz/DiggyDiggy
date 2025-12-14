@@ -1809,6 +1809,11 @@ function populateResearch() {
         
         // Skip if max level reached
         if (currentLevel >= maxLevel) continue;
+
+        // Skip if min_depth not reached
+        if (researchItem.min_depth && startX < researchItem.min_depth) {
+            continue;
+        }
         
         const tr = document.createElement('tr');
         
