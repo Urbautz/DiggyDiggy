@@ -948,7 +948,7 @@ function actForDwarf(dwarf) {
                     dwarf.xp = (dwarf.xp || 0) + xpGain;
                     // console.log(`Dwarf ${dwarf.name} gained ${xpGain} XP and has now ${dwarf.xp} XP total`);
                 }
-                console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+                // console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
