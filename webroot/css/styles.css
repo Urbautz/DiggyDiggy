@@ -64,7 +64,6 @@ main {
     gap: 6px;
     padding: 8px;
     flex: 0 0 auto;
-    xxxbackground: #494949a0;
     border-radius: 6px;
 }
 
@@ -377,7 +376,6 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    xmargin-top: 12px;
     padding: 16px;
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
