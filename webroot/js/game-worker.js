@@ -552,8 +552,11 @@ function actForDwarf(dwarf) {
                 activeResearch.progress = 0;
             }
             // Base points + wisdom bonus
-            const researchPoints = DWARF_XP_PER_ACTION + (dwarf.wisdom || 0);
+            const researchPoints = (dwarf.wisdom || 0);
             activeResearch.progress += researchPoints;
+            const WisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
+            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (WisdomMultiplier > 0 ? WisdomMultiplier : 1);
+            
             //console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
             
             // Check if research is complete (cost doubles each level)
