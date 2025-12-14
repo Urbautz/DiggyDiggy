@@ -1,3 +1,26 @@
+// Track last known count of dwarfs ready to level up for badge update
+let lastDwarfsLevelUpCount = 0;
+
+function updateDwarfsLevelUpBadge() {
+    const badge = document.getElementById('dwarfs-levelup-badge');
+    if (!badge) return;
+    const dwarfsCanLevelUp = dwarfs.filter(d => {
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        return currentXP >= xpNeeded;
+    });
+    if (dwarfsCanLevelUp.length !== lastDwarfsLevelUpCount) {
+        lastDwarfsLevelUpCount = dwarfsCanLevelUp.length;
+        if (dwarfsCanLevelUp.length > 0) {
+            badge.textContent = `(⭐${dwarfsCanLevelUp.length})`;
+            badge.style.display = '';
+        } else {
+            badge.textContent = '';
+            badge.style.display = 'none';
+        }
+    }
+}
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 
@@ -315,21 +338,15 @@ function updateGridDisplay() {
                         bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         bed.textContent = '🏠';
                         
-                        // Check if any dwarf can level up
-                        const dwarfsCanLevelUp = dwarfs.filter(d => {
-                            const currentXP = d.xp || 0;
-                            const currentLevel = d.level || 1;
-                            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-                            return currentXP >= xpNeeded;
-                        });
-                        
-                        if (dwarfsCanLevelUp.length > 0) {
-                            bed.title = `House (${dwarfsCanLevelUp.length} dwarf(s) ready to level up!)`;
-                            // Add notification badge
+                        // Show number of dwarfs currently resting in the house
+                        const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
+                        if (dwarfsResting.length > 0) {
+                            bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
+                            // Add notification badge for resting dwarfs
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                            badge.textContent = dwarfsCanLevelUp.length;
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4a90e2; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
+                            badge.textContent = dwarfsResting.length;
                             bed.appendChild(badge);
                         } else {
                             bed.title = 'House (open dwarfs overview)';
@@ -379,6 +396,14 @@ function updateGridDisplay() {
                         researchIcon.className = 'drop-off-marker research';
                         researchIcon.textContent = '🔬';
                         researchIcon.title = 'Research Lab';
+                        // Add warning if no active research
+                        if (!activeResearch) {
+                            const warn = document.createElement('span');
+                            warn.textContent = '⚠️';
+                            warn.style.cssText = 'position: absolute; top: -8px; right: -8px; font-size: 14px; color: #ff6b6b;';
+                            researchIcon.appendChild(warn);
+                            researchIcon.title = 'No active research!';
+                        }
                         cell.appendChild(researchIcon);
                         
                         // Add progress bar if research is active
@@ -495,6 +520,7 @@ function updateGridDisplay() {
         // Only update it when materials actually change (in sellMaterial function)
         updateStockDisplay();
         updateGoldDisplay();
+        updateDwarfsLevelUpBadge();
         refreshTooltipAfterRedraw();
 }
 
