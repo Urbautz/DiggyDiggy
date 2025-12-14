@@ -845,6 +845,12 @@ function sleep(ms) {
 function openResearch() {
     openModal('research-modal');
     populateResearch();
+    // Add event listener to refresh research modal when checkbox is toggled
+    const hideCheckbox = document.getElementById('hide-endless-research');
+    if (hideCheckbox && !hideCheckbox._diggyListenerAttached) {
+        hideCheckbox.addEventListener('change', populateResearch);
+        hideCheckbox._diggyListenerAttached = true;
+    }
 }
 
 function openSmelter() {
@@ -1757,6 +1763,8 @@ function populateResearch() {
     if (!container) return;
     
     container.innerHTML = '';
+
+    const hideEndless = document.getElementById('hide-endless-research').checked;
     
     //console.log('Populating research, researchtree has', researchtree.length, 'items:', researchtree.map(r => r.id));
     
@@ -1812,6 +1820,10 @@ function populateResearch() {
 
         // Skip if min_depth not reached
         if (researchItem.min_depth && startX < researchItem.min_depth) {
+            continue;
+        }
+
+        if (hideEndless && (researchItem.maxlevel === Infinity || !researchItem.maxlevel)) {
             continue;
         }
         
