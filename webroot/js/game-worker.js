@@ -946,7 +946,7 @@ function actForDwarf(dwarf) {
                 if (mat && typeof mat.hardness === 'number') {
                     const xpGain = Math.ceil(Math.sqrt(mat.hardness));
                     dwarf.xp = (dwarf.xp || 0) + xpGain;
-                    console.log(`Dwarf ${dwarf.name} gained ${xpGain} XP and has now ${dwarf.xp} XP total`);
+                    // console.log(`Dwarf ${dwarf.name} gained ${xpGain} XP and has now ${dwarf.xp} XP total`);
                 }
                 console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
             }
