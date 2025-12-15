@@ -64,7 +64,6 @@ main {
     gap: 6px;
     padding: 8px;
     flex: 0 0 auto;
-    xxxbackground: #494949a0;
     border-radius: 6px;
 }
 
@@ -377,7 +376,6 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    xmargin-top: 12px;
     padding: 16px;
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -820,6 +818,18 @@ header, footer {
     border-color: rgba(251, 191, 36, 0.2);
 }
 
+.dwarf-row.dwarf-clickable:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.dwarf-row.can-level-up.dwarf-clickable:hover {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.35);
+}
+
 .dwarf-header {
     display: flex;
     align-items: center;
@@ -1178,24 +1188,24 @@ header, footer {
 /* ========== Smelter Task List Styles ========== */
 .smelter-description {
     color: #9fbfe0;
-    margin-bottom: 16px;
-    font-size: 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
 }
 
 .smelter-task-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .smelter-task-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 6px;
+    padding: 6px;
     background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s ease;
 }
 
@@ -1206,21 +1216,22 @@ header, footer {
 
 .smelter-task-priority {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 14px;
     color: #ffa726;
-    min-width: 28px;
+    min-width: 24px;
+    text-align: center;
 }
 
 .smelter-task-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 
 .smelter-task-name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     color: #fff;
 }
 
@@ -1230,10 +1241,10 @@ header, footer {
 }
 
 .smelter-task-recipe {
-    font-size: 11px;
+    font-size: 10px;
     color: #81d4fa;
-    margin-top: 4px;
-    padding: 4px 8px;
+    margin-top: 2px;
+    padding: 3px 6px;
     background: rgba(129, 212, 250, 0.1);
     border-radius: 4px;
     display: inline-block;
@@ -1250,11 +1261,11 @@ header, footer {
     background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
     border: 1px solid rgba(255,255,255,0.15);
     color: #fff;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1274,8 +1285,8 @@ header, footer {
 
 /* Smelter task status indicator */
 .smelter-task-status {
-    font-size: 16px;
-    min-width: 24px;
+    font-size: 14px;
+    min-width: 20px;
     text-align: center;
 }
 
@@ -1399,15 +1410,15 @@ header, footer {
 
 /* Forge Interface Styles */
 .forge-step {
-    margin-bottom: 24px;
-    padding: 16px;
+    margin-bottom: 16px;
+    padding: 12px;
     border-radius: 8px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .affordability-indicator {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     margin-left: 8px;
 }
@@ -1422,26 +1433,27 @@ header, footer {
 
 .forge-step h3 {
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: #ffa726;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .forge-step label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 500;
+    font-size: 13px;
 }
 
 .forge-step select {
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
-    font-size: 14px;
-    margin-bottom: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
 }
 
 .forge-step select:focus {
@@ -1451,19 +1463,19 @@ header, footer {
 
 .forge-step input[type="range"] {
     width: 100%;
-    height: 8px;
+    height: 6px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border-radius: 3px;
     outline: none;
     appearance: none;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .forge-step input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #ffa726;
     border-radius: 50%;
     cursor: pointer;
@@ -1471,8 +1483,8 @@ header, footer {
 }
 
 .forge-step input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #ffa726;
     border-radius: 50%;
     cursor: pointer;
@@ -1481,32 +1493,32 @@ header, footer {
 
 .forge-info {
     color: #90caf9;
-    font-size: 14px;
-    margin: 8px 0 0 0;
+    font-size: 12px;
+    margin: 6px 0 0 0;
 }
 
 .forge-warning {
     color: #ffb74d;
-    font-size: 13px;
-    margin: 8px 0 0 0;
-    padding: 8px;
+    font-size: 12px;
+    margin: 6px 0 0 0;
+    padding: 6px;
     background: rgba(255, 152, 0, 0.1);
     border-left: 3px solid #ff9800;
     border-radius: 4px;
 }
 
 .forge-action {
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 #forge-button {
-    padding: 12px 32px;
-    font-size: 16px;
+    padding: 10px 24px;
+    font-size: 14px;
     font-weight: bold;
     background: linear-gradient(135deg, #ff6f00, #ff9800);
     color: #fff;
@@ -1530,21 +1542,21 @@ header, footer {
 
 /* Forging Animation Modal */
 .forging-dialog {
-    max-width: 500px;
-    min-height: 400px;
+    max-width: 450px;
+    min-height: 350px;
     text-align: center;
 }
 
 .forging-dialog .modal-body {
-    min-height: 350px;
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
 .forging-anvil {
-    font-size: 100px;
-    margin: 40px 0;
+    font-size: 80px;
+    margin: 30px 0;
     animation: none;
 }
 
@@ -1554,53 +1566,53 @@ header, footer {
 
 @keyframes shake {
     0%, 100% { transform: translateX(0) rotate(0deg); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) rotate(-5deg); }
-    20%, 40%, 60%, 80% { transform: translateX(10px) rotate(5deg); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-4deg); }
+    20%, 40%, 60%, 80% { transform: translateX(8px) rotate(4deg); }
 }
 
 .forging-message {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
-    margin: 20px 0;
+    margin: 16px 0;
     color: #ffa726;
 }
 
 .forging-quality {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
-    margin: 15px 0;
+    margin: 12px 0;
     color: #64b5f6;
-    text-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+    text-shadow: 0 0 8px rgba(100, 181, 246, 0.3);
 }
 
 .forging-message.forging-success {
     color: #4caf50;
-    font-size: 32px;
-    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    font-size: 28px;
+    text-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
 }
 
 .forging-message.forging-failure {
     color: #f44336;
-    font-size: 28px;
-    text-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+    font-size: 24px;
+    text-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
     animation: pulse 0.5s ease-in-out;
 }
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    50% { transform: scale(1.08); }
 }
 
 .forging-result {
-    margin-top: 30px;
-    padding: 20px;
+    margin-top: 20px;
+    padding: 15px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .forging-result p {
-    margin: 10px 0;
+    margin: 8px 0;
 }
 
 .forging-result strong {
@@ -1608,22 +1620,22 @@ header, footer {
 }
 
 .forging-assign {
-    margin: 15px 0;
+    margin: 12px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .forging-assign label {
-    font-size: 14px;
+    font-size: 13px;
     color: #9fbfe0;
 }
 
 .forging-assign select {
-    width: 200px;
-    padding: 8px 12px;
-    font-size: 13px;
+    width: 180px;
+    padding: 6px 10px;
+    font-size: 12px;
     background: #2a3a4a;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 6px;
@@ -1636,9 +1648,9 @@ header, footer {
 }
 
 .forge-name-input {
-    width: 200px;
-    padding: 8px 12px;
-    font-size: 13px;
+    width: 180px;
+    padding: 6px 10px;
+    font-size: 12px;
     background: #2a3a4a;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 6px;
@@ -1652,16 +1664,16 @@ header, footer {
 
 /* Forge Outcomes Section */
 .forge-outcomes {
-    margin-top: 12px;
-    padding: 20px;
-    background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
-    border: 2px solid rgba(33, 150, 243, 0.3);
+    margin-top: 10px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+    border: 1px solid rgba(33, 150, 243, 0.2);
     border-radius: 8px;
 }
 
 .forge-outcomes-top {
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -1671,17 +1683,17 @@ header, footer {
 
 .forge-outcomes h3 {
     margin-top: 0;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #64b5f6;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .outcome-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .outcome-row:last-child {
@@ -1691,10 +1703,11 @@ header, footer {
 .outcome-label {
     font-weight: 500;
     color: #e0e0e0;
+    font-size: 13px;
 }
 
 .outcome-value {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: bold;
 }
 
@@ -1823,4 +1836,304 @@ header, footer {
     color: #64b5f6;
     font-size: 13px;
     text-align: center;
+}
+
+/* Custom width for the Smelter Modal */
+#smelter-modal .modal-dialog {
+    width: clamp(280px, 40vw, 500px);
+}
+
+/* Dwarf Detail Modal Styles */
+.dwarf-stats-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.dwarf-stat-box {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.dwarf-stat-label {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.dwarf-stat-value {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-container {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.dwarf-bucket-header {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+}
+
+.dwarf-bucket-empty {
+    opacity: 0.6;
+    text-align: center;
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+.dwarf-bucket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 4px;
+}
+
+.dwarf-bucket-item {
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    text-align: center;
+}
+
+.dwarf-bucket-item-name {
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-item-count {
+    font-size: 12px;
+    margin-top: 1px;
+}
+
+/* Dig Power, Wage & Tools Section */
+.dwarf-power-wage-tools {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.dwarf-section-title {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    text-align: center;
+}
+
+.dwarf-section-main-value {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.dwarf-digpower-value {
+    color: #4CAF50;
+}
+
+.dwarf-wage-value {
+    color: #FFD700;
+}
+
+.dwarf-section-details {
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0.8;
+    text-align: center;
+}
+
+.dwarf-section-divider-left {
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    padding-left: 10px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding-right: 10px;
+}
+
+.dwarf-section-divider-right {
+    padding-left: 10px;
+}
+
+.dwarf-wage-next {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #FFD700;
+}
+
+.dwarf-tool-current {
+    text-align: center;
+    margin-bottom: 6px;
+}
+
+.dwarf-tool-none {
+    opacity: 0.6;
+    font-size: 11px;
+    margin: 4px 0 6px 0;
+}
+
+.dwarf-tool-name {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.dwarf-tool-power {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-left: 6px;
+}
+
+.dwarf-tool-select {
+    width: 100%;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 11px;
+}
+
+/* Rename Section */
+.dwarf-rename-container {
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.dwarf-rename-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.dwarf-rename-input {
+    flex: 1;
+    max-width: 250px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 12px;
+}
+
+.dwarf-rename-btn {
+    padding: 6px 12px;
+    background: #4CAF50;
+    border: none;
+    border-radius: 3px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Dwarf Switcher */
+.dwarf-switcher {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 12px;
+    margin-right: auto;
+}
+
+/* Stats Grid Section */
+.dwarf-stats-section {
+    margin-bottom: 12px;
+}
+
+.dwarf-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* Gold Display */
+.gold-display {
+    cursor: pointer;
+}
+
+/* Notification Badge */
+.notification-badge {
+    display: none;
+    margin-left: 2px;
+}
+
+.notification-badge.visible {
+    display: inline;
+}
+
+/* Research Options */
+.research-options {
+    margin-bottom: 10px;
+}
+
+/* Finances Tabs */
+.finances-tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #3a4a57;
+}
+
+.finances-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    color: #9fbfe0;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    background: #2a3f5a;
+}
+
+.finances-tab.active {
+    background: #4a5f7a;
+    color: #fff;
+    border-bottom-color: #ffd700;
+    font-weight: bold;
+}
+
+/* Transactions Content */
+.transactions-content {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Settings Cheat Section */
+.settings-cheat-section {
+    display: none;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.settings-cheat-section.visible {
+    display: block;
+}
+
+.settings-cheat-title {
+    color: gold;
+    text-align: center;
+}
+
+.settings-cheat-description {
+    text-align: center;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Settings Cheat Button */
+.btn-cheat {
+    display: none;
+}
+
+.btn-cheat.visible {
+    display: inline-block;
 }

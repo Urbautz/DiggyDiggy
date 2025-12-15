@@ -15,7 +15,7 @@
         <h1>Diggy Diggy Dwarf!</h1>
         <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
     </div>
-    <div id="gold-display" class="gold-display" onclick="openTransactions()" style="cursor: pointer;" title="Click to view finances">
+    <div id="gold-display" class="gold-display" onclick="openTransactions()" title="Click to view finances">
         <span class="gold-icon">💰</span>
         <span class="gold-amount">1000</span>
     </div>
@@ -113,7 +113,7 @@
                 <div class="materials-panel-header">
                     <div class="tab-buttons">
                         <button class="tab-btn active" data-tab="warehouse" onclick="switchMaterialsTab('warehouse')">📦 Warehouse</button>
-                        <button class="tab-btn" data-tab="dwarfs" onclick="switchMaterialsTab('dwarfs')">👷 Dwarfs</button>
+                        <button class="tab-btn" data-tab="dwarfs" onclick="switchMaterialsTab('dwarfs')">👷 Dwarfs <span id="dwarfs-levelup-badge" class="notification-badge"></span></button>
                         <button class="tab-btn" data-tab="tools" onclick="switchMaterialsTab('tools')">🔨 Tools</button>
                     </div>
                 </div>
@@ -161,12 +161,92 @@
                 <button class="modal-close" aria-label="Close level up" data-action="close-modal">×</button>
             </header>
             <div class="modal-body">
-                <p>Choose an upgrade for your dwarf!</p>
                 <div id="levelup-content">
-                    <!-- Content will be added here -->
+                    <!-- Top section: Stats and Bucket -->
+                    <div class="dwarf-stats-container">
+                        <!-- Left: Basic stats -->
+                        <div class="dwarf-stats-container">
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Level</div>
+                                <div id="dwarf-level" class="dwarf-stat-value">⭐ 1</div>
+                            </div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">XP</div>
+                                <div id="dwarf-xp" class="dwarf-stat-value">0/100</div>
+                            </div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Energy</div>
+                                <div id="dwarf-energy" class="dwarf-stat-value">⚡ 100/100</div>
+                            </div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Status</div>
+                                <div id="dwarf-status" class="dwarf-stat-value">💼 idle</div>
+                            </div>
+                        </div>
+                        <!-- Right: Bucket contents -->
+                        <div class="dwarf-bucket-container">
+                            <h4 id="dwarf-bucket-header" class="dwarf-bucket-header">🪣 Bucket (0/10)</h4>
+                            <div id="dwarf-bucket-contents">
+                                <p class="dwarf-bucket-empty">Empty</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dig Power, Wage & Tools section -->
+                    <div class="dwarf-power-wage-tools">
+                        <!-- Left: Dig power calculation -->
+                        <div>
+                            <h4 class="dwarf-section-title">⛏️ Dig Power</h4>
+                            <div id="dwarf-digpower-total" class="dwarf-section-main-value dwarf-digpower-value">3.0</div>
+                            <div id="dwarf-digpower-calc" class="dwarf-section-details">
+                                <div>Base: 3</div>
+                                <div>× Level Bonus: 1.00 (0)</div>
+                                <div>× Research: 1.00 (0)</div>
+                                <div>× Tool Power: 1.00</div>
+                            </div>
+                        </div>
+                        <!-- Middle: Wage section -->
+                        <div class="dwarf-section-divider-left">
+                            <h4 class="dwarf-section-title">💰 Wage</h4>
+                            <div id="dwarf-wage-current" class="dwarf-section-main-value dwarf-wage-value">0.01</div>
+                            <div id="dwarf-wage-calc" class="dwarf-section-details">
+                                <div>Base: 0.01</div>
+                                <div>× Level: 1.00</div>
+                                <div id="dwarf-wage-next" class="dwarf-wage-next">Next level: 0.0125</div>
+                            </div>
+                        </div>
+                        <!-- Right: Tool section -->
+                        <div class="dwarf-section-divider-right">
+                            <h4 class="dwarf-section-title">⛏️ Tool</h4>
+                            <div id="dwarf-tool-current" class="dwarf-tool-current">
+                                <p class="dwarf-tool-none">No tool</p>
+                            </div>
+                            <select id="dwarf-tool-select" class="dwarf-tool-select">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Stats and level up section -->
+                    <div class="dwarf-stats-section">
+                        <div id="dwarf-stats-grid" class="dwarf-stats-grid">
+                            <!-- Stats will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Rename section -->
+                    <div class="dwarf-rename-container">
+                        <div class="dwarf-rename-form">
+                            <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" class="dwarf-rename-input">
+                            <button id="dwarf-rename-btn" data-action="rename-dwarf" class="dwarf-rename-btn">Rename</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <footer class="modal-footer">
+                <select id="dwarf-switcher" class="dwarf-switcher">
+                    <option value="">Switch to...</option>
+                </select>
                 <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
         </div>
@@ -182,6 +262,12 @@
             </header>
             <div class="modal-body">
                 <p>Research new technologies to improve your operation!</p>
+                <div class="research-options">
+                    <label>
+                        <input type="checkbox" id="hide-endless-research">
+                        Hide endless researches
+                    </label>
+                </div>
                 <div id="research-content">
                     <!-- Content will be added here -->
                 </div>
@@ -222,12 +308,12 @@
             </header>
             <div class="modal-body">
                 <!-- Tab buttons -->
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #3a4a57;">
-                    <button id="finances-tab-summary" class="finances-tab active" onclick="switchFinancesTab('summary')" style="flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;">Hourly Summary</button>
-                    <button id="finances-tab-recent" class="finances-tab" onclick="switchFinancesTab('recent')" style="flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;">Recent Transactions</button>
+                <div class="finances-tabs-container">
+                    <button id="finances-tab-summary" class="finances-tab active" onclick="switchFinancesTab('summary')">Hourly Summary</button>
+                    <button id="finances-tab-recent" class="finances-tab" onclick="switchFinancesTab('recent')">Recent Transactions</button>
                 </div>
-                
-                <div id="transactions-content" style="max-height: 500px; overflow-y: auto;">
+
+                <div id="transactions-content" class="transactions-content">
                     <!-- Content will be added here -->
                 </div>
             </div>
@@ -247,13 +333,13 @@
             </header>
             <div class="modal-body">
                 <p>Your game is automatically saved after each action. You can delete your saved progress below.</p>
-                <div id="settings-cheat-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 2px solid rgba(255, 215, 0, 0.3);">
-                    <h3 style="color: gold; text-align: center;">🎮 Cheat Mode</h3>
-                    <p style="text-align: center; font-size: 14px; opacity: 0.8;">For testing purposes only</p>
+                <div id="settings-cheat-section" class="settings-cheat-section">
+                    <h3 class="settings-cheat-title">🎮 Cheat Mode</h3>
+                    <p class="settings-cheat-description">For testing purposes only</p>
                 </div>
             </div>
             <footer class="modal-footer">
-                <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()" style="display: none;">🚀 Activate Cheat</button>
+                <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Activate Cheat</button>
                 <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
                 <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>

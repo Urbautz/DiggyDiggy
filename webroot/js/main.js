@@ -1,3 +1,26 @@
+// Track last known count of dwarfs ready to level up for badge update
+let lastDwarfsLevelUpCount = 0;
+
+function updateDwarfsLevelUpBadge() {
+    const badge = document.getElementById('dwarfs-levelup-badge');
+    if (!badge) return;
+    const dwarfsCanLevelUp = dwarfs.filter(d => {
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        return currentXP >= xpNeeded;
+    });
+    if (dwarfsCanLevelUp.length !== lastDwarfsLevelUpCount) {
+        lastDwarfsLevelUpCount = dwarfsCanLevelUp.length;
+        if (dwarfsCanLevelUp.length > 0) {
+            badge.textContent = `(⭐${dwarfsCanLevelUp.length})`;
+            badge.classList.add('visible');
+        } else {
+            badge.textContent = '';
+            badge.classList.remove('visible');
+        }
+    }
+}
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 
@@ -315,21 +338,15 @@ function updateGridDisplay() {
                         bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
                         bed.textContent = '🏠';
                         
-                        // Check if any dwarf can level up
-                        const dwarfsCanLevelUp = dwarfs.filter(d => {
-                            const currentXP = d.xp || 0;
-                            const currentLevel = d.level || 1;
-                            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-                            return currentXP >= xpNeeded;
-                        });
-                        
-                        if (dwarfsCanLevelUp.length > 0) {
-                            bed.title = `House (${dwarfsCanLevelUp.length} dwarf(s) ready to level up!)`;
-                            // Add notification badge
+                        // Show number of dwarfs currently resting in the house
+                        const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
+                        if (dwarfsResting.length > 0) {
+                            bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
+                            // Add notification badge for resting dwarfs
                             const badge = document.createElement('span');
                             badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                            badge.textContent = dwarfsCanLevelUp.length;
+                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4a90e2; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
+                            badge.textContent = dwarfsResting.length;
                             bed.appendChild(badge);
                         } else {
                             bed.title = 'House (open dwarfs overview)';
@@ -384,7 +401,9 @@ function updateGridDisplay() {
                         // Add progress bar if research is active
                         if (activeResearch) {
                             const progress = activeResearch.progress || 0;
-                            const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+                            const currentLevel = activeResearch.level || 0;
+                            const targetLevel = currentLevel + 1;
+                            const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
                             const progressPercent = Math.min(100, Math.floor((progress / actualCost) * 100));
                             
                             const progressContainer = document.createElement('div');
@@ -495,6 +514,7 @@ function updateGridDisplay() {
         // Only update it when materials actually change (in sellMaterial function)
         updateStockDisplay();
         updateGoldDisplay();
+        updateDwarfsLevelUpBadge();
         refreshTooltipAfterRedraw();
 }
 
@@ -827,6 +847,12 @@ function sleep(ms) {
 function openResearch() {
     openModal('research-modal');
     populateResearch();
+    // Add event listener to refresh research modal when checkbox is toggled
+    const hideCheckbox = document.getElementById('hide-endless-research');
+    if (hideCheckbox && !hideCheckbox._diggyListenerAttached) {
+        hideCheckbox.addEventListener('change', populateResearch);
+        hideCheckbox._diggyListenerAttached = true;
+    }
 }
 
 function openSmelter() {
@@ -1391,7 +1417,7 @@ function populateSmelter() {
         taskDesc.textContent = task.description;
         taskInfo.appendChild(taskDesc);
         
-        // Show input/output if applicable
+        // Show input/output if applicable (compact, no stock info)
         if (task.input && task.output) {
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
@@ -1399,11 +1425,8 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
-            // Show current stock vs required
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
-            // Add temperature requirement if present
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → ${task.output.amount}x ${outputName}${tempReq}`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -1411,24 +1434,21 @@ function populateSmelter() {
             }
             taskInfo.appendChild(taskRecipe);
         } else if (task.input && task.type === 'heating') {
-            // Show heating task info with temperature display
+            // Show heating task info with temperature display (compact, no stock info)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
-            
             // Add temperature display and controls inside the heating task
             const tempControls = document.createElement('div');
             tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
-            
             // Current temperature with bar
             const tempValue = Math.round(smelterTemperature);
             const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
@@ -1436,7 +1456,6 @@ function populateSmelter() {
             tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
             tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
             tempControls.appendChild(tempDisplay);
-            
             // Temperature bar
             const tempBarContainer = document.createElement('div');
             tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
@@ -1445,11 +1464,9 @@ function populateSmelter() {
             tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
             tempBarContainer.appendChild(tempBar);
             tempControls.appendChild(tempBarContainer);
-            
             // Temperature range controls
             const rangeControls = document.createElement('div');
             rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
-            
             // Min temperature control
             const minControl = document.createElement('div');
             minControl.innerHTML = `
@@ -1460,7 +1477,6 @@ function populateSmelter() {
                 </div>
             `;
             rangeControls.appendChild(minControl);
-            
             // Max temperature control
             const maxControl = document.createElement('div');
             maxControl.innerHTML = `
@@ -1471,7 +1487,6 @@ function populateSmelter() {
                 </div>
             `;
             rangeControls.appendChild(maxControl);
-            
             tempControls.appendChild(rangeControls);
             taskInfo.appendChild(tempControls);
         }
@@ -1750,6 +1765,8 @@ function populateResearch() {
     if (!container) return;
     
     container.innerHTML = '';
+
+    const hideEndless = document.getElementById('hide-endless-research').checked;
     
     //console.log('Populating research, researchtree has', researchtree.length, 'items:', researchtree.map(r => r.id));
     
@@ -1758,14 +1775,18 @@ function populateResearch() {
         const activeDiv = document.createElement('div');
         activeDiv.className = 'active-research';
         const progress = activeResearch.progress || 0;
-        // Calculate actual cost for current level (doubles each level)
-        const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+        // Calculate actual cost using formula: baseCost * (1.15^(targetLevel-1))
+        const currentLevel = activeResearch.level || 0;
+        const targetLevel = currentLevel + 1;
+        const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        const actualGoldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong>${activeResearch.name}</strong></p>
+            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel})</p>
             <p>${activeResearch.description}</p>
-            <p>Progress: ${progress} / ${actualCost} (${progressPercent}%)</p>
+            <p>Progress: ${progress} / ${actualCost} 🔬 (${progressPercent}%)</p>
+            <p><small>💰 Gold cost paid: ${actualGoldCost}</small></p>
             <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
         `;
         
@@ -1777,7 +1798,7 @@ function populateResearch() {
         cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
         cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
         cancelBtn.onclick = () => {
-            if (confirm(`Cancel research on ${activeResearch.name}? Progress will be lost.`)) {
+            if (confirm(`Cancel research on ${activeResearch.name}?\n\nProgress will be lost, but ${actualGoldCost} 💰 will be refunded.`)) {
                 cancelResearch();
             }
         };
@@ -1802,6 +1823,15 @@ function populateResearch() {
         
         // Skip if max level reached
         if (currentLevel >= maxLevel) continue;
+
+        // Skip if min_depth not reached
+        if (researchItem.min_depth && startX < researchItem.min_depth) {
+            continue;
+        }
+
+        if (hideEndless && (researchItem.maxlevel === Infinity || !researchItem.maxlevel)) {
+            continue;
+        }
         
         const tr = document.createElement('tr');
         
@@ -1814,10 +1844,12 @@ function populateResearch() {
         levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
         
         const costTd = document.createElement('td');
-        // Calculate actual cost for next level (doubles each level)
-        const actualCost = researchItem.cost * Math.pow(2, currentLevel);
-        costTd.textContent = `${actualCost} 🔬`;
-        costTd.title = 'Research points required';
+        // Calculate actual cost for next level using formula: baseCost * (1.15^(targetLevel-1))
+        const targetLevel = currentLevel + 1;
+        const actualCost = Math.round(researchItem.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        costTd.textContent = `${actualCost} 🔬 / ${actualGoldCost} 💰`;
+        costTd.title = 'Research points / Gold required';
         
         const actionTd = document.createElement('td');
         const researchBtn = document.createElement('button');
@@ -1827,7 +1859,10 @@ function populateResearch() {
         
         // Check if requirements are met
         const requirementsMet = checkResearchRequirements(researchItem);
-        
+
+        // Check if player has enough gold
+        const hasEnoughGold = gold >= actualGoldCost;
+
         if (isActive) {
             researchBtn.className = 'btn-research active';
             researchBtn.textContent = 'Active';
@@ -1838,6 +1873,12 @@ function populateResearch() {
             researchBtn.textContent = 'Locked';
             researchBtn.disabled = true;
             researchBtn.title = requirementsMet.reason;
+        } else if (!hasEnoughGold) {
+            // Not enough gold
+            researchBtn.className = 'btn-research disabled';
+            researchBtn.textContent = 'Research';
+            researchBtn.disabled = true;
+            researchBtn.title = `Not enough gold! Required: ${actualGoldCost} 💰, Available: ${Math.floor(gold)} 💰`;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -1915,18 +1956,34 @@ function startResearch(researchId) {
         console.error('Research not found:', researchId);
         return;
     }
-    
+
     // Check if another research is active
     if (activeResearch) {
         console.error('Another research is already active');
         return;
     }
-    
+
+    // Calculate gold cost for next level
+    const currentLevel = researchItem.level || 0;
+    const targetLevel = currentLevel + 1;
+    const goldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+
+    // Check if player has enough gold
+    if (gold < goldCost) {
+        console.error(`Not enough gold to start research. Required: ${goldCost}, Available: ${gold}`);
+        alert(`Not enough gold! Required: ${goldCost} 💰, Available: ${Math.floor(gold)} 💰`);
+        return;
+    }
+
+    // Deduct gold cost
+    gold -= goldCost;
+    logTransaction('expense', goldCost, `Started research: ${researchItem.name} (Level ${targetLevel})`);
+
     // Initialize progress if not set
     if (researchItem.progress === undefined) {
         researchItem.progress = 0;
     }
-    
+
     // Set as active
     activeResearch = researchItem;
     
@@ -1936,7 +1993,8 @@ function startResearch(researchId) {
             type: 'update-state',
             data: {
                 activeResearch: activeResearch,
-                researchtree: researchtree
+                researchtree: researchtree,
+                gold: gold
             }
         });
     }
@@ -1953,9 +2011,16 @@ function cancelResearch() {
         console.warn('No active research to cancel');
         return;
     }
-    
+
     const researchName = activeResearch.name;
-    
+
+    // Refund gold cost
+    const currentLevel = activeResearch.level || 0;
+    const targetLevel = currentLevel + 1;
+    const goldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+    gold += goldCost;
+    logTransaction('income', goldCost, `Cancelled research: ${researchName} (Level ${targetLevel}) - refund`);
+
     // Clear active research
     activeResearch = null;
     
@@ -1972,7 +2037,8 @@ function cancelResearch() {
             type: 'update-state',
             data: {
                 activeResearch: null,
-                dwarfs: dwarfs
+                dwarfs: dwarfs,
+                gold: gold
             }
         });
     }
@@ -3024,27 +3090,107 @@ function populateDwarfsOverview() {
     container.appendChild(table);
 }
 
+// Efficiently update dwarf info in the panel without rebuilding the whole thing
+function updateDwarfsInPanel() {
+    const list = document.getElementById('materials-list');
+    if (!list) return;
+
+    // This function will be called every tick. It should not re-sort to avoid elements jumping around.
+    for (const d of dwarfs) {
+        const row = document.getElementById(`dwarf-row-${d.name}`);
+        if (!row) {
+            // Dwarf is new since the panel was opened. For now, we'll let populateDwarfsInPanel handle this
+            // by re-running when the tab is re-opened. This avoids complexity of inserting into a sorted list.
+            continue;
+        }
+
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const canLevelUp = currentXP >= xpNeeded;
+
+        // Update level up highlight and class
+        row.classList.toggle('can-level-up', canLevelUp);
+
+        // Update XP display in header
+        const header = document.getElementById(`dwarf-header-${d.name}`);
+        if (header) {
+            const xpDisplay = header.querySelector('.dwarf-xp-display');
+            if (xpDisplay) {
+                if (canLevelUp) {
+                    // Show star when ready to level up
+                    xpDisplay.textContent = '⭐';
+                    xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.style.cursor = 'pointer';
+                    xpDisplay.style.fontSize = '16px';
+                    xpDisplay.style.color = '';
+                    xpDisplay.style.opacity = '';
+                } else {
+                    // Show XP progress
+                    xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.title = '';
+                    xpDisplay.style.cursor = '';
+                    xpDisplay.style.fontSize = '10px';
+                    xpDisplay.style.color = '#9fbfe0';
+                    xpDisplay.style.opacity = '0.7';
+                }
+            }
+        }
+
+        // Update info panel
+        const info = document.getElementById(`dwarf-info-${d.name}`);
+        if (info) {
+            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+            const bucketResearch = researchtree.find(r => r.id === 'buckets');
+            const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+            const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
+
+            const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+            const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+            const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+            const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
+            const dwarfLevel = (d.level || 1) - 1;
+            const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
+
+            const baseDwarfPower = 3;
+            let totalPower = baseDwarfPower;
+            let toolName = 'None';
+            if (d.toolId) {
+                const tool = toolsInventory.find(t => t.id === d.toolId);
+                if (tool) {
+                    toolName = tool.name || tool.type;
+                    const levelBonus = 1 + (d.digPower || 0) * 0.1;
+                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+                    let toolPower;
+                    if (tool.power !== undefined) {
+                        toolPower = tool.power / 100;
+                    } else {
+                        const toolDef = getToolByType(tool.type);
+                        toolPower = toolDef ? toolDef.power / 100 : 1.0;
+                    }
+                    totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+                }
+            }
+            
+            const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${d.level || 1}</span>`;
+            const newHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+
+            if (info.innerHTML !== newHTML) {
+                info.innerHTML = newHTML;
+            }
+        }
+    }
+}
+
 // Populate dwarfs in the materials panel (not modal)
 function populateDwarfsInPanel() {
     const list = document.getElementById('materials-list');
     if (!list) return;
     list.innerHTML = '';
     
-    // Sort dwarfs: those who can level up first, then by name
+    // Sort dwarfs alphabetically by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
-        const aXP = a.xp || 0;
-        const aLevel = a.level || 1;
-        const aNeeded = 250 * aLevel;
-        const aCanLevelUp = aXP >= aNeeded;
-        
-        const bXP = b.xp || 0;
-        const bLevel = b.level || 1;
-        const bNeeded = 250 * bLevel;
-        const bCanLevelUp = bXP >= bNeeded;
-        
-        if (aCanLevelUp !== bCanLevelUp) {
-            return bCanLevelUp ? 1 : -1; // Can level up first
-        }
         return a.name.localeCompare(b.name);
     });
     
@@ -3052,6 +3198,7 @@ function populateDwarfsInPanel() {
     for (const d of sortedDwarfs) {
         const row = document.createElement('div');
         row.className = 'dwarf-row';
+        row.id = `dwarf-row-${d.name}`;
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
@@ -3062,23 +3209,33 @@ function populateDwarfsInPanel() {
             row.classList.add('can-level-up');
         }
         
-        // Header with name and level up button
+        // Header with name and level indicator/XP display
         const header = document.createElement('div');
         header.className = 'dwarf-header';
-        
+        header.id = `dwarf-header-${d.name}`;
+
         const name = document.createElement('div');
         name.className = 'dwarf-name';
         name.textContent = d.name;
         header.appendChild(name);
-        
-        // Add level up button next to name if XP threshold reached
+
+        // Add star icon or XP display
+        const xpDisplay = document.createElement('div');
+        xpDisplay.className = 'dwarf-xp-display';
         if (canLevelUp) {
-            const levelUpBtn = document.createElement('button');
-            levelUpBtn.className = 'btn-levelup btn-levelup-small';
-            levelUpBtn.textContent = '⭐ Lvl Up';
-            levelUpBtn.dataset.dwarfName = d.name;
-            header.appendChild(levelUpBtn);
+            // Show star when ready to level up
+            xpDisplay.textContent = '⭐';
+            xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.style.cursor = 'pointer';
+            xpDisplay.style.fontSize = '16px';
+        } else {
+            // Show XP progress
+            xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.style.fontSize = '10px';
+            xpDisplay.style.color = '#9fbfe0';
+            xpDisplay.style.opacity = '0.7';
         }
+        header.appendChild(xpDisplay);
         
         // Calculate digging power (matching game-worker.js calculation)
         const baseDwarfPower = 3;
@@ -3120,11 +3277,12 @@ function populateDwarfsInPanel() {
         // Get tool name for display
         const toolName = d.toolId ? (() => {
             const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? tool.type : 'None';
+            return tool ? (tool.name || tool.type) : 'None';
         })() : 'None';
         
         const info = document.createElement('div');
         info.className = 'dwarf-info';
+        info.id = `dwarf-info-${d.name}`;
         
         // Create level display with XP tooltip
         const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
@@ -3138,162 +3296,376 @@ function populateDwarfsInPanel() {
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
         info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
-        
+
         row.appendChild(header);
         row.appendChild(info);
+
+        // Make row clickable to open dwarf detail modal
+        row.style.cursor = 'pointer';
+        row.dataset.dwarfName = d.name;
+        row.classList.add('dwarf-clickable');
+
         list.appendChild(row);
     }
 }
 
-// Open level up modal for a dwarf
-function openLevelUpModal(dwarf) {
+// Open dwarf detail modal
+function openDwarfDetailModal(dwarf) {
     const modal = document.getElementById('levelup-modal');
     if (!modal) {
-        console.error('Level up modal not found');
+        console.error('Dwarf detail modal not found');
         return;
     }
-    
-    // Store the dwarf being leveled up
+
+    // Store the dwarf being viewed
     modal.dataset.dwarfName = dwarf.name;
-    
-    // Populate level up options
-    const content = document.getElementById('levelup-content');
-    content.innerHTML = '';
-    
-    const title = document.createElement('h3');
-    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
-    const currentXP = dwarf.xp || 0;
-    const hasEnoughXP = currentXP >= xpNeeded;
-    title.textContent = `${dwarf.name} - Level ${dwarf.level} → ${dwarf.level + 1}`;
-    content.appendChild(title);
-    
-    // Show XP status
-    const xpStatus = document.createElement('p');
-    xpStatus.style.textAlign = 'center';
-    xpStatus.style.fontSize = '14px';
-    xpStatus.style.marginBottom = '15px';
-    if (hasEnoughXP) {
-        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} ✓`;
-        xpStatus.style.color = '#4CAF50';
-    } else {
-        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} (Not enough XP)`;
-        xpStatus.style.color = '#ff6b6b';
-    }
-    content.appendChild(xpStatus);
-    
-    const optionsDiv = document.createElement('div');
-    optionsDiv.className = 'levelup-options';
-    
-    // Option 1: Dig Power
-    const digPowerOption = document.createElement('div');
-    digPowerOption.className = 'levelup-option';
-    digPowerOption.innerHTML = `
-        <h4>⛏️ Dig Power</h4>
-        <p>Increases digging power by 10%</p>
-        <p class="levelup-stats">Current: +${(dwarf.digPower || 0) * 10}% → New: +${((dwarf.digPower || 0) + 1) * 10}%</p>
-    `;
-    const digPowerBtn = document.createElement('button');
-    digPowerBtn.className = 'btn-primary';
-    digPowerBtn.textContent = 'Choose Dig Power';
-    digPowerBtn.dataset.upgradeType = 'digPower';
-    digPowerBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        digPowerBtn.disabled = true;
-        digPowerBtn.classList.add('disabled');
-    }
-    digPowerOption.appendChild(digPowerBtn);
-    
-    // Option 2: Max Energy
-    const energyOption = document.createElement('div');
-    energyOption.className = 'levelup-option';
-    energyOption.innerHTML = `
-        <h4>⚡ Max Energy</h4>
-        <p>Increases maximum energy by ${(DWARF_LEVELUP_ENERGY_MULTIPLIER - 1) * 100}%</p>
-        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER)}</p>
-    `;
-    const energyBtn = document.createElement('button');
-    energyBtn.className = 'btn-primary';
-    energyBtn.textContent = 'Choose Max Energy';
-    energyBtn.dataset.upgradeType = 'maxEnergy';
-    energyBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        energyBtn.disabled = true;
-        energyBtn.classList.add('disabled');
-    }
-    energyOption.appendChild(energyBtn);
-    
-    // Option 3: Strength
-    const strengthOption = document.createElement('div');
-    strengthOption.className = 'levelup-option';
-    strengthOption.innerHTML = `
-        <h4>💪 Strength</h4>
-        <p>Increases bucket capacity by ${DWARF_LEVELUP_STRENGTH_BONUS}</p>
-        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS}</p>
-    `;
-    const strengthBtn = document.createElement('button');
-    strengthBtn.className = 'btn-primary';
-    strengthBtn.textContent = 'Choose Strength';
-    strengthBtn.dataset.upgradeType = 'strength';
-    strengthBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        strengthBtn.disabled = true;
-        strengthBtn.classList.add('disabled');
-    }
-    strengthOption.appendChild(strengthBtn);
-    
-    // Option 4: Wisdom
-    const wisdomOption = document.createElement('div');
-    wisdomOption.className = 'levelup-option';
-    wisdomOption.innerHTML = `
-        <h4>🧠 Wisdom</h4>
-        <p>Increases research speed by +1 per tick</p>
-        <p class="levelup-stats">Current: +${1 + (dwarf.wisdom || 0)}/tick → New: +${1 + (dwarf.wisdom || 0) + 1}/tick</p>
-    `;
-    const wisdomBtn = document.createElement('button');
-    wisdomBtn.className = 'btn-primary';
-    wisdomBtn.textContent = 'Choose Wisdom';
-    wisdomBtn.dataset.upgradeType = 'wisdom';
-    wisdomBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        wisdomBtn.disabled = true;
-        wisdomBtn.classList.add('disabled');
-    }
-    wisdomOption.appendChild(wisdomBtn);
-    
-    optionsDiv.appendChild(digPowerOption);
-    optionsDiv.appendChild(energyOption);
-    optionsDiv.appendChild(strengthOption);
-    optionsDiv.appendChild(wisdomOption);
-    content.appendChild(optionsDiv);
-    
-    // Add Next button if there are more dwarfs that can level up
-    const dwarfsCanLevelUp = dwarfs.filter(d => {
-        const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-        return currentXP >= xpNeeded;
-    });
-    
-    if (dwarfsCanLevelUp.length > 1) {
-        const currentIndex = dwarfsCanLevelUp.findIndex(d => d.name === dwarf.name);
-        const nextDwarf = dwarfsCanLevelUp[(currentIndex + 1) % dwarfsCanLevelUp.length];
-        
-        const nextBtnContainer = document.createElement('div');
-        nextBtnContainer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;';
-        
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'btn-primary';
-        nextBtn.textContent = `Next: ${nextDwarf.name} →`;
-        nextBtn.style.cssText = 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); padding: 10px 20px;';
-        nextBtn.dataset.dwarfName = nextDwarf.name;
-        nextBtn.dataset.action = 'next-levelup';
-        
-        nextBtnContainer.appendChild(nextBtn);
-        content.appendChild(nextBtnContainer);
-    }
-    
+
+    // Update modal header
+    const modalHeader = modal.querySelector('.modal-header h2');
+    modalHeader.textContent = `👷 ${dwarf.name}`;
+
+    // Populate the template with dwarf data
+    populateDwarfDetailTemplate(dwarf);
+
+    // Populate dwarf switcher dropdown
+    populateDwarfSwitcher(dwarf.name);
+
     // Show modal
     openModal('levelup-modal');
+}
+
+// Populate the dwarf switcher dropdown
+function populateDwarfSwitcher(currentDwarfName) {
+    const switcher = document.getElementById('dwarf-switcher');
+    if (!switcher) return;
+
+    switcher.innerHTML = '<option value="">Switch to...</option>';
+
+    // Sort dwarfs: those who can level up first, then by name
+    const sortedDwarfs = [...dwarfs].sort((a, b) => {
+        const aXP = a.xp || 0;
+        const aLevel = a.level || 1;
+        const aNeeded = 250 * aLevel;
+        const aCanLevelUp = aXP >= aNeeded;
+
+        const bXP = b.xp || 0;
+        const bLevel = b.level || 1;
+        const bNeeded = 250 * bLevel;
+        const bCanLevelUp = bXP >= bNeeded;
+
+        if (aCanLevelUp !== bCanLevelUp) {
+            return bCanLevelUp ? 1 : -1; // Can level up first
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    sortedDwarfs.forEach(d => {
+        if (d.name !== currentDwarfName) {
+            const currentXP = d.xp || 0;
+            const currentLevel = d.level || 1;
+            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+            const canLevelUp = currentXP >= xpNeeded;
+            const levelUpIndicator = canLevelUp ? ' ⭐' : '';
+
+            const option = document.createElement('option');
+            option.value = d.name;
+            option.textContent = `${d.name}${levelUpIndicator}`;
+            switcher.appendChild(option);
+        }
+    });
+
+    // Add change event listener
+    switcher.onchange = (e) => {
+        if (e.target.value) {
+            const selectedDwarf = dwarfs.find(d => d.name === e.target.value);
+            if (selectedDwarf) {
+                openDwarfDetailModal(selectedDwarf);
+            }
+        }
+    };
+}
+
+// Populate the static template with dwarf data (full population on open)
+function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
+    const currentXP = dwarf.xp || 0;
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+
+    // Calculate bucket info
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+
+    // Calculate dig power components
+    const baseDwarfPower = 3;
+    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
+    let toolPower = 1.0;
+    let toolName = 'None';
+    if (currentTool) {
+        toolName = currentTool.name || currentTool.type;
+        if (currentTool.power !== undefined) {
+            toolPower = currentTool.power / 100;
+        } else {
+            const toolDef = getToolByType(currentTool.type);
+            if (toolDef) {
+                toolPower = toolDef.power / 100;
+            }
+        }
+    }
+    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+
+    // Populate basic stats
+    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
+    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+
+    // Populate bucket
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    const bucketContents = document.getElementById('dwarf-bucket-contents');
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+        const bucketGrid = document.createElement('div');
+        bucketGrid.className = 'dwarf-bucket-grid';
+
+        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
+            if (count > 0) {
+                const mat = getMaterialById(materialId);
+                const materialName = mat ? mat.name : materialId;
+
+                const item = document.createElement('div');
+                item.className = 'dwarf-bucket-item';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'dwarf-bucket-item-name';
+                nameDiv.textContent = materialName;
+
+                const countDiv = document.createElement('div');
+                countDiv.className = 'dwarf-bucket-item-count';
+                countDiv.textContent = count;
+
+                item.appendChild(nameDiv);
+                item.appendChild(countDiv);
+                bucketGrid.appendChild(item);
+            }
+        }
+
+        bucketContents.innerHTML = '';
+        bucketContents.appendChild(bucketGrid);
+    } else {
+        const emptyP = document.createElement('p');
+        emptyP.className = 'dwarf-bucket-empty';
+        emptyP.textContent = 'Empty';
+        bucketContents.innerHTML = '';
+        bucketContents.appendChild(emptyP);
+    }
+
+    // Populate dig power
+    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    document.getElementById('dwarf-digpower-calc').innerHTML = `
+        <div>Base: ${baseDwarfPower}</div>
+        <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
+        <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+    `;
+
+    // Calculate and populate wage
+    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+    const wageResearchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+    const researchReduction = wageResearchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+    const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
+    const currentWage = DWARF_BASE_WAGE * (1 + currentLevel * increaseRate);
+    const nextLevelWage = DWARF_BASE_WAGE * (1 + (currentLevel + 1) * increaseRate);
+    const levelMultiplier = 1 + currentLevel * increaseRate;
+
+    document.getElementById('dwarf-wage-current').textContent = currentWage.toFixed(4);
+    document.getElementById('dwarf-wage-calc').innerHTML = `
+        <div>Base: ${DWARF_BASE_WAGE.toFixed(4)}</div>
+        <div>× Level-Factor: ${levelMultiplier.toFixed(1)}</div>
+        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${nextLevelWage.toFixed(4)}</div>
+    `;
+
+    // Populate current tool
+    const toolCurrent = document.getElementById('dwarf-tool-current');
+    toolCurrent.innerHTML = '';
+
+    if (currentTool) {
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'dwarf-tool-name';
+        nameSpan.textContent = toolName;
+
+        const powerSpan = document.createElement('span');
+        powerSpan.className = 'dwarf-tool-power';
+        powerSpan.textContent = `(${toolPower.toFixed(2)})`;
+
+        toolCurrent.appendChild(nameSpan);
+        toolCurrent.appendChild(powerSpan);
+    } else {
+        const noneP = document.createElement('p');
+        noneP.className = 'dwarf-tool-none';
+        noneP.textContent = 'No tool';
+        toolCurrent.appendChild(noneP);
+    }
+
+    // Populate tool selector (only on initial open, not on refresh)
+    if (includeToolSelector) {
+        const toolSelect = document.getElementById('dwarf-tool-select');
+        toolSelect.dataset.dwarfName = dwarf.name;
+        toolSelect.innerHTML = '';
+
+        // Add "None" option
+        const noneOption = document.createElement('option');
+        noneOption.value = '';
+        noneOption.textContent = 'None';
+        toolSelect.appendChild(noneOption);
+
+        // Show only tools that are not assigned to other dwarfs
+        toolsInventory.forEach(tool => {
+            const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
+            const tName = tool.name || tool.type;
+
+            // Check if this tool is assigned to any other dwarf
+            const assignedToOtherDwarf = dwarfs.some(d => d.name !== dwarf.name && d.toolId == tool.id);
+            if (assignedToOtherDwarf) {
+                return; // Don't show this tool
+            }
+
+            // Create option element safely
+            const option = document.createElement('option');
+            option.value = tool.id;
+            option.textContent = `${tName} (${tPower.toFixed(2)})`;
+
+            // Check if this tool is selected
+            if (dwarf.toolId && tool.id && dwarf.toolId == tool.id) {
+                option.selected = true;
+            }
+
+            toolSelect.appendChild(option);
+        });
+    }
+
+    // Populate stats grid
+    const hasEnoughXP = currentXP >= xpNeeded;
+    const statsGrid = document.getElementById('dwarf-stats-grid');
+    statsGrid.innerHTML = '';
+
+    // Helper to create stat card
+    const createStatCard = (icon, name, level, description, upgradeType) => {
+        const card = document.createElement('div');
+        card.className = 'levelup-option';
+        card.style.padding = '10px';
+        card.innerHTML = `
+            <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
+            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${level}</p>
+            <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
+        `;
+        if (hasEnoughXP) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-primary';
+            btn.textContent = '⭐ Level Up';
+            btn.dataset.upgradeType = upgradeType;
+            btn.dataset.dwarfName = dwarf.name;
+            btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+            card.appendChild(btn);
+        }
+        return card;
+    };
+
+    const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
+    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
+    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}`, 'wisdom'));
+
+    // Populate rename input
+    const renameInput = document.getElementById('dwarf-rename-input');
+    renameInput.value = dwarf.name;
+    const renameBtn = document.getElementById('dwarf-rename-btn');
+    renameBtn.dataset.dwarfName = dwarf.name;
+}
+
+// Refresh dwarf detail modal with updated information (lightweight, no UI blocking)
+function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
+    const modal = document.getElementById('levelup-modal');
+    if (!modal || modal.getAttribute('aria-hidden') !== 'false') {
+        // Modal is not open, do nothing
+        return;
+    }
+
+    // Check if this is the currently displayed dwarf
+    if (modal.dataset.dwarfName !== dwarf.name) {
+        return;
+    }
+
+    // If full update requested (e.g., after level up), repopulate everything except tool selector
+    if (forceFullUpdate) {
+        populateDwarfDetailTemplate(dwarf, false); // false = don't rebuild tool selector
+        return;
+    }
+
+    // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
+    const currentXP = dwarf.xp || 0;
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+
+    // Calculate bucket info
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+
+    // Calculate dig power
+    const baseDwarfPower = 3;
+    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
+    let toolPower = 1.0;
+    if (currentTool) {
+        if (currentTool.power !== undefined) {
+            toolPower = currentTool.power / 100;
+        } else {
+            const toolDef = getToolByType(currentTool.type);
+            if (toolDef) {
+                toolPower = toolDef.power / 100;
+            }
+        }
+    }
+    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+
+    // Update only the dynamic text content (fast, non-blocking)
+    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
+    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+
+    // Update bucket header and contents
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    const bucketContents = document.getElementById('dwarf-bucket-contents');
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
+        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
+            if (count > 0) {
+                const mat = getMaterialById(materialId);
+                const materialName = mat ? mat.name : materialId;
+                bucketHTML += `
+                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
+                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
+                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
+                    </div>
+                `;
+            }
+        }
+        bucketHTML += '</div>';
+        bucketContents.innerHTML = bucketHTML;
+    } else {
+        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
+    }
+
+    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
 }
 
 // Apply the chosen level up upgrade
@@ -3352,33 +3724,10 @@ function applyLevelUp(dwarf, upgradeType) {
     // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
-    
-    // Check if this dwarf can level up again
-    const newXP = actualDwarf.xp || 0;
-    const newLevel = actualDwarf.level || 1;
-    const newXPNeeded = DWARF_XP_PER_LEVEL * newLevel;
-    
-    if (newXP >= newXPNeeded) {
-        // Can level up again, refresh the modal with new level
-        openLevelUpModal(actualDwarf);
-    } else {
-        // Check if there are other dwarfs that can level up
-        const dwarfsCanLevelUp = dwarfs.filter(d => {
-            const currentXP = d.xp || 0;
-            const currentLevel = d.level || 1;
-            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-            return currentXP >= xpNeeded;
-        });
-        
-        if (dwarfsCanLevelUp.length > 0) {
-            // Show next dwarf who can level up
-            openLevelUpModal(dwarfsCanLevelUp[0]);
-        } else {
-            // No more dwarfs to level up, close modal
-            closeModal('levelup-modal');
-        }
-    }
-    
+
+    // Refresh the modal with updated dwarf info (force full update to rebuild stats grid)
+    refreshDwarfDetailModal(actualDwarf, true);
+
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
 
@@ -3468,17 +3817,17 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for level up buttons
+// Delegated event handler for clicking on dwarf rows to open detail modal
 document.addEventListener('click', (ev) => {
-    const levelUpBtn = ev.target.closest('.btn-levelup');
-    if (!levelUpBtn) return;
-    
-    const dwarfName = levelUpBtn.dataset.dwarfName;
+    const dwarfRow = ev.target.closest('.dwarf-clickable');
+    if (!dwarfRow) return;
+
+    const dwarfName = dwarfRow.dataset.dwarfName;
     if (dwarfName) {
         const dwarf = dwarfs.find(d => d.name === dwarfName);
         if (dwarf) {
-            console.log(`Level up button clicked for ${dwarfName}`);
-            openLevelUpModal(dwarf);
+            console.log(`Dwarf row clicked for ${dwarfName}`);
+            openDwarfDetailModal(dwarf);
         }
     }
 });
@@ -3500,19 +3849,157 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for next dwarf button in level up modal
+// Delegated event handler for next dwarf button in detail modal
 document.addEventListener('click', (ev) => {
     const nextBtn = ev.target.closest('.btn-primary[data-action="next-levelup"]');
     if (!nextBtn) return;
-    
+
     const dwarfName = nextBtn.dataset.dwarfName;
     if (dwarfName) {
         const dwarf = dwarfs.find(d => d.name === dwarfName);
         if (dwarf) {
-            console.log(`Next level up: ${dwarfName}`);
-            openLevelUpModal(dwarf);
+            console.log(`Next dwarf: ${dwarfName}`);
+            openDwarfDetailModal(dwarf);
         }
     }
+});
+
+// Delegated event handler for renaming dwarfs
+document.addEventListener('click', (ev) => {
+    const renameBtn = ev.target.closest('[data-action="rename-dwarf"]');
+    if (!renameBtn) return;
+
+    const oldName = renameBtn.dataset.dwarfName;
+    const input = document.getElementById('dwarf-rename-input');
+    if (!input) return;
+
+    const newName = input.value.trim();
+    if (!newName || newName === oldName) {
+        console.log('No name change');
+        return;
+    }
+
+    // Check name length
+    if (newName.length > 25) {
+        alert('Dwarf name must be 25 characters or less!');
+        return;
+    }
+
+    // Check if name already exists
+    if (dwarfs.some(d => d.name === newName && d.name !== oldName)) {
+        alert(`A dwarf named "${newName}" already exists!`);
+        return;
+    }
+
+    // Find and rename the dwarf
+    const dwarf = dwarfs.find(d => d.name === oldName);
+    if (dwarf) {
+        console.log(`Renaming dwarf from ${oldName} to ${newName}`);
+
+        // Update tool assignments
+        toolsInventory.forEach(t => {
+            if (t.assignedTo === oldName) {
+                t.assignedTo = newName;
+            }
+        });
+
+        // Reset dwarf to house - release all reservations and reset status
+        dwarf.status = 'idle';
+        dwarf.moveTarget = null;
+        dwarf.action = null;
+        dwarf.digTarget = null;
+
+        // Find house position
+        const housePos = {row: 0, col: 0}; // Default house position
+        for (let r = 0; r < grid.length; r++) {
+            for (let c = 0; c < gridWidth; c++) {
+                if (grid[r][c].type === 'house') {
+                    housePos.row = r;
+                    housePos.col = c;
+                    break;
+                }
+            }
+        }
+        dwarf.row = housePos.row;
+        dwarf.col = housePos.col;
+
+        // Rename the dwarf
+        dwarf.name = newName;
+
+        // Sync with worker - send full dwarf state and tool inventory
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { dwarfs, toolsInventory }
+        });
+
+        // Refresh the modal with updated info
+        refreshDwarfDetailModal(dwarf);
+
+        // Update the dwarfs panel and grid display
+        updateDwarfsInPanel();
+        updateGridDisplay();
+
+        // Save the game
+        saveGame();
+    }
+});
+
+// Delegated event handler for tool dropdown change - auto-assign on selection
+document.addEventListener('change', (ev) => {
+    const select = ev.target;
+    if (select.id !== 'dwarf-tool-select') return;
+
+    const dwarfName = select.dataset.dwarfName;
+    const newToolId = select.value ? parseInt(select.value) : null; // Convert to number
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    if (!dwarf) {
+        console.error(`Dwarf ${dwarfName} not found`);
+        return;
+    }
+
+    console.log(`Assigning tool ${newToolId} to ${dwarfName}`, { oldToolId: dwarf.toolId, toolsInventory });
+
+    // Unassign old tool
+    if (dwarf.toolId) {
+        const oldTool = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (oldTool) {
+            console.log(`Unassigning old tool ${oldTool.id} from ${dwarfName}`);
+            delete oldTool.assignedTo;
+        }
+    }
+
+    // Assign new tool
+    if (newToolId !== null) {
+        const newTool = toolsInventory.find(t => t.id === newToolId);
+        if (newTool) {
+            console.log(`Assigning new tool ${newTool.id} (${newTool.type}) to ${dwarfName}`);
+            newTool.assignedTo = dwarfName;
+            dwarf.toolId = newToolId;
+        } else {
+            console.error(`Tool ${newToolId} not found in inventory`);
+        }
+    } else {
+        // Unassign tool
+        console.log(`Unassigning all tools from ${dwarfName}`);
+        delete dwarf.toolId;
+    }
+
+    console.log(`After assignment:`, { dwarfToolId: dwarf.toolId, tool: toolsInventory.find(t => t.id === newToolId) });
+
+    // Sync with worker
+    gameWorker.postMessage({
+        type: 'update-state',
+        data: { dwarfs, toolsInventory }
+    });
+
+    // Refresh the modal with updated info (force full update to rebuild tool selector)
+    refreshDwarfDetailModal(dwarf, true);
+
+    // Update the dwarfs panel
+    updateDwarfsInPanel();
+
+    // Save the game
+    saveGame();
 });
 
 function initUI() {
@@ -4184,7 +4671,11 @@ function initWorker() {
                 // Worker does not modify toolsInventory, so we don't sync it back
                 
                 // Update research state from worker
+                let researchStateChanged = false;
                 if (data.activeResearch !== undefined) {
+                    if (activeResearch !== data.activeResearch) {
+                        researchStateChanged = true;
+                    }
                     activeResearch = data.activeResearch;
                 }
                 if (data.researchtree) {
@@ -4192,6 +4683,9 @@ function initWorker() {
                     for (const workerResearch of data.researchtree) {
                         const currentResearch = researchtree.find(r => r.id === workerResearch.id);
                         if (currentResearch) {
+                            if (currentResearch.level !== workerResearch.level) {
+                                researchStateChanged = true;
+                            }
                             currentResearch.level = workerResearch.level || 0;
                             currentResearch.progress = workerResearch.progress || 0;
                         }
@@ -4215,9 +4709,19 @@ function initWorker() {
                 // Update dwarf panel every tick if in dwarfs view
                 const panel = document.getElementById('materials-panel');
                 if (panel && panel.dataset.view === 'dwarfs') {
-                    populateDwarfsInPanel();
+                    updateDwarfsInPanel();
                 }
-                
+
+                // Update dwarf detail modal if it's open
+                const levelupModal = document.getElementById('levelup-modal');
+                if (levelupModal && levelupModal.getAttribute('aria-hidden') === 'false') {
+                    const dwarfName = levelupModal.dataset.dwarfName;
+                    const dwarf = dwarfs.find(d => d.name === dwarfName);
+                    if (dwarf) {
+                        refreshDwarfDetailModal(dwarf);
+                    }
+                }
+
                 // Update smelter panel every 5 ticks if it's open (for temperature display)
                 const smelterModal = document.getElementById('smelter-modal');
                 if (smelterModal && smelterModal.getAttribute('aria-hidden') === 'false') {
@@ -4228,9 +4732,9 @@ function initWorker() {
                     }
                 }
                 
-                // Update research modal if it's open and research is active
+                // Update research modal if it's open and research state changed
                 const researchModal = document.getElementById('research-modal');
-                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && activeResearch) {
+                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && researchStateChanged) {
                     populateResearch();
                 }
                 
@@ -4479,7 +4983,9 @@ window.activateCheat = function activateCheat() {
     
     // Set active research to 1 point before completion
     if (activeResearch) {
-        const researchCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level);
+        const currentLevel = activeResearch.level || 0;
+        const targetLevel = currentLevel + 1;
+        const researchCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         activeResearch.progress = researchCost - 1;
         console.log(`Active research "${activeResearch.name}" set to 1 point before completion (${activeResearch.progress}/${researchCost})`);
     }
@@ -4620,16 +5126,20 @@ function initGame() {
     populateFunctionsList(); // Initialize functions list (one time, won't be re-rendered)
 }
 
-// Check for cheat mode in URL
+// Check for cheat mode in URL or localhost
 function checkCheatMode() {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('cheat')) {
+    const isLocalhost = window.location.hostname === 'localhost' ||
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+
+    if (urlParams.has('cheat') || isLocalhost) {
         cheatModeEnabled = true;
         const cheatSection = document.getElementById('settings-cheat-section');
         const cheatButton = document.getElementById('settings-cheat-button');
-        if (cheatSection) cheatSection.style.display = 'block';
-        if (cheatButton) cheatButton.style.display = 'inline-block';
-        console.log('🎮 Cheat mode enabled');
+        if (cheatSection) cheatSection.classList.add('visible');
+        if (cheatButton) cheatButton.classList.add('visible');
+        console.log('🎮 Cheat mode enabled' + (isLocalhost ? ' (localhost)' : ''));
     }
 }
 
