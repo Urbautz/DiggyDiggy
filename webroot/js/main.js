@@ -3357,9 +3357,32 @@ function openDwarfDetailModal(dwarf) {
         return tool ? (tool.name || tool.type) : 'None';
     })() : 'None';
 
-    // Dwarf stats overview - more compact
+    // Calculate dig power components
+    const baseDwarfPower = 3;
+    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
+    let toolPower = 1.0;
+    if (currentTool) {
+        if (currentTool.power !== undefined) {
+            toolPower = currentTool.power / 100;
+        } else {
+            const toolDef = getToolByType(currentTool.type);
+            if (toolDef) {
+                toolPower = toolDef.power / 100;
+            }
+        }
+    }
+    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+
+    // Top section with stats and dig power - 2 columns
+    const topSection = document.createElement('div');
+    topSection.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;';
+
+    // Left: Basic stats
     const statsOverview = document.createElement('div');
-    statsOverview.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px;';
+    statsOverview.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px;';
     statsOverview.innerHTML = `
         <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
             <div style="font-size: 10px; opacity: 0.7;">Level</div>
@@ -3378,91 +3401,88 @@ function openDwarfDetailModal(dwarf) {
             <div style="font-size: 16px; font-weight: bold;">💼 ${dwarf.status || 'idle'}</div>
         </div>
     `;
-    content.appendChild(statsOverview);
 
-    // Bucket contents section - more compact
-    const bucketSection = document.createElement('div');
-    bucketSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;';
-    let bucketHTML = `<h4 style="margin: 0 0 8px 0; font-size: 14px;">🧺 Bucket (${bucketTotal}/${dwarfCapacity})</h4>`;
+    // Right: Dig power calculation - unified background
+    const digPowerSection = document.createElement('div');
+    digPowerSection.style.cssText = 'padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;';
+    digPowerSection.innerHTML = `
+        <h4 style="margin: 0 0 6px 0; font-size: 12px; text-align: center;">⛏️ Dig Power</h4>
+        <div style="font-size: 20px; font-weight: bold; text-align: center; color: #4CAF50; margin-bottom: 6px;">${totalDigPower.toFixed(1)}</div>
+        <div style="font-size: 9px; line-height: 1.3; opacity: 0.8;">
+            <div>Base: ${baseDwarfPower}</div>
+            <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
+            <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
+            <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+        </div>
+    `;
+
+    topSection.appendChild(statsOverview);
+    topSection.appendChild(digPowerSection);
+    content.appendChild(topSection);
+
+    // Bucket & Tools section - 2 columns with visual separation
+    const bucketToolSection = document.createElement('div');
+    bucketToolSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;';
+
+    // Left: Bucket contents
+    let bucketHTML = `<div><h4 style="margin: 0 0 8px 0; font-size: 14px;">🧺 Bucket (${bucketTotal}/${dwarfCapacity})</h4>`;
 
     if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
-        bucketHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px;">';
+        bucketHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             if (count > 0) {
                 const mat = getMaterialById(materialId);
                 const materialName = mat ? mat.name : materialId;
                 bucketHTML += `
-                    <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-                        <div style="font-size: 10px; font-weight: bold;">${materialName}</div>
-                        <div style="font-size: 13px; margin-top: 2px;">${count}</div>
+                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
+                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
+                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
                     </div>
                 `;
             }
         }
         bucketHTML += '</div>';
     } else {
-        bucketHTML += '<p style="opacity: 0.6; text-align: center; margin: 6px 0; font-size: 12px;">Empty</p>';
+        bucketHTML += '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
     }
+    bucketHTML += '</div>';
 
-    bucketSection.innerHTML = bucketHTML;
-    content.appendChild(bucketSection);
-
-    // Tool section with assignment option - more compact
-    const toolSection = document.createElement('div');
-    toolSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;';
-
-    // Get current tool details
-    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
-    let toolPower = 0;
-    if (currentTool) {
-        if (currentTool.power !== undefined) {
-            toolPower = currentTool.power / 100;
-        } else {
-            const toolDef = getToolByType(currentTool.type);
-            if (toolDef) {
-                toolPower = toolDef.power / 100;
-            }
-        }
-    }
-
-    // Get available tools (not assigned to other dwarfs)
+    // Right: Tool section with border-left separation
+    // Get available tools (not assigned to other dwarfs except current dwarf)
     const availableTools = toolsInventory.filter(t => {
-        // Include if not assigned, or assigned to current dwarf
+        // Only include if not assigned to any dwarf, or assigned to current dwarf
         return !t.assignedTo || t.assignedTo === dwarf.name;
     });
 
-    let toolHTML = '<h4 style="margin: 0 0 8px 0; font-size: 14px;">⛏️ Current Tool</h4>';
+    let toolHTML = '<div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px;"><h4 style="margin: 0 0 6px 0; font-size: 14px;">⛏️ Tool</h4>';
 
     if (currentTool) {
-        toolHTML += `
-            <p style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 3px;">${toolName}</p>
-            <p style="text-align: center; font-size: 12px; opacity: 0.8;">Power: ${toolPower.toFixed(1)}x</p>
-        `;
+        toolHTML += `<div style="text-align: center; margin-bottom: 6px;">
+            <span style="font-size: 12px; font-weight: bold;">${toolName}</span>
+            <span style="font-size: 11px; opacity: 0.8; margin-left: 6px;">(${toolPower.toFixed(2)})</span>
+        </div>`;
     } else {
-        toolHTML += '<p style="text-align: center; opacity: 0.6; font-size: 12px;">No tool equipped</p>';
+        toolHTML += '<p style="text-align: center; opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>';
     }
 
-    // Tool selector
-    if (availableTools.length > 0) {
-        toolHTML += '<div style="margin-top: 10px;">';
-        toolHTML += '<label style="display: block; margin-bottom: 6px; font-size: 11px; opacity: 0.8;">Assign Tool:</label>';
-        toolHTML += '<select id="dwarf-tool-select" data-dwarf-name="' + dwarf.name + '" style="width: 100%; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px;">';
-        toolHTML += '<option value="">None</option>';
+    // Tool selector - only show unassigned tools, darker background, auto-assign on change
+    toolHTML += '<select id="dwarf-tool-select" data-dwarf-name="' + dwarf.name + '" style="width: 100%; padding: 4px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 11px;">';
+    toolHTML += '<option value="">None</option>';
 
-        availableTools.forEach(tool => {
-            const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
-            const isSelected = dwarf.toolId === tool.id ? ' selected' : '';
-            const tName = tool.name || tool.type;
-            toolHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(1)}x)</option>`;
-        });
+    availableTools.forEach(tool => {
+        const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
+        const isSelected = dwarf.toolId === tool.id ? ' selected' : '';
+        const tName = tool.name || tool.type;
+        // Always show power value for all tools
+        toolHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(2)})</option>`;
+    });
 
-        toolHTML += '</select>';
-        toolHTML += '<button class="btn-primary" data-action="assign-tool" data-dwarf-name="' + dwarf.name + '" style="margin-top: 6px; width: 100%; padding: 6px; font-size: 12px;">Assign Tool</button>';
-        toolHTML += '</div>';
-    }
+    toolHTML += '</select>';
 
-    toolSection.innerHTML = toolHTML;
-    content.appendChild(toolSection);
+    toolHTML += '</div>';
+
+    bucketToolSection.innerHTML = bucketHTML + toolHTML;
+    content.appendChild(bucketToolSection);
 
     // Stats and level up section - more compact
     const statsSection = document.createElement('div');
@@ -3566,7 +3586,7 @@ function openDwarfDetailModal(dwarf) {
     renameSection.innerHTML = `
         <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
             <span style="font-weight: bold; white-space: nowrap;">Rename:</span>
-            <input type="text" id="dwarf-rename-input" value="${dwarf.name}"
+            <input type="text" id="dwarf-rename-input" value="${dwarf.name}" maxlength="25"
                    style="flex: 1; padding: 6px 8px; background: rgba(0,0,0,0.3); border: 1px solid #444;
                           border-radius: 4px; color: #fff; font-size: 12px;">
             <button class="btn-primary" data-action="rename-dwarf" data-dwarf-name="${dwarf.name}"
@@ -3833,6 +3853,12 @@ document.addEventListener('click', (ev) => {
         return;
     }
 
+    // Check name length
+    if (newName.length > 25) {
+        alert('Dwarf name must be 25 characters or less!');
+        return;
+    }
+
     // Check if name already exists
     if (dwarfs.some(d => d.name === newName && d.name !== oldName)) {
         alert(`A dwarf named "${newName}" already exists!`);
@@ -3859,7 +3885,7 @@ document.addEventListener('click', (ev) => {
 
         // Find house position
         const housePos = {row: 0, col: 0}; // Default house position
-        for (let r = 0; r < gridHeight; r++) {
+        for (let r = 0; r < grid.length; r++) {
             for (let c = 0; c < gridWidth; c++) {
                 if (grid[r][c].type === 'house') {
                     housePos.row = r;
@@ -3892,15 +3918,12 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for assigning tools to dwarfs
-document.addEventListener('click', (ev) => {
-    const assignBtn = ev.target.closest('[data-action="assign-tool"]');
-    if (!assignBtn) return;
+// Delegated event handler for tool dropdown change - auto-assign on selection
+document.addEventListener('change', (ev) => {
+    const select = ev.target;
+    if (select.id !== 'dwarf-tool-select') return;
 
-    const dwarfName = assignBtn.dataset.dwarfName;
-    const select = document.getElementById('dwarf-tool-select');
-    if (!select) return;
-
+    const dwarfName = select.dataset.dwarfName;
     const newToolId = select.value;
     const dwarf = dwarfs.find(d => d.name === dwarfName);
     if (!dwarf) return;
