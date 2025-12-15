@@ -3456,6 +3456,22 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         <div>× Tool Power: ${toolPower.toFixed(2)}</div>
     `;
 
+    // Calculate and populate wage
+    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+    const wageResearchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
+    const researchReduction = wageResearchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
+    const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
+    const currentWage = DWARF_BASE_WAGE * (1 + currentLevel * increaseRate);
+    const nextLevelWage = DWARF_BASE_WAGE * (1 + (currentLevel + 1) * increaseRate);
+    const levelMultiplier = 1 + currentLevel * increaseRate;
+
+    document.getElementById('dwarf-wage-current').textContent = currentWage.toFixed(4);
+    document.getElementById('dwarf-wage-calc').innerHTML = `
+        <div>Base: ${DWARF_BASE_WAGE.toFixed(4)}</div>
+        <div>× Level-Factor: ${levelMultiplier.toFixed(1)}</div>
+        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${nextLevelWage.toFixed(4)}</div>
+    `;
+
     // Populate current tool
     const toolCurrent = document.getElementById('dwarf-tool-current');
     if (currentTool) {
@@ -3487,10 +3503,6 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
             // Show assignment status
             let displayName = `${tName} (${tPower.toFixed(2)})`;
-            if (tool.assignedTo === dwarf.name) {
-                // Tool is assigned to current dwarf - show checkmark
-                displayName = `${tName} (${tPower.toFixed(2)}) ✓`;
-            }
 
             toolSelect.innerHTML += `<option value="${tool.id}"${isSelected}>${displayName}</option>`;
         });
@@ -3525,9 +3537,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
-    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Max: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
-    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}/tick`, 'wisdom'));
+    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}`, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');

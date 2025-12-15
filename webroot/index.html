@@ -192,8 +192,8 @@
                         </div>
                     </div>
 
-                    <!-- Dig Power & Tools section -->
-                    <div style="margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <!-- Dig Power, Wage & Tools section -->
+                    <div style="margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                         <!-- Left: Dig power calculation -->
                         <div>
                             <h4 style="margin: 0 0 6px 0; font-size: 14px; text-align: center;">⛏️ Dig Power</h4>
@@ -205,8 +205,18 @@
                                 <div>× Tool Power: 1.00</div>
                             </div>
                         </div>
+                        <!-- Middle: Wage section -->
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 10px;">
+                            <h4 style="margin: 0 0 6px 0; font-size: 14px; text-align: center;">💰 Wage</h4>
+                            <div id="dwarf-wage-current" style="font-size: 24px; font-weight: bold; text-align: center; color: #FFD700; margin-bottom: 8px;">0.01</div>
+                            <div id="dwarf-wage-calc" style="font-size: 13px; line-height: 1.5; opacity: 0.8; text-align: center;">
+                                <div>Base: 0.01</div>
+                                <div>× Level: 1.00</div>
+                                <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: 0.0125</div>
+                            </div>
+                        </div>
                         <!-- Right: Tool section -->
-                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px;">
+                        <div style="padding-left: 10px;">
                             <h4 style="margin: 0 0 6px 0; font-size: 14px;">⛏️ Tool</h4>
                             <div id="dwarf-tool-current" style="text-align: center; margin-bottom: 6px;">
                                 <p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>
@@ -219,7 +229,6 @@
 
                     <!-- Stats and level up section -->
                     <div style="margin-bottom: 12px;">
-                        <h3 style="margin-bottom: 10px; text-align: center; font-size: 16px;">📊 Stats & Upgrades</h3>
                         <div id="dwarf-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <!-- Stats will be populated here -->
                         </div>
