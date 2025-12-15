@@ -163,42 +163,42 @@
             <div class="modal-body">
                 <div id="levelup-content">
                     <!-- Top section: Stats and Bucket -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <div class="dwarf-stats-container">
                         <!-- Left: Basic stats -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-                                <div style="font-size: 10px; opacity: 0.7;">Level</div>
-                                <div id="dwarf-level" style="font-size: 16px; font-weight: bold;">⭐ 1</div>
+                        <div class="dwarf-stats-container">
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Level</div>
+                                <div id="dwarf-level" class="dwarf-stat-value">⭐ 1</div>
                             </div>
-                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-                                <div style="font-size: 10px; opacity: 0.7;">XP</div>
-                                <div id="dwarf-xp" style="font-size: 16px; font-weight: bold;">0/100</div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">XP</div>
+                                <div id="dwarf-xp" class="dwarf-stat-value">0/100</div>
                             </div>
-                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-                                <div style="font-size: 10px; opacity: 0.7;">Energy</div>
-                                <div id="dwarf-energy" style="font-size: 16px; font-weight: bold;">⚡ 100/100</div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Energy</div>
+                                <div id="dwarf-energy" class="dwarf-stat-value">⚡ 100/100</div>
                             </div>
-                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-                                <div style="font-size: 10px; opacity: 0.7;">Status</div>
-                                <div id="dwarf-status" style="font-size: 16px; font-weight: bold;">💼 idle</div>
+                            <div class="dwarf-stat-box">
+                                <div class="dwarf-stat-label">Status</div>
+                                <div id="dwarf-status" class="dwarf-stat-value">💼 idle</div>
                             </div>
                         </div>
                         <!-- Right: Bucket contents -->
-                        <div style="padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;">
-                            <h4 id="dwarf-bucket-header" style="margin: 0 0 6px 0; font-size: 14px;">🪣 Bucket (0/10)</h4>
+                        <div class="dwarf-bucket-container">
+                            <h4 id="dwarf-bucket-header" class="dwarf-bucket-header">🪣 Bucket (0/10)</h4>
                             <div id="dwarf-bucket-contents">
-                                <p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>
+                                <p class="dwarf-bucket-empty">Empty</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Dig Power, Wage & Tools section -->
-                    <div style="margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div class="dwarf-power-wage-tools">
                         <!-- Left: Dig power calculation -->
                         <div>
-                            <h4 style="margin: 0 0 6px 0; font-size: 14px; text-align: center;">⛏️ Dig Power</h4>
-                            <div id="dwarf-digpower-total" style="font-size: 24px; font-weight: bold; text-align: center; color: #4CAF50; margin-bottom: 8px;">3.0</div>
-                            <div id="dwarf-digpower-calc" style="font-size: 13px; line-height: 1.5; opacity: 0.8; text-align: center;">
+                            <h4 class="dwarf-section-title">⛏️ Dig Power</h4>
+                            <div id="dwarf-digpower-total" class="dwarf-section-main-value dwarf-digpower-value">3.0</div>
+                            <div id="dwarf-digpower-calc" class="dwarf-section-details">
                                 <div>Base: 3</div>
                                 <div>× Level Bonus: 1.00 (0)</div>
                                 <div>× Research: 1.00 (0)</div>
@@ -206,22 +206,22 @@
                             </div>
                         </div>
                         <!-- Middle: Wage section -->
-                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 10px;">
-                            <h4 style="margin: 0 0 6px 0; font-size: 14px; text-align: center;">💰 Wage</h4>
-                            <div id="dwarf-wage-current" style="font-size: 24px; font-weight: bold; text-align: center; color: #FFD700; margin-bottom: 8px;">0.01</div>
-                            <div id="dwarf-wage-calc" style="font-size: 13px; line-height: 1.5; opacity: 0.8; text-align: center;">
+                        <div class="dwarf-section-divider-left">
+                            <h4 class="dwarf-section-title">💰 Wage</h4>
+                            <div id="dwarf-wage-current" class="dwarf-section-main-value dwarf-wage-value">0.01</div>
+                            <div id="dwarf-wage-calc" class="dwarf-section-details">
                                 <div>Base: 0.01</div>
                                 <div>× Level: 1.00</div>
-                                <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: 0.0125</div>
+                                <div id="dwarf-wage-next" class="dwarf-wage-next">Next level: 0.0125</div>
                             </div>
                         </div>
                         <!-- Right: Tool section -->
-                        <div style="padding-left: 10px;">
-                            <h4 style="margin: 0 0 6px 0; font-size: 14px;">⛏️ Tool</h4>
-                            <div id="dwarf-tool-current" style="text-align: center; margin-bottom: 6px;">
-                                <p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>
+                        <div class="dwarf-section-divider-right">
+                            <h4 class="dwarf-section-title">⛏️ Tool</h4>
+                            <div id="dwarf-tool-current" class="dwarf-tool-current">
+                                <p class="dwarf-tool-none">No tool</p>
                             </div>
-                            <select id="dwarf-tool-select" style="width: 100%; padding: 4px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 11px;">
+                            <select id="dwarf-tool-select" class="dwarf-tool-select">
                                 <option value="">None</option>
                             </select>
                         </div>
@@ -235,17 +235,16 @@
                     </div>
 
                     <!-- Rename section -->
-                    <div style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
-                        <h4 style="margin: 0 0 6px 0; font-size: 14px;">✏️ Rename Dwarf</h4>
-                        <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
-                            <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" style="flex: 1; max-width: 250px; padding: 6px; background: rgba(0,0,0,0.5); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 12px;">
-                            <button id="dwarf-rename-btn" data-action="rename-dwarf" style="padding: 6px 12px; background: #4CAF50; border: none; border-radius: 3px; color: white; font-size: 12px; cursor: pointer;">Rename</button>
+                    <div class="dwarf-rename-container">
+                        <div class="dwarf-rename-form">
+                            <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" class="dwarf-rename-input">
+                            <button id="dwarf-rename-btn" data-action="rename-dwarf" class="dwarf-rename-btn">Rename</button>
                         </div>
                     </div>
                 </div>
             </div>
             <footer class="modal-footer">
-                <select id="dwarf-switcher" style="padding: 6px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 12px; margin-right: auto;">
+                <select id="dwarf-switcher" class="dwarf-switcher">
                     <option value="">Switch to...</option>
                 </select>
                 <button class="btn-secondary" data-action="close-modal">Close</button>

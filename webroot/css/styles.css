@@ -1842,3 +1842,204 @@ header, footer {
 #smelter-modal .modal-dialog {
     width: clamp(280px, 40vw, 500px);
 }
+
+/* Dwarf Detail Modal Styles */
+.dwarf-stats-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.dwarf-stat-box {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.dwarf-stat-label {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.dwarf-stat-value {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-container {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.dwarf-bucket-header {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+}
+
+.dwarf-bucket-empty {
+    opacity: 0.6;
+    text-align: center;
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+.dwarf-bucket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 4px;
+}
+
+.dwarf-bucket-item {
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    text-align: center;
+}
+
+.dwarf-bucket-item-name {
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-item-count {
+    font-size: 12px;
+    margin-top: 1px;
+}
+
+/* Dig Power, Wage & Tools Section */
+.dwarf-power-wage-tools {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.dwarf-section-title {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    text-align: center;
+}
+
+.dwarf-section-main-value {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.dwarf-digpower-value {
+    color: #4CAF50;
+}
+
+.dwarf-wage-value {
+    color: #FFD700;
+}
+
+.dwarf-section-details {
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0.8;
+    text-align: center;
+}
+
+.dwarf-section-divider-left {
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    padding-left: 10px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding-right: 10px;
+}
+
+.dwarf-section-divider-right {
+    padding-left: 10px;
+}
+
+.dwarf-wage-next {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #FFD700;
+}
+
+.dwarf-tool-current {
+    text-align: center;
+    margin-bottom: 6px;
+}
+
+.dwarf-tool-none {
+    opacity: 0.6;
+    font-size: 11px;
+    margin: 4px 0 6px 0;
+}
+
+.dwarf-tool-name {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.dwarf-tool-power {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-left: 6px;
+}
+
+.dwarf-tool-select {
+    width: 100%;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 11px;
+}
+
+/* Rename Section */
+.dwarf-rename-container {
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.dwarf-rename-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.dwarf-rename-input {
+    flex: 1;
+    max-width: 250px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 12px;
+}
+
+.dwarf-rename-btn {
+    padding: 6px 12px;
+    background: #4CAF50;
+    border: none;
+    border-radius: 3px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Dwarf Switcher */
+.dwarf-switcher {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 12px;
+    margin-right: auto;
+}

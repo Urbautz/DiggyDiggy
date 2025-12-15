@@ -3428,23 +3428,39 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
     if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
-        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
+        const bucketGrid = document.createElement('div');
+        bucketGrid.className = 'dwarf-bucket-grid';
+
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             if (count > 0) {
                 const mat = getMaterialById(materialId);
                 const materialName = mat ? mat.name : materialId;
-                bucketHTML += `
-                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
-                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
-                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
-                    </div>
-                `;
+
+                const item = document.createElement('div');
+                item.className = 'dwarf-bucket-item';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'dwarf-bucket-item-name';
+                nameDiv.textContent = materialName;
+
+                const countDiv = document.createElement('div');
+                countDiv.className = 'dwarf-bucket-item-count';
+                countDiv.textContent = count;
+
+                item.appendChild(nameDiv);
+                item.appendChild(countDiv);
+                bucketGrid.appendChild(item);
             }
         }
-        bucketHTML += '</div>';
-        bucketContents.innerHTML = bucketHTML;
+
+        bucketContents.innerHTML = '';
+        bucketContents.appendChild(bucketGrid);
     } else {
-        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
+        const emptyP = document.createElement('p');
+        emptyP.className = 'dwarf-bucket-empty';
+        emptyP.textContent = 'Empty';
+        bucketContents.innerHTML = '';
+        bucketContents.appendChild(emptyP);
     }
 
     // Populate dig power
@@ -3474,13 +3490,24 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Populate current tool
     const toolCurrent = document.getElementById('dwarf-tool-current');
+    toolCurrent.innerHTML = '';
+
     if (currentTool) {
-        toolCurrent.innerHTML = `
-            <span style="font-size: 12px; font-weight: bold;">${toolName}</span>
-            <span style="font-size: 11px; opacity: 0.8; margin-left: 6px;">(${toolPower.toFixed(2)})</span>
-        `;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'dwarf-tool-name';
+        nameSpan.textContent = toolName;
+
+        const powerSpan = document.createElement('span');
+        powerSpan.className = 'dwarf-tool-power';
+        powerSpan.textContent = `(${toolPower.toFixed(2)})`;
+
+        toolCurrent.appendChild(nameSpan);
+        toolCurrent.appendChild(powerSpan);
     } else {
-        toolCurrent.innerHTML = '<p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>';
+        const noneP = document.createElement('p');
+        noneP.className = 'dwarf-tool-none';
+        noneP.textContent = 'No tool';
+        toolCurrent.appendChild(noneP);
     }
 
     // Populate tool selector (only on initial open, not on refresh)
