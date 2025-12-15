@@ -3337,10 +3337,15 @@ function openDwarfDetailModal(dwarf) {
     const modalHeader = modal.querySelector('.modal-header h2');
     modalHeader.textContent = `👷 ${dwarf.name}`;
 
-    // Populate dwarf details
-    const content = document.getElementById('levelup-content');
-    content.innerHTML = '';
+    // Populate the template with dwarf data
+    populateDwarfDetailTemplate(dwarf);
 
+    // Show modal
+    openModal('levelup-modal');
+}
+
+// Populate the static template with dwarf data
+function populateDwarfDetailTemplate(dwarf) {
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
@@ -3351,17 +3356,13 @@ function openDwarfDetailModal(dwarf) {
     const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
     const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
 
-    // Get tool name
-    const toolName = dwarf.toolId ? (() => {
-        const tool = toolsInventory.find(t => t.id === dwarf.toolId);
-        return tool ? (tool.name || tool.type) : 'None';
-    })() : 'None';
-
     // Calculate dig power components
     const baseDwarfPower = 3;
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
     let toolPower = 1.0;
+    let toolName = 'None';
     if (currentTool) {
+        toolName = currentTool.name || currentTool.type;
         if (currentTool.power !== undefined) {
             toolPower = currentTool.power / 100;
         } else {
@@ -3376,59 +3377,17 @@ function openDwarfDetailModal(dwarf) {
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
 
-    // Top section with stats and dig power - 2 columns
-    const topSection = document.createElement('div');
-    topSection.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;';
+    // Populate basic stats
+    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
+    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
-    // Left: Basic stats
-    const statsOverview = document.createElement('div');
-    statsOverview.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px;';
-    statsOverview.innerHTML = `
-        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-            <div style="font-size: 10px; opacity: 0.7;">Level</div>
-            <div style="font-size: 16px; font-weight: bold;">⭐ ${currentLevel}</div>
-        </div>
-        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-            <div style="font-size: 10px; opacity: 0.7;">XP</div>
-            <div style="font-size: 16px; font-weight: bold;">${currentXP}/${xpNeeded}</div>
-        </div>
-        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-            <div style="font-size: 10px; opacity: 0.7;">Energy</div>
-            <div style="font-size: 16px; font-weight: bold;">⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}</div>
-        </div>
-        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
-            <div style="font-size: 10px; opacity: 0.7;">Status</div>
-            <div style="font-size: 16px; font-weight: bold;">💼 ${dwarf.status || 'idle'}</div>
-        </div>
-    `;
-
-    // Right: Dig power calculation - unified background
-    const digPowerSection = document.createElement('div');
-    digPowerSection.style.cssText = 'padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;';
-    digPowerSection.innerHTML = `
-        <h4 style="margin: 0 0 6px 0; font-size: 12px; text-align: center;">⛏️ Dig Power</h4>
-        <div style="font-size: 20px; font-weight: bold; text-align: center; color: #4CAF50; margin-bottom: 6px;">${totalDigPower.toFixed(1)}</div>
-        <div style="font-size: 9px; line-height: 1.3; opacity: 0.8;">
-            <div>Base: ${baseDwarfPower}</div>
-            <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
-            <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
-            <div>× Tool Power: ${toolPower.toFixed(2)}</div>
-        </div>
-    `;
-
-    topSection.appendChild(statsOverview);
-    topSection.appendChild(digPowerSection);
-    content.appendChild(topSection);
-
-    // Bucket & Tools section - 2 columns with visual separation
-    const bucketToolSection = document.createElement('div');
-    bucketToolSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;';
-
-    // Left: Bucket contents
-    let bucketHTML = `<div><h4 style="margin: 0 0 8px 0; font-size: 14px;">🧺 Bucket (${bucketTotal}/${dwarfCapacity})</h4>`;
-
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
-        bucketHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
+    // Populate bucket
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    const bucketContents = document.getElementById('dwarf-bucket-contents');
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             if (count > 0) {
                 const mat = getMaterialById(materialId);
@@ -3442,187 +3401,81 @@ function openDwarfDetailModal(dwarf) {
             }
         }
         bucketHTML += '</div>';
+        bucketContents.innerHTML = bucketHTML;
     } else {
-        bucketHTML += '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
+        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
     }
-    bucketHTML += '</div>';
 
-    // Right: Tool section with border-left separation
-    // Get available tools (not assigned to other dwarfs except current dwarf)
-    const availableTools = toolsInventory.filter(t => {
-        // Only include if not assigned to any dwarf, or assigned to current dwarf
-        return !t.assignedTo || t.assignedTo === dwarf.name;
-    });
+    // Populate dig power
+    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    document.getElementById('dwarf-digpower-calc').innerHTML = `
+        <div>Base: ${baseDwarfPower}</div>
+        <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
+        <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+    `;
 
-    let toolHTML = '<div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px;"><h4 style="margin: 0 0 6px 0; font-size: 14px;">⛏️ Tool</h4>';
-
+    // Populate current tool
+    const toolCurrent = document.getElementById('dwarf-tool-current');
     if (currentTool) {
-        toolHTML += `<div style="text-align: center; margin-bottom: 6px;">
+        toolCurrent.innerHTML = `
             <span style="font-size: 12px; font-weight: bold;">${toolName}</span>
             <span style="font-size: 11px; opacity: 0.8; margin-left: 6px;">(${toolPower.toFixed(2)})</span>
-        </div>`;
+        `;
     } else {
-        toolHTML += '<p style="text-align: center; opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>';
+        toolCurrent.innerHTML = '<p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>';
     }
 
-    // Tool selector - only show unassigned tools, darker background, auto-assign on change
-    toolHTML += '<select id="dwarf-tool-select" data-dwarf-name="' + dwarf.name + '" style="width: 100%; padding: 4px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 11px;">';
-    toolHTML += '<option value="">None</option>';
-
+    // Populate tool selector
+    const availableTools = toolsInventory.filter(t => !t.assignedTo || t.assignedTo === dwarf.name);
+    const toolSelect = document.getElementById('dwarf-tool-select');
+    toolSelect.dataset.dwarfName = dwarf.name;
+    toolSelect.innerHTML = '<option value="">None</option>';
     availableTools.forEach(tool => {
         const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
         const isSelected = dwarf.toolId === tool.id ? ' selected' : '';
         const tName = tool.name || tool.type;
-        // Always show power value for all tools
-        toolHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(2)})</option>`;
+        toolSelect.innerHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(2)})</option>`;
     });
 
-    toolHTML += '</select>';
-
-    toolHTML += '</div>';
-
-    bucketToolSection.innerHTML = bucketHTML + toolHTML;
-    content.appendChild(bucketToolSection);
-
-    // Stats and level up section - more compact
-    const statsSection = document.createElement('div');
-    statsSection.style.cssText = 'margin-bottom: 12px;';
-    statsSection.innerHTML = '<h3 style="margin-bottom: 10px; text-align: center; font-size: 16px;">📊 Stats & Upgrades</h3>';
-
+    // Populate stats grid
     const hasEnoughXP = currentXP >= xpNeeded;
+    const statsGrid = document.getElementById('dwarf-stats-grid');
+    statsGrid.innerHTML = '';
 
-    // Create a grid for stats - more compact
-    const statsGrid = document.createElement('div');
-    statsGrid.className = 'levelup-options';
-    statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;';
+    // Helper to create stat card
+    const createStatCard = (icon, name, level, description, upgradeType) => {
+        const card = document.createElement('div');
+        card.className = 'levelup-option';
+        card.style.padding = '10px';
+        card.innerHTML = `
+            <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
+            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${level}</p>
+            <p style="font-size: 11px; opacity: 0.8; margin: 0;">${description}</p>
+        `;
+        if (hasEnoughXP) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-primary';
+            btn.textContent = '⭐ Level Up';
+            btn.dataset.upgradeType = upgradeType;
+            btn.dataset.dwarfName = dwarf.name;
+            btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+            card.appendChild(btn);
+        }
+        return card;
+    };
 
-    // Stat 1: Dig Power
-    const digPowerDiv = document.createElement('div');
-    digPowerDiv.className = 'levelup-option';
-    digPowerDiv.style.padding = '10px';
-    digPowerDiv.innerHTML = `
-        <h4 style="margin: 0 0 6px 0; font-size: 13px;">⛏️ Dig Power</h4>
-        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.digPower || 0}</p>
-        <p style="font-size: 11px; opacity: 0.8; margin: 0;">+${(dwarf.digPower || 0) * 10}% power</p>
-    `;
-    if (hasEnoughXP) {
-        const digPowerBtn = document.createElement('button');
-        digPowerBtn.className = 'btn-primary';
-        digPowerBtn.textContent = '⭐ Level Up';
-        digPowerBtn.dataset.upgradeType = 'digPower';
-        digPowerBtn.dataset.dwarfName = dwarf.name;
-        digPowerBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-        digPowerDiv.appendChild(digPowerBtn);
-    }
-    statsGrid.appendChild(digPowerDiv);
-
-    // Stat 2: Max Energy
-    const energyDiv = document.createElement('div');
-    energyDiv.className = 'levelup-option';
-    energyDiv.style.padding = '10px';
     const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
-    energyDiv.innerHTML = `
-        <h4 style="margin: 0 0 6px 0; font-size: 13px;">⚡ Max Energy</h4>
-        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${energyLevel}</p>
-        <p style="font-size: 11px; opacity: 0.8; margin: 0;">Max: ${dwarf.maxEnergy || 100}</p>
-    `;
-    if (hasEnoughXP) {
-        const energyBtn = document.createElement('button');
-        energyBtn.className = 'btn-primary';
-        energyBtn.textContent = '⭐ Level Up';
-        energyBtn.dataset.upgradeType = 'maxEnergy';
-        energyBtn.dataset.dwarfName = dwarf.name;
-        energyBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-        energyDiv.appendChild(energyBtn);
-    }
-    statsGrid.appendChild(energyDiv);
+    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
+    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Max: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Capacity: ${dwarfCapacity}`, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}/tick`, 'wisdom'));
 
-    // Stat 3: Strength
-    const strengthDiv = document.createElement('div');
-    strengthDiv.className = 'levelup-option';
-    strengthDiv.style.padding = '10px';
-    strengthDiv.innerHTML = `
-        <h4 style="margin: 0 0 6px 0; font-size: 13px;">💪 Strength</h4>
-        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.strength || 0}</p>
-        <p style="font-size: 11px; opacity: 0.8; margin: 0;">Capacity: ${dwarfCapacity}</p>
-    `;
-    if (hasEnoughXP) {
-        const strengthBtn = document.createElement('button');
-        strengthBtn.className = 'btn-primary';
-        strengthBtn.textContent = '⭐ Level Up';
-        strengthBtn.dataset.upgradeType = 'strength';
-        strengthBtn.dataset.dwarfName = dwarf.name;
-        strengthBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-        strengthDiv.appendChild(strengthBtn);
-    }
-    statsGrid.appendChild(strengthDiv);
-
-    // Stat 4: Wisdom
-    const wisdomDiv = document.createElement('div');
-    wisdomDiv.className = 'levelup-option';
-    wisdomDiv.style.padding = '10px';
-    wisdomDiv.innerHTML = `
-        <h4 style="margin: 0 0 6px 0; font-size: 13px;">🧠 Wisdom</h4>
-        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.wisdom || 0}</p>
-        <p style="font-size: 11px; opacity: 0.8; margin: 0;">+${1 + (dwarf.wisdom || 0)}/tick</p>
-    `;
-    if (hasEnoughXP) {
-        const wisdomBtn = document.createElement('button');
-        wisdomBtn.className = 'btn-primary';
-        wisdomBtn.textContent = '⭐ Level Up';
-        wisdomBtn.dataset.upgradeType = 'wisdom';
-        wisdomBtn.dataset.dwarfName = dwarf.name;
-        wisdomBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-        wisdomDiv.appendChild(wisdomBtn);
-    }
-    statsGrid.appendChild(wisdomDiv);
-
-    statsSection.appendChild(statsGrid);
-    content.appendChild(statsSection);
-
-    // Rename section at the bottom
-    const renameSection = document.createElement('div');
-    renameSection.style.cssText = 'margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; border-top: 1px solid rgba(255,255,255,0.1);';
-    renameSection.innerHTML = `
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
-            <span style="font-weight: bold; white-space: nowrap;">Rename:</span>
-            <input type="text" id="dwarf-rename-input" value="${dwarf.name}" maxlength="25"
-                   style="flex: 1; padding: 6px 8px; background: rgba(0,0,0,0.3); border: 1px solid #444;
-                          border-radius: 4px; color: #fff; font-size: 12px;">
-            <button class="btn-primary" data-action="rename-dwarf" data-dwarf-name="${dwarf.name}"
-                    style="padding: 6px 10px; white-space: nowrap; font-size: 12px;">Rename</button>
-        </label>
-    `;
-    content.appendChild(renameSection);
-    
-    // Add Next button if there are more dwarfs that can level up
-    const dwarfsCanLevelUp = dwarfs.filter(d => {
-        const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-        return currentXP >= xpNeeded;
-    });
-    
-    if (dwarfsCanLevelUp.length > 1) {
-        const currentIndex = dwarfsCanLevelUp.findIndex(d => d.name === dwarf.name);
-        const nextDwarf = dwarfsCanLevelUp[(currentIndex + 1) % dwarfsCanLevelUp.length];
-        
-        const nextBtnContainer = document.createElement('div');
-        nextBtnContainer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;';
-        
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'btn-primary';
-        nextBtn.textContent = `Next: ${nextDwarf.name} →`;
-        nextBtn.style.cssText = 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); padding: 10px 20px;';
-        nextBtn.dataset.dwarfName = nextDwarf.name;
-        nextBtn.dataset.action = 'next-levelup';
-        
-        nextBtnContainer.appendChild(nextBtn);
-        content.appendChild(nextBtnContainer);
-    }
-    
-    // Show modal
-    openModal('levelup-modal');
+    // Populate rename input
+    const renameInput = document.getElementById('dwarf-rename-input');
+    renameInput.value = dwarf.name;
+    const renameBtn = document.getElementById('dwarf-rename-btn');
+    renameBtn.dataset.dwarfName = dwarf.name;
 }
 
 // Refresh dwarf detail modal with updated information (without full redraw)
@@ -3638,8 +3491,12 @@ function refreshDwarfDetailModal(dwarf) {
         return;
     }
 
-    // Just redraw the modal with updated data
-    openDwarfDetailModal(dwarf);
+    // Update modal header
+    const modalHeader = modal.querySelector('.modal-header h2');
+    modalHeader.textContent = `👷 ${dwarf.name}`;
+
+    // Just update the template with new data (no need to reopen modal)
+    populateDwarfDetailTemplate(dwarf);
 }
 
 // Apply the chosen level up upgrade

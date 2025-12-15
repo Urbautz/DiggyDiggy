@@ -162,7 +162,77 @@
             </header>
             <div class="modal-body">
                 <div id="levelup-content">
-                    <!-- Content will be added here -->
+                    <!-- Top section: Stats and Bucket -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <!-- Left: Basic stats -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; opacity: 0.7;">Level</div>
+                                <div id="dwarf-level" style="font-size: 16px; font-weight: bold;">⭐ 1</div>
+                            </div>
+                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; opacity: 0.7;">XP</div>
+                                <div id="dwarf-xp" style="font-size: 16px; font-weight: bold;">0/100</div>
+                            </div>
+                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; opacity: 0.7;">Energy</div>
+                                <div id="dwarf-energy" style="font-size: 16px; font-weight: bold;">⚡ 100/100</div>
+                            </div>
+                            <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; opacity: 0.7;">Status</div>
+                                <div id="dwarf-status" style="font-size: 16px; font-weight: bold;">💼 idle</div>
+                            </div>
+                        </div>
+                        <!-- Right: Bucket contents -->
+                        <div style="padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+                            <h4 id="dwarf-bucket-header" style="margin: 0 0 6px 0; font-size: 14px;">🪣 Bucket (0/10)</h4>
+                            <div id="dwarf-bucket-contents">
+                                <p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dig Power & Tools section -->
+                    <div style="margin-bottom: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <!-- Left: Dig power calculation -->
+                        <div>
+                            <h4 style="margin: 0 0 6px 0; font-size: 14px; text-align: center;">⛏️ Dig Power</h4>
+                            <div id="dwarf-digpower-total" style="font-size: 24px; font-weight: bold; text-align: center; color: #4CAF50; margin-bottom: 8px;">3.0</div>
+                            <div id="dwarf-digpower-calc" style="font-size: 11px; line-height: 1.4; opacity: 0.8;">
+                                <div>Base: 3</div>
+                                <div>× Level Bonus: 1.00 (0)</div>
+                                <div>× Research: 1.00 (0)</div>
+                                <div>× Tool Power: 1.00</div>
+                            </div>
+                        </div>
+                        <!-- Right: Tool section -->
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px;">
+                            <h4 style="margin: 0 0 6px 0; font-size: 14px;">⛏️ Tool</h4>
+                            <div id="dwarf-tool-current" style="text-align: center; margin-bottom: 6px;">
+                                <p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>
+                            </div>
+                            <select id="dwarf-tool-select" style="width: 100%; padding: 4px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 11px;">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Stats and level up section -->
+                    <div style="margin-bottom: 12px;">
+                        <h3 style="margin-bottom: 10px; text-align: center; font-size: 16px;">📊 Stats & Upgrades</h3>
+                        <div id="dwarf-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <!-- Stats will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Rename section -->
+                    <div style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
+                        <h4 style="margin: 0 0 6px 0; font-size: 14px;">✏️ Rename Dwarf</h4>
+                        <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
+                            <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" style="flex: 1; max-width: 250px; padding: 6px; background: rgba(0,0,0,0.5); border: 1px solid #555; border-radius: 3px; color: #fff; font-size: 12px;">
+                            <button id="dwarf-rename-btn" data-action="rename-dwarf" style="padding: 6px 12px; background: #4CAF50; border: none; border-radius: 3px; color: white; font-size: 12px; cursor: pointer;">Rename</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <footer class="modal-footer">
