@@ -3487,24 +3487,36 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     if (includeToolSelector) {
         const toolSelect = document.getElementById('dwarf-tool-select');
         toolSelect.dataset.dwarfName = dwarf.name;
-        toolSelect.innerHTML = '<option value="">None</option>';
+        toolSelect.innerHTML = '';
+
+        // Add "None" option
+        const noneOption = document.createElement('option');
+        noneOption.value = '';
+        noneOption.textContent = 'None';
+        toolSelect.appendChild(noneOption);
 
         // Show only tools that are not assigned to other dwarfs
         toolsInventory.forEach(tool => {
             const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
-            // Ensure both IDs are compared as same type
-            const isSelected = (dwarf.toolId && tool.id && dwarf.toolId == tool.id) ? ' selected' : '';
             const tName = tool.name || tool.type;
+
             // Check if this tool is assigned to any other dwarf
             const assignedToOtherDwarf = dwarfs.some(d => d.name !== dwarf.name && d.toolId == tool.id);
             if (assignedToOtherDwarf) {
                 return; // Don't show this tool
             }
 
-            // Show assignment status
-            let displayName = `${tName} (${tPower.toFixed(2)})`;
+            // Create option element safely
+            const option = document.createElement('option');
+            option.value = tool.id;
+            option.textContent = `${tName} (${tPower.toFixed(2)})`;
 
-            toolSelect.innerHTML += `<option value="${tool.id}"${isSelected}>${displayName}</option>`;
+            // Check if this tool is selected
+            if (dwarf.toolId && tool.id && dwarf.toolId == tool.id) {
+                option.selected = true;
+            }
+
+            toolSelect.appendChild(option);
         });
     }
 
