@@ -66,7 +66,15 @@ function generateGrid() {
 
     // close modal with Escape key
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && modal.getAttribute('aria-hidden') === 'false') closeSettings();
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal[aria-hidden="false"]');
+            if (openModals.length > 0) {
+                // Close the last opened modal
+                const lastModal = openModals[openModals.length - 1];
+                const closeBtn = lastModal.querySelector('[data-action="close-modal"]');
+                if (closeBtn) closeBtn.click();
+            }
+        }
     });
 
 // Avoid referencing initializeGame directly (it may be defined in another script file)

@@ -3112,21 +3112,27 @@ function updateDwarfsInPanel() {
         // Update level up highlight and class
         row.classList.toggle('can-level-up', canLevelUp);
 
-        // Update header (for level up button)
+        // Update XP display in header
         const header = document.getElementById(`dwarf-header-${d.name}`);
         if (header) {
-            let levelUpBtn = header.querySelector('.btn-levelup');
-            if (canLevelUp) {
-                if (!levelUpBtn) {
-                    levelUpBtn = document.createElement('button');
-                    levelUpBtn.className = 'btn-levelup btn-levelup-small';
-                    levelUpBtn.textContent = '⭐ Lvl Up';
-                    levelUpBtn.dataset.dwarfName = d.name;
-                    header.appendChild(levelUpBtn);
-                }
-            } else {
-                if (levelUpBtn) {
-                    levelUpBtn.remove();
+            const xpDisplay = header.querySelector('.dwarf-xp-display');
+            if (xpDisplay) {
+                if (canLevelUp) {
+                    // Show star when ready to level up
+                    xpDisplay.textContent = '⭐';
+                    xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.style.cursor = 'pointer';
+                    xpDisplay.style.fontSize = '16px';
+                    xpDisplay.style.color = '';
+                    xpDisplay.style.opacity = '';
+                } else {
+                    // Show XP progress
+                    xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.title = '';
+                    xpDisplay.style.cursor = '';
+                    xpDisplay.style.fontSize = '10px';
+                    xpDisplay.style.color = '#9fbfe0';
+                    xpDisplay.style.opacity = '0.7';
                 }
             }
         }
@@ -3216,24 +3222,33 @@ function populateDwarfsInPanel() {
             row.classList.add('can-level-up');
         }
         
-        // Header with name and level up button
+        // Header with name and level indicator/XP display
         const header = document.createElement('div');
         header.className = 'dwarf-header';
         header.id = `dwarf-header-${d.name}`;
-        
+
         const name = document.createElement('div');
         name.className = 'dwarf-name';
         name.textContent = d.name;
         header.appendChild(name);
-        
-        // Add level up button next to name if XP threshold reached
+
+        // Add star icon or XP display
+        const xpDisplay = document.createElement('div');
+        xpDisplay.className = 'dwarf-xp-display';
         if (canLevelUp) {
-            const levelUpBtn = document.createElement('button');
-            levelUpBtn.className = 'btn-levelup btn-levelup-small';
-            levelUpBtn.textContent = '⭐ Lvl Up';
-            levelUpBtn.dataset.dwarfName = d.name;
-            header.appendChild(levelUpBtn);
+            // Show star when ready to level up
+            xpDisplay.textContent = '⭐';
+            xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.style.cursor = 'pointer';
+            xpDisplay.style.fontSize = '16px';
+        } else {
+            // Show XP progress
+            xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.style.fontSize = '10px';
+            xpDisplay.style.color = '#9fbfe0';
+            xpDisplay.style.opacity = '0.7';
         }
+        header.appendChild(xpDisplay);
         
         // Calculate digging power (matching game-worker.js calculation)
         const baseDwarfPower = 3;
@@ -3294,133 +3309,271 @@ function populateDwarfsInPanel() {
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
         info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
-        
+
         row.appendChild(header);
         row.appendChild(info);
+
+        // Make row clickable to open dwarf detail modal
+        row.style.cursor = 'pointer';
+        row.dataset.dwarfName = d.name;
+        row.classList.add('dwarf-clickable');
+
         list.appendChild(row);
     }
 }
 
-// Open level up modal for a dwarf
-function openLevelUpModal(dwarf) {
+// Open dwarf detail modal
+function openDwarfDetailModal(dwarf) {
     const modal = document.getElementById('levelup-modal');
     if (!modal) {
-        console.error('Level up modal not found');
+        console.error('Dwarf detail modal not found');
         return;
     }
-    
-    // Store the dwarf being leveled up
+
+    // Store the dwarf being viewed
     modal.dataset.dwarfName = dwarf.name;
-    
-    // Populate level up options
+
+    // Update modal header
+    const modalHeader = modal.querySelector('.modal-header h2');
+    modalHeader.textContent = `👷 ${dwarf.name}`;
+
+    // Populate dwarf details
     const content = document.getElementById('levelup-content');
     content.innerHTML = '';
-    
-    const title = document.createElement('h3');
-    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
+
     const currentXP = dwarf.xp || 0;
-    const hasEnoughXP = currentXP >= xpNeeded;
-    title.textContent = `${dwarf.name} - Level ${dwarf.level} → ${dwarf.level + 1}`;
-    content.appendChild(title);
-    
-    // Show XP status
-    const xpStatus = document.createElement('p');
-    xpStatus.style.textAlign = 'center';
-    xpStatus.style.fontSize = '14px';
-    xpStatus.style.marginBottom = '15px';
-    if (hasEnoughXP) {
-        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} ✓`;
-        xpStatus.style.color = '#4CAF50';
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+
+    // Calculate bucket info
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+
+    // Get tool name
+    const toolName = dwarf.toolId ? (() => {
+        const tool = toolsInventory.find(t => t.id === dwarf.toolId);
+        return tool ? (tool.name || tool.type) : 'None';
+    })() : 'None';
+
+    // Dwarf stats overview - more compact
+    const statsOverview = document.createElement('div');
+    statsOverview.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px;';
+    statsOverview.innerHTML = `
+        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+            <div style="font-size: 10px; opacity: 0.7;">Level</div>
+            <div style="font-size: 16px; font-weight: bold;">⭐ ${currentLevel}</div>
+        </div>
+        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+            <div style="font-size: 10px; opacity: 0.7;">XP</div>
+            <div style="font-size: 16px; font-weight: bold;">${currentXP}/${xpNeeded}</div>
+        </div>
+        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+            <div style="font-size: 10px; opacity: 0.7;">Energy</div>
+            <div style="font-size: 16px; font-weight: bold;">⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}</div>
+        </div>
+        <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+            <div style="font-size: 10px; opacity: 0.7;">Status</div>
+            <div style="font-size: 16px; font-weight: bold;">💼 ${dwarf.status || 'idle'}</div>
+        </div>
+    `;
+    content.appendChild(statsOverview);
+
+    // Bucket contents section - more compact
+    const bucketSection = document.createElement('div');
+    bucketSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;';
+    let bucketHTML = `<h4 style="margin: 0 0 8px 0; font-size: 14px;">🧺 Bucket (${bucketTotal}/${dwarfCapacity})</h4>`;
+
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
+        bucketHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px;">';
+        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
+            if (count > 0) {
+                const mat = getMaterialById(materialId);
+                const materialName = mat ? mat.name : materialId;
+                bucketHTML += `
+                    <div style="padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; text-align: center;">
+                        <div style="font-size: 10px; font-weight: bold;">${materialName}</div>
+                        <div style="font-size: 13px; margin-top: 2px;">${count}</div>
+                    </div>
+                `;
+            }
+        }
+        bucketHTML += '</div>';
     } else {
-        xpStatus.textContent = `XP: ${currentXP} / ${xpNeeded} (Not enough XP)`;
-        xpStatus.style.color = '#ff6b6b';
+        bucketHTML += '<p style="opacity: 0.6; text-align: center; margin: 6px 0; font-size: 12px;">Empty</p>';
     }
-    content.appendChild(xpStatus);
-    
-    const optionsDiv = document.createElement('div');
-    optionsDiv.className = 'levelup-options';
-    
-    // Option 1: Dig Power
-    const digPowerOption = document.createElement('div');
-    digPowerOption.className = 'levelup-option';
-    digPowerOption.innerHTML = `
-        <h4>⛏️ Dig Power</h4>
-        <p>Increases digging power by 10%</p>
-        <p class="levelup-stats">Current: +${(dwarf.digPower || 0) * 10}% → New: +${((dwarf.digPower || 0) + 1) * 10}%</p>
+
+    bucketSection.innerHTML = bucketHTML;
+    content.appendChild(bucketSection);
+
+    // Tool section with assignment option - more compact
+    const toolSection = document.createElement('div');
+    toolSection.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;';
+
+    // Get current tool details
+    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
+    let toolPower = 0;
+    if (currentTool) {
+        if (currentTool.power !== undefined) {
+            toolPower = currentTool.power / 100;
+        } else {
+            const toolDef = getToolByType(currentTool.type);
+            if (toolDef) {
+                toolPower = toolDef.power / 100;
+            }
+        }
+    }
+
+    // Get available tools (not assigned to other dwarfs)
+    const availableTools = toolsInventory.filter(t => {
+        // Include if not assigned, or assigned to current dwarf
+        return !t.assignedTo || t.assignedTo === dwarf.name;
+    });
+
+    let toolHTML = '<h4 style="margin: 0 0 8px 0; font-size: 14px;">⛏️ Current Tool</h4>';
+
+    if (currentTool) {
+        toolHTML += `
+            <p style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 3px;">${toolName}</p>
+            <p style="text-align: center; font-size: 12px; opacity: 0.8;">Power: ${toolPower.toFixed(1)}x</p>
+        `;
+    } else {
+        toolHTML += '<p style="text-align: center; opacity: 0.6; font-size: 12px;">No tool equipped</p>';
+    }
+
+    // Tool selector
+    if (availableTools.length > 0) {
+        toolHTML += '<div style="margin-top: 10px;">';
+        toolHTML += '<label style="display: block; margin-bottom: 6px; font-size: 11px; opacity: 0.8;">Assign Tool:</label>';
+        toolHTML += '<select id="dwarf-tool-select" data-dwarf-name="' + dwarf.name + '" style="width: 100%; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px;">';
+        toolHTML += '<option value="">None</option>';
+
+        availableTools.forEach(tool => {
+            const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
+            const isSelected = dwarf.toolId === tool.id ? ' selected' : '';
+            const tName = tool.name || tool.type;
+            toolHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(1)}x)</option>`;
+        });
+
+        toolHTML += '</select>';
+        toolHTML += '<button class="btn-primary" data-action="assign-tool" data-dwarf-name="' + dwarf.name + '" style="margin-top: 6px; width: 100%; padding: 6px; font-size: 12px;">Assign Tool</button>';
+        toolHTML += '</div>';
+    }
+
+    toolSection.innerHTML = toolHTML;
+    content.appendChild(toolSection);
+
+    // Stats and level up section - more compact
+    const statsSection = document.createElement('div');
+    statsSection.style.cssText = 'margin-bottom: 12px;';
+    statsSection.innerHTML = '<h3 style="margin-bottom: 10px; text-align: center; font-size: 16px;">📊 Stats & Upgrades</h3>';
+
+    const hasEnoughXP = currentXP >= xpNeeded;
+
+    // Create a grid for stats - more compact
+    const statsGrid = document.createElement('div');
+    statsGrid.className = 'levelup-options';
+    statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;';
+
+    // Stat 1: Dig Power
+    const digPowerDiv = document.createElement('div');
+    digPowerDiv.className = 'levelup-option';
+    digPowerDiv.style.padding = '10px';
+    digPowerDiv.innerHTML = `
+        <h4 style="margin: 0 0 6px 0; font-size: 13px;">⛏️ Dig Power</h4>
+        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.digPower || 0}</p>
+        <p style="font-size: 11px; opacity: 0.8; margin: 0;">+${(dwarf.digPower || 0) * 10}% power</p>
     `;
-    const digPowerBtn = document.createElement('button');
-    digPowerBtn.className = 'btn-primary';
-    digPowerBtn.textContent = 'Choose Dig Power';
-    digPowerBtn.dataset.upgradeType = 'digPower';
-    digPowerBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        digPowerBtn.disabled = true;
-        digPowerBtn.classList.add('disabled');
+    if (hasEnoughXP) {
+        const digPowerBtn = document.createElement('button');
+        digPowerBtn.className = 'btn-primary';
+        digPowerBtn.textContent = '⭐ Level Up';
+        digPowerBtn.dataset.upgradeType = 'digPower';
+        digPowerBtn.dataset.dwarfName = dwarf.name;
+        digPowerBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+        digPowerDiv.appendChild(digPowerBtn);
     }
-    digPowerOption.appendChild(digPowerBtn);
-    
-    // Option 2: Max Energy
-    const energyOption = document.createElement('div');
-    energyOption.className = 'levelup-option';
-    energyOption.innerHTML = `
-        <h4>⚡ Max Energy</h4>
-        <p>Increases maximum energy by ${(DWARF_LEVELUP_ENERGY_MULTIPLIER - 1) * 100}%</p>
-        <p class="levelup-stats">Current: ${dwarf.maxEnergy || 100} → New: ${Math.floor((dwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER)}</p>
+    statsGrid.appendChild(digPowerDiv);
+
+    // Stat 2: Max Energy
+    const energyDiv = document.createElement('div');
+    energyDiv.className = 'levelup-option';
+    energyDiv.style.padding = '10px';
+    const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
+    energyDiv.innerHTML = `
+        <h4 style="margin: 0 0 6px 0; font-size: 13px;">⚡ Max Energy</h4>
+        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${energyLevel}</p>
+        <p style="font-size: 11px; opacity: 0.8; margin: 0;">Max: ${dwarf.maxEnergy || 100}</p>
     `;
-    const energyBtn = document.createElement('button');
-    energyBtn.className = 'btn-primary';
-    energyBtn.textContent = 'Choose Max Energy';
-    energyBtn.dataset.upgradeType = 'maxEnergy';
-    energyBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        energyBtn.disabled = true;
-        energyBtn.classList.add('disabled');
+    if (hasEnoughXP) {
+        const energyBtn = document.createElement('button');
+        energyBtn.className = 'btn-primary';
+        energyBtn.textContent = '⭐ Level Up';
+        energyBtn.dataset.upgradeType = 'maxEnergy';
+        energyBtn.dataset.dwarfName = dwarf.name;
+        energyBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+        energyDiv.appendChild(energyBtn);
     }
-    energyOption.appendChild(energyBtn);
-    
-    // Option 3: Strength
-    const strengthOption = document.createElement('div');
-    strengthOption.className = 'levelup-option';
-    strengthOption.innerHTML = `
-        <h4>💪 Strength</h4>
-        <p>Increases bucket capacity by ${DWARF_LEVELUP_STRENGTH_BONUS}</p>
-        <p class="levelup-stats">Current: ${4 + (dwarf.strength || 0)} → New: ${4 + (dwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS}</p>
+    statsGrid.appendChild(energyDiv);
+
+    // Stat 3: Strength
+    const strengthDiv = document.createElement('div');
+    strengthDiv.className = 'levelup-option';
+    strengthDiv.style.padding = '10px';
+    strengthDiv.innerHTML = `
+        <h4 style="margin: 0 0 6px 0; font-size: 13px;">💪 Strength</h4>
+        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.strength || 0}</p>
+        <p style="font-size: 11px; opacity: 0.8; margin: 0;">Capacity: ${dwarfCapacity}</p>
     `;
-    const strengthBtn = document.createElement('button');
-    strengthBtn.className = 'btn-primary';
-    strengthBtn.textContent = 'Choose Strength';
-    strengthBtn.dataset.upgradeType = 'strength';
-    strengthBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        strengthBtn.disabled = true;
-        strengthBtn.classList.add('disabled');
+    if (hasEnoughXP) {
+        const strengthBtn = document.createElement('button');
+        strengthBtn.className = 'btn-primary';
+        strengthBtn.textContent = '⭐ Level Up';
+        strengthBtn.dataset.upgradeType = 'strength';
+        strengthBtn.dataset.dwarfName = dwarf.name;
+        strengthBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+        strengthDiv.appendChild(strengthBtn);
     }
-    strengthOption.appendChild(strengthBtn);
-    
-    // Option 4: Wisdom
-    const wisdomOption = document.createElement('div');
-    wisdomOption.className = 'levelup-option';
-    wisdomOption.innerHTML = `
-        <h4>🧠 Wisdom</h4>
-        <p>Increases research speed by +1 per tick</p>
-        <p class="levelup-stats">Current: +${1 + (dwarf.wisdom || 0)}/tick → New: +${1 + (dwarf.wisdom || 0) + 1}/tick</p>
+    statsGrid.appendChild(strengthDiv);
+
+    // Stat 4: Wisdom
+    const wisdomDiv = document.createElement('div');
+    wisdomDiv.className = 'levelup-option';
+    wisdomDiv.style.padding = '10px';
+    wisdomDiv.innerHTML = `
+        <h4 style="margin: 0 0 6px 0; font-size: 13px;">🧠 Wisdom</h4>
+        <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${dwarf.wisdom || 0}</p>
+        <p style="font-size: 11px; opacity: 0.8; margin: 0;">+${1 + (dwarf.wisdom || 0)}/tick</p>
     `;
-    const wisdomBtn = document.createElement('button');
-    wisdomBtn.className = 'btn-primary';
-    wisdomBtn.textContent = 'Choose Wisdom';
-    wisdomBtn.dataset.upgradeType = 'wisdom';
-    wisdomBtn.dataset.dwarfName = dwarf.name;
-    if (!hasEnoughXP) {
-        wisdomBtn.disabled = true;
-        wisdomBtn.classList.add('disabled');
+    if (hasEnoughXP) {
+        const wisdomBtn = document.createElement('button');
+        wisdomBtn.className = 'btn-primary';
+        wisdomBtn.textContent = '⭐ Level Up';
+        wisdomBtn.dataset.upgradeType = 'wisdom';
+        wisdomBtn.dataset.dwarfName = dwarf.name;
+        wisdomBtn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
+        wisdomDiv.appendChild(wisdomBtn);
     }
-    wisdomOption.appendChild(wisdomBtn);
-    
-    optionsDiv.appendChild(digPowerOption);
-    optionsDiv.appendChild(energyOption);
-    optionsDiv.appendChild(strengthOption);
-    optionsDiv.appendChild(wisdomOption);
-    content.appendChild(optionsDiv);
+    statsGrid.appendChild(wisdomDiv);
+
+    statsSection.appendChild(statsGrid);
+    content.appendChild(statsSection);
+
+    // Rename section at the bottom
+    const renameSection = document.createElement('div');
+    renameSection.style.cssText = 'margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; border-top: 1px solid rgba(255,255,255,0.1);';
+    renameSection.innerHTML = `
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+            <span style="font-weight: bold; white-space: nowrap;">Rename:</span>
+            <input type="text" id="dwarf-rename-input" value="${dwarf.name}"
+                   style="flex: 1; padding: 6px 8px; background: rgba(0,0,0,0.3); border: 1px solid #444;
+                          border-radius: 4px; color: #fff; font-size: 12px;">
+            <button class="btn-primary" data-action="rename-dwarf" data-dwarf-name="${dwarf.name}"
+                    style="padding: 6px 10px; white-space: nowrap; font-size: 12px;">Rename</button>
+        </label>
+    `;
+    content.appendChild(renameSection);
     
     // Add Next button if there are more dwarfs that can level up
     const dwarfsCanLevelUp = dwarfs.filter(d => {
@@ -3450,6 +3603,23 @@ function openLevelUpModal(dwarf) {
     
     // Show modal
     openModal('levelup-modal');
+}
+
+// Refresh dwarf detail modal with updated information (without full redraw)
+function refreshDwarfDetailModal(dwarf) {
+    const modal = document.getElementById('levelup-modal');
+    if (!modal || modal.getAttribute('aria-hidden') !== 'false') {
+        // Modal is not open, do nothing
+        return;
+    }
+
+    // Check if this is the currently displayed dwarf
+    if (modal.dataset.dwarfName !== dwarf.name) {
+        return;
+    }
+
+    // Just redraw the modal with updated data
+    openDwarfDetailModal(dwarf);
 }
 
 // Apply the chosen level up upgrade
@@ -3508,33 +3678,10 @@ function applyLevelUp(dwarf, upgradeType) {
     // Refresh dwarf display
     populateDwarfsOverview();
     populateDwarfsInPanel();
-    
-    // Check if this dwarf can level up again
-    const newXP = actualDwarf.xp || 0;
-    const newLevel = actualDwarf.level || 1;
-    const newXPNeeded = DWARF_XP_PER_LEVEL * newLevel;
-    
-    if (newXP >= newXPNeeded) {
-        // Can level up again, refresh the modal with new level
-        openLevelUpModal(actualDwarf);
-    } else {
-        // Check if there are other dwarfs that can level up
-        const dwarfsCanLevelUp = dwarfs.filter(d => {
-            const currentXP = d.xp || 0;
-            const currentLevel = d.level || 1;
-            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-            return currentXP >= xpNeeded;
-        });
-        
-        if (dwarfsCanLevelUp.length > 0) {
-            // Show next dwarf who can level up
-            openLevelUpModal(dwarfsCanLevelUp[0]);
-        } else {
-            // No more dwarfs to level up, close modal
-            closeModal('levelup-modal');
-        }
-    }
-    
+
+    // Refresh the modal with updated dwarf info
+    refreshDwarfDetailModal(actualDwarf);
+
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
 
@@ -3624,17 +3771,17 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for level up buttons
+// Delegated event handler for clicking on dwarf rows to open detail modal
 document.addEventListener('click', (ev) => {
-    const levelUpBtn = ev.target.closest('.btn-levelup');
-    if (!levelUpBtn) return;
-    
-    const dwarfName = levelUpBtn.dataset.dwarfName;
+    const dwarfRow = ev.target.closest('.dwarf-clickable');
+    if (!dwarfRow) return;
+
+    const dwarfName = dwarfRow.dataset.dwarfName;
     if (dwarfName) {
         const dwarf = dwarfs.find(d => d.name === dwarfName);
         if (dwarf) {
-            console.log(`Level up button clicked for ${dwarfName}`);
-            openLevelUpModal(dwarf);
+            console.log(`Dwarf row clicked for ${dwarfName}`);
+            openDwarfDetailModal(dwarf);
         }
     }
 });
@@ -3656,19 +3803,147 @@ document.addEventListener('click', (ev) => {
     }
 });
 
-// Delegated event handler for next dwarf button in level up modal
+// Delegated event handler for next dwarf button in detail modal
 document.addEventListener('click', (ev) => {
     const nextBtn = ev.target.closest('.btn-primary[data-action="next-levelup"]');
     if (!nextBtn) return;
-    
+
     const dwarfName = nextBtn.dataset.dwarfName;
     if (dwarfName) {
         const dwarf = dwarfs.find(d => d.name === dwarfName);
         if (dwarf) {
-            console.log(`Next level up: ${dwarfName}`);
-            openLevelUpModal(dwarf);
+            console.log(`Next dwarf: ${dwarfName}`);
+            openDwarfDetailModal(dwarf);
         }
     }
+});
+
+// Delegated event handler for renaming dwarfs
+document.addEventListener('click', (ev) => {
+    const renameBtn = ev.target.closest('[data-action="rename-dwarf"]');
+    if (!renameBtn) return;
+
+    const oldName = renameBtn.dataset.dwarfName;
+    const input = document.getElementById('dwarf-rename-input');
+    if (!input) return;
+
+    const newName = input.value.trim();
+    if (!newName || newName === oldName) {
+        console.log('No name change');
+        return;
+    }
+
+    // Check if name already exists
+    if (dwarfs.some(d => d.name === newName && d.name !== oldName)) {
+        alert(`A dwarf named "${newName}" already exists!`);
+        return;
+    }
+
+    // Find and rename the dwarf
+    const dwarf = dwarfs.find(d => d.name === oldName);
+    if (dwarf) {
+        console.log(`Renaming dwarf from ${oldName} to ${newName}`);
+
+        // Update tool assignments
+        toolsInventory.forEach(t => {
+            if (t.assignedTo === oldName) {
+                t.assignedTo = newName;
+            }
+        });
+
+        // Reset dwarf to house - release all reservations and reset status
+        dwarf.status = 'idle';
+        dwarf.moveTarget = null;
+        dwarf.action = null;
+        dwarf.digTarget = null;
+
+        // Find house position
+        const housePos = {row: 0, col: 0}; // Default house position
+        for (let r = 0; r < gridHeight; r++) {
+            for (let c = 0; c < gridWidth; c++) {
+                if (grid[r][c].type === 'house') {
+                    housePos.row = r;
+                    housePos.col = c;
+                    break;
+                }
+            }
+        }
+        dwarf.row = housePos.row;
+        dwarf.col = housePos.col;
+
+        // Rename the dwarf
+        dwarf.name = newName;
+
+        // Sync with worker - send full dwarf state and tool inventory
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { dwarfs, toolsInventory }
+        });
+
+        // Refresh the modal with updated info
+        refreshDwarfDetailModal(dwarf);
+
+        // Update the dwarfs panel and grid display
+        updateDwarfsInPanel();
+        updateGridDisplay();
+
+        // Save the game
+        saveGame();
+    }
+});
+
+// Delegated event handler for assigning tools to dwarfs
+document.addEventListener('click', (ev) => {
+    const assignBtn = ev.target.closest('[data-action="assign-tool"]');
+    if (!assignBtn) return;
+
+    const dwarfName = assignBtn.dataset.dwarfName;
+    const select = document.getElementById('dwarf-tool-select');
+    if (!select) return;
+
+    const newToolId = select.value;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    if (!dwarf) return;
+
+    console.log(`Assigning tool ${newToolId} to ${dwarfName}`);
+
+    // Unassign old tool
+    if (dwarf.toolId) {
+        const oldTool = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (oldTool) {
+            delete oldTool.assignedTo;
+        }
+    }
+
+    // Assign new tool
+    if (newToolId) {
+        const newTool = toolsInventory.find(t => t.id === newToolId);
+        if (newTool) {
+            newTool.assignedTo = dwarfName;
+            dwarf.toolId = newToolId;
+        }
+    } else {
+        // Unassign tool
+        delete dwarf.toolId;
+    }
+
+    // Sync with worker
+    gameWorker.postMessage({
+        type: 'assign-tool',
+        data: {
+            dwarfName: dwarfName,
+            toolId: newToolId || null
+        }
+    });
+
+    // Refresh the modal with updated info
+    refreshDwarfDetailModal(dwarf);
+
+    // Update the dwarfs panel
+    updateDwarfsInPanel();
+
+    // Save the game
+    saveGame();
 });
 
 function initUI() {
