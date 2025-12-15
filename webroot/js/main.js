@@ -3189,21 +3189,8 @@ function populateDwarfsInPanel() {
     if (!list) return;
     list.innerHTML = '';
     
-    // Sort dwarfs: those who can level up first, then by name
+    // Sort dwarfs alphabetically by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
-        const aXP = a.xp || 0;
-        const aLevel = a.level || 1;
-        const aNeeded = 250 * aLevel;
-        const aCanLevelUp = aXP >= aNeeded;
-        
-        const bXP = b.xp || 0;
-        const bLevel = b.level || 1;
-        const bNeeded = 250 * bLevel;
-        const bCanLevelUp = bXP >= bNeeded;
-        
-        if (aCanLevelUp !== bCanLevelUp) {
-            return bCanLevelUp ? 1 : -1; // Can level up first
-        }
         return a.name.localeCompare(b.name);
     });
     
@@ -3340,12 +3327,66 @@ function openDwarfDetailModal(dwarf) {
     // Populate the template with dwarf data
     populateDwarfDetailTemplate(dwarf);
 
+    // Populate dwarf switcher dropdown
+    populateDwarfSwitcher(dwarf.name);
+
     // Show modal
     openModal('levelup-modal');
 }
 
-// Populate the static template with dwarf data
-function populateDwarfDetailTemplate(dwarf) {
+// Populate the dwarf switcher dropdown
+function populateDwarfSwitcher(currentDwarfName) {
+    const switcher = document.getElementById('dwarf-switcher');
+    if (!switcher) return;
+
+    switcher.innerHTML = '<option value="">Switch to...</option>';
+
+    // Sort dwarfs: those who can level up first, then by name
+    const sortedDwarfs = [...dwarfs].sort((a, b) => {
+        const aXP = a.xp || 0;
+        const aLevel = a.level || 1;
+        const aNeeded = 250 * aLevel;
+        const aCanLevelUp = aXP >= aNeeded;
+
+        const bXP = b.xp || 0;
+        const bLevel = b.level || 1;
+        const bNeeded = 250 * bLevel;
+        const bCanLevelUp = bXP >= bNeeded;
+
+        if (aCanLevelUp !== bCanLevelUp) {
+            return bCanLevelUp ? 1 : -1; // Can level up first
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    sortedDwarfs.forEach(d => {
+        if (d.name !== currentDwarfName) {
+            const currentXP = d.xp || 0;
+            const currentLevel = d.level || 1;
+            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+            const canLevelUp = currentXP >= xpNeeded;
+            const levelUpIndicator = canLevelUp ? ' ⭐' : '';
+
+            const option = document.createElement('option');
+            option.value = d.name;
+            option.textContent = `${d.name}${levelUpIndicator}`;
+            switcher.appendChild(option);
+        }
+    });
+
+    // Add change event listener
+    switcher.onchange = (e) => {
+        if (e.target.value) {
+            const selectedDwarf = dwarfs.find(d => d.name === e.target.value);
+            if (selectedDwarf) {
+                openDwarfDetailModal(selectedDwarf);
+            }
+        }
+    };
+}
+
+// Populate the static template with dwarf data (full population on open)
+function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
@@ -3426,17 +3467,34 @@ function populateDwarfDetailTemplate(dwarf) {
         toolCurrent.innerHTML = '<p style="opacity: 0.6; font-size: 11px; margin: 4px 0 6px 0;">No tool</p>';
     }
 
-    // Populate tool selector
-    const availableTools = toolsInventory.filter(t => !t.assignedTo || t.assignedTo === dwarf.name);
-    const toolSelect = document.getElementById('dwarf-tool-select');
-    toolSelect.dataset.dwarfName = dwarf.name;
-    toolSelect.innerHTML = '<option value="">None</option>';
-    availableTools.forEach(tool => {
-        const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
-        const isSelected = dwarf.toolId === tool.id ? ' selected' : '';
-        const tName = tool.name || tool.type;
-        toolSelect.innerHTML += `<option value="${tool.id}"${isSelected}>${tName} (${tPower.toFixed(2)})</option>`;
-    });
+    // Populate tool selector (only on initial open, not on refresh)
+    if (includeToolSelector) {
+        const toolSelect = document.getElementById('dwarf-tool-select');
+        toolSelect.dataset.dwarfName = dwarf.name;
+        toolSelect.innerHTML = '<option value="">None</option>';
+
+        // Show only tools that are not assigned to other dwarfs
+        toolsInventory.forEach(tool => {
+            const tPower = tool.power !== undefined ? (tool.power / 100) : ((getToolByType(tool.type)?.power || 100) / 100);
+            // Ensure both IDs are compared as same type
+            const isSelected = (dwarf.toolId && tool.id && dwarf.toolId == tool.id) ? ' selected' : '';
+            const tName = tool.name || tool.type;
+            // Check if this tool is assigned to any other dwarf
+            const assignedToOtherDwarf = dwarfs.some(d => d.name !== dwarf.name && d.toolId == tool.id);
+            if (assignedToOtherDwarf) {
+                return; // Don't show this tool
+            }
+
+            // Show assignment status
+            let displayName = `${tName} (${tPower.toFixed(2)})`;
+            if (tool.assignedTo === dwarf.name) {
+                // Tool is assigned to current dwarf - show checkmark
+                displayName = `${tName} (${tPower.toFixed(2)}) ✓`;
+            }
+
+            toolSelect.innerHTML += `<option value="${tool.id}"${isSelected}>${displayName}</option>`;
+        });
+    }
 
     // Populate stats grid
     const hasEnoughXP = currentXP >= xpNeeded;
@@ -3451,7 +3509,7 @@ function populateDwarfDetailTemplate(dwarf) {
         card.innerHTML = `
             <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
             <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${level}</p>
-            <p style="font-size: 11px; opacity: 0.8; margin: 0;">${description}</p>
+            <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
         `;
         if (hasEnoughXP) {
             const btn = document.createElement('button');
@@ -3478,8 +3536,8 @@ function populateDwarfDetailTemplate(dwarf) {
     renameBtn.dataset.dwarfName = dwarf.name;
 }
 
-// Refresh dwarf detail modal with updated information (without full redraw)
-function refreshDwarfDetailModal(dwarf) {
+// Refresh dwarf detail modal with updated information (lightweight, no UI blocking)
+function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const modal = document.getElementById('levelup-modal');
     if (!modal || modal.getAttribute('aria-hidden') !== 'false') {
         // Modal is not open, do nothing
@@ -3491,12 +3549,72 @@ function refreshDwarfDetailModal(dwarf) {
         return;
     }
 
-    // Update modal header
-    const modalHeader = modal.querySelector('.modal-header h2');
-    modalHeader.textContent = `👷 ${dwarf.name}`;
+    // If full update requested (e.g., after level up), repopulate everything except tool selector
+    if (forceFullUpdate) {
+        populateDwarfDetailTemplate(dwarf, false); // false = don't rebuild tool selector
+        return;
+    }
 
-    // Just update the template with new data (no need to reopen modal)
-    populateDwarfDetailTemplate(dwarf);
+    // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
+    const currentXP = dwarf.xp || 0;
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+
+    // Calculate bucket info
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    const bucketResearch = researchtree.find(r => r.id === 'buckets');
+    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
+    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+
+    // Calculate dig power
+    const baseDwarfPower = 3;
+    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
+    let toolPower = 1.0;
+    if (currentTool) {
+        if (currentTool.power !== undefined) {
+            toolPower = currentTool.power / 100;
+        } else {
+            const toolDef = getToolByType(currentTool.type);
+            if (toolDef) {
+                toolPower = toolDef.power / 100;
+            }
+        }
+    }
+    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+
+    // Update only the dynamic text content (fast, non-blocking)
+    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
+    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+
+    // Update bucket header and contents
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    const bucketContents = document.getElementById('dwarf-bucket-contents');
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
+        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
+            if (count > 0) {
+                const mat = getMaterialById(materialId);
+                const materialName = mat ? mat.name : materialId;
+                bucketHTML += `
+                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
+                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
+                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
+                    </div>
+                `;
+            }
+        }
+        bucketHTML += '</div>';
+        bucketContents.innerHTML = bucketHTML;
+    } else {
+        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
+    }
+
+    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
 }
 
 // Apply the chosen level up upgrade
@@ -3556,8 +3674,8 @@ function applyLevelUp(dwarf, upgradeType) {
     populateDwarfsOverview();
     populateDwarfsInPanel();
 
-    // Refresh the modal with updated dwarf info
-    refreshDwarfDetailModal(actualDwarf);
+    // Refresh the modal with updated dwarf info (force full update to rebuild stats grid)
+    refreshDwarfDetailModal(actualDwarf, true);
 
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
 }
@@ -3781,43 +3899,50 @@ document.addEventListener('change', (ev) => {
     if (select.id !== 'dwarf-tool-select') return;
 
     const dwarfName = select.dataset.dwarfName;
-    const newToolId = select.value;
+    const newToolId = select.value ? parseInt(select.value) : null; // Convert to number
     const dwarf = dwarfs.find(d => d.name === dwarfName);
-    if (!dwarf) return;
+    if (!dwarf) {
+        console.error(`Dwarf ${dwarfName} not found`);
+        return;
+    }
 
-    console.log(`Assigning tool ${newToolId} to ${dwarfName}`);
+    console.log(`Assigning tool ${newToolId} to ${dwarfName}`, { oldToolId: dwarf.toolId, toolsInventory });
 
     // Unassign old tool
     if (dwarf.toolId) {
         const oldTool = toolsInventory.find(t => t.id === dwarf.toolId);
         if (oldTool) {
+            console.log(`Unassigning old tool ${oldTool.id} from ${dwarfName}`);
             delete oldTool.assignedTo;
         }
     }
 
     // Assign new tool
-    if (newToolId) {
+    if (newToolId !== null) {
         const newTool = toolsInventory.find(t => t.id === newToolId);
         if (newTool) {
+            console.log(`Assigning new tool ${newTool.id} (${newTool.type}) to ${dwarfName}`);
             newTool.assignedTo = dwarfName;
             dwarf.toolId = newToolId;
+        } else {
+            console.error(`Tool ${newToolId} not found in inventory`);
         }
     } else {
         // Unassign tool
+        console.log(`Unassigning all tools from ${dwarfName}`);
         delete dwarf.toolId;
     }
 
+    console.log(`After assignment:`, { dwarfToolId: dwarf.toolId, tool: toolsInventory.find(t => t.id === newToolId) });
+
     // Sync with worker
     gameWorker.postMessage({
-        type: 'assign-tool',
-        data: {
-            dwarfName: dwarfName,
-            toolId: newToolId || null
-        }
+        type: 'update-state',
+        data: { dwarfs, toolsInventory }
     });
 
-    // Refresh the modal with updated info
-    refreshDwarfDetailModal(dwarf);
+    // Refresh the modal with updated info (force full update to rebuild tool selector)
+    refreshDwarfDetailModal(dwarf, true);
 
     // Update the dwarfs panel
     updateDwarfsInPanel();
@@ -4535,7 +4660,17 @@ function initWorker() {
                 if (panel && panel.dataset.view === 'dwarfs') {
                     updateDwarfsInPanel();
                 }
-                
+
+                // Update dwarf detail modal if it's open
+                const levelupModal = document.getElementById('levelup-modal');
+                if (levelupModal && levelupModal.getAttribute('aria-hidden') === 'false') {
+                    const dwarfName = levelupModal.dataset.dwarfName;
+                    const dwarf = dwarfs.find(d => d.name === dwarfName);
+                    if (dwarf) {
+                        refreshDwarfDetailModal(dwarf);
+                    }
+                }
+
                 // Update smelter panel every 5 ticks if it's open (for temperature display)
                 const smelterModal = document.getElementById('smelter-modal');
                 if (smelterModal && smelterModal.getAttribute('aria-hidden') === 'false') {
