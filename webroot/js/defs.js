@@ -41,7 +41,7 @@ const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
 const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
-const RESEARCH_COST_MULTIPLIER = 2; // Research cost doubles each level
+const RESEARCH_COST_MULTIPLIER = 1.15; // Research cost formula: baseCost * (1.15^(level-1)), rounded to 0 digits
 
 const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5; // 50% chance to use same material as left tile
 const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5; // 50% chance to use same material as above tile
@@ -177,35 +177,35 @@ let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
 let researchtree = [
-    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, level: 0,
-      description: 'Dwarfs dig 1% harder.' }, 
-    { id: 'better-housing', name: 'Better Housing', cost: 100, level: 0,  
+    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, goldCost: 50, level: 0,
+      description: 'Dwarfs dig 1% harder.' },
+    { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 100, level: 0,
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-    { id: 'trading', name: 'Better trading', cost: 100, level: 0,  
+    { id: 'trading', name: 'Better trading', cost: 100, goldCost: 100, level: 0,
       description: 'Sell Prices for materials are improved by 3% per level' },
-    { id: 'buckets', name: 'Bigger Buckets', cost: 500, level: 0, maxlevel:10, 
+    { id: 'buckets', name: 'Bigger Buckets', cost: 500, goldCost: 500, level: 0, maxlevel:10,
       description: 'Increases bucket capacity by 1 per level.' },
-    { id: 'union-busting', name: 'Union Busting', cost: 500, level: 0, maxlevel: 15,
+    { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-    { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, level: 0, maxlevel: 1,
+    { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1,
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
-    { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
+    { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'furnace', name: 'Furnace', cost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
+    { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
-    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
+    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
-    { id: 'forge', name: 'Forge', cost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
+    { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
-      min_depth: 2000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },  
-    { id: 'material-science', name: 'Material Science', cost: 500, level: 0, maxlevel: 5,
+    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      min_depth: 2000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
+    { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5,
       min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
-    { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, level: 0, maxlevel: 20,
+    { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20,
       min_depth: 3000, unlock_requires: 'wage_increase', description: 'Reduces wage increase per dwarf level by 1%.' },
-    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
+    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, goldCost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
       min_depth: 500, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
-    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
+    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
     ];
 let activeResearch = null; // Track which research is currently being researched

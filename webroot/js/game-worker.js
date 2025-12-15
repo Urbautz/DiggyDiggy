@@ -31,7 +31,7 @@ const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1;
 const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15;
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08;
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10;
-const RESEARCH_COST_MULTIPLIER = 2;
+const RESEARCH_COST_MULTIPLIER = 1.15;
 const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5;
 const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5;
 const GRID_MOVE_DOWN_CHANCE = 0.3;
@@ -559,8 +559,11 @@ function actForDwarf(dwarf) {
             
             // console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
             
-            // Check if research is complete (cost doubles each level)
-            const actualCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level || 0);
+            // Check if research is complete using formula: baseCost * (1.15^(targetLevel-1))
+            // Current level is what we have, target level is current + 1
+            const currentLevel = activeResearch.level || 0;
+            const targetLevel = currentLevel + 1;
+            const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
             if (activeResearch.progress >= actualCost) {
                 const completedResearch = activeResearch;
                 completedResearch.level = (completedResearch.level || 0) + 1;

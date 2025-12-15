@@ -401,7 +401,9 @@ function updateGridDisplay() {
                         // Add progress bar if research is active
                         if (activeResearch) {
                             const progress = activeResearch.progress || 0;
-                            const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+                            const currentLevel = activeResearch.level || 0;
+                            const targetLevel = currentLevel + 1;
+                            const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
                             const progressPercent = Math.min(100, Math.floor((progress / actualCost) * 100));
                             
                             const progressContainer = document.createElement('div');
@@ -1773,14 +1775,18 @@ function populateResearch() {
         const activeDiv = document.createElement('div');
         activeDiv.className = 'active-research';
         const progress = activeResearch.progress || 0;
-        // Calculate actual cost for current level (doubles each level)
-        const actualCost = activeResearch.cost * Math.pow(2, activeResearch.level || 0);
+        // Calculate actual cost using formula: baseCost * (1.15^(targetLevel-1))
+        const currentLevel = activeResearch.level || 0;
+        const targetLevel = currentLevel + 1;
+        const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        const actualGoldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong>${activeResearch.name}</strong></p>
+            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel})</p>
             <p>${activeResearch.description}</p>
-            <p>Progress: ${progress} / ${actualCost} (${progressPercent}%)</p>
+            <p>Progress: ${progress} / ${actualCost} 🔬 (${progressPercent}%)</p>
+            <p><small>💰 Gold cost paid: ${actualGoldCost}</small></p>
             <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
         `;
         
@@ -1792,7 +1798,7 @@ function populateResearch() {
         cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
         cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
         cancelBtn.onclick = () => {
-            if (confirm(`Cancel research on ${activeResearch.name}? Progress will be lost.`)) {
+            if (confirm(`Cancel research on ${activeResearch.name}?\n\nProgress will be lost, but ${actualGoldCost} 💰 will be refunded.`)) {
                 cancelResearch();
             }
         };
@@ -1838,10 +1844,12 @@ function populateResearch() {
         levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
         
         const costTd = document.createElement('td');
-        // Calculate actual cost for next level (doubles each level)
-        const actualCost = researchItem.cost * Math.pow(2, currentLevel);
-        costTd.textContent = `${actualCost} 🔬`;
-        costTd.title = 'Research points required';
+        // Calculate actual cost for next level using formula: baseCost * (1.15^(targetLevel-1))
+        const targetLevel = currentLevel + 1;
+        const actualCost = Math.round(researchItem.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+        costTd.textContent = `${actualCost} 🔬 / ${actualGoldCost} 💰`;
+        costTd.title = 'Research points / Gold required';
         
         const actionTd = document.createElement('td');
         const researchBtn = document.createElement('button');
@@ -1851,7 +1859,10 @@ function populateResearch() {
         
         // Check if requirements are met
         const requirementsMet = checkResearchRequirements(researchItem);
-        
+
+        // Check if player has enough gold
+        const hasEnoughGold = gold >= actualGoldCost;
+
         if (isActive) {
             researchBtn.className = 'btn-research active';
             researchBtn.textContent = 'Active';
@@ -1862,6 +1873,12 @@ function populateResearch() {
             researchBtn.textContent = 'Locked';
             researchBtn.disabled = true;
             researchBtn.title = requirementsMet.reason;
+        } else if (!hasEnoughGold) {
+            // Not enough gold
+            researchBtn.className = 'btn-research disabled';
+            researchBtn.textContent = 'Research';
+            researchBtn.disabled = true;
+            researchBtn.title = `Not enough gold! Required: ${actualGoldCost} 💰, Available: ${Math.floor(gold)} 💰`;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -1939,18 +1956,34 @@ function startResearch(researchId) {
         console.error('Research not found:', researchId);
         return;
     }
-    
+
     // Check if another research is active
     if (activeResearch) {
         console.error('Another research is already active');
         return;
     }
-    
+
+    // Calculate gold cost for next level
+    const currentLevel = researchItem.level || 0;
+    const targetLevel = currentLevel + 1;
+    const goldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+
+    // Check if player has enough gold
+    if (gold < goldCost) {
+        console.error(`Not enough gold to start research. Required: ${goldCost}, Available: ${gold}`);
+        alert(`Not enough gold! Required: ${goldCost} 💰, Available: ${Math.floor(gold)} 💰`);
+        return;
+    }
+
+    // Deduct gold cost
+    gold -= goldCost;
+    logTransaction('expense', goldCost, `Started research: ${researchItem.name} (Level ${targetLevel})`);
+
     // Initialize progress if not set
     if (researchItem.progress === undefined) {
         researchItem.progress = 0;
     }
-    
+
     // Set as active
     activeResearch = researchItem;
     
@@ -1960,7 +1993,8 @@ function startResearch(researchId) {
             type: 'update-state',
             data: {
                 activeResearch: activeResearch,
-                researchtree: researchtree
+                researchtree: researchtree,
+                gold: gold
             }
         });
     }
@@ -1977,9 +2011,16 @@ function cancelResearch() {
         console.warn('No active research to cancel');
         return;
     }
-    
+
     const researchName = activeResearch.name;
-    
+
+    // Refund gold cost
+    const currentLevel = activeResearch.level || 0;
+    const targetLevel = currentLevel + 1;
+    const goldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+    gold += goldCost;
+    logTransaction('income', goldCost, `Cancelled research: ${researchName} (Level ${targetLevel}) - refund`);
+
     // Clear active research
     activeResearch = null;
     
@@ -1996,7 +2037,8 @@ function cancelResearch() {
             type: 'update-state',
             data: {
                 activeResearch: null,
-                dwarfs: dwarfs
+                dwarfs: dwarfs,
+                gold: gold
             }
         });
     }
@@ -4298,7 +4340,11 @@ function initWorker() {
                 // Worker does not modify toolsInventory, so we don't sync it back
                 
                 // Update research state from worker
+                let researchStateChanged = false;
                 if (data.activeResearch !== undefined) {
+                    if (activeResearch !== data.activeResearch) {
+                        researchStateChanged = true;
+                    }
                     activeResearch = data.activeResearch;
                 }
                 if (data.researchtree) {
@@ -4306,6 +4352,9 @@ function initWorker() {
                     for (const workerResearch of data.researchtree) {
                         const currentResearch = researchtree.find(r => r.id === workerResearch.id);
                         if (currentResearch) {
+                            if (currentResearch.level !== workerResearch.level) {
+                                researchStateChanged = true;
+                            }
                             currentResearch.level = workerResearch.level || 0;
                             currentResearch.progress = workerResearch.progress || 0;
                         }
@@ -4342,9 +4391,9 @@ function initWorker() {
                     }
                 }
                 
-                // Update research modal if it's open and research is active
+                // Update research modal if it's open and research state changed
                 const researchModal = document.getElementById('research-modal');
-                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && activeResearch) {
+                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && researchStateChanged) {
                     populateResearch();
                 }
                 
@@ -4593,7 +4642,9 @@ window.activateCheat = function activateCheat() {
     
     // Set active research to 1 point before completion
     if (activeResearch) {
-        const researchCost = activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, activeResearch.level);
+        const currentLevel = activeResearch.level || 0;
+        const targetLevel = currentLevel + 1;
+        const researchCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         activeResearch.progress = researchCost - 1;
         console.log(`Active research "${activeResearch.name}" set to 1 point before completion (${activeResearch.progress}/${researchCost})`);
     }
@@ -4734,16 +4785,20 @@ function initGame() {
     populateFunctionsList(); // Initialize functions list (one time, won't be re-rendered)
 }
 
-// Check for cheat mode in URL
+// Check for cheat mode in URL or localhost
 function checkCheatMode() {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('cheat')) {
+    const isLocalhost = window.location.hostname === 'localhost' ||
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+
+    if (urlParams.has('cheat') || isLocalhost) {
         cheatModeEnabled = true;
         const cheatSection = document.getElementById('settings-cheat-section');
         const cheatButton = document.getElementById('settings-cheat-button');
         if (cheatSection) cheatSection.style.display = 'block';
         if (cheatButton) cheatButton.style.display = 'inline-block';
-        console.log('🎮 Cheat mode enabled');
+        console.log('🎮 Cheat mode enabled' + (isLocalhost ? ' (localhost)' : ''));
     }
 }
 
