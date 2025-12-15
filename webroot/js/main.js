@@ -14,10 +14,10 @@ function updateDwarfsLevelUpBadge() {
         lastDwarfsLevelUpCount = dwarfsCanLevelUp.length;
         if (dwarfsCanLevelUp.length > 0) {
             badge.textContent = `(⭐${dwarfsCanLevelUp.length})`;
-            badge.style.display = '';
+            badge.classList.add('visible');
         } else {
             badge.textContent = '';
-            badge.style.display = 'none';
+            badge.classList.remove('visible');
         }
     }
 }
@@ -5137,8 +5137,8 @@ function checkCheatMode() {
         cheatModeEnabled = true;
         const cheatSection = document.getElementById('settings-cheat-section');
         const cheatButton = document.getElementById('settings-cheat-button');
-        if (cheatSection) cheatSection.style.display = 'block';
-        if (cheatButton) cheatButton.style.display = 'inline-block';
+        if (cheatSection) cheatSection.classList.add('visible');
+        if (cheatButton) cheatButton.classList.add('visible');
         console.log('🎮 Cheat mode enabled' + (isLocalhost ? ' (localhost)' : ''));
     }
 }

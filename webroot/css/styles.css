@@ -2043,3 +2043,97 @@ header, footer {
     font-size: 12px;
     margin-right: auto;
 }
+
+/* Stats Grid Section */
+.dwarf-stats-section {
+    margin-bottom: 12px;
+}
+
+.dwarf-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* Gold Display */
+.gold-display {
+    cursor: pointer;
+}
+
+/* Notification Badge */
+.notification-badge {
+    display: none;
+    margin-left: 2px;
+}
+
+.notification-badge.visible {
+    display: inline;
+}
+
+/* Research Options */
+.research-options {
+    margin-bottom: 10px;
+}
+
+/* Finances Tabs */
+.finances-tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #3a4a57;
+}
+
+.finances-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    color: #9fbfe0;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    background: #2a3f5a;
+}
+
+.finances-tab.active {
+    background: #4a5f7a;
+    color: #fff;
+    border-bottom-color: #ffd700;
+    font-weight: bold;
+}
+
+/* Transactions Content */
+.transactions-content {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Settings Cheat Section */
+.settings-cheat-section {
+    display: none;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.settings-cheat-section.visible {
+    display: block;
+}
+
+.settings-cheat-title {
+    color: gold;
+    text-align: center;
+}
+
+.settings-cheat-description {
+    text-align: center;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Settings Cheat Button */
+.btn-cheat {
+    display: none;
+}
+
+.btn-cheat.visible {
+    display: inline-block;
+}
