@@ -187,6 +187,8 @@ let researchtree = [
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
+      { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 2500, goldCost: 2500, level: 0, maxlevel: 30,
+      min_depth: 250, description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.' },
     { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1,
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
@@ -207,6 +209,7 @@ let researchtree = [
       min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
     { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
+
     ];
 let activeResearch = null; // Track which research is currently being researched
     
