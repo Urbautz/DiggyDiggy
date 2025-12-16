@@ -1783,18 +1783,17 @@ function populateResearch() {
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel})</p>
-            <p>${activeResearch.description}</p>
-            <p>Progress: ${progress} / ${actualCost} 🔬 (${progressPercent}%)</p>
-            <p><small>💰 Gold cost paid: ${actualGoldCost}</small></p>
-            <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
+            <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
+            <p><small>Progress: ${progress} / ${actualCost} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+                <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
+            </div>
         `;
-        
-        // Add cancel button
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'btn-cancel-research';
-        cancelBtn.textContent = '✖ Cancel Research';
-        cancelBtn.style.cssText = 'margin-top: 10px; width: 100%; padding: 8px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;';
+
+        // Add cancel button click handler
+        const cancelBtn = activeDiv.querySelector('.btn-cancel-research');
         cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
         cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
         cancelBtn.onclick = () => {
@@ -1802,7 +1801,6 @@ function populateResearch() {
                 cancelResearch();
             }
         };
-        activeDiv.appendChild(cancelBtn);
         
         container.appendChild(activeDiv);
     }

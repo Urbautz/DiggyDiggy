@@ -1091,23 +1091,33 @@ header, footer {
 .active-research {
     background: rgba(76, 175, 80, 0.1);
     border: 2px solid #4CAF50;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 20px;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
 }
 
 .active-research h3 {
-    margin: 0 0 10px 0;
+    margin: 0 0 6px 0;
     color: #4CAF50;
+    font-size: 15px;
+}
+
+.active-research p {
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.active-research p small {
+    font-size: 11px;
 }
 
 .progress-bar {
     width: 100%;
-    height: 20px;
+    height: 16px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .progress-fill {
