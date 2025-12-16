@@ -204,7 +204,7 @@ let researchtree = [
     { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20,
       min_depth: 3000, unlock_requires: 'wage_increase', description: 'Reduces wage increase per dwarf level by 1%.' },
     { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, goldCost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
-      min_depth: 500, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
+      min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
     { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
     ];

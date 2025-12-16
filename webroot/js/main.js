@@ -3578,7 +3578,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
     statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}`, 'wisdom'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Bonus: ${dwarf.wisdom || 0}`, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');

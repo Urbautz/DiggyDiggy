@@ -626,10 +626,9 @@ header, footer {
 }
 
 .warehouse-table-container {
-    border-radius: 14px;
+    border-radius: 6px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
     max-height: 340px;
     overflow-y: auto;
@@ -681,21 +680,25 @@ header, footer {
     font-family: inherit !important;
 }
 
-.warehouse-row { 
+.warehouse-row {
     display: grid;
     grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr 1.8fr;
-    gap: 14px;
+    gap: 2px;
     align-items: center;
-    padding: 12px 14px; 
-    border: 1px solid rgba(0,0,0,0.3); 
+    padding: 4px 4px;
+    border: 1px solid rgba(255,255,255,0.08);
     border-top: none;
     position: relative;
     overflow: hidden;
-    margin-bottom: 4px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 6px;
 }
 
 .warehouse-row:last-child {
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 6px 6px;
 }
 .warehouse-row::before {
     content: '';
