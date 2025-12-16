@@ -77,6 +77,10 @@ const FORGE_SHARPENING_MAX_VARIANCE = 0.20; // +20% maximum sharpening variance
 const FORGE_SUCCESS_RATE_HIGH_THRESHOLD = 0.7; // 70% success rate threshold for "high" rating
 const FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD = 0.4; // 40% success rate threshold for "medium" rating
 
+// Enchanting constants
+const ENCHANT_BASE_COST = 500; // Base gold cost for enchanting
+const ENCHANT_COST_MULTIPLIER = 4; // Cost multiplier per enchantment level
+
 const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
 
