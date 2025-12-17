@@ -1,8 +1,16 @@
+/* Cairo font-face */
+@font-face {
+    font-family: 'Cairo';
+    src: url('../Cairo-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
 /* page base */
 body {
     background: #1a1a1a; /* deep gray */
     color: #ffffff;      /* white fonts */
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     margin: 0;
     padding: 16px;
 }
@@ -339,8 +347,6 @@ header, footer {
 }
 
 .gold-display .gold-amount {
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.5px;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
@@ -399,9 +405,9 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 280px;
-    min-width: 500px;
-    max-width: 500px;
+    width: 320px;
+    min-width: 550px;
+    max-width: 550px;
 }
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
@@ -743,7 +749,6 @@ header, footer {
 .wh-col-price { 
     font-size: 12px; 
     color: #ffd700; 
-    font-family: monospace;
     text-align: right;
 }
 
@@ -758,7 +763,6 @@ header, footer {
     font-size: 12px; 
     color: #ffd700; 
     font-weight: 600;
-    font-family: monospace;
     text-align: right;
 }
 
@@ -861,15 +865,14 @@ header, footer {
 .dwarf-name { 
     font-weight: 700; 
     color: #e6eefc; 
-    font-size: 13px; 
+    font-size: 14px; 
     flex: 1;
 }
 
 .dwarf-info { 
-    font-size: 11px; 
+    font-size: 14px; 
     color: #9fbfe0; 
-    font-family: monospace; 
-    line-height: 1.4;
+    line-height: 1.2;
 }
 
 .btn-levelup-small {
@@ -1032,7 +1035,6 @@ header, footer {
 .workbench-table .tool-power {
     text-align: center;
     color: #fbbf24;
-    font-family: monospace;
     font-weight: 600;
 }
 
@@ -1878,12 +1880,12 @@ header, footer {
 .dwarf-stats-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 6px;
 }
 
 .dwarf-stat-box {
-    padding: 6px;
+    padding: 4px;
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid #444;
     border-radius: 8px;
@@ -1896,7 +1898,7 @@ header, footer {
 }
 
 .dwarf-stat-value {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
 }
 
@@ -1905,20 +1907,20 @@ header, footer {
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid #444;
     border-radius: 8px;
-    height: 90px;
+    height: 116px;
     overflow-y: auto;
 }
 
 .dwarf-bucket-header {
     margin: 0 0 6px 0;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .dwarf-bucket-empty {
     opacity: 0.6;
     text-align: center;
     margin: 4px 0;
-    font-size: 11px;
+    font-size: 16px;
 }
 
 .dwarf-bucket-grid {
@@ -1946,19 +1948,22 @@ header, footer {
 .dwarf-bucket-item {
     padding: 4px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    border-radius: 4px;
     text-align: center;
     min-width: 60px;
+    max-height:60px;
     flex-shrink: 0;
 }
 
 .dwarf-bucket-item-name {
-    font-size: 9px;
+    font-size: 14px;
     font-weight: bold;
 }
 
 .dwarf-bucket-item-count {
-    font-size: 12px;
+    font-size: 18px;
+    font-weight: bold;
+
     margin-top: 1px;
 }
 
