@@ -3558,8 +3558,10 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
     let toolPower = 1.0;
     let toolName = 'None';
+    let enchantLevel = 0;
     if (currentTool) {
         toolName = currentTool.name || currentTool.type;
+        enchantLevel = currentTool.enchantLevel || 0;
         if (currentTool.power !== undefined) {
             toolPower = currentTool.power / 100;
         } else {
@@ -3572,7 +3574,8 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+    const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
@@ -3621,11 +3624,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Populate dig power
     document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${enchantBonus.toFixed(2)} (+${enchantLevel})</div>` : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
         <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
         <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
         <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+        ${enchantLine}
     `;
 
     // Calculate and populate wage
@@ -3659,6 +3664,14 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
         toolCurrent.appendChild(nameSpan);
         toolCurrent.appendChild(powerSpan);
+
+        // Add enchantment badge if tool is enchanted
+        if (enchantLevel > 0) {
+            const enchantSpan = document.createElement('span');
+            enchantSpan.style.cssText = 'margin-left: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+            enchantSpan.textContent = `✨+${enchantLevel}`;
+            toolCurrent.appendChild(enchantSpan);
+        }
     } else {
         const noneP = document.createElement('p');
         noneP.className = 'dwarf-tool-none';

@@ -13,11 +13,11 @@ const DWARF_ENERGY_COST_PER_DIG = 5; // Energy consumed per dig action
 const DWARF_ENERGY_COST_PER_MOVE = 1; // Energy consumed per move
 const DWARF_ENERGY_COST_PER_RESEARCH = 10; // Energy consumed per research action
 const DWARF_ENERGY_COST_PER_SMELT = 10; // Energy consumed per smelting action
-const DWARF_LOW_ENERGY_THRESHOLD = 25; // Energy below which dwarf seeks rest
-const DWARF_REST_AMOUNT = 25; // Energy restored per rest tick
+const DWARF_LOW_ENERGY_THRESHOLD = 20; // Energy below which dwarf seeks rest
+const DWARF_REST_AMOUNT = 15; // Energy restored per rest tick
 const DWARF_BASE_WAGE = 0.01; // Base gold cost per dig action
-const DWARF_WAGE_INCREASE_RATE = 0.25; // 25% wage increase per level
-const DWARF_WAGE_INCREASE_MIN = 0.05; // Minimum wage increase rate (with research)
+const DWARF_WAGE_INCREASE_RATE = 0.18; // 25% wage increase per level
+const DWARF_WAGE_INCREASE_MIN = 0.01; // Minimum wage increase rate (with research)
 const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
 const DWARF_XP_PER_LEVEL = 250; // XP needed per level
 const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
@@ -80,6 +80,7 @@ const FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD = 0.4; // 40% success rate threshold f
 // Enchanting constants
 const ENCHANT_BASE_COST = 500; // Base gold cost for enchanting
 const ENCHANT_COST_MULTIPLIER = 4; // Cost multiplier per enchantment level
+const ENCHANT_POWER_BONUS = 0.01; // 1% power bonus per enchantment level
 
 const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks

@@ -199,8 +199,11 @@ function getDwarfToolPower(dwarf) {
         if (!toolDef) return (DWARF_BASE_POWER * levelBonus) * researchBonus;
         toolPower = toolDef.power / 100;
     }
-    
-    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower;
+
+    // Apply enchantment bonus (1% per enchantment level)
+    const enchantBonus = 1 + (toolInstance.enchantLevel || 0) * ENCHANT_POWER_BONUS;
+
+    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus;
 }
 
 function calculateWage(dwarf) {
