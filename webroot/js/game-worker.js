@@ -2,46 +2,10 @@
 // This worker handles all the heavy computation for the game tick,
 // preventing UI blocking during dwarf actions and grid updates.
 
-const DEFAULT_LOOP_INTERVAL_MS = 400;
+// Import shared game constants
+importScripts('constants.js');
 
-// Game mechanic constants (must be defined in worker context)
-const TOOL_LEVEL_BONUS = 0.1;
-const DWARF_BASE_POWER = 3;
-const DWARF_DIG_POWER_BONUS = 0.1;
-const DWARF_ENERGY_COST_PER_DIG = 5;
-const DWARF_ENERGY_COST_PER_MOVE = 1;
-const DWARF_ENERGY_COST_PER_RESEARCH = 10;
-const DWARF_ENERGY_COST_PER_SMELT = 10;
-const DWARF_LOW_ENERGY_THRESHOLD = 25;
-const DWARF_REST_AMOUNT = 25;
-const DWARF_BASE_WAGE = 0.01;
-const DWARF_WAGE_INCREASE_RATE = 0.25;
-const DWARF_WAGE_INCREASE_MIN = 0.05;
-const DWARF_XP_PER_ACTION = 1;
-const DWARF_STRIKE_BASE_CHANCE = 0.1;
-const CRITICAL_HIT_BASE_CHANCE = 0.05;
-const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2;
-const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02;
-const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03;
-const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01;
-const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05;
-const RESEARCH_UNION_BUSTING_BONUS = 0.05;
-const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01;
-const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1;
-const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15;
-const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08;
-const RESEARCH_FURNACE_INSULATION_BONUS = 0.10;
-const RESEARCH_COST_MULTIPLIER = 1.15;
-const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5;
-const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5;
-const GRID_MOVE_DOWN_CHANCE = 0.3;
-const GRID_MOVE_UP_CHANCE = 0.7;
-const SMELTER_BASE_TEMPERATURE = 25;
-const SMELTER_COOLING_RATE = 0.0005;
-const TASK_RESEARCH_CHANCE = 0.5;
-const TASK_RESEARCH_SPLIT = 0.5;
-const STUCK_DETECTION_TICKS = 25;
-const FAILSAFE_CHECK_INTERVAL = 100;
+const DEFAULT_LOOP_INTERVAL_MS = 400;
 
 let grid = [];
 let dwarfs = [];
@@ -199,8 +163,11 @@ function getDwarfToolPower(dwarf) {
         if (!toolDef) return (DWARF_BASE_POWER * levelBonus) * researchBonus;
         toolPower = toolDef.power / 100;
     }
-    
-    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower;
+
+    // Apply enchantment bonus (1% per enchantment level)
+    const enchantBonus = 1 + (toolInstance.enchantLevel || 0) * ENCHANT_POWER_BONUS;
+
+    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus;
 }
 
 function calculateWage(dwarf) {

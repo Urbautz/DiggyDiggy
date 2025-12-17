@@ -1,89 +1,14 @@
-// Base data
-const gameversion = '0.13.0';
+// ============================================================================
+// DIGGY DIGGY DWARF - GAME DATA DEFINITIONS
+// ============================================================================
+// This file contains all game data (materials, tools, research, etc.)
+// All game constants have been moved to constants.js
+// ============================================================================
+
+// Grid dimensions (used as initial values, can be modified at runtime)
 const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
-
-// Game mechanic constants - centralized for easy tweaking
-const TOOL_LEVEL_BONUS = 0.1; // 10% bonus per tool level
-const TOOL_UPGRADE_COST_MULTIPLIER = 2; // Cost doubles with each level
-const DWARF_BASE_POWER = 3; // Base damage without tools
-const DWARF_DIG_POWER_BONUS = 0.1; // 10% bonus per dig power point
-const DWARF_ENERGY_COST_PER_DIG = 5; // Energy consumed per dig action
-const DWARF_ENERGY_COST_PER_MOVE = 1; // Energy consumed per move
-const DWARF_ENERGY_COST_PER_RESEARCH = 10; // Energy consumed per research action
-const DWARF_ENERGY_COST_PER_SMELT = 10; // Energy consumed per smelting action
-const DWARF_LOW_ENERGY_THRESHOLD = 25; // Energy below which dwarf seeks rest
-const DWARF_REST_AMOUNT = 25; // Energy restored per rest tick
-const DWARF_BASE_WAGE = 0.01; // Base gold cost per dig action
-const DWARF_WAGE_INCREASE_RATE = 0.25; // 25% wage increase per level
-const DWARF_WAGE_INCREASE_MIN = 0.05; // Minimum wage increase rate (with research)
-const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
-const DWARF_XP_PER_LEVEL = 250; // XP needed per level
-const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
-const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
-const DWARF_LEVELUP_STRENGTH_BONUS = 1; // Bucket capacity increase per strength point
-
-const CRITICAL_HIT_BASE_CHANCE = 0.02; // 2% base critical hit chance
-const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2; // Critical hits do double damage
-const CRITICAL_HIT_ANIMATION_DURATION = 320; // Milliseconds for crit animation
-const ONE_HIT_ANIMATION_DURATION = 320; // Milliseconds for one-hit animation
-const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02; // 2% per level
-const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03; // 3% per level
-
-const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01; // 1% per level
-const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05; // 5% crit chance per level
-const RESEARCH_UNION_BUSTING_BONUS = 0.05; // 5% less strike chance per level
-const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01; // 1% wage increase reduction per level
-const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
-const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
-const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
-const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
-const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
-const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
-const RESEARCH_COST_MULTIPLIER = 1.15; // Research cost formula: baseCost * (1.15^(level-1)), rounded to 0 digits
-
-const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5; // 50% chance to use same material as left tile
-const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5; // 50% chance to use same material as above tile
-const GRID_MOVE_DOWN_CHANCE = 0.3; // 30% chance to move down to dig lower
-const GRID_MOVE_UP_CHANCE = 0.7; // 70% chance to move up after horizontal move
-
-const SMELTER_BASE_TEMPERATURE = 25; // Starting and minimum temperature
-const SMELTER_MAX_TEMPERATURE_LIMIT = 1500; // Absolute maximum temperature
-const SMELTER_COOLING_RATE = 0.0005; // 0.05% cooling per tick
-const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
-
-const TASK_RESEARCH_CHANCE = 0.5; // 50% chance to do research/smelting instead of digging
-const TASK_RESEARCH_SPLIT = 0.5; // 50/50 split between research and smelting
-
-// Forging constants
-const FORGE_BASE_QUALITY = 10; // Base quality before material hardness
-const FORGE_HAMMERING_BONUS_PER_ITERATION = 8; // Quality bonus per hammering iteration
-const FORGE_HAMMERING_SUCCESS_RATE = 0.90; // 90% success rate per hammering iteration
-const FORGE_HAMMERING_MAX_ITERATIONS = 10; // Maximum hammering iterations
-const FORGE_COOLING_BONUS_PER_QUALITY = 2; // Quality bonus per cooling oil quality point
-const FORGE_COOLING_BASE_BRITTLE_CHANCE = 0.30; // 30% base chance of brittle failure
-const FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY = 0.012; // 1.2% brittle chance reduction per quality
-const FORGE_COOLING_MAX_QUALITY = 25; // Maximum cooling oil quality
-const FORGE_COOLING_BASE_COST = 500; // Base cost for quality 2+ cooling oil
-const FORGE_COOLING_COST_MULTIPLIER = 1.25; // Cost multiplier per quality level
-const FORGE_HANDLE_BONUS_PER_QUALITY = 1.5; // Quality bonus per handle quality point
-const FORGE_HANDLE_MAX_QUALITY = 100; // Maximum handle quality
-const FORGE_HANDLE_BASE_COST = 100; // Base cost for handle quality
-const FORGE_HANDLE_COST_MULTIPLIER = 1.15; // Cost multiplier per quality level
-const FORGE_SHARPENING_ITERATIONS = 3; // Fixed number of sharpening passes
-const FORGE_SHARPENING_MIN_VARIANCE = -0.05; // -5% minimum sharpening variance
-const FORGE_SHARPENING_MAX_VARIANCE = 0.20; // +20% maximum sharpening variance
-const FORGE_SUCCESS_RATE_HIGH_THRESHOLD = 0.7; // 70% success rate threshold for "high" rating
-const FORGE_SUCCESS_RATE_MEDIUM_THRESHOLD = 0.4; // 40% success rate threshold for "medium" rating
-
-const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
-const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
-
-const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
-
-const CHEAT_GOLD_BONUS = 5000; // Gold added by cheat code
-const CHEAT_DEPTH_MULTIPLIER = 2; // Depth multiplier for cheat code
 
 // Material registry — easy to extend later
 const materials = [
@@ -126,7 +51,7 @@ const materials = [
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
   { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 500000,  minlevel: 99999, color: '#ffd700ff' },
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 77000, maxlevel: 99999, color: '#572012ff' },
+  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
   { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
   
@@ -187,26 +112,28 @@ let researchtree = [
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
+      { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 2500, goldCost: 2500, level: 0, maxlevel: 30,
+      min_depth: 250, description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.' },
     { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1,
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
+    { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
-      min_depth: 2000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5,
       min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
     { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20,
       min_depth: 3000, unlock_requires: 'wage_increase', description: 'Reduces wage increase per dwarf level by 1%.' },
     { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, goldCost: 3000, level: 0, maxlevel: 15, requires: [{'material-science':3}],
-      min_depth: 500, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
+      min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.' },
     { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
-      min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
+      min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.' },
+    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      min_depth: 20000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     ];
 let activeResearch = null; // Track which research is currently being researched
     

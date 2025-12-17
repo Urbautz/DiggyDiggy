@@ -56,6 +56,65 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
+/**
+ * Unified number formatting for display throughout the GUI
+ * Materials: 0-100: one decimal (90.1), 100-100000: integer (95000), >100000: k suffix (950k)
+ * Money: 0-1: four decimals (0.0017), 1-100000: two decimals (95123.14), >100000: k suffix (950k)
+ * XP: 0-100000: integer (95000), >100000: k suffix (550k)
+ */
+function formatNumber(value, type = 'material') {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+
+    if (isNaN(num)) return value;
+
+    if (type === 'money' || type === 'gold') {
+        // Money formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num === 0) {
+            return num.toFixed(2);
+        }
+        if (num < 1) {
+            return num.toFixed(4);
+        }
+        if (num < 100000) {
+            return num.toFixed(2);
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    } else if (type === 'xp') {
+        // XP formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num === 0) {
+            return num.toFixed(2);
+        }
+        if (num <= 100000) {
+            return Math.round(num).toString();
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    } else {
+        // Material formatting (default)
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num === 0) {
+            return num.toFixed(2);
+        }
+        if (num < 100) {
+            return num.toFixed(1);
+        }
+        if (num < 100000) {
+            return Math.round(num).toString();
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    }
+}
+
 // Check if a smelter task is unlocked by research
 function isSmelterTaskUnlocked(task) {
     if (!task.requires) return true;
@@ -223,7 +282,7 @@ function updateGridDisplay() {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
                 
-                const displayHardness = rawHardness.toFixed(1);
+                const displayHardness = formatNumber(rawHardness, 'material');
                 // show current hardness value inside the cell with one decimal
                 if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
@@ -546,7 +605,7 @@ async function startForging() {
     
     // Check gold upfront
     if (gold < totalCost) {
-        alert(`Not enough gold! Need ${totalCost.toFixed(0)}, have ${gold.toFixed(0)}.`);
+        alert(`Not enough gold! Need ${formatNumber(totalCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
         return;
     }
     
@@ -844,6 +903,144 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Enchanting functions
+function openEnchantModal(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        console.error('Tool not found:', toolId);
+        return;
+    }
+
+    const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
+    const maxEnchantLevel = enchantResearch ? enchantResearch.level : 0;
+
+    if (maxEnchantLevel === 0) {
+        alert('You need to research Tool Enchanting first!');
+        return;
+    }
+
+    openModal('enchant-modal');
+    populateEnchantModal(tool, maxEnchantLevel);
+}
+
+function populateEnchantModal(tool, maxEnchantLevel) {
+    const container = document.getElementById('enchant-content');
+    if (!container) return;
+
+    const toolName = tool.name || `${tool.type} #${tool.id}`;
+    const toolPower = tool.power || tool.level || 0;
+
+    container.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0;">🔨 ${toolName}</h3>
+            <p style="margin: 0; color: #9fbfe0; font-size: 13px;">Current Power: ${toolPower}</p>
+        </div>
+
+        <div style="margin-bottom: 16px; padding: 12px; background: rgba(138, 43, 226, 0.1); border: 1px solid rgba(138, 43, 226, 0.3); border-radius: 6px;">
+            <label for="enchant-level-slider" style="display: block; margin-bottom: 8px; font-weight: 600;">Enchantment Level:</label>
+            <input type="range" id="enchant-level-slider" min="1" max="${maxEnchantLevel}" value="1"
+                   style="width: 100%; margin-bottom: 8px;"
+                   oninput="updateEnchantPreview()">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #9fbfe0;">
+                <span>Level 1</span>
+                <span id="enchant-level-display" style="font-weight: bold; color: #dda0ff;">Level 1</span>
+                <span>Level ${maxEnchantLevel}</span>
+            </div>
+        </div>
+
+        <div id="enchant-preview" style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+            <!-- Preview will be populated by updateEnchantPreview() -->
+        </div>
+
+        <button id="confirm-enchant-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 14px; font-weight: bold;"
+                onclick="confirmEnchant(${tool.id})">
+            ✨ Enchant Tool
+        </button>
+    `;
+
+    updateEnchantPreview();
+}
+
+function updateEnchantPreview() {
+    const slider = document.getElementById('enchant-level-slider');
+    const display = document.getElementById('enchant-level-display');
+    const preview = document.getElementById('enchant-preview');
+
+    if (!slider || !display || !preview) return;
+
+    const enchantLevel = parseInt(slider.value);
+    display.textContent = `Level ${enchantLevel}`;
+
+    // Calculate cost using the formula: baseCost * (multiplier ^ (level - 1))
+    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+    const canAfford = gold >= cost;
+
+    preview.innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #e6eefc;">Enchantment Power:</span>
+            <span style="color: #dda0ff; font-weight: bold;">+${enchantLevel}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #e6eefc;">Gold Cost:</span>
+            <span style="color: ${canAfford ? '#ffd700' : '#ff6b6b'}; font-weight: bold;">${cost} 💰</span>
+        </div>
+        ${!canAfford ? '<p style="color: #ff6b6b; margin: 8px 0 0 0; font-size: 12px;">⚠️ Not enough gold!</p>' : ''}
+    `;
+
+    // Update button state
+    const btn = document.getElementById('confirm-enchant-btn');
+    if (btn) {
+        btn.disabled = !canAfford;
+        btn.style.opacity = canAfford ? '1' : '0.5';
+        btn.style.cursor = canAfford ? 'pointer' : 'not-allowed';
+    }
+}
+
+function confirmEnchant(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        alert('Tool not found!');
+        return;
+    }
+
+    const slider = document.getElementById('enchant-level-slider');
+    if (!slider) return;
+
+    const enchantLevel = parseInt(slider.value);
+    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+
+    if (gold < cost) {
+        alert(`Not enough gold! Need ${formatNumber(cost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
+        return;
+    }
+
+    // Deduct gold
+    gold -= cost;
+    logTransaction('expense', cost, `Enchanted ${tool.name || tool.type} to level ${enchantLevel}`);
+    updateGoldDisplay();
+
+    // Apply enchantment
+    tool.enchantLevel = enchantLevel;
+
+    // Sync to worker (include gold to ensure it's synced)
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { toolsInventory, gold }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Close modal and refresh UI
+    closeModal('enchant-modal');
+    populateToolsInPanel(); // Refresh tools panel to show enchantment
+
+    // Show success message
+    alert(`✨ Tool enchanted to level ${enchantLevel}!\n\nThe tool now has +${enchantLevel} enchantment power.`);
+}
+
 function openResearch() {
     openModal('research-modal');
     populateResearch();
@@ -855,6 +1052,10 @@ function openResearch() {
     }
 }
 
+function openGemsModal() {
+    openModal('gems-modal');
+}
+
 function openSmelter() {
     openModal('smelter-modal');
     populateSmelter();
@@ -862,12 +1063,12 @@ function openSmelter() {
 
 function openTransactions() {
     openModal('transactions-modal');
-    
+
     // Default to summary tab
     if (!window.currentFinancesTab) {
         window.currentFinancesTab = 'summary';
     }
-    
+
     switchFinancesTab(window.currentFinancesTab);
     
     // Set up auto-refresh
@@ -1042,17 +1243,17 @@ function populateSummaryTab(container) {
         
         const incomeTd = document.createElement('td');
         incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80; font-weight: bold;';
-        incomeTd.textContent = '+' + currentHourIncome.toFixed(2);
-        
+        incomeTd.textContent = '+' + formatNumber(currentHourIncome, 'gold');
+
         const expenseTd = document.createElement('td');
         expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b; font-weight: bold;';
-        expenseTd.textContent = '-' + currentHourExpense.toFixed(2);
-        
+        expenseTd.textContent = '-' + formatNumber(currentHourExpense, 'gold');
+
         const netTd = document.createElement('td');
         const net = currentHourIncome - currentHourExpense;
         netTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
         netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
-        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        netTd.textContent = (net >= 0 ? '+' : '') + formatNumber(net, 'gold');
         
         const actionTd = document.createElement('td');
         actionTd.style.cssText = 'padding: 8px; text-align: center;';
@@ -1102,17 +1303,17 @@ function populateSummaryTab(container) {
         
         const incomeTd = document.createElement('td');
         incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80;';
-        incomeTd.textContent = '+' + hourIncome.toFixed(2);
-        
+        incomeTd.textContent = '+' + formatNumber(hourIncome, 'gold');
+
         const expenseTd = document.createElement('td');
         expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b;';
-        expenseTd.textContent = '-' + hourExpense.toFixed(2);
-        
+        expenseTd.textContent = '-' + formatNumber(hourExpense, 'gold');
+
         const netTd = document.createElement('td');
         const net = hourIncome - hourExpense;
         netTd.style.cssText = 'padding: 8px; text-align: right;';
         netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
-        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        netTd.textContent = (net >= 0 ? '+' : '') + formatNumber(net, 'gold');
         
         const actionTd = document.createElement('td');
         actionTd.style.cssText = 'padding: 8px; text-align: center;';
@@ -1230,10 +1431,10 @@ function populateHourDetails(container, hourIdentifier) {
         
         if (data.income > 0) {
             amountTd.style.color = '#4ade80';
-            amountTd.textContent = '+' + data.income.toFixed(2);
+            amountTd.textContent = '+' + formatNumber(data.income, 'gold');
         } else if (data.expense > 0) {
             amountTd.style.color = '#ff6b6b';
-            amountTd.textContent = '-' + data.expense.toFixed(2);
+            amountTd.textContent = '-' + formatNumber(data.expense, 'gold');
         } else {
             amountTd.textContent = '-';
         }
@@ -1283,11 +1484,11 @@ function populateRecentTab(container) {
         const amountTd = document.createElement('td');
         amountTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
         amountTd.style.color = transaction.type === 'income' ? '#4ade80' : '#ff6b6b';
-        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + transaction.amount.toFixed(5);
-        
+        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + formatNumber(transaction.amount, 'gold');
+
         const balanceTd = document.createElement('td');
         balanceTd.style.cssText = 'padding: 8px; text-align: right;';
-        balanceTd.textContent = transaction.balance.toFixed(5);
+        balanceTd.textContent = formatNumber(transaction.balance, 'gold');
         
         tr.appendChild(timeTd);
         tr.appendChild(descTd);
@@ -1398,7 +1599,7 @@ function populateSmelter() {
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
             } else {
                 statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
             }
         }
         taskRow.appendChild(statusIndicator);
@@ -1585,7 +1786,7 @@ function updateSmelterTemperatureDisplay() {
                 statusIndicator.title = 'Ready - materials available and temperature below minimum';
             } else {
                 statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
             }
         }
         
@@ -1594,7 +1795,7 @@ function updateSmelterTemperatureDisplay() {
         if (recipeSpan) {
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
             recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
         }
     }
@@ -1783,18 +1984,17 @@ function populateResearch() {
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel})</p>
-            <p>${activeResearch.description}</p>
-            <p>Progress: ${progress} / ${actualCost} 🔬 (${progressPercent}%)</p>
-            <p><small>💰 Gold cost paid: ${actualGoldCost}</small></p>
-            <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
+            <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
+            <p><small>Progress: ${progress} / ${actualCost} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+                <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
+            </div>
         `;
-        
-        // Add cancel button
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'btn-cancel-research';
-        cancelBtn.textContent = '✖ Cancel Research';
-        cancelBtn.style.cssText = 'margin-top: 10px; width: 100%; padding: 8px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;';
+
+        // Add cancel button click handler
+        const cancelBtn = activeDiv.querySelector('.btn-cancel-research');
         cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
         cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
         cancelBtn.onclick = () => {
@@ -1802,7 +2002,6 @@ function populateResearch() {
                 cancelResearch();
             }
         };
-        activeDiv.appendChild(cancelBtn);
         
         container.appendChild(activeDiv);
     }
@@ -1878,7 +2077,7 @@ function populateResearch() {
             researchBtn.className = 'btn-research disabled';
             researchBtn.textContent = 'Research';
             researchBtn.disabled = true;
-            researchBtn.title = `Not enough gold! Required: ${actualGoldCost} 💰, Available: ${Math.floor(gold)} 💰`;
+            researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -1971,7 +2170,7 @@ function startResearch(researchId) {
     // Check if player has enough gold
     if (gold < goldCost) {
         console.error(`Not enough gold to start research. Required: ${goldCost}, Available: ${gold}`);
-        alert(`Not enough gold! Required: ${goldCost} 💰, Available: ${Math.floor(gold)} 💰`);
+        alert(`Not enough gold! Required: ${formatNumber(goldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`);
         return;
     }
 
@@ -2254,7 +2453,7 @@ function updateForgeState() {
         if (coolingCost) {
             // Calculate cooling oil cost: level 1 = 0, level 2 = 500, increasing by 25% each level
             const cost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-            coolingCost.textContent = cost.toFixed(0);
+            coolingCost.textContent = formatNumber(cost, 'gold');
             
             // Show affordability indicator
             if (coolingAffordable) {
@@ -2280,7 +2479,7 @@ function updateForgeState() {
         if (handleCost) {
             // Calculate handle cost: level 1 = 100, increasing by 15% each level
             const cost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
-            handleCost.textContent = cost.toFixed(0);
+            handleCost.textContent = formatNumber(cost, 'gold');
             
             // Show affordability indicator
             if (handleAffordable) {
@@ -2311,7 +2510,7 @@ function updateForgeState() {
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
         const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
         const totalCost = coolingCost + handleCost;
-        totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
+        totalCostDisplay.textContent = `${formatNumber(totalCost, 'gold')} 💰`;
         
         // Calculate success probability
         // Base: 90% chance to survive hammering per iteration
@@ -2355,7 +2554,7 @@ function updateForgeState() {
         const qualityDisplay = document.getElementById('expected-quality');
         if (qualityDisplay) {
             if (forgeState.baseMaterial) {
-                qualityDisplay.textContent = expectedQuality.toFixed(0);
+                qualityDisplay.textContent = formatNumber(expectedQuality, 'material');
             } else {
                 qualityDisplay.textContent = '-';
             }
@@ -2815,14 +3014,34 @@ function populateToolsInPanel() {
         select.onchange = () => assignToolFromPanel(tool.id, toolPower);
         actions.appendChild(select);
         
-        // Enchant button (placeholder)
-        const enchantBtn = document.createElement('button');
-        enchantBtn.className = 'btn-secondary btn-tiny';
-        enchantBtn.textContent = '✨ Enchant';
-        enchantBtn.title = 'Enchant (coming soon)';
-        enchantBtn.style.opacity = '0.5';
-        enchantBtn.style.cursor = 'not-allowed';
-        actions.appendChild(enchantBtn);
+        // Enchant button
+        const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
+        const enchantLevel = enchantResearch ? enchantResearch.level : 0;
+        const isEnchanted = tool.enchantLevel && tool.enchantLevel > 0;
+
+        if (isEnchanted) {
+            // Show enchantment level instead of button
+            const enchantInfo = document.createElement('span');
+            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            enchantInfo.textContent = `✨ Enchant +${tool.enchantLevel}`;
+            enchantInfo.title = `Enchanted to level ${tool.enchantLevel}`;
+            actions.appendChild(enchantInfo);
+        } else {
+            const enchantBtn = document.createElement('button');
+            enchantBtn.className = 'btn-secondary btn-tiny';
+            enchantBtn.textContent = '✨ Enchant';
+
+            if (enchantLevel > 0) {
+                enchantBtn.title = 'Have your tool enchanted by a wizard';
+                enchantBtn.onclick = () => openEnchantModal(tool.id);
+            } else {
+                enchantBtn.title = 'Have your tool enchanted by a wizard';
+                enchantBtn.style.opacity = '0.5';
+                enchantBtn.style.cursor = 'not-allowed';
+                enchantBtn.disabled = true;
+            }
+            actions.appendChild(enchantBtn);
+        }
         
         // Gems button (placeholder)
         const gemsBtn = document.createElement('button');
@@ -3048,7 +3267,7 @@ function populateDwarfsOverview() {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
         const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-        xpTd.textContent = `${currentXP} / ${xpNeeded}`;
+        xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
         
         // Find the tool assigned to this dwarf
         const toolTd = document.createElement('td');
@@ -3120,14 +3339,14 @@ function updateDwarfsInPanel() {
                 if (canLevelUp) {
                     // Show star when ready to level up
                     xpDisplay.textContent = '⭐';
-                    xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.title = `Ready to level up! (${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
                     xpDisplay.style.cursor = 'pointer';
                     xpDisplay.style.fontSize = '16px';
                     xpDisplay.style.color = '';
                     xpDisplay.style.opacity = '';
                 } else {
                     // Show XP progress
-                    xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.textContent = `(${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
                     xpDisplay.title = '';
                     xpDisplay.style.cursor = '';
                     xpDisplay.style.fontSize = '10px';
@@ -3173,8 +3392,8 @@ function updateDwarfsInPanel() {
                 }
             }
             
-            const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${d.level || 1}</span>`;
-            const newHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+            const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${d.level || 1}</span>`;
+            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
                 info.innerHTML = newHTML;
@@ -3225,12 +3444,12 @@ function populateDwarfsInPanel() {
         if (canLevelUp) {
             // Show star when ready to level up
             xpDisplay.textContent = '⭐';
-            xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.title = `Ready to level up! (${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
             xpDisplay.style.cursor = 'pointer';
             xpDisplay.style.fontSize = '16px';
         } else {
             // Show XP progress
-            xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.textContent = `(${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
             xpDisplay.style.fontSize = '10px';
             xpDisplay.style.color = '#9fbfe0';
             xpDisplay.style.opacity = '0.7';
@@ -3285,7 +3504,7 @@ function populateDwarfsInPanel() {
         info.id = `dwarf-info-${d.name}`;
         
         // Create level display with XP tooltip
-        const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
+        const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
         
         // Calculate wage using same logic as game-worker.js
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
@@ -3295,7 +3514,7 @@ function populateDwarfsInPanel() {
         const dwarfLevel = (currentLevel || 1) - 1;
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
-        info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
         row.appendChild(header);
         row.appendChild(info);
@@ -3402,8 +3621,10 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
     let toolPower = 1.0;
     let toolName = 'None';
+    let enchantLevel = 0;
     if (currentTool) {
         toolName = currentTool.name || currentTool.type;
+        enchantLevel = currentTool.enchantLevel || 0;
         if (currentTool.power !== undefined) {
             toolPower = currentTool.power / 100;
         } else {
@@ -3416,11 +3637,12 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+    const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
@@ -3464,12 +3686,14 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Populate dig power
-    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
+    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${formatNumber(enchantBonus, 'material')} (+${enchantLevel})</div>` : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
-        <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
-        <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
-        <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+        <div>× Level Bonus: ${formatNumber(levelBonus, 'material')} (${dwarf.digPower || 0})</div>
+        <div>× Research: ${formatNumber(researchBonus, 'material')} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${formatNumber(toolPower, 'material')}</div>
+        ${enchantLine}
     `;
 
     // Calculate and populate wage
@@ -3481,11 +3705,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const nextLevelWage = DWARF_BASE_WAGE * (1 + (currentLevel + 1) * increaseRate);
     const levelMultiplier = 1 + currentLevel * increaseRate;
 
-    document.getElementById('dwarf-wage-current').textContent = currentWage.toFixed(4);
+    document.getElementById('dwarf-wage-current').textContent = formatNumber(currentWage, 'gold');
     document.getElementById('dwarf-wage-calc').innerHTML = `
-        <div>Base: ${DWARF_BASE_WAGE.toFixed(4)}</div>
-        <div>× Level-Factor: ${levelMultiplier.toFixed(1)}</div>
-        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${nextLevelWage.toFixed(4)}</div>
+        <div>Base: ${formatNumber(DWARF_BASE_WAGE, 'gold')}</div>
+        <div>× Level-Factor: ${formatNumber(levelMultiplier, 'material')}</div>
+        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${formatNumber(nextLevelWage, 'gold')}</div>
     `;
 
     // Populate current tool
@@ -3499,10 +3723,18 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
         const powerSpan = document.createElement('span');
         powerSpan.className = 'dwarf-tool-power';
-        powerSpan.textContent = `(${toolPower.toFixed(2)})`;
+        powerSpan.textContent = `(${formatNumber(toolPower, 'material')})`;
 
         toolCurrent.appendChild(nameSpan);
         toolCurrent.appendChild(powerSpan);
+
+        // Add enchantment badge if tool is enchanted
+        if (enchantLevel > 0) {
+            const enchantSpan = document.createElement('span');
+            enchantSpan.style.cssText = 'margin-left: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+            enchantSpan.textContent = `✨+${enchantLevel}`;
+            toolCurrent.appendChild(enchantSpan);
+        }
     } else {
         const noneP = document.createElement('p');
         noneP.className = 'dwarf-tool-none';
@@ -3536,7 +3768,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             // Create option element safely
             const option = document.createElement('option');
             option.value = tool.id;
-            option.textContent = `${tName} (${tPower.toFixed(2)})`;
+            option.textContent = `${tName} (${formatNumber(tPower, 'material')})`;
 
             // Check if this tool is selected
             if (dwarf.toolId && tool.id && dwarf.toolId == tool.id) {
@@ -3559,13 +3791,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         card.style.padding = '10px';
         card.innerHTML = `
             <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
-            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${level}</p>
+            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Skill Points invested: ${level}</p>
             <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
         `;
         if (hasEnoughXP) {
             const btn = document.createElement('button');
             btn.className = 'btn-primary';
-            btn.textContent = '⭐ Level Up';
+            btn.textContent = '⭐ Invest Point';
             btn.dataset.upgradeType = upgradeType;
             btn.dataset.dwarfName = dwarf.name;
             btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
@@ -3574,17 +3806,23 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         return card;
     };
 
-    const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
+    const energyLevel = Math.round(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
     statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `+${1 + (dwarf.wisdom || 0)}`, 'wisdom'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Speed and XP Bonus `, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');
     renameInput.value = dwarf.name;
     const renameBtn = document.getElementById('dwarf-rename-btn');
     renameBtn.dataset.dwarfName = dwarf.name;
+
+    // Set reset button dataset and cost
+    const resetBtn = document.getElementById('dwarf-reset-btn');
+    resetBtn.dataset.dwarfName = dwarf.name;
+    const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
+    document.getElementById('dwarf-reset-cost').textContent = resetCost;
 }
 
 // Refresh dwarf detail modal with updated information (lightweight, no UI blocking)
@@ -3638,7 +3876,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
     // Update only the dynamic text content (fast, non-blocking)
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
@@ -3665,7 +3903,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
         bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
     }
 
-    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
 }
 
 // Apply the chosen level up upgrade
@@ -3692,16 +3930,22 @@ function applyLevelUp(dwarf, upgradeType) {
     switch(upgradeType) {
         case 'digPower':
             actualDwarf.digPower = (actualDwarf.digPower || 0) + 1;
+            console.log(`Leveled up dig power: ${actualDwarf.digPower}`);
             break;
         case 'maxEnergy':
             actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER);
             actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
+            console.log(`Leveled up max energy: ${actualDwarf.maxEnergy}`);
             break;
         case 'strength':
-            actualDwarf.strength = (actualDwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS;
+            const oldStrength = actualDwarf.strength || 0;
+            actualDwarf.strength = oldStrength + DWARF_LEVELUP_STRENGTH_BONUS;
+            console.log(`Leveled up strength: ${oldStrength} -> ${actualDwarf.strength}`);
             break;
         case 'wisdom':
-            actualDwarf.wisdom = (actualDwarf.wisdom || 0) + 1;
+            const oldWisdom = actualDwarf.wisdom || 0;
+            actualDwarf.wisdom = oldWisdom + 1;
+            console.log(`Leveled up wisdom: ${oldWisdom} -> ${actualDwarf.wisdom}`);
             break;
     }
     
@@ -3729,6 +3973,56 @@ function applyLevelUp(dwarf, upgradeType) {
     refreshDwarfDetailModal(actualDwarf, true);
 
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
+}
+
+function resetDwarfPoints(dwarf) {
+    const currentLevel = dwarf.level || 1;
+    const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
+
+    // Check if can afford
+    if (gold < resetCost) {
+        alert(`Not enough gold! Need ${formatNumber(resetCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
+        return;
+    }
+
+    // Calculate XP to return (all earned XP)
+    let totalXP = dwarf.xp || 0;
+    for (let i = 1; i < currentLevel; i++) {
+        totalXP += DWARF_XP_PER_LEVEL * i;
+    }
+
+    // Find actual dwarf and reset
+    const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
+    if (!actualDwarf) return;
+
+    // Deduct gold
+    gold -= resetCost;
+    logTransaction('expense', resetCost, `Reset points for ${actualDwarf.name}`);
+    updateGoldDisplay();
+
+    // Reset stats
+    actualDwarf.level = 1;
+    actualDwarf.xp = totalXP;
+    actualDwarf.digPower = 0;
+    actualDwarf.strength = 0;
+    actualDwarf.wisdom = 0;
+    actualDwarf.maxEnergy = 100;
+    actualDwarf.energy = Math.min(actualDwarf.energy, 100);
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { dwarfs, gold }
+        });
+    }
+
+    saveGame();
+    populateDwarfsOverview();
+    populateDwarfsInPanel();
+    refreshDwarfDetailModal(actualDwarf, true);
+
+    console.log(`${actualDwarf.name} reset to level 1 with ${formatNumber(totalXP, 'xp')} XP for ${formatNumber(resetCost, 'gold')} gold`);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
@@ -3944,6 +4238,25 @@ document.addEventListener('click', (ev) => {
     }
 });
 
+// Delegated event handler for resetting dwarf points
+document.addEventListener('click', (ev) => {
+    const resetBtn = ev.target.closest('[data-action="reset-dwarf"]');
+    if (!resetBtn) return;
+
+    const dwarfName = resetBtn.dataset.dwarfName;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    if (!dwarf) return;
+
+    const currentLevel = dwarf.level || 1;
+    const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
+
+    // Confirm before resetting
+    const confirmMsg = `Reset ${dwarf.name}'s points?\n\nCost: ${resetCost} gold\nCurrent level: ${currentLevel}\nAll stat points will be reset to 0\nXP will be returned`;
+    if (!confirm(confirmMsg)) return;
+
+    resetDwarfPoints(dwarf);
+});
+
 // Delegated event handler for tool dropdown change - auto-assign on selection
 document.addEventListener('change', (ev) => {
     const select = ev.target;
@@ -4020,7 +4333,7 @@ function updateStockDisplay() {
 function updateGoldDisplay() {
     const goldAmount = document.querySelector('#gold-display .gold-amount');
     if (goldAmount && typeof gold === 'number') {
-        goldAmount.textContent = gold.toFixed(2);
+        goldAmount.textContent = formatNumber(gold, 'gold');
     }
 }
 
@@ -4070,7 +4383,7 @@ function sellMaterial(materialId, amount) {
     // Save game
     saveGame();
     
-    console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)`);
+    console.log(`Sold ${amount} ${material.name} for ${formatNumber(earnings, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)`);
 }
 
 // Initialize the materials panel structure once (called on game load)
@@ -4219,42 +4532,44 @@ function updateMaterialsPanel() {
     
     // Calculate total stock value and update rows
     let totalStockValue = 0;
+    let totalNonCraftableValue = 0;
     let hasAnyMaterials = false;
     let hasNotCraftableMaterials = false;
-    
+
     const rows = list.querySelectorAll('.warehouse-row');
     for (const row of rows) {
         const id = row.dataset.materialId;
         const m = materials.find(mat => mat.id === id);
         if (!m) continue;
-        
+
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         const actualWorth = m.worth * tradeBonus;
-        
+
         if (count > 0) {
             hasAnyMaterials = true;
             totalStockValue += count * actualWorth;
-            
+
             if (!smelterInputMaterials.has(id) && m.type !== 'Ingot') {
                 hasNotCraftableMaterials = true;
+                totalNonCraftableValue += count * actualWorth;
             }
             
             // Show row and update values
             row.style.display = '';
             
             const worthSpan = row.querySelector('.wh-col-price');
-            worthSpan.textContent = actualWorth.toFixed(2);
-            worthSpan.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
-            
-            row.querySelector('.wh-col-count').textContent = count.toFixed(1);
-            row.querySelector('.wh-col-total').textContent = Math.round(count * actualWorth).toString();
-            
+            worthSpan.textContent = formatNumber(actualWorth, 'gold');
+            worthSpan.title = tradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
+
+            row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
+            row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
+
             // Update sell button tooltips and data
             const sell1Btn = row.querySelector('.btn-sell');
-            sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
-            
+            sell1Btn.title = `Sell 1 ${m.name} for ${formatNumber(actualWorth, 'gold')} gold`;
+
             const sellAllBtn = row.querySelector('.btn-sell-all');
-            sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
+            sellAllBtn.title = `Sell all ${count} ${m.name} for ${formatNumber(count * actualWorth, 'gold')} gold`;
             sellAllBtn.dataset.sellAmount = count.toString();
         } else {
             // Hide row
@@ -4268,47 +4583,51 @@ function updateMaterialsPanel() {
         tableHeader.style.display = hasAnyMaterials ? '' : 'none';
     }
     
-    // Update header buttons and total value
+    // Update header buttons
     const header = panel.querySelector('.materials-panel-header');
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    let totalValueSpan = document.getElementById('total-stock-value');
-    
+    let gemsBtn = document.getElementById('gems-header-btn');
+
     if (header) {
-        // Update or create total value display
-        if (!totalValueSpan) {
-            totalValueSpan = document.createElement('span');
-            totalValueSpan.id = 'total-stock-value';
-            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
-            header.appendChild(totalValueSpan);
+        // Create or update Gems button (always visible, on the left)
+        if (!gemsBtn) {
+            gemsBtn = document.createElement('button');
+            gemsBtn.id = 'gems-header-btn';
+            gemsBtn.className = 'btn-gems';
+            gemsBtn.textContent = '💎 Gems';
+            gemsBtn.title = 'Manage gems (coming soon)';
+            gemsBtn.onclick = openGemsModal;
+            // Insert at the beginning
+            header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
         }
-        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
-        
-        // Create or update Sell All button
+
+        // Create or update Sell All button (on the right with value)
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
                 sellAllHeaderBtn = document.createElement('button');
                 sellAllHeaderBtn.id = 'sell-all-header-btn';
                 sellAllHeaderBtn.className = 'btn-sell-all-global';
-                sellAllHeaderBtn.textContent = 'Sell All';
                 sellAllHeaderBtn.onclick = sellAllMaterials;
-                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
+                sellAllHeaderBtn.style.marginLeft = 'auto';
+                header.appendChild(sellAllHeaderBtn);
             }
+            sellAllHeaderBtn.textContent = `Sell All (💰 ${formatNumber(totalStockValue, 'gold')})`;
         } else if (sellAllHeaderBtn) {
             sellAllHeaderBtn.remove();
         }
-        
-        // Create or update Sell Non-Craftables button
+
+        // Create or update Sell Non-Craftables button (on the right with value)
         if (hasNotCraftableMaterials) {
             if (!sellNotCraftableBtn) {
                 sellNotCraftableBtn = document.createElement('button');
                 sellNotCraftableBtn.id = 'sell-not-craftable-btn';
                 sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter or forge';
                 sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
+                header.appendChild(sellNotCraftableBtn);
             }
+            sellNotCraftableBtn.textContent = `Sell Non-Craftables (💰 ${formatNumber(totalNonCraftableValue, 'gold')})`;
         } else if (sellNotCraftableBtn) {
             sellNotCraftableBtn.remove();
         }
@@ -4334,7 +4653,7 @@ function sellAllMaterials() {
     if (previewItems === 0) return;
     
     // Confirmation dialog
-    if (!confirm(`Sell ALL materials?\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+    if (!confirm(`Sell ALL materials?\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
         return;
     }
     
@@ -4358,7 +4677,7 @@ function sellAllMaterials() {
     
     if (totalItems > 0) {
         gold += totalGold;
-        console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        console.log(`Sold all materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -4406,7 +4725,7 @@ function sellNotCraftableMaterials() {
     if (previewItems === 0) return;
     
     // Confirmation dialog
-    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
         return;
     }
     
@@ -4434,7 +4753,7 @@ function sellNotCraftableMaterials() {
     
     if (totalItems > 0) {
         gold += totalGold;
-        console.log(`Sold not-craftable materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        console.log(`Sold not-craftable materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -4517,7 +4836,7 @@ function showCellTooltipFromEvent(cell, event) {
 
     const material = getMaterialById(cellData.materialId);
     const rawHardness = Number(cellData.hardness) || 0;
-    const hardness = Math.max(0, rawHardness).toFixed(1);
+    const hardness = formatNumber(Math.max(0, rawHardness), 'material');
     const isDugOut = rawHardness <= 0;
     const label = isDugOut ? 'Cleared' : (material ? material.name : 'Unknown');
     cellTooltipTitle.textContent = label;
@@ -4997,7 +5316,19 @@ window.activateCheat = function activateCheat() {
         materialsAdded++;
     }
     console.log(`Added 5 of each material (${materialsAdded} materials)`);
-    
+
+    // Remove enchantments from all tools
+    let enchantmentsRemoved = 0;
+    for (const tool of toolsInventory) {
+        if (tool.enchantLevel && tool.enchantLevel > 0) {
+            delete tool.enchantLevel;
+            enchantmentsRemoved++;
+        }
+    }
+    if (enchantmentsRemoved > 0) {
+        console.log(`Removed enchantments from ${enchantmentsRemoved} tool(s)`);
+    }
+
     // Sync with worker - send ALL updated state
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -5008,7 +5339,8 @@ window.activateCheat = function activateCheat() {
                 gold: gold,
                 materialsStock: materialsStock,
                 activeResearch: activeResearch,
-                researchtree: researchtree
+                researchtree: researchtree,
+                toolsInventory: toolsInventory
             }
         });
     }
@@ -5019,12 +5351,13 @@ window.activateCheat = function activateCheat() {
     populateDwarfsInPanel();
     updateStockPanel();
     populateResearch();
-    
+    populateToolsInPanel(); // Refresh tools panel to show removed enchantments
+
     // Save game
     saveGame();
-    
-    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP`);
-    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus`);
+
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP, Enchantments removed: ${enchantmentsRemoved}`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus\nEnchantments removed from ${enchantmentsRemoved} tool(s)`);
 }
 
 function initializeGame() {

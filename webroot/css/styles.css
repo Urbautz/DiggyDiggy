@@ -477,6 +477,24 @@ header, footer {
     transform: translateY(-1px);
 }
 
+.btn-gems {
+    background: linear-gradient(180deg, #9a1658, #860e44);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+.btn-gems:hover {
+    background: linear-gradient(180deg, #db2777, #be185d);
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+    transform: translateY(-1px);
+}
+
 .resting-marker { position: absolute; right: 2px; top: 2px; font-size: 14px; z-index: 5; pointer-events: none; }
 
 .striking-marker { 
@@ -626,10 +644,9 @@ header, footer {
 }
 
 .warehouse-table-container {
-    border-radius: 14px;
+    border-radius: 6px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
     max-height: 340px;
     overflow-y: auto;
@@ -681,21 +698,25 @@ header, footer {
     font-family: inherit !important;
 }
 
-.warehouse-row { 
+.warehouse-row {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr 1.8fr;
-    gap: 14px;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    gap: 12px;
     align-items: center;
-    padding: 12px 14px; 
-    border: 1px solid rgba(0,0,0,0.3); 
+    padding: 4px 12px;
+    border: 1px solid rgba(255,255,255,0.08);
     border-top: none;
     position: relative;
     overflow: hidden;
-    margin-bottom: 4px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 6px;
 }
 
 .warehouse-row:last-child {
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 6px 6px;
 }
 .warehouse-row::before {
     content: '';
@@ -1088,23 +1109,33 @@ header, footer {
 .active-research {
     background: rgba(76, 175, 80, 0.1);
     border: 2px solid #4CAF50;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 20px;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
 }
 
 .active-research h3 {
-    margin: 0 0 10px 0;
+    margin: 0 0 6px 0;
     color: #4CAF50;
+    font-size: 15px;
+}
+
+.active-research p {
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.active-research p small {
+    font-size: 11px;
 }
 
 .progress-bar {
     width: 100%;
-    height: 20px;
+    height: 16px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .progress-fill {
@@ -1848,13 +1879,14 @@ header, footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .dwarf-stat-box {
     padding: 6px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border: 2px solid #444;
+    border-radius: 8px;
     text-align: center;
 }
 
@@ -1871,7 +1903,10 @@ header, footer {
 .dwarf-bucket-container {
     padding: 8px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    height: 90px;
+    overflow-y: auto;
 }
 
 .dwarf-bucket-header {
@@ -1887,9 +1922,25 @@ header, footer {
 }
 
 .dwarf-bucket-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    display: flex;
     gap: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .dwarf-bucket-item {
@@ -1897,6 +1948,8 @@ header, footer {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
     text-align: center;
+    min-width: 60px;
+    flex-shrink: 0;
 }
 
 .dwarf-bucket-item-name {
@@ -1914,10 +1967,11 @@ header, footer {
     margin-bottom: 12px;
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border: 2px solid #444;
+    border-radius: 8px;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
+    gap: 0px;
 }
 
 .dwarf-section-title {
@@ -2001,7 +2055,8 @@ header, footer {
 .dwarf-rename-container {
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border: 2px solid #444;
+    border-radius: 8px;
     text-align: center;
 }
 
