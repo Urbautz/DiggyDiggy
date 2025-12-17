@@ -477,6 +477,24 @@ header, footer {
     transform: translateY(-1px);
 }
 
+.btn-gems {
+    background: linear-gradient(180deg, #9a1658, #860e44);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+.btn-gems:hover {
+    background: linear-gradient(180deg, #db2777, #be185d);
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+    transform: translateY(-1px);
+}
+
 .resting-marker { position: absolute; right: 2px; top: 2px; font-size: 14px; z-index: 5; pointer-events: none; }
 
 .striking-marker { 
@@ -682,10 +700,10 @@ header, footer {
 
 .warehouse-row {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr 1.8fr;
-    gap: 2px;
+    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    gap: 12px;
     align-items: center;
-    padding: 4px 4px;
+    padding: 4px 12px;
     border: 1px solid rgba(255,255,255,0.08);
     border-top: none;
     position: relative;

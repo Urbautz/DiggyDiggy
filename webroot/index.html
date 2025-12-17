@@ -115,7 +115,7 @@
                     <div class="tab-buttons">
                         <button class="tab-btn active" data-tab="warehouse" onclick="switchMaterialsTab('warehouse')">📦 Warehouse</button>
                         <button class="tab-btn" data-tab="dwarfs" onclick="switchMaterialsTab('dwarfs')">👷 Dwarfs <span id="dwarfs-levelup-badge" class="notification-badge"></span></button>
-                        <button class="tab-btn" data-tab="tools" onclick="switchMaterialsTab('tools')">🔨 Tools</button>
+                        <button class="tab-btn" data-tab="tools" onclick="switchMaterialsTab('tools')">💰 Tools</button>
                     </div>
                 </div>
                 <div id="materials-list" class="warehouse-stock-list"></div>
@@ -362,6 +362,27 @@
             <footer class="modal-footer">
                 <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Activate Cheat</button>
                 <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Gems modal -->
+    <div id="gems-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Gems dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>💎 Gems</h2>
+                <button class="modal-close" aria-label="Close gems" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <div id="gems-content">
+                    <p style="text-align: center; color: #9fbfe0; padding: 40px 20px;">
+                        Coming soon! This feature is under development.
+                    </p>
+                </div>
+            </div>
+            <footer class="modal-footer">
                 <button class="btn-secondary" data-action="close-modal">Close</button>
             </footer>
         </div>

@@ -1052,6 +1052,10 @@ function openResearch() {
     }
 }
 
+function openGemsModal() {
+    openModal('gems-modal');
+}
+
 function openSmelter() {
     openModal('smelter-modal');
     populateSmelter();
@@ -1059,12 +1063,12 @@ function openSmelter() {
 
 function openTransactions() {
     openModal('transactions-modal');
-    
+
     // Default to summary tab
     if (!window.currentFinancesTab) {
         window.currentFinancesTab = 'summary';
     }
-    
+
     switchFinancesTab(window.currentFinancesTab);
     
     // Set up auto-refresh
@@ -4528,24 +4532,26 @@ function updateMaterialsPanel() {
     
     // Calculate total stock value and update rows
     let totalStockValue = 0;
+    let totalNonCraftableValue = 0;
     let hasAnyMaterials = false;
     let hasNotCraftableMaterials = false;
-    
+
     const rows = list.querySelectorAll('.warehouse-row');
     for (const row of rows) {
         const id = row.dataset.materialId;
         const m = materials.find(mat => mat.id === id);
         if (!m) continue;
-        
+
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         const actualWorth = m.worth * tradeBonus;
-        
+
         if (count > 0) {
             hasAnyMaterials = true;
             totalStockValue += count * actualWorth;
-            
+
             if (!smelterInputMaterials.has(id) && m.type !== 'Ingot') {
                 hasNotCraftableMaterials = true;
+                totalNonCraftableValue += count * actualWorth;
             }
             
             // Show row and update values
@@ -4577,47 +4583,51 @@ function updateMaterialsPanel() {
         tableHeader.style.display = hasAnyMaterials ? '' : 'none';
     }
     
-    // Update header buttons and total value
+    // Update header buttons
     const header = panel.querySelector('.materials-panel-header');
     let sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     let sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    let totalValueSpan = document.getElementById('total-stock-value');
-    
+    let gemsBtn = document.getElementById('gems-header-btn');
+
     if (header) {
-        // Update or create total value display
-        if (!totalValueSpan) {
-            totalValueSpan = document.createElement('span');
-            totalValueSpan.id = 'total-stock-value';
-            totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
-            header.appendChild(totalValueSpan);
+        // Create or update Gems button (always visible, on the left)
+        if (!gemsBtn) {
+            gemsBtn = document.createElement('button');
+            gemsBtn.id = 'gems-header-btn';
+            gemsBtn.className = 'btn-gems';
+            gemsBtn.textContent = '💎 Gems';
+            gemsBtn.title = 'Manage gems (coming soon)';
+            gemsBtn.onclick = openGemsModal;
+            // Insert at the beginning
+            header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
         }
-        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${formatNumber(totalStockValue, 'gold')}` : '';
-        
-        // Create or update Sell All button
+
+        // Create or update Sell All button (on the right with value)
         if (hasAnyMaterials) {
             if (!sellAllHeaderBtn) {
                 sellAllHeaderBtn = document.createElement('button');
                 sellAllHeaderBtn.id = 'sell-all-header-btn';
                 sellAllHeaderBtn.className = 'btn-sell-all-global';
-                sellAllHeaderBtn.textContent = 'Sell All';
                 sellAllHeaderBtn.onclick = sellAllMaterials;
-                header.insertBefore(sellAllHeaderBtn, totalValueSpan);
+                sellAllHeaderBtn.style.marginLeft = 'auto';
+                header.appendChild(sellAllHeaderBtn);
             }
+            sellAllHeaderBtn.textContent = `Sell All (💰 ${formatNumber(totalStockValue, 'gold')})`;
         } else if (sellAllHeaderBtn) {
             sellAllHeaderBtn.remove();
         }
-        
-        // Create or update Sell Non-Craftables button
+
+        // Create or update Sell Non-Craftables button (on the right with value)
         if (hasNotCraftableMaterials) {
             if (!sellNotCraftableBtn) {
                 sellNotCraftableBtn = document.createElement('button');
                 sellNotCraftableBtn.id = 'sell-not-craftable-btn';
                 sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.textContent = 'Sell Non-Craftables';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter';
+                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter or forge';
                 sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.insertBefore(sellNotCraftableBtn, totalValueSpan);
+                header.appendChild(sellNotCraftableBtn);
             }
+            sellNotCraftableBtn.textContent = `Sell Non-Craftables (💰 ${formatNumber(totalNonCraftableValue, 'gold')})`;
         } else if (sellNotCraftableBtn) {
             sellNotCraftableBtn.remove();
         }
