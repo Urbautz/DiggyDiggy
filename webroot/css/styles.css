@@ -1861,13 +1861,14 @@ header, footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .dwarf-stat-box {
     padding: 6px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border: 2px solid #444;
+    border-radius: 8px;
     text-align: center;
 }
 
@@ -1884,7 +1885,10 @@ header, footer {
 .dwarf-bucket-container {
     padding: 8px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    height: 90px;
+    overflow-y: auto;
 }
 
 .dwarf-bucket-header {
@@ -1900,9 +1904,25 @@ header, footer {
 }
 
 .dwarf-bucket-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    display: flex;
     gap: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.dwarf-bucket-grid::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .dwarf-bucket-item {
@@ -1910,6 +1930,8 @@ header, footer {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
     text-align: center;
+    min-width: 60px;
+    flex-shrink: 0;
 }
 
 .dwarf-bucket-item-name {
@@ -1927,10 +1949,11 @@ header, footer {
     margin-bottom: 12px;
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border: 2px solid #444;
+    border-radius: 8px;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
+    gap: 0px;
 }
 
 .dwarf-section-title {
@@ -2014,7 +2037,8 @@ header, footer {
 .dwarf-rename-container {
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border: 2px solid #444;
+    border-radius: 8px;
     text-align: center;
 }
 

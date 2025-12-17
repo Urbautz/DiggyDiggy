@@ -28,6 +28,7 @@ const DWARF_XP_PER_LEVEL = 250; // XP needed per level
 const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
 const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
 const DWARF_LEVELUP_STRENGTH_BONUS = 1; // Bucket capacity increase per strength point
+const DWARF_RESET_COST_PER_LEVEL = 1000; // Gold cost per level to reset points
 
 // ============================================================================
 // COMBAT CONSTANTS

@@ -51,7 +51,7 @@ const materials = [
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
   { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 500000,  minlevel: 99999, color: '#ffd700ff' },
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 77000, maxlevel: 99999, color: '#572012ff' },
+  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
   { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
   
@@ -118,14 +118,12 @@ let researchtree = [
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'stone-polishing':1}],
+    { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
-      min_depth: 2000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5,
       min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
     { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20,
@@ -134,7 +132,8 @@ let researchtree = [
       min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance do one-hit any stone.' },
     { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance do one-hit any ore.' },
-
+    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
+      min_depth: 20000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
     ];
 let activeResearch = null; // Track which research is currently being researched
     

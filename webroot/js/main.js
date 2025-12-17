@@ -3728,13 +3728,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         card.style.padding = '10px';
         card.innerHTML = `
             <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
-            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Level ${level}</p>
+            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Skill Points invested: ${level}</p>
             <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
         `;
         if (hasEnoughXP) {
             const btn = document.createElement('button');
             btn.className = 'btn-primary';
-            btn.textContent = '⭐ Level Up';
+            btn.textContent = '⭐ Invest Point';
             btn.dataset.upgradeType = upgradeType;
             btn.dataset.dwarfName = dwarf.name;
             btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
@@ -3747,13 +3747,19 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
     statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Bonus: ${dwarf.wisdom || 0}`, 'wisdom'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Speed and XP Bonus `, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');
     renameInput.value = dwarf.name;
     const renameBtn = document.getElementById('dwarf-rename-btn');
     renameBtn.dataset.dwarfName = dwarf.name;
+
+    // Set reset button dataset and cost
+    const resetBtn = document.getElementById('dwarf-reset-btn');
+    resetBtn.dataset.dwarfName = dwarf.name;
+    const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
+    document.getElementById('dwarf-reset-cost').textContent = resetCost;
 }
 
 // Refresh dwarf detail modal with updated information (lightweight, no UI blocking)
@@ -3861,16 +3867,22 @@ function applyLevelUp(dwarf, upgradeType) {
     switch(upgradeType) {
         case 'digPower':
             actualDwarf.digPower = (actualDwarf.digPower || 0) + 1;
+            console.log(`Leveled up dig power: ${actualDwarf.digPower}`);
             break;
         case 'maxEnergy':
             actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER);
             actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
+            console.log(`Leveled up max energy: ${actualDwarf.maxEnergy}`);
             break;
         case 'strength':
-            actualDwarf.strength = (actualDwarf.strength || 0) + DWARF_LEVELUP_STRENGTH_BONUS;
+            const oldStrength = actualDwarf.strength || 0;
+            actualDwarf.strength = oldStrength + DWARF_LEVELUP_STRENGTH_BONUS;
+            console.log(`Leveled up strength: ${oldStrength} -> ${actualDwarf.strength}`);
             break;
         case 'wisdom':
-            actualDwarf.wisdom = (actualDwarf.wisdom || 0) + 1;
+            const oldWisdom = actualDwarf.wisdom || 0;
+            actualDwarf.wisdom = oldWisdom + 1;
+            console.log(`Leveled up wisdom: ${oldWisdom} -> ${actualDwarf.wisdom}`);
             break;
     }
     
@@ -3898,6 +3910,56 @@ function applyLevelUp(dwarf, upgradeType) {
     refreshDwarfDetailModal(actualDwarf, true);
 
     console.log(`${actualDwarf.name} leveled up to ${actualDwarf.level}! Chose ${upgradeType}`);
+}
+
+function resetDwarfPoints(dwarf) {
+    const currentLevel = dwarf.level || 1;
+    const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
+
+    // Check if can afford
+    if (gold < resetCost) {
+        alert(`Not enough gold! Need ${resetCost}, have ${Math.floor(gold)}.`);
+        return;
+    }
+
+    // Calculate XP to return (all earned XP)
+    let totalXP = dwarf.xp || 0;
+    for (let i = 1; i < currentLevel; i++) {
+        totalXP += DWARF_XP_PER_LEVEL * i;
+    }
+
+    // Find actual dwarf and reset
+    const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
+    if (!actualDwarf) return;
+
+    // Deduct gold
+    gold -= resetCost;
+    logTransaction('expense', resetCost, `Reset points for ${actualDwarf.name}`);
+    updateGoldDisplay();
+
+    // Reset stats
+    actualDwarf.level = 1;
+    actualDwarf.xp = totalXP;
+    actualDwarf.digPower = 0;
+    actualDwarf.strength = 0;
+    actualDwarf.wisdom = 0;
+    actualDwarf.maxEnergy = 100;
+    actualDwarf.energy = Math.min(actualDwarf.energy, 100);
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { dwarfs, gold }
+        });
+    }
+
+    saveGame();
+    populateDwarfsOverview();
+    populateDwarfsInPanel();
+    refreshDwarfDetailModal(actualDwarf, true);
+
+    console.log(`${actualDwarf.name} reset to level 1 with ${totalXP} XP for ${resetCost} gold`);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
@@ -4111,6 +4173,25 @@ document.addEventListener('click', (ev) => {
         // Save the game
         saveGame();
     }
+});
+
+// Delegated event handler for resetting dwarf points
+document.addEventListener('click', (ev) => {
+    const resetBtn = ev.target.closest('[data-action="reset-dwarf"]');
+    if (!resetBtn) return;
+
+    const dwarfName = resetBtn.dataset.dwarfName;
+    const dwarf = dwarfs.find(d => d.name === dwarfName);
+    if (!dwarf) return;
+
+    const currentLevel = dwarf.level || 1;
+    const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
+
+    // Confirm before resetting
+    const confirmMsg = `Reset ${dwarf.name}'s points?\n\nCost: ${resetCost} gold\nCurrent level: ${currentLevel}\nAll stat points will be reset to 0\nXP will be returned`;
+    if (!confirm(confirmMsg)) return;
+
+    resetDwarfPoints(dwarf);
 });
 
 // Delegated event handler for tool dropdown change - auto-assign on selection
