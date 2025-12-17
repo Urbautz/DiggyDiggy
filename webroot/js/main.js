@@ -2871,7 +2871,11 @@ function openDwarfs() {
     // Remove Sell Non-Craftables button from header
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
-    
+
+    // Remove Gems button from header
+    const gemsBtn = document.getElementById('gems-header-btn');
+    if (gemsBtn) gemsBtn.remove();
+
     // Remove total stock value from header
     const totalValueSpan = document.getElementById('total-stock-value');
     if (totalValueSpan) totalValueSpan.remove();
@@ -2937,9 +2941,12 @@ function showToolsPanel() {
     // Remove header buttons that are specific to warehouse
     const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
-    
+
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+
+    const gemsBtn = document.getElementById('gems-header-btn');
+    if (gemsBtn) gemsBtn.remove();
     
     const totalValueSpan = document.getElementById('total-stock-value');
     if (totalValueSpan) totalValueSpan.remove();
