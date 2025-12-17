@@ -56,6 +56,45 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
+/**
+ * Unified number formatting for display throughout the GUI
+ * Materials: 0-100: one decimal (90.1), 100-100000: integer (95000), >100000: k suffix (950k)
+ * Money: 0-1: four decimals (0.0017), 1-100000: two decimals (95123.14), >100000: k suffix (950k)
+ */
+function formatNumber(value, type = 'material') {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+
+    if (isNaN(num)) return value;
+
+    if (type === 'money' || type === 'gold') {
+        // Money formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num < 1) {
+            return num.toFixed(4);
+        }
+        if (num <= 100000) {
+            return num.toFixed(2);
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    } else {
+        // Material formatting (default)
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num <= 100) {
+            return num.toFixed(1);
+        }
+        if (num <= 100000) {
+            return Math.round(num).toString();
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    }
+}
+
 // Check if a smelter task is unlocked by research
 function isSmelterTaskUnlocked(task) {
     if (!task.requires) return true;
@@ -223,7 +262,7 @@ function updateGridDisplay() {
                 // color indicates material; title shows name + rounded-up hardness
                 if (mat) cell.style.background = mat.color;
                 
-                const displayHardness = rawHardness.toFixed(1);
+                const displayHardness = formatNumber(rawHardness, 'material');
                 // show current hardness value inside the cell with one decimal
                 if (standingHere.length > 0) {
                     // mark the cell with the background emoji and render hardness text normally
@@ -546,7 +585,7 @@ async function startForging() {
     
     // Check gold upfront
     if (gold < totalCost) {
-        alert(`Not enough gold! Need ${totalCost.toFixed(0)}, have ${gold.toFixed(0)}.`);
+        alert(`Not enough gold! Need ${formatNumber(totalCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
         return;
     }
     
@@ -951,7 +990,7 @@ function confirmEnchant(toolId) {
     const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
 
     if (gold < cost) {
-        alert(`Not enough gold! Need ${cost}, have ${Math.floor(gold)}.`);
+        alert(`Not enough gold! Need ${formatNumber(cost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
         return;
     }
 
@@ -1180,17 +1219,17 @@ function populateSummaryTab(container) {
         
         const incomeTd = document.createElement('td');
         incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80; font-weight: bold;';
-        incomeTd.textContent = '+' + currentHourIncome.toFixed(2);
-        
+        incomeTd.textContent = '+' + formatNumber(currentHourIncome, 'gold');
+
         const expenseTd = document.createElement('td');
         expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b; font-weight: bold;';
-        expenseTd.textContent = '-' + currentHourExpense.toFixed(2);
-        
+        expenseTd.textContent = '-' + formatNumber(currentHourExpense, 'gold');
+
         const netTd = document.createElement('td');
         const net = currentHourIncome - currentHourExpense;
         netTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
         netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
-        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        netTd.textContent = (net >= 0 ? '+' : '') + formatNumber(net, 'gold');
         
         const actionTd = document.createElement('td');
         actionTd.style.cssText = 'padding: 8px; text-align: center;';
@@ -1240,17 +1279,17 @@ function populateSummaryTab(container) {
         
         const incomeTd = document.createElement('td');
         incomeTd.style.cssText = 'padding: 8px; text-align: right; color: #4ade80;';
-        incomeTd.textContent = '+' + hourIncome.toFixed(2);
-        
+        incomeTd.textContent = '+' + formatNumber(hourIncome, 'gold');
+
         const expenseTd = document.createElement('td');
         expenseTd.style.cssText = 'padding: 8px; text-align: right; color: #ff6b6b;';
-        expenseTd.textContent = '-' + hourExpense.toFixed(2);
-        
+        expenseTd.textContent = '-' + formatNumber(hourExpense, 'gold');
+
         const netTd = document.createElement('td');
         const net = hourIncome - hourExpense;
         netTd.style.cssText = 'padding: 8px; text-align: right;';
         netTd.style.color = net >= 0 ? '#4ade80' : '#ff6b6b';
-        netTd.textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+        netTd.textContent = (net >= 0 ? '+' : '') + formatNumber(net, 'gold');
         
         const actionTd = document.createElement('td');
         actionTd.style.cssText = 'padding: 8px; text-align: center;';
@@ -1368,10 +1407,10 @@ function populateHourDetails(container, hourIdentifier) {
         
         if (data.income > 0) {
             amountTd.style.color = '#4ade80';
-            amountTd.textContent = '+' + data.income.toFixed(2);
+            amountTd.textContent = '+' + formatNumber(data.income, 'gold');
         } else if (data.expense > 0) {
             amountTd.style.color = '#ff6b6b';
-            amountTd.textContent = '-' + data.expense.toFixed(2);
+            amountTd.textContent = '-' + formatNumber(data.expense, 'gold');
         } else {
             amountTd.textContent = '-';
         }
@@ -1421,11 +1460,11 @@ function populateRecentTab(container) {
         const amountTd = document.createElement('td');
         amountTd.style.cssText = 'padding: 8px; text-align: right; font-weight: bold;';
         amountTd.style.color = transaction.type === 'income' ? '#4ade80' : '#ff6b6b';
-        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + transaction.amount.toFixed(5);
-        
+        amountTd.textContent = (transaction.type === 'income' ? '+' : '-') + formatNumber(transaction.amount, 'gold');
+
         const balanceTd = document.createElement('td');
         balanceTd.style.cssText = 'padding: 8px; text-align: right;';
-        balanceTd.textContent = transaction.balance.toFixed(5);
+        balanceTd.textContent = formatNumber(transaction.balance, 'gold');
         
         tr.appendChild(timeTd);
         tr.appendChild(descTd);
@@ -1536,7 +1575,7 @@ function populateSmelter() {
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
             } else {
                 statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
             }
         }
         taskRow.appendChild(statusIndicator);
@@ -1723,7 +1762,7 @@ function updateSmelterTemperatureDisplay() {
                 statusIndicator.title = 'Ready - materials available and temperature below minimum';
             } else {
                 statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${stockAmount.toFixed(1)}x`;
+                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
             }
         }
         
@@ -1732,7 +1771,7 @@ function updateSmelterTemperatureDisplay() {
         if (recipeSpan) {
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${stockAmount.toFixed(1)}/${task.input.amount})`;
+            const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
             recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
         }
     }
@@ -2014,7 +2053,7 @@ function populateResearch() {
             researchBtn.className = 'btn-research disabled';
             researchBtn.textContent = 'Research';
             researchBtn.disabled = true;
-            researchBtn.title = `Not enough gold! Required: ${actualGoldCost} 💰, Available: ${Math.floor(gold)} 💰`;
+            researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
         } else if (activeResearch) {
             // Another research is active
             researchBtn.className = 'btn-research disabled';
@@ -2107,7 +2146,7 @@ function startResearch(researchId) {
     // Check if player has enough gold
     if (gold < goldCost) {
         console.error(`Not enough gold to start research. Required: ${goldCost}, Available: ${gold}`);
-        alert(`Not enough gold! Required: ${goldCost} 💰, Available: ${Math.floor(gold)} 💰`);
+        alert(`Not enough gold! Required: ${formatNumber(goldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`);
         return;
     }
 
@@ -2390,7 +2429,7 @@ function updateForgeState() {
         if (coolingCost) {
             // Calculate cooling oil cost: level 1 = 0, level 2 = 500, increasing by 25% each level
             const cost = forgeState.coolingOilQuality === 1 ? 0 : 500 * Math.pow(1.25, forgeState.coolingOilQuality - 2);
-            coolingCost.textContent = cost.toFixed(0);
+            coolingCost.textContent = formatNumber(cost, 'gold');
             
             // Show affordability indicator
             if (coolingAffordable) {
@@ -2416,7 +2455,7 @@ function updateForgeState() {
         if (handleCost) {
             // Calculate handle cost: level 1 = 100, increasing by 15% each level
             const cost = 100 * Math.pow(1.15, forgeState.handleQuality - 1);
-            handleCost.textContent = cost.toFixed(0);
+            handleCost.textContent = formatNumber(cost, 'gold');
             
             // Show affordability indicator
             if (handleAffordable) {
@@ -2447,7 +2486,7 @@ function updateForgeState() {
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
         const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
         const totalCost = coolingCost + handleCost;
-        totalCostDisplay.textContent = `${totalCost.toFixed(0)} 💰`;
+        totalCostDisplay.textContent = `${formatNumber(totalCost, 'gold')} 💰`;
         
         // Calculate success probability
         // Base: 90% chance to survive hammering per iteration
@@ -2491,7 +2530,7 @@ function updateForgeState() {
         const qualityDisplay = document.getElementById('expected-quality');
         if (qualityDisplay) {
             if (forgeState.baseMaterial) {
-                qualityDisplay.textContent = expectedQuality.toFixed(0);
+                qualityDisplay.textContent = formatNumber(expectedQuality, 'material');
             } else {
                 qualityDisplay.textContent = '-';
             }
@@ -3330,7 +3369,7 @@ function updateDwarfsInPanel() {
             }
             
             const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${d.level || 1}</span>`;
-            const newHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
                 info.innerHTML = newHTML;
@@ -3451,7 +3490,7 @@ function populateDwarfsInPanel() {
         const dwarfLevel = (currentLevel || 1) - 1;
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
         
-        info.innerHTML = `${levelSpan} | 💰 ${wage.toFixed(4)} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${totalPower.toFixed(1)} (${toolName})`;
+        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
         row.appendChild(header);
         row.appendChild(info);
@@ -3623,13 +3662,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Populate dig power
-    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
-    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${enchantBonus.toFixed(2)} (+${enchantLevel})</div>` : '';
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
+    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${formatNumber(enchantBonus, 'material')} (+${enchantLevel})</div>` : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
-        <div>× Level Bonus: ${levelBonus.toFixed(2)} (${dwarf.digPower || 0})</div>
-        <div>× Research: ${researchBonus.toFixed(2)} (${improvedDigging ? improvedDigging.level : 0})</div>
-        <div>× Tool Power: ${toolPower.toFixed(2)}</div>
+        <div>× Level Bonus: ${formatNumber(levelBonus, 'material')} (${dwarf.digPower || 0})</div>
+        <div>× Research: ${formatNumber(researchBonus, 'material')} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${formatNumber(toolPower, 'material')}</div>
         ${enchantLine}
     `;
 
@@ -3642,11 +3681,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const nextLevelWage = DWARF_BASE_WAGE * (1 + (currentLevel + 1) * increaseRate);
     const levelMultiplier = 1 + currentLevel * increaseRate;
 
-    document.getElementById('dwarf-wage-current').textContent = currentWage.toFixed(4);
+    document.getElementById('dwarf-wage-current').textContent = formatNumber(currentWage, 'gold');
     document.getElementById('dwarf-wage-calc').innerHTML = `
-        <div>Base: ${DWARF_BASE_WAGE.toFixed(4)}</div>
-        <div>× Level-Factor: ${levelMultiplier.toFixed(1)}</div>
-        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${nextLevelWage.toFixed(4)}</div>
+        <div>Base: ${formatNumber(DWARF_BASE_WAGE, 'gold')}</div>
+        <div>× Level-Factor: ${formatNumber(levelMultiplier, 'material')}</div>
+        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${formatNumber(nextLevelWage, 'gold')}</div>
     `;
 
     // Populate current tool
@@ -3660,7 +3699,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
         const powerSpan = document.createElement('span');
         powerSpan.className = 'dwarf-tool-power';
-        powerSpan.textContent = `(${toolPower.toFixed(2)})`;
+        powerSpan.textContent = `(${formatNumber(toolPower, 'material')})`;
 
         toolCurrent.appendChild(nameSpan);
         toolCurrent.appendChild(powerSpan);
@@ -3705,7 +3744,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             // Create option element safely
             const option = document.createElement('option');
             option.value = tool.id;
-            option.textContent = `${tName} (${tPower.toFixed(2)})`;
+            option.textContent = `${tName} (${formatNumber(tPower, 'material')})`;
 
             // Check if this tool is selected
             if (dwarf.toolId && tool.id && dwarf.toolId == tool.id) {
@@ -3840,7 +3879,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
         bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
     }
 
-    document.getElementById('dwarf-digpower-total').textContent = totalDigPower.toFixed(1);
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
 }
 
 // Apply the chosen level up upgrade
@@ -3918,7 +3957,7 @@ function resetDwarfPoints(dwarf) {
 
     // Check if can afford
     if (gold < resetCost) {
-        alert(`Not enough gold! Need ${resetCost}, have ${Math.floor(gold)}.`);
+        alert(`Not enough gold! Need ${formatNumber(resetCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
         return;
     }
 
@@ -4270,7 +4309,7 @@ function updateStockDisplay() {
 function updateGoldDisplay() {
     const goldAmount = document.querySelector('#gold-display .gold-amount');
     if (goldAmount && typeof gold === 'number') {
-        goldAmount.textContent = gold.toFixed(2);
+        goldAmount.textContent = formatNumber(gold, 'gold');
     }
 }
 
@@ -4320,7 +4359,7 @@ function sellMaterial(materialId, amount) {
     // Save game
     saveGame();
     
-    console.log(`Sold ${amount} ${material.name} for ${earnings.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)`);
+    console.log(`Sold ${amount} ${material.name} for ${formatNumber(earnings, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)`);
 }
 
 // Initialize the materials panel structure once (called on game load)
@@ -4493,18 +4532,18 @@ function updateMaterialsPanel() {
             row.style.display = '';
             
             const worthSpan = row.querySelector('.wh-col-price');
-            worthSpan.textContent = actualWorth.toFixed(2);
-            worthSpan.title = tradeBonus > 1 ? `Base: ${m.worth.toFixed(2)} gold (${tradeBonus.toFixed(2)}x bonus)` : `${m.worth.toFixed(2)} gold each`;
-            
-            row.querySelector('.wh-col-count').textContent = count.toFixed(1);
-            row.querySelector('.wh-col-total').textContent = Math.round(count * actualWorth).toString();
-            
+            worthSpan.textContent = formatNumber(actualWorth, 'gold');
+            worthSpan.title = tradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
+
+            row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
+            row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
+
             // Update sell button tooltips and data
             const sell1Btn = row.querySelector('.btn-sell');
-            sell1Btn.title = `Sell 1 ${m.name} for ${actualWorth.toFixed(2)} gold`;
-            
+            sell1Btn.title = `Sell 1 ${m.name} for ${formatNumber(actualWorth, 'gold')} gold`;
+
             const sellAllBtn = row.querySelector('.btn-sell-all');
-            sellAllBtn.title = `Sell all ${count} ${m.name} for ${(count * actualWorth).toFixed(2)} gold`;
+            sellAllBtn.title = `Sell all ${count} ${m.name} for ${formatNumber(count * actualWorth, 'gold')} gold`;
             sellAllBtn.dataset.sellAmount = count.toString();
         } else {
             // Hide row
@@ -4532,7 +4571,7 @@ function updateMaterialsPanel() {
             totalValueSpan.style.cssText = 'font-size: 13px; color: #ffd700; font-weight: 600; margin-left: auto;';
             header.appendChild(totalValueSpan);
         }
-        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${Math.round(totalStockValue)}` : '';
+        totalValueSpan.textContent = hasAnyMaterials ? `💰 ${formatNumber(totalStockValue, 'gold')}` : '';
         
         // Create or update Sell All button
         if (hasAnyMaterials) {
@@ -4584,7 +4623,7 @@ function sellAllMaterials() {
     if (previewItems === 0) return;
     
     // Confirmation dialog
-    if (!confirm(`Sell ALL materials?\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+    if (!confirm(`Sell ALL materials?\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
         return;
     }
     
@@ -4608,7 +4647,7 @@ function sellAllMaterials() {
     
     if (totalItems > 0) {
         gold += totalGold;
-        console.log(`Sold all materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        console.log(`Sold all materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -4656,7 +4695,7 @@ function sellNotCraftableMaterials() {
     if (previewItems === 0) return;
     
     // Confirmation dialog
-    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${Math.floor(previewItems)} items for ${Math.round(previewGold)} gold`)) {
+    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
         return;
     }
     
@@ -4684,7 +4723,7 @@ function sellNotCraftableMaterials() {
     
     if (totalItems > 0) {
         gold += totalGold;
-        console.log(`Sold not-craftable materials (${totalItems} items) for ${totalGold.toFixed(2)} gold`);
+        console.log(`Sold not-craftable materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
         
         // Update worker with new gold amount
         gameWorker.postMessage({
@@ -4767,7 +4806,7 @@ function showCellTooltipFromEvent(cell, event) {
 
     const material = getMaterialById(cellData.materialId);
     const rawHardness = Number(cellData.hardness) || 0;
-    const hardness = Math.max(0, rawHardness).toFixed(1);
+    const hardness = formatNumber(Math.max(0, rawHardness), 'material');
     const isDugOut = rawHardness <= 0;
     const label = isDugOut ? 'Cleared' : (material ? material.name : 'Unknown');
     cellTooltipTitle.textContent = label;
