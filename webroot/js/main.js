@@ -60,6 +60,7 @@ function getMaterialById(id) {
  * Unified number formatting for display throughout the GUI
  * Materials: 0-100: one decimal (90.1), 100-100000: integer (95000), >100000: k suffix (950k)
  * Money: 0-1: four decimals (0.0017), 1-100000: two decimals (95123.14), >100000: k suffix (950k)
+ * XP: 0-100000: integer (95000), >100000: k suffix (550k)
  */
 function formatNumber(value, type = 'material') {
     const num = typeof value === 'number' ? value : parseFloat(value);
@@ -71,11 +72,27 @@ function formatNumber(value, type = 'material') {
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
         }
+        if (num === 0) {
+            return num.toFixed(2);
+        }
         if (num < 1) {
             return num.toFixed(4);
         }
-        if (num <= 100000) {
+        if (num < 100000) {
             return num.toFixed(2);
+        }
+        // > 100000: use k suffix
+        return Math.round(num / 1000) + ' k';
+    } else if (type === 'xp') {
+        // XP formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        if (num === 0) {
+            return num.toFixed(2);
+        }
+        if (num <= 100000) {
+            return Math.round(num).toString();
         }
         // > 100000: use k suffix
         return Math.round(num / 1000) + ' k';
@@ -84,10 +101,13 @@ function formatNumber(value, type = 'material') {
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
         }
-        if (num <= 100) {
+        if (num === 0) {
+            return num.toFixed(2);
+        }
+        if (num < 100) {
             return num.toFixed(1);
         }
-        if (num <= 100000) {
+        if (num < 100000) {
             return Math.round(num).toString();
         }
         // > 100000: use k suffix
@@ -3243,7 +3263,7 @@ function populateDwarfsOverview() {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
         const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
-        xpTd.textContent = `${currentXP} / ${xpNeeded}`;
+        xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
         
         // Find the tool assigned to this dwarf
         const toolTd = document.createElement('td');
@@ -3315,14 +3335,14 @@ function updateDwarfsInPanel() {
                 if (canLevelUp) {
                     // Show star when ready to level up
                     xpDisplay.textContent = '⭐';
-                    xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.title = `Ready to level up! (${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
                     xpDisplay.style.cursor = 'pointer';
                     xpDisplay.style.fontSize = '16px';
                     xpDisplay.style.color = '';
                     xpDisplay.style.opacity = '';
                 } else {
                     // Show XP progress
-                    xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+                    xpDisplay.textContent = `(${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
                     xpDisplay.title = '';
                     xpDisplay.style.cursor = '';
                     xpDisplay.style.fontSize = '10px';
@@ -3368,7 +3388,7 @@ function updateDwarfsInPanel() {
                 }
             }
             
-            const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${d.level || 1}</span>`;
+            const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${d.level || 1}</span>`;
             const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
@@ -3420,12 +3440,12 @@ function populateDwarfsInPanel() {
         if (canLevelUp) {
             // Show star when ready to level up
             xpDisplay.textContent = '⭐';
-            xpDisplay.title = `Ready to level up! (${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.title = `Ready to level up! (${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
             xpDisplay.style.cursor = 'pointer';
             xpDisplay.style.fontSize = '16px';
         } else {
             // Show XP progress
-            xpDisplay.textContent = `(${currentXP}/${xpNeeded} XP)`;
+            xpDisplay.textContent = `(${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
             xpDisplay.style.fontSize = '10px';
             xpDisplay.style.color = '#9fbfe0';
             xpDisplay.style.opacity = '0.7';
@@ -3480,7 +3500,7 @@ function populateDwarfsInPanel() {
         info.id = `dwarf-info-${d.name}`;
         
         // Create level display with XP tooltip
-        const levelSpan = `<span title="${currentXP}/${xpNeeded} XP">⭐ ${currentLevel}</span>`;
+        const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
         
         // Calculate wage using same logic as game-worker.js
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
@@ -3618,7 +3638,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
@@ -3782,7 +3802,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         return card;
     };
 
-    const energyLevel = Math.floor(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
+    const energyLevel = Math.round(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
     statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
@@ -3852,7 +3872,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
     // Update only the dynamic text content (fast, non-blocking)
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${currentXP}/${xpNeeded}`;
+    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
@@ -3998,7 +4018,7 @@ function resetDwarfPoints(dwarf) {
     populateDwarfsInPanel();
     refreshDwarfDetailModal(actualDwarf, true);
 
-    console.log(`${actualDwarf.name} reset to level 1 with ${totalXP} XP for ${resetCost} gold`);
+    console.log(`${actualDwarf.name} reset to level 1 with ${formatNumber(totalXP, 'xp')} XP for ${formatNumber(resetCost, 'gold')} gold`);
 }
 
 // ---- live-update for the dwarfs panel/modal ----
