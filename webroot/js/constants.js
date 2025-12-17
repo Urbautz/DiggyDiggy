@@ -62,8 +62,8 @@ const RESEARCH_COST_MULTIPLIER = 1.15; // Research cost formula: baseCost * (1.1
 
 const GRID_CLUSTERING_HORIZONTAL_CHANCE = 0.5; // 50% chance to use same material as left tile
 const GRID_CLUSTERING_VERTICAL_CHANCE = 0.5; // 50% chance to use same material as above tile
-const GRID_MOVE_DOWN_CHANCE = 0.7; // 30% chance to move down to dig lower
-const GRID_MOVE_UP_CHANCE = 0.5; // 70% chance to move up after horizontal move
+const GRID_MOVE_DOWN_CHANCE = 0.7; // 70% chance to move down to dig lower
+const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 
 // ============================================================================
 // SMELTER CONSTANTS
