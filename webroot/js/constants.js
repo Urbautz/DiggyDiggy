@@ -67,6 +67,12 @@ const GRID_MOVE_DOWN_CHANCE = 0.7; // 70% chance to move down to dig lower
 const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 
 // ============================================================================
+// GEM SPAWN CONSTANTS
+// ============================================================================
+
+const GEM_SPAWN_CHANCE = 0.5; // 5% chance to find a gem when destroying stone materials
+
+// ============================================================================
 // SMELTER CONSTANTS
 // ============================================================================
 

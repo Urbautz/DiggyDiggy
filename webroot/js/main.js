@@ -215,6 +215,23 @@ function updateGridDisplay() {
                 cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
             }
 
+            // Show gem icon if this cell has a gem
+            if (cellData.gemId) {
+                const gem = gems.find(g => g.id === cellData.gemId);
+                if (gem) {
+                    const gemMat = getMaterialById(gem.type);
+                    const gemName = gemMat ? gemMat.name : gem.type;
+                    const gemColor = gemMat ? gemMat.color : '#ffffff';
+
+                    const gemMarker = document.createElement('div');
+                    gemMarker.className = 'gem-marker';
+                    gemMarker.textContent = '💎';
+                    gemMarker.style.setProperty('--gem-color', gemColor);
+                    gemMarker.title = `${gemName}\n${gem.carat.toFixed(2)} carat\n${gem.polished ? 'Polished' : 'Unpolished'}`;
+                    cell.appendChild(gemMarker);
+                }
+            }
+
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
             const rawHardness = Number(cellData.hardness || 0);
             // find dwarfs at this location (may be none) and separate moving vs standing
@@ -1054,6 +1071,46 @@ function openResearch() {
 
 function openGemsModal() {
     openModal('gems-modal');
+    populateGemsList();
+}
+
+function populateGemsList() {
+    const gemsList = document.getElementById('gems-list');
+    if (!gemsList) return;
+
+    // Clear existing content
+    gemsList.innerHTML = '';
+
+    // Check if there are any gems
+    if (!gems || gems.length === 0) {
+        gemsList.innerHTML = '<div class="gems-list-empty">No gems discovered yet. Keep digging to find precious gems!</div>';
+        return;
+    }
+
+    // Sort gems by carat (highest first)
+    const sortedGems = [...gems].sort((a, b) => b.carat - a.carat);
+
+    // Create a gem item for each gem
+    sortedGems.forEach(gem => {
+        const gemMaterial = getMaterialById(gem.type);
+        const gemColor = gemMaterial ? gemMaterial.color : '#ffffff';
+        const gemName = gemMaterial ? gemMaterial.name : gem.type;
+
+        const gemItem = document.createElement('div');
+        gemItem.className = 'gem-item';
+
+        gemItem.innerHTML = `
+            <div class="gem-item-icon">
+                <div class="gem-item-diamond" style="--gem-color: ${gemColor}"></div>
+            </div>
+            <div class="gem-item-info">
+                <div class="gem-item-name">${gemName}</div>
+            </div>
+            <div class="gem-item-carat">${gem.carat.toFixed(2)} ct</div>
+        `;
+
+        gemsList.appendChild(gemItem);
+    });
 }
 
 function openSmelter() {
@@ -2785,6 +2842,41 @@ function triggerCritAnimation(x, y, isOneHit = false) {
     cell.classList.add(animClass);
 }
 
+function triggerGemSpawnAnimation(x, y, gemName) {
+    const GEM_SPAWN_ANIMATION_DURATION = 1500;
+    const gemKey = `${x}:${y}:gem`;
+    const expiresAt = Date.now() + GEM_SPAWN_ANIMATION_DURATION;
+
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Gem spawn animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+
+    // Add gem spawn animation class
+    cell.classList.add('gem-spawn');
+
+    // Create sparkle effect
+    const sparkle = document.createElement('div');
+    sparkle.className = 'gem-sparkle';
+    sparkle.textContent = '💎';
+    sparkle.style.position = 'absolute';
+    sparkle.style.pointerEvents = 'none';
+    sparkle.style.fontSize = '24px';
+    sparkle.style.animation = 'gem-float 1.5s ease-out';
+    cell.style.position = 'relative';
+    cell.appendChild(sparkle);
+
+    // Cleanup after animation
+    setTimeout(() => {
+        cell.classList.remove('gem-spawn');
+        if (sparkle.parentNode === cell) {
+            cell.removeChild(sparkle);
+        }
+    }, GEM_SPAWN_ANIMATION_DURATION);
+}
+
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
@@ -3366,7 +3458,10 @@ function updateDwarfsInPanel() {
         // Update info panel
         const info = document.getElementById(`dwarf-info-${d.name}`);
         if (info) {
-            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
+                if (Array.isArray(b)) return a + b.length;
+                return a + b;
+            }, 0) : 0;
             const bucketResearch = researchtree.find(r => r.id === 'buckets');
             const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
             const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
@@ -3617,8 +3712,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    // Calculate bucket info (gems are arrays, regular materials are numbers)
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
+        if (Array.isArray(b)) {
+            return a + b.length; // Gems: count array length
+        }
+        return a + b; // Regular materials: add count
+    }, 0) : 0;
     const bucketResearch = researchtree.find(r => r.id === 'buckets');
     const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
     const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
@@ -3856,8 +3956,13 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    // Calculate bucket info (gems are arrays, regular materials are numbers)
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
+        if (Array.isArray(b)) {
+            return a + b.length; // Gems: count array length
+        }
+        return a + b; // Regular materials: add count
+    }, 0) : 0;
     const bucketResearch = researchtree.find(r => r.id === 'buckets');
     const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
     const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
@@ -4953,7 +5058,15 @@ function initWorker() {
                 }
                 
                 startX = data.startX;
-                
+
+                // Update gems array
+                if (data.gems) {
+                    gems = data.gems;
+                }
+                if (data.nextGemId !== undefined) {
+                    nextGemId = data.nextGemId;
+                }
+
                 // Check if materialsStock changed to update warehouse panel
                 let stockChanged = false;
                 for (const key in data.materialsStock) {
@@ -4962,7 +5075,7 @@ function initWorker() {
                     }
                     materialsStock[key] = data.materialsStock[key];
                 }
-                
+
                 // Update gold
                 if (data.gold !== undefined) {
                     gold = data.gold;
@@ -4978,6 +5091,11 @@ function initWorker() {
                             // Trigger one-hit animation (stronger effect)
                             console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
                             triggerCritAnimation(transaction.x, transaction.y, true);
+                        } else if (transaction.type === 'gem-spawn') {
+                            // Trigger gem spawn animation
+                            const caratText = transaction.carat ? ` (${transaction.carat.toFixed(2)}ct)` : '';
+                            console.log(`💎 GEM FOUND! ${transaction.dwarf} discovered a ${transaction.gem}${caratText} at (${transaction.x}, ${transaction.y})!`);
+                            triggerGemSpawnAnimation(transaction.x, transaction.y, transaction.gem);
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
                         }
@@ -5094,6 +5212,8 @@ function initWorker() {
             visibleDepth,
             startX,
             materialsStock,
+            gems,
+            nextGemId,
             bucketCapacity,
             dropOff,
             house,
@@ -5148,6 +5268,8 @@ function saveGame() {
             dwarfs: dwarfs,
             startX: startX,
             materialsStock: materialsStock,
+            gems: gems,
+            nextGemId: nextGemId,
             toolsInventory: toolsInventory,
             gold: gold,
             researchtree: researchtree,
@@ -5198,7 +5320,15 @@ function loadGame() {
                 materialsStock[key] = gameState.materialsStock[key];
             }
         }
-        
+
+        // Restore gems array
+        if (gameState.gems) {
+            gems = gameState.gems;
+        }
+        if (gameState.nextGemId !== undefined) {
+            nextGemId = gameState.nextGemId;
+        }
+
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;

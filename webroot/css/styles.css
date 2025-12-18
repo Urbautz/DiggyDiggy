@@ -209,6 +209,16 @@ main {
     100% { opacity: 0; transform: scale(1.4); }
 }
 
+/* Gem spawn - no animation */
+#digging-grid .cell.gem-spawn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+
 /* running/moving marker - intentionally lower z-index so it does not block a digging dwarf's marker */
 #digging-grid .cell .moving-marker {
     position: absolute;
@@ -235,6 +245,22 @@ main {
     pointer-events: none;
     animation: strikeShake 0.5s ease-in-out infinite;
 }
+
+/* gem marker for gems on grid cells */
+#digging-grid .cell .gem-marker {
+    content: '💎';
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: #cd5454;
+    transform: rotate(45deg); /* square turned into a diamond */
+    display: block;
+    z-index: 1;
+}
+/* Diamond-shaped background for gems on grid - no animation */
+#digging-grid .cell .gem-marker::before {
+}
+
 
 /* digging animation styles */
 #digging-grid .cell.is-digging {
@@ -2196,4 +2222,124 @@ header, footer {
 
 .btn-cheat.visible {
     display: inline-block;
+}
+
+/* ============================================================================
+   GEMS MODAL STYLES
+   ============================================================================ */
+
+.gems-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.gem-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.gem-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateX(4px);
+}
+
+.gem-item-icon {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gem-item-diamond {
+    width: 32px;
+    height: 32px;
+    transform: rotate(45deg);
+    background: radial-gradient(ellipse at center,
+        var(--gem-color, #ffffff) 0%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 70%, white) 30%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 40%, black) 60%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 20%, black) 100%);
+    border-radius: 4px;
+    box-shadow:
+        0 0 12px color-mix(in srgb, var(--gem-color, #ffffff) 60%, transparent),
+        inset -3px -3px 6px rgba(0, 0, 0, 0.4),
+        inset 3px 3px 6px rgba(255, 255, 255, 0.5);
+}
+
+.gem-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gem-item-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.gem-item-location {
+    font-size: 12px;
+    color: #9fbfe0;
+    opacity: 0.8;
+}
+
+.gem-item-carat {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fbbf24;
+    white-space: nowrap;
+}
+
+.gem-item-quality {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.gem-quality-flawless {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a1a;
+}
+
+.gem-quality-excellent {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    color: #ffffff;
+}
+
+.gem-quality-good {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: #ffffff;
+}
+
+.gem-quality-fair {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: #ffffff;
+}
+
+.gem-quality-poor {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    color: #ffffff;
+}
+
+.gems-list-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9fbfe0;
+    opacity: 0.7;
+    font-style: italic;
 }
