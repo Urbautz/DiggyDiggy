@@ -2230,8 +2230,88 @@ header, footer {
 
 .gems-list {
     display: grid;
-    gap: 12px;
+    gap: 16px;
     margin-top: 16px;
+}
+
+.gem-type-section {
+    display: grid;
+    gap: 8px;
+}
+
+.gem-type-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gem-type-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.gem-type-expand-icon {
+    font-size: 12px;
+    color: #9fbfe0;
+    transition: transform 0.2s ease;
+    width: 16px;
+    text-align: center;
+}
+
+.gem-type-header:not(.collapsed) .gem-type-expand-icon {
+    transform: rotate(90deg);
+}
+
+.gem-type-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gem-type-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+    flex: 1;
+}
+
+.gem-type-count {
+    font-size: 14px;
+    font-weight: 500;
+    color: #9fbfe0;
+    opacity: 0.8;
+}
+
+.gem-type-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fbbf24;
+    margin-left: 8px;
+}
+
+.gem-type-items {
+    display: grid;
+    gap: 8px;
+    padding-left: 28px;
+    max-height: 1000px;
+    opacity: 1;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.gem-type-items.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 .gem-item {
@@ -2280,13 +2360,20 @@ header, footer {
 .gem-item-info {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .gem-item-name {
     font-size: 16px;
     font-weight: 600;
     color: #ffffff;
+}
+
+.gem-item-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .gem-item-location {
@@ -2296,9 +2383,36 @@ header, footer {
 }
 
 .gem-item-carat {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: #fbbf24;
+    white-space: nowrap;
+}
+
+.gem-item-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #10b981;
+    white-space: nowrap;
+}
+
+.gem-polished-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.gem-unpolished-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    color: #9fbfe0;
     white-space: nowrap;
 }
 

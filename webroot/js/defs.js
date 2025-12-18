@@ -42,11 +42,11 @@ const materials = [
   { id: 'Coal', name: 'Coal',type:'Special',                hardness: 80, probability: 80, worth: 10.5,   minlevel: 500, color: '#191919ff' },
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
-  { id: 'Ruby', name: 'Ruby', type:'Gem',                   hardness: 3000, probability: 0, worth: 500,    minlevel: 1000, color: '#9b111eff' },
-  { id: 'Emerald', name: 'Emerald', type:'Gem',             hardness: 4000, probability: 0, worth: 500,    minlevel: 1000, color: '#50c878ff' },
-  { id: 'Sapphire', name: 'Sapphire', type:'Gem',           hardness: 5000, probability: 0, worth: 500,    minlevel: 1000, color: '#0f52baff' },
-  { id: 'Diamond', name: 'Diamond', type:'Gem',             hardness: 6000, probability: 0, worth: 1000,   minlevel: 1000, color: '#b9f2ffff' },
-  { id: 'Amethyst', name: 'Amethyst', type:'Gem',           hardness: 9000, probability: 0, worth: 2000,    minlevel: 1000, color: '#9966ccff' },
+  { id: 'Ruby', name: 'Ruby', type:'Gem',                   hardness: 300, probability: 0, worth: 50,    minlevel: 1000, color: '#9b111eff' },
+  { id: 'Emerald', name: 'Emerald', type:'Gem',             hardness: 400, probability: 0, worth: 50,    minlevel: 1000, color: '#50c878ff' },
+  { id: 'Sapphire', name: 'Sapphire', type:'Gem',           hardness: 500, probability: 0, worth: 50,    minlevel: 1000, color: '#0f52baff' },
+  { id: 'Diamond', name: 'Diamond', type:'Gem',             hardness: 600, probability: 0, worth: 75,   minlevel: 1000, color: '#b9f2ffff' },
+  { id: 'Amethyst', name: 'Amethyst', type:'Gem',           hardness: 900, probability: 0, worth: 90,    minlevel: 1000, color: '#9966ccff' },
 
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,     minlevel: 2000, maxlevel: 999999, color: '#7e6136ff' },
   { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',         hardness:100, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },

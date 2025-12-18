@@ -1087,29 +1087,93 @@ function populateGemsList() {
         return;
     }
 
-    // Sort gems by carat (highest first)
-    const sortedGems = [...gems].sort((a, b) => b.carat - a.carat);
+    // Group gems by type
+    const gemsByType = {};
+    gems.forEach(gem => {
+        if (!gemsByType[gem.type]) {
+            gemsByType[gem.type] = [];
+        }
+        gemsByType[gem.type].push(gem);
+    });
 
-    // Create a gem item for each gem
-    sortedGems.forEach(gem => {
-        const gemMaterial = getMaterialById(gem.type);
+    // Sort each group by carat (highest first)
+    for (const type in gemsByType) {
+        gemsByType[type].sort((a, b) => b.carat - a.carat);
+    }
+
+    // Get gem types sorted alphabetically
+    const sortedTypes = Object.keys(gemsByType).sort();
+
+    // Create sections for each gem type
+    sortedTypes.forEach(type => {
+        const gemMaterial = getMaterialById(type);
         const gemColor = gemMaterial ? gemMaterial.color : '#ffffff';
-        const gemName = gemMaterial ? gemMaterial.name : gem.type;
+        const gemName = gemMaterial ? gemMaterial.name : type;
+        const gemBaseValue = gemMaterial ? gemMaterial.worth : 0;
+        const gemsOfType = gemsByType[type];
 
-        const gemItem = document.createElement('div');
-        gemItem.className = 'gem-item';
+        // Calculate total value for this gem type
+        const totalValue = gemsOfType.reduce((sum, gem) => sum + (gemBaseValue * gem.carat), 0);
 
-        gemItem.innerHTML = `
-            <div class="gem-item-icon">
-                <div class="gem-item-diamond" style="--gem-color: ${gemColor}"></div>
-            </div>
-            <div class="gem-item-info">
-                <div class="gem-item-name">${gemName}</div>
-            </div>
-            <div class="gem-item-carat">${gem.carat.toFixed(2)} ct</div>
+        // Create collapsible section container
+        const sectionContainer = document.createElement('div');
+        sectionContainer.className = 'gem-type-section';
+
+        // Create type header (clickable)
+        const typeHeader = document.createElement('div');
+        typeHeader.className = 'gem-type-header collapsed';
+        typeHeader.innerHTML = `
+            <div class="gem-type-expand-icon">▶</div>
+            <div class="gem-type-icon" style="background-color: ${gemColor}"></div>
+            <span class="gem-type-name">${gemName}</span>
+            <span class="gem-type-count">(${gemsOfType.length})</span>
+            <span class="gem-type-value">${formatNumber(totalValue, 'gold')}</span>
         `;
 
-        gemsList.appendChild(gemItem);
+        // Create container for gem items (initially hidden)
+        const itemsContainer = document.createElement('div');
+        itemsContainer.className = 'gem-type-items collapsed';
+
+        // Create gem items for this type
+        gemsOfType.forEach(gem => {
+            const gemValue = gemBaseValue * gem.carat;
+            const polishedBadge = gem.polished ? '<span class="gem-polished-badge">✨ Polished</span>' : '<span class="gem-unpolished-badge">Rough</span>';
+
+            const gemItem = document.createElement('div');
+            gemItem.className = 'gem-item';
+
+            gemItem.innerHTML = `
+                <div class="gem-item-icon">
+                    <div class="gem-item-diamond" style="--gem-color: ${gemColor}"></div>
+                </div>
+                <div class="gem-item-info">
+                    <div class="gem-item-name">${gemName}</div>
+                    <div class="gem-item-details">
+                        <span class="gem-item-carat">${gem.carat} ct</span>
+                        ${polishedBadge}
+                    </div>
+                </div>
+                <div class="gem-item-value">${formatNumber(gemValue, 'gold')}</div>
+            `;
+
+            itemsContainer.appendChild(gemItem);
+        });
+
+        // Add click handler to toggle collapse
+        typeHeader.addEventListener('click', () => {
+            const isCollapsed = typeHeader.classList.contains('collapsed');
+            if (isCollapsed) {
+                typeHeader.classList.remove('collapsed');
+                itemsContainer.classList.remove('collapsed');
+            } else {
+                typeHeader.classList.add('collapsed');
+                itemsContainer.classList.add('collapsed');
+            }
+        });
+
+        sectionContainer.appendChild(typeHeader);
+        sectionContainer.appendChild(itemsContainer);
+        gemsList.appendChild(sectionContainer);
     });
 }
 
@@ -3460,6 +3524,7 @@ function updateDwarfsInPanel() {
         if (info) {
             const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
                 if (Array.isArray(b)) return a + b.length;
+                if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
                 return a + b;
             }, 0) : 0;
             const bucketResearch = researchtree.find(r => r.id === 'buckets');
@@ -3589,7 +3654,11 @@ function populateDwarfsInPanel() {
         }
         
         // Calculate bucket fill
-        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
+            if (Array.isArray(b)) return a + b.length;
+            if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
+            return a + b;
+        }, 0) : 0;
         // Apply bucket research bonus (1 capacity per level)
         const bucketResearch = researchtree.find(r => r.id === 'buckets');
         const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
@@ -3712,10 +3781,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info (gems are arrays, regular materials are numbers)
+    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
         if (Array.isArray(b)) {
-            return a + b.length; // Gems: count array length
+            return a + b.length; // Gems as array: count array length
+        }
+        if (typeof b === 'object' && b !== null) {
+            return a + 1; // Gem object: counts as 1
         }
         return a + b; // Regular materials: add count
     }, 0) : 0;
@@ -3761,25 +3833,37 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         bucketGrid.className = 'dwarf-bucket-grid';
 
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
-            if (count > 0) {
+            // Handle both regular materials (count is a number) and gems (count might be an object)
+            let displayCount = count;
+            let displayName = materialId;
+
+            if (typeof count === 'object' && count !== null) {
+                // This is a gem object with properties like {id, type, carat, polished}
+                displayCount = 1;
+                const gemType = count.type || materialId;
+                const mat = getMaterialById(gemType);
+                displayName = mat ? `${mat.name} (${count.carat}ct)` : `${gemType} (${count.carat}ct)`;
+            } else if (count > 0) {
                 const mat = getMaterialById(materialId);
-                const materialName = mat ? mat.name : materialId;
-
-                const item = document.createElement('div');
-                item.className = 'dwarf-bucket-item';
-
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'dwarf-bucket-item-name';
-                nameDiv.textContent = materialName;
-
-                const countDiv = document.createElement('div');
-                countDiv.className = 'dwarf-bucket-item-count';
-                countDiv.textContent = count;
-
-                item.appendChild(nameDiv);
-                item.appendChild(countDiv);
-                bucketGrid.appendChild(item);
+                displayName = mat ? mat.name : materialId;
+            } else {
+                continue;
             }
+
+            const item = document.createElement('div');
+            item.className = 'dwarf-bucket-item';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'dwarf-bucket-item-name';
+            nameDiv.textContent = displayName;
+
+            const countDiv = document.createElement('div');
+            countDiv.className = 'dwarf-bucket-item-count';
+            countDiv.textContent = displayCount;
+
+            item.appendChild(nameDiv);
+            item.appendChild(countDiv);
+            bucketGrid.appendChild(item);
         }
 
         bucketContents.innerHTML = '';
@@ -3956,10 +4040,13 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info (gems are arrays, regular materials are numbers)
+    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
     const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
         if (Array.isArray(b)) {
-            return a + b.length; // Gems: count array length
+            return a + b.length; // Gems as array: count array length
+        }
+        if (typeof b === 'object' && b !== null) {
+            return a + 1; // Gem object: counts as 1
         }
         return a + b; // Regular materials: add count
     }, 0) : 0;
@@ -3998,16 +4085,29 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
         let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
-            if (count > 0) {
+            // Handle both regular materials (count is a number) and gems (count might be an object)
+            let displayCount = count;
+            let displayName = materialId;
+
+            if (typeof count === 'object' && count !== null) {
+                // This is a gem object with properties like {id, type, carat, polished}
+                displayCount = 1;
+                const gemType = count.type || materialId;
+                const mat = getMaterialById(gemType);
+                displayName = mat ? `${mat.name} (${count.carat}ct)` : `${gemType} (${count.carat}ct)`;
+            } else if (count > 0) {
                 const mat = getMaterialById(materialId);
-                const materialName = mat ? mat.name : materialId;
-                bucketHTML += `
-                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
-                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
-                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
-                    </div>
-                `;
+                displayName = mat ? mat.name : materialId;
+            } else {
+                continue;
             }
+
+            bucketHTML += `
+                <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
+                    <div style="font-size: 9px; font-weight: bold;">${displayName}</div>
+                    <div style="font-size: 12px; margin-top: 1px;">${displayCount}</div>
+                </div>
+            `;
         }
         bucketHTML += '</div>';
         bucketContents.innerHTML = bucketHTML;
@@ -5311,6 +5411,33 @@ function loadGame() {
         // Restore game state
         grid = gameState.grid || [];
         dwarfs = gameState.dwarfs || [];
+
+        // Sanitize dwarf buckets - fix any corrupted gem data
+        for (const dwarf of dwarfs) {
+            if (dwarf.bucket) {
+                const sanitizedBucket = {};
+                for (const [key, value] of Object.entries(dwarf.bucket)) {
+                    // If value is an object (corrupted gem data), convert to 1
+                    // If value is a number, keep it
+                    // If value is a string like "[object Object]11", extract the number or default to 1
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        sanitizedBucket[key] = 1;
+                    } else if (typeof value === 'string') {
+                        // Try to extract number from corrupted string like "[object Object]11"
+                        const match = value.match(/\d+$/);
+                        sanitizedBucket[key] = match ? parseInt(match[0]) : 1;
+                    } else if (Array.isArray(value)) {
+                        sanitizedBucket[key] = value.length;
+                    } else if (typeof value === 'number') {
+                        sanitizedBucket[key] = value;
+                    } else {
+                        sanitizedBucket[key] = 1;
+                    }
+                }
+                dwarf.bucket = sanitizedBucket;
+            }
+        }
+
         startX = gameState.startX || 0;
         gold = gameState.gold !== undefined ? gameState.gold : 1000;
         
@@ -5425,7 +5552,8 @@ window.activateCheat = function activateCheat() {
         }
         dwarf.status = 'idle';
         dwarf.moveTarget = null;
-        
+        dwarf.bucket = {}; // Clear bucket
+
         // Give XP for one level
         const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;

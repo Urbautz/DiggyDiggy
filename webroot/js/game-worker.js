@@ -681,7 +681,13 @@ function actForDwarf(dwarf) {
                 }
 
                 for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
-                    // Only regular materials go to materialsStock (gems are already in gems array)
+                    // Check if this is a gem material - gems should stay in gems array, not materialsStock
+                    const material = materials.find(m => m.id === mat);
+                    if (material && material.type === 'Gem') {
+                        // Skip gems - they're already in the gems array
+                        continue;
+                    }
+                    // Only regular materials go to materialsStock
                     materialsStock[mat] = (materialsStock[mat] || 0) + cnt;
                 }
                 //console.log(`Dwarf ${dwarf.name} finished unloading ${JSON.stringify(dwarf.bucket)} at drop-off`);
@@ -923,10 +929,10 @@ function actForDwarf(dwarf) {
                 // Check if this stone contains a gem BEFORE collecting it
                 if (mat && mat.type && mat.type.startsWith('Stone') && !curCell.gemId && Math.random() < GEM_SPAWN_CHANCE) {
                     const gemType = selectRandomGem();
-                    // Calculate carat: 0.5 + random between 0 and (depth / 500)
-                    const depth = dwarf.y || 0;
-                    const maxCarat = depth / 500;
-                    const carat = ROUND(1 + Math.random() * maxCarat);
+                    // Calculate carat: 1 + random whole number based on depth
+                    const depth = (startX + dwarf.y) || 0;
+                    const maxCarat = Math.floor(depth / 500);
+                    const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
 
                     // Get gem material to use its hardness
                     const gemMat = materials.find(m => m.id === gemType);
@@ -960,12 +966,13 @@ function actForDwarf(dwarf) {
                     // No gem - collect the material normally
                     dwarf.bucket = dwarf.bucket || {};
 
-                    // If this is a gem block being collected, add to gems collected count
+                    // If this is a gem block being collected, mark gem as collected but keep in gems array
                     if (curCell.gemId) {
-                        // Gem collected! Remove from gems array or mark as collected
+                        // Gem collected! Update its status but don't remove from gems array
                         const gemIndex = gems.findIndex(g => g.id === curCell.gemId);
                         if (gemIndex !== -1) {
-                            gems.splice(gemIndex, 1);
+                            // Keep the gem in the array - it's now in the warehouse
+                            // No need to remove it
                         }
                         delete curCell.gemId;
                     }
@@ -1088,14 +1095,14 @@ function actForDwarf(dwarf) {
                 // Check if this stone contains a gem BEFORE collecting it
                 if (mat && mat.type && mat.type.startsWith('Stone') && !curCellDig.gemId && Math.random() < GEM_SPAWN_CHANCE) {
                     const gemType = selectRandomGem();
-                    // Calculate carat: 0.5 + random between 0 and (depth / 500)
-                    const depth = dwarf.y || 0;
-                    const maxCarat = depth / 500;
-                    const carat = 0.5 + Math.random() * maxCarat;
+                    // Calculate carat: 1 + random whole number based on depth
+                    const depth = (dwarf.y + startX) || 0;
+                    const maxCarat = Math.floor(depth / 500);
+                    const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
 
                     const gemMat = materials.find(m => m.id === gemType);
                     const gemHardness = gemMat ? gemMat.hardness : 1;
-
+                    console.log(`💎 GEM DISCOVERED! ${dwarf.name} found a ${carat} carat ${gemType} at (${depth})`);
                     const gem = {
                         id: nextGemId++,
                         type: gemType,
@@ -1120,9 +1127,10 @@ function actForDwarf(dwarf) {
                     dwarf.bucket = dwarf.bucket || {};
 
                     if (curCellDig.gemId) {
+                        // Gem collected! Keep it in gems array - it's now in the warehouse
                         const gemIndex = gems.findIndex(g => g.id === curCellDig.gemId);
                         if (gemIndex !== -1) {
-                            gems.splice(gemIndex, 1);
+                            // Keep the gem in the array
                         }
                         delete curCellDig.gemId;
                     }
@@ -1336,10 +1344,10 @@ function actForDwarf(dwarf) {
         const mat = materials.find(m => m.id === matId);
         if (mat && mat.type && mat.type.startsWith('Stone') && !target.gemId && Math.random() < GEM_SPAWN_CHANCE) {
             const gemType = selectRandomGem();
-            // Calculate carat: 0.5 + random between 0 and (depth / 500)
-            const depth = targetRowIndex || 0;
-            const maxCarat = depth / 500;
-            const carat = 0.5 + Math.random() * maxCarat;
+            // Calculate carat: 1 + random whole number based on depth
+            const depth = (targetRowIndex + startX) || 0;
+            const maxCarat = Math.floor(depth / 500);
+            const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
 
             const gemMat = materials.find(m => m.id === gemType);
             const gemHardness = gemMat ? gemMat.hardness : 1;
@@ -1360,10 +1368,10 @@ function actForDwarf(dwarf) {
 
             pendingTransactions.push({ type: 'gem-spawn', x: foundCol, y: targetRowIndex, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
         } else if (target.gemId) {
-            // Gem is being collected
+            // Gem is being collected - keep it in gems array
             const gemIndex = gems.findIndex(g => g.id === target.gemId);
             if (gemIndex !== -1) {
-                gems.splice(gemIndex, 1);
+                // Keep the gem in the array
             }
             delete target.gemId;
         }
