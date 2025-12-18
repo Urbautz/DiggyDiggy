@@ -1078,6 +1078,13 @@ function populateGemsList() {
     const gemsList = document.getElementById('gems-list');
     if (!gemsList) return;
 
+    // Store which gem types are currently expanded
+    const expandedTypes = new Set();
+    gemsList.querySelectorAll('.gem-type-header:not(.collapsed)').forEach(header => {
+        const typeName = header.querySelector('.gem-type-name')?.textContent;
+        if (typeName) expandedTypes.add(typeName);
+    });
+
     // Clear existing content
     gemsList.innerHTML = '';
 
@@ -1115,38 +1122,120 @@ function populateGemsList() {
         // Calculate total value for this gem type
         const totalValue = gemsOfType.reduce((sum, gem) => sum + (gemBaseValue * gem.carat), 0);
 
+        // Calculate max carat for each status
+        const maxCaratRough = Math.max(...gemsOfType.filter(g => !g.polished).map(g => g.carat), 0);
+        const maxCaratPolished = Math.max(...gemsOfType.filter(g => g.polished).map(g => g.carat), 0);
+
+        // Build status info string
+        let statusInfo = '';
+        if (maxCaratRough > 0) statusInfo += `Rough ${maxCaratRough}ct`;
+        if (maxCaratPolished > 0) {
+            if (statusInfo) statusInfo += ' • ';
+            statusInfo += `Polished ${maxCaratPolished}ct`;
+        }
+
         // Create collapsible section container
         const sectionContainer = document.createElement('div');
         sectionContainer.className = 'gem-type-section';
 
         // Create type header (clickable)
         const typeHeader = document.createElement('div');
-        typeHeader.className = 'gem-type-header collapsed';
+        const isExpanded = expandedTypes.has(gemName);
+        typeHeader.className = isExpanded ? 'gem-type-header' : 'gem-type-header collapsed';
         typeHeader.innerHTML = `
             <div class="gem-type-expand-icon">▶</div>
             <div class="gem-type-icon" style="background-color: ${gemColor}"></div>
             <span class="gem-type-name">${gemName}</span>
+            <span class="gem-type-status-info">${statusInfo}</span>
             <span class="gem-type-count">(${gemsOfType.length})</span>
             <span class="gem-type-value">${formatNumber(totalValue, 'gold')}</span>
         `;
 
-        // Create container for gem items (initially hidden)
+        // Create container for gem items (initially hidden unless expanded)
         const itemsContainer = document.createElement('div');
-        itemsContainer.className = 'gem-type-items collapsed';
+        itemsContainer.className = isExpanded ? 'gem-type-items' : 'gem-type-items collapsed';
 
-        // Create gem items for this type
+        // Group gems by polished status and carat
+        const gemGroups = {};
         gemsOfType.forEach(gem => {
-            const gemValue = gemBaseValue * gem.carat;
-            const polishedBadge = gem.polished ? '<span class="gem-polished-badge">✨ Polished</span>' : '<span class="gem-unpolished-badge">Rough</span>';
+            const key = `${gem.polished ? 'polished' : 'rough'}_${gem.carat}`;
+            if (!gemGroups[key]) {
+                gemGroups[key] = {
+                    polished: gem.polished,
+                    carat: gem.carat,
+                    count: 0,
+                    totalValue: 0,
+                    markedForCutting: false,
+                    cuttingProgress: 0,
+                    maxProgress: 0
+                };
+            }
+            gemGroups[key].count++;
+            gemGroups[key].totalValue += gemBaseValue * gem.carat;
+
+            // Track cutting status - if any gem in the group is marked for cutting
+            if (gem.markedForCutting) {
+                gemGroups[key].markedForCutting = true;
+                gemGroups[key].maxProgress = 250; // From task.ticksRequired
+                // Track the highest cutting progress in this group
+                const currentProgress = gem.cuttingProgress || 0;
+                if (currentProgress > gemGroups[key].cuttingProgress) {
+                    gemGroups[key].cuttingProgress = currentProgress;
+                }
+            }
+        });
+
+        // Sort groups: polished first, then by carat descending
+        const sortedGroups = Object.values(gemGroups).sort((a, b) => {
+            if (a.polished !== b.polished) return b.polished ? 1 : -1; // Polished first
+            return b.carat - a.carat; // Then by carat descending
+        });
+
+        // Create gem items for each group
+        sortedGroups.forEach(group => {
+            // Check if gem cutting is researched
+            const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
+            const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
+
+            // Build status badge with cut button or progress
+            let statusSection = '';
+            if (group.polished) {
+                statusSection = '<span class="gem-polished-badge">✨ Polished</span>';
+            } else if (group.markedForCutting) {
+                // Show cutting progress
+                const progressPercent = (group.maxProgress > 0)
+                    ? Math.round((group.cuttingProgress / group.maxProgress) * 100)
+                    : 0;
+                statusSection = `
+                    <span class="gem-unpolished-badge">Rough</span>
+                    <span class="gem-cutting-progress">Cutting: ${progressPercent}%</span>
+                `;
+            } else if (hasGemCutting) {
+                // Show rough badge with cut button
+                statusSection = `
+                    <span class="gem-unpolished-badge">Rough</span>
+                    <button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}" title="Mark all ${group.carat}ct rough gems for cutting and polishing">Cut</button>
+                `;
+            } else {
+                // Just rough badge
+                statusSection = '<span class="gem-unpolished-badge">Rough</span>';
+            }
 
             const gemItem = document.createElement('div');
             gemItem.className = 'gem-item gem-item-compact';
 
             gemItem.innerHTML = `
                 <div class="gem-item-compact-content">
-                    <span class="gem-item-carat">${gem.carat} ct</span>
-                    ${polishedBadge}
-                    <span class="gem-item-value">${formatNumber(gemValue, 'gold')}</span>
+                    <span class="gem-item-carat">${group.carat} ct</span>
+                    <div class="gem-item-status-column">
+                        ${statusSection}
+                    </div>
+                    <span class="gem-item-count">×${group.count}</span>
+                    <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
+                    <div class="gem-item-actions">
+                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                    </div>
                 </div>
             `;
 
@@ -1169,6 +1258,139 @@ function populateGemsList() {
         sectionContainer.appendChild(itemsContainer);
         gemsList.appendChild(sectionContainer);
     });
+
+    // Add event listeners for sell buttons
+    document.querySelectorAll('.gem-sell-one-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            const polished = btn.dataset.polished === 'true';
+            sellGems(gemType, carat, polished, false);
+        });
+    });
+
+    document.querySelectorAll('.gem-sell-lower-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            const polished = btn.dataset.polished === 'true';
+            sellGems(gemType, carat, polished, true);
+        });
+    });
+
+    // Add event listeners for cut buttons
+    document.querySelectorAll('.gem-cut-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            markGemsForCutting(gemType, carat);
+        });
+    });
+}
+
+function markGemsForCutting(gemType, carat) {
+    // Mark all rough gems of this type and carat for cutting
+    let markedCount = 0;
+    gems.forEach(gem => {
+        if (gem.type === gemType && gem.carat === carat && !gem.polished && !gem.markedForCutting) {
+            gem.markedForCutting = true;
+            gem.cuttingProgress = 0;
+            markedCount++;
+        }
+    });
+
+    if (markedCount > 0) {
+        // Sync to worker
+        if (gameWorker) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gems: gems }
+            });
+        }
+
+        // Save game
+        saveGame();
+
+        // Refresh the gems list
+        populateGemsList();
+    }
+}
+
+function sellGems(gemType, carat, polished, includeLower) {
+    // Find gems to sell
+    const gemsToSell = [];
+
+    for (let i = gems.length - 1; i >= 0; i--) {
+        const gem = gems[i];
+        if (gem.type === gemType && gem.polished === polished) {
+            if (includeLower) {
+                // Sell this carat and all lower carats with same polished status
+                if (gem.carat <= carat) {
+                    gemsToSell.push(gem);
+                }
+            } else {
+                // Sell only one gem with exact carat match
+                if (gem.carat === carat && gemsToSell.length === 0) {
+                    gemsToSell.push(gem);
+                }
+            }
+        }
+    }
+
+    if (gemsToSell.length === 0) {
+        console.warn('No gems found to sell');
+        return;
+    }
+
+    // Calculate total value
+    const gemMaterial = getMaterialById(gemType);
+    const baseValue = gemMaterial ? gemMaterial.worth : 0;
+    let totalValue = 0;
+
+    gemsToSell.forEach(gem => {
+        totalValue += baseValue * gem.carat;
+    });
+
+    // Remove gems from array
+    gemsToSell.forEach(gem => {
+        const index = gems.findIndex(g => g.id === gem.id);
+        if (index !== -1) {
+            gems.splice(index, 1);
+        }
+    });
+
+    // Add gold
+    gold += totalValue;
+    updateGoldDisplay();
+
+    // Log transaction
+    const gemName = gemMaterial ? gemMaterial.name : gemType;
+    const statusText = polished ? 'Polished' : 'Rough';
+    const description = includeLower
+        ? `Sold ${gemsToSell.length} ${statusText} ${gemName} (${carat}ct and lower)`
+        : `Sold 1 ${statusText} ${gemName} (${carat}ct)`;
+
+    logTransaction('income', totalValue, description);
+
+    // Sync to worker
+    if (gameWorker) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gems: gems,
+                gold: gold
+            }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Refresh the gems list
+    populateGemsList();
 }
 
 function openSmelter() {
@@ -1661,6 +1883,10 @@ function populateSmelter() {
         let stockAmount = 0;
         if (task.id === 'do-nothing') {
             isActionable = true; // "Do nothing" is always "actionable"
+        } else if (task.type === 'gem-cutting' && isUnlocked) {
+            // For gem cutting tasks, check if there are any gems marked for cutting
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            isActionable = !!gemToProcess;
         } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
             stockAmount = materialsStock[task.input.material] || 0;
             // For heating tasks, only actionable if temp is below min and below max
@@ -1712,9 +1938,15 @@ function populateSmelter() {
             if (task.minTemp && smelterTemperature < task.minTemp) {
                 statusIndicator.textContent = '🌡️';
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
-            } else {
+            } else if (task.type === 'gem-cutting') {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - no gems marked for cutting`;
+            } else if (task.input && task.input.amount) {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked`;
             }
         }
         taskRow.appendChild(statusIndicator);

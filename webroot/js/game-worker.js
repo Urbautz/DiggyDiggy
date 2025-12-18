@@ -96,6 +96,13 @@ function smelterHasWork() {
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
         }
+        // For gem cutting tasks, check if there are any gems marked for cutting
+        if (task.type === 'gem-cutting') {
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            if (gemToProcess) {
+                return true;
+            }
+        }
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
@@ -137,7 +144,16 @@ function findActionableSmelterTask() {
         if (task.minTemp && smelterTemperature < task.minTemp) {
             continue; // Skip tasks that require higher temperature
         }
-        
+
+        // For gem cutting tasks, check if there are any gems marked for cutting
+        if (task.type === 'gem-cutting') {
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            if (gemToProcess) {
+                return task;
+            }
+            continue; // No gems available, try next task
+        }
+
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
@@ -600,13 +616,47 @@ function actForDwarf(dwarf) {
                 return;
             }
             
+            // Handle gem cutting task
+            if (task.type === 'gem-cutting') {
+                // Find a gem marked for cutting
+                const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                if (gemToProcess) {
+                    // Initialize cutting progress if not already set
+                    if (!gemToProcess.cuttingProgress) {
+                        gemToProcess.cuttingProgress = 0;
+                    }
+
+                    // Increment cutting progress
+                    gemToProcess.cuttingProgress++;
+
+                    // Check if cutting is complete
+                    if (gemToProcess.cuttingProgress >= task.ticksRequired) {
+                        // Mark gem as polished and increase value by 50%
+                        gemToProcess.polished = true;
+                        gemToProcess.markedForCutting = false;
+                        gemToProcess.cuttingProgress = 0;
+                        //console.log(`Dwarf ${dwarf.name} finished cutting gem ${gemToProcess.id}`);
+                    }
+
+                    // Pay the dwarf, consume energy and award XP (wage already calculated above)
+                    gold = Math.max(0, gold - wage);
+                    pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
+                    dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+                    dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
+
+                    return;
+                }
+            }
+
             // Perform the smelting action
-            const inputMaterial = task.input.material;
-            const inputAmount = task.input.amount;
-            
-            // Consume input materials
-            materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
-            
+            const inputMaterial = task.input ? task.input.material : null;
+            const inputAmount = task.input ? task.input.amount : 0;
+
+            // Consume input materials (if task has input)
+            if (inputMaterial && inputAmount) {
+                materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+            }
+
             // Handle heating task
             if (task.type === 'heating' && task.heatGain) {
                 // Add heat to the furnace (capped at 1500 degrees)
@@ -1543,6 +1593,7 @@ self.addEventListener('message', (e) => {
                 if (data.startX !== undefined) startX = data.startX;
                 if (data.materialsStock) materialsStock = data.materialsStock;
                 if (data.gold !== undefined) gold = data.gold;
+                if (data.gems !== undefined) gems = data.gems;
                 if (data.toolsInventory) toolsInventory = data.toolsInventory;
                 if (data.activeResearch !== undefined) {
                     activeResearch = data.activeResearch;

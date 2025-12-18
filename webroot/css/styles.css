@@ -2273,6 +2273,7 @@ header, footer {
     height: 20px;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transform: rotate(45deg);
 }
 
 .gem-type-name {
@@ -2280,6 +2281,14 @@ header, footer {
     font-weight: 700;
     color: #ffffff;
     letter-spacing: 0.5px;
+}
+
+.gem-type-status-info {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9fbfe0;
+    opacity: 0.8;
+    margin-left: 8px;
     flex: 1;
 }
 
@@ -2301,7 +2310,9 @@ header, footer {
     display: grid;
     gap: 8px;
     padding-left: 28px;
-    max-height: 1000px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    max-height: 2000px;
     opacity: 1;
     transition: all 0.3s ease;
     overflow: hidden;
@@ -2312,6 +2323,7 @@ header, footer {
     opacity: 0;
     padding-top: 0;
     padding-bottom: 0;
+    margin-bottom: 0;
 }
 
 .gem-item {
@@ -2404,7 +2416,14 @@ header, footer {
 .gem-item-value {
     font-size: 16px;
     font-weight: 600;
-    color: #10b981;
+    color: #fbbf24;
+    white-space: nowrap;
+}
+
+.gem-item-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: #9fbfe0;
     white-space: nowrap;
 }
 
@@ -2468,4 +2487,78 @@ header, footer {
     color: #9fbfe0;
     opacity: 0.7;
     font-style: italic;
+}
+
+.gem-item-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.gem-sell-one-btn,
+.gem-sell-lower-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.gem-sell-one-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+}
+
+.gem-sell-one-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+}
+
+.gem-sell-lower-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+}
+
+.gem-sell-lower-btn:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    transform: translateY(-1px);
+}
+
+.gem-cut-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: #ffffff;
+}
+
+.gem-cut-btn:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    transform: translateY(-1px);
+}
+
+.gem-cutting-progress {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.gem-item-status-column {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 200px;
+    flex-shrink: 0;
 }

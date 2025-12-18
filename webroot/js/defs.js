@@ -88,6 +88,7 @@ const toolsInventory = [
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
     { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100°.', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: 250, requires: 'gem-cutting' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
     { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
     { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
@@ -124,8 +125,8 @@ let researchtree = [
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'gem-polishing', name: 'Gem Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
-      min_depth: 1000, description: 'Unlocks gem polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
+    { id: 'gem-cutting', name: 'Gem Cutting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
+      min_depth: 1000, description: 'Unlocks gem cutting at the smelter. The cutting takes 250 Ticks.' },
     { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
