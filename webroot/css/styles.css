@@ -19,6 +19,8 @@ body {
 main {
     margin: 0;
     width: 100%;
+    position: relative;
+    z-index: 101;
 }
 
 /* layout for multiple grids side-by-side */
@@ -30,6 +32,8 @@ main {
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
+    position: relative;
+    z-index: 101;
 }
 .grids #side-grids { display:flex; flex-direction:column; margin:-12px; flex: 0 0 auto; }
 
@@ -335,28 +339,67 @@ header, footer {
 /* top bar (site header with controls) */
 .topbar {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    background: linear-gradient(180deg, #0f0f0f 0%, #151515 100%);
-    padding: 10px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 16px;
+    width: calc(532px + 28px + 450px + 156px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 0;
+}
+
+.topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.brand-logo {
+    width: 100px;
+    height: 100px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
 }
 
 .topbar .brand h1 {
     margin: 0;
-    font-size: 18px;
-    letter-spacing: 0.4px;
+    margin-bottom: 0px;
+    font-size: 24px;
+    letter-spacing: 0.6px;
+}
+
+.topbar-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.topbar-controls > div {
+    display: flex;
+    gap: 6px;
 }
 
 .gold-display {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(218, 165, 32, 0.1));
     border: 1px solid rgba(255, 215, 0, 0.2);
     border-radius: 8px;
@@ -364,7 +407,15 @@ header, footer {
     font-size: 16px;
     color: #ffd700;
     box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
-    margin-left: auto;
+    height: 38px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gold-display:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(218, 165, 32, 0.15));
+    border-color: rgba(255, 215, 0, 0.3);
+    transform: translateY(-1px);
 }
 
 .gold-display .gold-icon {
@@ -374,12 +425,6 @@ header, footer {
 
 .gold-display .gold-amount {
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
-}
-
-.topbar-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 /* stock status pills in header */
@@ -486,7 +531,6 @@ header, footer {
 .materials-panel-subtitle {
     font-size: 12px;
     color: #dbeafe;
-    text-transform: uppercase;
     letter-spacing: 0.4px;
 }
 
@@ -558,19 +602,28 @@ header, footer {
 /* dwarf status panel in the topbar */
 /* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
 
-/* settings button shares similar visual style but is smaller */
+/* settings button shares similar visual style but is squared and smaller */
 #settings-button, #pause-button, #about-button {
-    background: #2b2b2b;
+    background: rgba(255,255,255,0.05);
     color: #fff;
-    border: 1px solid #444;
-    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 0;
     cursor: pointer;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 20px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex: 1;
 }
 
 #settings-button:hover, #pause-button:hover, #about-button:hover, #dig-button:hover {
-    background: #333;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
 }
 
 /* modal overlay & dialog (glass effect) */
@@ -664,6 +717,7 @@ header, footer {
 .dwarfs-table th, .dwarfs-table td { padding: 8px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .dwarfs-table thead th { font-weight: 700; font-size: 13px; color: #dbeafe; }
 .dwarfs-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.dwarfs-table tbody tr:hover { background: rgba(255,255,255,0.08); cursor: pointer; }
 .dwarfs-table td { color: #e6eefc; }
 .dwarfs-table .bucket-line { font-size: 12px; padding: 2px 0; color: #cfe7ff }
 .dwarfs-table .bucket-line.empty { opacity: 0.6; color: #9fbfe0 }
@@ -715,14 +769,12 @@ header, footer {
     font-weight: 700;
     font-size: 11px;
     color: #bfdbfe;
-    text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     margin-bottom: 0;
 }
 
 .warehouse-table-header span {
-    text-transform: uppercase;
     color: #bfdbfe !important;
     font-size: 11px !important;
     font-weight: 700 !important;
@@ -764,6 +816,14 @@ header, footer {
 .warehouse-row > * {
     position: relative;
     z-index: 1;
+}
+
+.warehouse-row:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    cursor: pointer;
+    transform: translateX(2px);
+    transition: all 0.2s ease;
 }
 
 .wh-col-name { 
@@ -921,6 +981,14 @@ header, footer {
     margin-bottom: 8px;
     width: 100%;
     box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.tool-card-panel:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+    cursor: pointer;
+    transform: translateX(2px);
 }
 
 .tool-card-header {
@@ -1039,7 +1107,6 @@ header, footer {
     font-weight: 700;
     color: #dbeafe;
     font-size: 13px;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
@@ -2452,7 +2519,6 @@ header, footer {
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
     white-space: nowrap;
 }
 
