@@ -261,9 +261,6 @@ main {
     display: block;
     z-index: 1;
 }
-/* Diamond-shaped background for gems on grid - no animation */
-#digging-grid .cell .gem-marker::before {
-}
 
 
 /* digging animation styles */
@@ -290,7 +287,6 @@ main {
 }
 
 #digging-grid .digging-marker.strike { 
-    
     animation: shovelStrike 0.9s ease-in-out infinite; 
 }
 
