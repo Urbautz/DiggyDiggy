@@ -124,6 +124,8 @@ let researchtree = [
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
+    { id: 'gem-polishing', name: 'Gem Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
+      min_depth: 1000, description: 'Unlocks gem polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
     { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],

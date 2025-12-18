@@ -2326,6 +2326,18 @@ header, footer {
     transition: all 0.2s ease;
 }
 
+.gem-item-compact {
+    display: block;
+    padding: 8px 12px;
+}
+
+.gem-item-compact-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
 .gem-item:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);

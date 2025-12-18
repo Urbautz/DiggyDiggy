@@ -1140,20 +1140,14 @@ function populateGemsList() {
             const polishedBadge = gem.polished ? '<span class="gem-polished-badge">✨ Polished</span>' : '<span class="gem-unpolished-badge">Rough</span>';
 
             const gemItem = document.createElement('div');
-            gemItem.className = 'gem-item';
+            gemItem.className = 'gem-item gem-item-compact';
 
             gemItem.innerHTML = `
-                <div class="gem-item-icon">
-                    <div class="gem-item-diamond" style="--gem-color: ${gemColor}"></div>
+                <div class="gem-item-compact-content">
+                    <span class="gem-item-carat">${gem.carat} ct</span>
+                    ${polishedBadge}
+                    <span class="gem-item-value">${formatNumber(gemValue, 'gold')}</span>
                 </div>
-                <div class="gem-item-info">
-                    <div class="gem-item-name">${gemName}</div>
-                    <div class="gem-item-details">
-                        <span class="gem-item-carat">${gem.carat} ct</span>
-                        ${polishedBadge}
-                    </div>
-                </div>
-                <div class="gem-item-value">${formatNumber(gemValue, 'gold')}</div>
             `;
 
             itemsContainer.appendChild(gemItem);
