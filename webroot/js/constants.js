@@ -67,6 +67,12 @@ const GRID_MOVE_DOWN_CHANCE = 0.7; // 70% chance to move down to dig lower
 const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 
 // ============================================================================
+// GEM SPAWN CONSTANTS
+// ============================================================================
+
+const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
+
+// ============================================================================
 // SMELTER CONSTANTS
 // ============================================================================
 
@@ -119,7 +125,7 @@ const TOOL_UPGRADE_COST_MULTIPLIER = 2; // Cost doubles with each level
 
 const ENCHANT_BASE_COST = 500; // Base gold cost for enchanting
 const ENCHANT_COST_MULTIPLIER = 4; // Cost multiplier per enchantment level
-const ENCHANT_POWER_BONUS = 0.01; // 1% power bonus per enchantment level
+const ENCHANT_POWER_BONUS = 0.08; // 8% power bonus per enchantment level
 
 // ============================================================================
 // GAME SYSTEM CONSTANTS

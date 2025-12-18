@@ -215,6 +215,23 @@ function updateGridDisplay() {
                 cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
             }
 
+            // Show gem icon if this cell has a gem
+            if (cellData.gemId) {
+                const gem = gems.find(g => g.id === cellData.gemId);
+                if (gem) {
+                    const gemMat = getMaterialById(gem.type);
+                    const gemName = gemMat ? gemMat.name : gem.type;
+                    const gemColor = gemMat ? gemMat.color : '#ffffff';
+
+                    const gemMarker = document.createElement('div');
+                    gemMarker.className = 'gem-marker';
+                    gemMarker.textContent = '💎';
+                    gemMarker.style.setProperty('--gem-color', gemColor);
+                    gemMarker.title = `${gemName}\n${gem.carat.toFixed(2)} carat\n${gem.polished ? 'Polished' : 'Unpolished'}`;
+                    cell.appendChild(gemMarker);
+                }
+            }
+
             // Render empty (dug-out) cells differently: skyblue background and no "0" text
             const rawHardness = Number(cellData.hardness || 0);
             // find dwarfs at this location (may be none) and separate moving vs standing
@@ -1054,6 +1071,326 @@ function openResearch() {
 
 function openGemsModal() {
     openModal('gems-modal');
+    populateGemsList();
+}
+
+function populateGemsList() {
+    const gemsList = document.getElementById('gems-list');
+    if (!gemsList) return;
+
+    // Store which gem types are currently expanded
+    const expandedTypes = new Set();
+    gemsList.querySelectorAll('.gem-type-header:not(.collapsed)').forEach(header => {
+        const typeName = header.querySelector('.gem-type-name')?.textContent;
+        if (typeName) expandedTypes.add(typeName);
+    });
+
+    // Clear existing content
+    gemsList.innerHTML = '';
+
+    // Check if there are any gems
+    if (!gems || gems.length === 0) {
+        gemsList.innerHTML = '<div class="gems-list-empty">No gems discovered yet. Keep digging to find precious gems!</div>';
+        return;
+    }
+
+    // Group gems by type
+    const gemsByType = {};
+    gems.forEach(gem => {
+        if (!gemsByType[gem.type]) {
+            gemsByType[gem.type] = [];
+        }
+        gemsByType[gem.type].push(gem);
+    });
+
+    // Sort each group by carat (highest first)
+    for (const type in gemsByType) {
+        gemsByType[type].sort((a, b) => b.carat - a.carat);
+    }
+
+    // Get gem types sorted alphabetically
+    const sortedTypes = Object.keys(gemsByType).sort();
+
+    // Create sections for each gem type
+    sortedTypes.forEach(type => {
+        const gemMaterial = getMaterialById(type);
+        const gemColor = gemMaterial ? gemMaterial.color : '#ffffff';
+        const gemName = gemMaterial ? gemMaterial.name : type;
+        const gemBaseValue = gemMaterial ? gemMaterial.worth : 0;
+        const gemsOfType = gemsByType[type];
+
+        // Calculate total value for this gem type
+        const totalValue = gemsOfType.reduce((sum, gem) => sum + (gemBaseValue * gem.carat), 0);
+
+        // Calculate max carat for each status
+        const maxCaratRough = Math.max(...gemsOfType.filter(g => !g.polished).map(g => g.carat), 0);
+        const maxCaratPolished = Math.max(...gemsOfType.filter(g => g.polished).map(g => g.carat), 0);
+
+        // Build status info string
+        let statusInfo = '';
+        if (maxCaratRough > 0) statusInfo += `Rough ${maxCaratRough}ct`;
+        if (maxCaratPolished > 0) {
+            if (statusInfo) statusInfo += ' • ';
+            statusInfo += `Polished ${maxCaratPolished}ct`;
+        }
+
+        // Create collapsible section container
+        const sectionContainer = document.createElement('div');
+        sectionContainer.className = 'gem-type-section';
+
+        // Create type header (clickable)
+        const typeHeader = document.createElement('div');
+        const isExpanded = expandedTypes.has(gemName);
+        typeHeader.className = isExpanded ? 'gem-type-header' : 'gem-type-header collapsed';
+        typeHeader.innerHTML = `
+            <div class="gem-type-expand-icon">▶</div>
+            <div class="gem-type-icon" style="background-color: ${gemColor}"></div>
+            <span class="gem-type-name">${gemName}</span>
+            <span class="gem-type-status-info">${statusInfo}</span>
+            <span class="gem-type-count">(${gemsOfType.length})</span>
+            <span class="gem-type-value">${formatNumber(totalValue, 'gold')}</span>
+        `;
+
+        // Create container for gem items (initially hidden unless expanded)
+        const itemsContainer = document.createElement('div');
+        itemsContainer.className = isExpanded ? 'gem-type-items' : 'gem-type-items collapsed';
+
+        // Group gems by polished status and carat
+        const gemGroups = {};
+        gemsOfType.forEach(gem => {
+            const key = `${gem.polished ? 'polished' : 'rough'}_${gem.carat}`;
+            if (!gemGroups[key]) {
+                gemGroups[key] = {
+                    polished: gem.polished,
+                    carat: gem.carat,
+                    count: 0,
+                    totalValue: 0,
+                    markedForCutting: false,
+                    cuttingProgress: 0,
+                    maxProgress: 0
+                };
+            }
+            gemGroups[key].count++;
+            gemGroups[key].totalValue += gemBaseValue * gem.carat;
+
+            // Track cutting status - if any gem in the group is marked for cutting
+            if (gem.markedForCutting) {
+                gemGroups[key].markedForCutting = true;
+                gemGroups[key].maxProgress = 250; // From task.ticksRequired
+                // Track the highest cutting progress in this group
+                const currentProgress = gem.cuttingProgress || 0;
+                if (currentProgress > gemGroups[key].cuttingProgress) {
+                    gemGroups[key].cuttingProgress = currentProgress;
+                }
+            }
+        });
+
+        // Sort groups: polished first, then by carat descending
+        const sortedGroups = Object.values(gemGroups).sort((a, b) => {
+            if (a.polished !== b.polished) return b.polished ? 1 : -1; // Polished first
+            return b.carat - a.carat; // Then by carat descending
+        });
+
+        // Create gem items for each group
+        sortedGroups.forEach(group => {
+            // Check if gem cutting is researched
+            const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
+            const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
+
+            // Build status badge with cut button or progress
+            let statusSection = '';
+            if (group.polished) {
+                statusSection = '<span class="gem-polished-badge">✨ Polished</span>';
+            } else if (group.markedForCutting) {
+                // Show cutting progress
+                const progressPercent = (group.maxProgress > 0)
+                    ? Math.round((group.cuttingProgress / group.maxProgress) * 100)
+                    : 0;
+                statusSection = `
+                    <span class="gem-unpolished-badge">Rough</span>
+                    <span class="gem-cutting-progress">Cutting: ${progressPercent}%</span>
+                `;
+            } else if (hasGemCutting) {
+                // Show rough badge with cut button
+                statusSection = `
+                    <span class="gem-unpolished-badge">Rough</span>
+                    <button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}" title="Mark all ${group.carat}ct rough gems for cutting and polishing">Cut</button>
+                `;
+            } else {
+                // Just rough badge
+                statusSection = '<span class="gem-unpolished-badge">Rough</span>';
+            }
+
+            const gemItem = document.createElement('div');
+            gemItem.className = 'gem-item gem-item-compact';
+
+            gemItem.innerHTML = `
+                <div class="gem-item-compact-content">
+                    <span class="gem-item-carat">${group.carat} ct</span>
+                    <div class="gem-item-status-column">
+                        ${statusSection}
+                    </div>
+                    <span class="gem-item-count">×${group.count}</span>
+                    <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
+                    <div class="gem-item-actions">
+                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                    </div>
+                </div>
+            `;
+
+            itemsContainer.appendChild(gemItem);
+        });
+
+        // Add click handler to toggle collapse
+        typeHeader.addEventListener('click', () => {
+            const isCollapsed = typeHeader.classList.contains('collapsed');
+            if (isCollapsed) {
+                typeHeader.classList.remove('collapsed');
+                itemsContainer.classList.remove('collapsed');
+            } else {
+                typeHeader.classList.add('collapsed');
+                itemsContainer.classList.add('collapsed');
+            }
+        });
+
+        sectionContainer.appendChild(typeHeader);
+        sectionContainer.appendChild(itemsContainer);
+        gemsList.appendChild(sectionContainer);
+    });
+
+    // Add event listeners for sell buttons
+    document.querySelectorAll('.gem-sell-one-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            const polished = btn.dataset.polished === 'true';
+            sellGems(gemType, carat, polished, false);
+        });
+    });
+
+    document.querySelectorAll('.gem-sell-lower-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            const polished = btn.dataset.polished === 'true';
+            sellGems(gemType, carat, polished, true);
+        });
+    });
+
+    // Add event listeners for cut buttons
+    document.querySelectorAll('.gem-cut-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            const carat = parseInt(btn.dataset.carat);
+            markGemsForCutting(gemType, carat);
+        });
+    });
+}
+
+function markGemsForCutting(gemType, carat) {
+    // Mark all rough gems of this type and carat for cutting
+    let markedCount = 0;
+    gems.forEach(gem => {
+        if (gem.type === gemType && gem.carat === carat && !gem.polished && !gem.markedForCutting) {
+            gem.markedForCutting = true;
+            gem.cuttingProgress = 0;
+            markedCount++;
+        }
+    });
+
+    if (markedCount > 0) {
+        // Sync to worker
+        if (gameWorker) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gems: gems }
+            });
+        }
+
+        // Save game
+        saveGame();
+
+        // Refresh the gems list
+        populateGemsList();
+    }
+}
+
+function sellGems(gemType, carat, polished, includeLower) {
+    // Find gems to sell
+    const gemsToSell = [];
+
+    for (let i = gems.length - 1; i >= 0; i--) {
+        const gem = gems[i];
+        if (gem.type === gemType && gem.polished === polished) {
+            if (includeLower) {
+                // Sell this carat and all lower carats with same polished status
+                if (gem.carat <= carat) {
+                    gemsToSell.push(gem);
+                }
+            } else {
+                // Sell only one gem with exact carat match
+                if (gem.carat === carat && gemsToSell.length === 0) {
+                    gemsToSell.push(gem);
+                }
+            }
+        }
+    }
+
+    if (gemsToSell.length === 0) {
+        console.warn('No gems found to sell');
+        return;
+    }
+
+    // Calculate total value
+    const gemMaterial = getMaterialById(gemType);
+    const baseValue = gemMaterial ? gemMaterial.worth : 0;
+    let totalValue = 0;
+
+    gemsToSell.forEach(gem => {
+        totalValue += baseValue * gem.carat;
+    });
+
+    // Remove gems from array
+    gemsToSell.forEach(gem => {
+        const index = gems.findIndex(g => g.id === gem.id);
+        if (index !== -1) {
+            gems.splice(index, 1);
+        }
+    });
+
+    // Add gold
+    gold += totalValue;
+    updateGoldDisplay();
+
+    // Log transaction
+    const gemName = gemMaterial ? gemMaterial.name : gemType;
+    const statusText = polished ? 'Polished' : 'Rough';
+    const description = includeLower
+        ? `Sold ${gemsToSell.length} ${statusText} ${gemName} (${carat}ct and lower)`
+        : `Sold 1 ${statusText} ${gemName} (${carat}ct)`;
+
+    logTransaction('income', totalValue, description);
+
+    // Sync to worker
+    if (gameWorker) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gems: gems,
+                gold: gold
+            }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Refresh the gems list
+    populateGemsList();
 }
 
 function openSmelter() {
@@ -1546,6 +1883,10 @@ function populateSmelter() {
         let stockAmount = 0;
         if (task.id === 'do-nothing') {
             isActionable = true; // "Do nothing" is always "actionable"
+        } else if (task.type === 'gem-cutting' && isUnlocked) {
+            // For gem cutting tasks, check if there are any gems marked for cutting
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            isActionable = !!gemToProcess;
         } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
             stockAmount = materialsStock[task.input.material] || 0;
             // For heating tasks, only actionable if temp is below min and below max
@@ -1597,9 +1938,15 @@ function populateSmelter() {
             if (task.minTemp && smelterTemperature < task.minTemp) {
                 statusIndicator.textContent = '🌡️';
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
-            } else {
+            } else if (task.type === 'gem-cutting') {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked - no gems marked for cutting`;
+            } else if (task.input && task.input.amount) {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+            } else {
+                statusIndicator.textContent = '❌';
+                statusIndicator.title = `Blocked`;
             }
         }
         taskRow.appendChild(statusIndicator);
@@ -2785,6 +3132,41 @@ function triggerCritAnimation(x, y, isOneHit = false) {
     cell.classList.add(animClass);
 }
 
+function triggerGemSpawnAnimation(x, y, gemName) {
+    const GEM_SPAWN_ANIMATION_DURATION = 1500;
+    const gemKey = `${x}:${y}:gem`;
+    const expiresAt = Date.now() + GEM_SPAWN_ANIMATION_DURATION;
+
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Gem spawn animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+
+    // Add gem spawn animation class
+    cell.classList.add('gem-spawn');
+
+    // Create sparkle effect
+    const sparkle = document.createElement('div');
+    sparkle.className = 'gem-sparkle';
+    sparkle.textContent = '💎';
+    sparkle.style.position = 'absolute';
+    sparkle.style.pointerEvents = 'none';
+    sparkle.style.fontSize = '24px';
+    sparkle.style.animation = 'gem-float 1.5s ease-out';
+    cell.style.position = 'relative';
+    cell.appendChild(sparkle);
+
+    // Cleanup after animation
+    setTimeout(() => {
+        cell.classList.remove('gem-spawn');
+        if (sparkle.parentNode === cell) {
+            cell.removeChild(sparkle);
+        }
+    }, GEM_SPAWN_ANIMATION_DURATION);
+}
+
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
@@ -3366,7 +3748,11 @@ function updateDwarfsInPanel() {
         // Update info panel
         const info = document.getElementById(`dwarf-info-${d.name}`);
         if (info) {
-            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
+                if (Array.isArray(b)) return a + b.length;
+                if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
+                return a + b;
+            }, 0) : 0;
             const bucketResearch = researchtree.find(r => r.id === 'buckets');
             const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
             const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
@@ -3494,7 +3880,11 @@ function populateDwarfsInPanel() {
         }
         
         // Calculate bucket fill
-        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => a + b, 0) : 0;
+        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
+            if (Array.isArray(b)) return a + b.length;
+            if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
+            return a + b;
+        }, 0) : 0;
         // Apply bucket research bonus (1 capacity per level)
         const bucketResearch = researchtree.find(r => r.id === 'buckets');
         const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
@@ -3617,8 +4007,16 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
+        if (Array.isArray(b)) {
+            return a + b.length; // Gems as array: count array length
+        }
+        if (typeof b === 'object' && b !== null) {
+            return a + 1; // Gem object: counts as 1
+        }
+        return a + b; // Regular materials: add count
+    }, 0) : 0;
     const bucketResearch = researchtree.find(r => r.id === 'buckets');
     const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
     const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
@@ -3661,25 +4059,37 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         bucketGrid.className = 'dwarf-bucket-grid';
 
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
-            if (count > 0) {
+            // Handle both regular materials (count is a number) and gems (count might be an object)
+            let displayCount = count;
+            let displayName = materialId;
+
+            if (typeof count === 'object' && count !== null) {
+                // This is a gem object with properties like {id, type, carat, polished}
+                displayCount = 1;
+                const gemType = count.type || materialId;
+                const mat = getMaterialById(gemType);
+                displayName = mat ? `${mat.name} (${count.carat}ct)` : `${gemType} (${count.carat}ct)`;
+            } else if (count > 0) {
                 const mat = getMaterialById(materialId);
-                const materialName = mat ? mat.name : materialId;
-
-                const item = document.createElement('div');
-                item.className = 'dwarf-bucket-item';
-
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'dwarf-bucket-item-name';
-                nameDiv.textContent = materialName;
-
-                const countDiv = document.createElement('div');
-                countDiv.className = 'dwarf-bucket-item-count';
-                countDiv.textContent = count;
-
-                item.appendChild(nameDiv);
-                item.appendChild(countDiv);
-                bucketGrid.appendChild(item);
+                displayName = mat ? mat.name : materialId;
+            } else {
+                continue;
             }
+
+            const item = document.createElement('div');
+            item.className = 'dwarf-bucket-item';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'dwarf-bucket-item-name';
+            nameDiv.textContent = displayName;
+
+            const countDiv = document.createElement('div');
+            countDiv.className = 'dwarf-bucket-item-count';
+            countDiv.textContent = displayCount;
+
+            item.appendChild(nameDiv);
+            item.appendChild(countDiv);
+            bucketGrid.appendChild(item);
         }
 
         bucketContents.innerHTML = '';
@@ -3856,8 +4266,16 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
+    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
+    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
+        if (Array.isArray(b)) {
+            return a + b.length; // Gems as array: count array length
+        }
+        if (typeof b === 'object' && b !== null) {
+            return a + 1; // Gem object: counts as 1
+        }
+        return a + b; // Regular materials: add count
+    }, 0) : 0;
     const bucketResearch = researchtree.find(r => r.id === 'buckets');
     const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
     const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
@@ -3893,16 +4311,29 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
         let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
-            if (count > 0) {
+            // Handle both regular materials (count is a number) and gems (count might be an object)
+            let displayCount = count;
+            let displayName = materialId;
+
+            if (typeof count === 'object' && count !== null) {
+                // This is a gem object with properties like {id, type, carat, polished}
+                displayCount = 1;
+                const gemType = count.type || materialId;
+                const mat = getMaterialById(gemType);
+                displayName = mat ? `${mat.name} (${count.carat}ct)` : `${gemType} (${count.carat}ct)`;
+            } else if (count > 0) {
                 const mat = getMaterialById(materialId);
-                const materialName = mat ? mat.name : materialId;
-                bucketHTML += `
-                    <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
-                        <div style="font-size: 9px; font-weight: bold;">${materialName}</div>
-                        <div style="font-size: 12px; margin-top: 1px;">${count}</div>
-                    </div>
-                `;
+                displayName = mat ? mat.name : materialId;
+            } else {
+                continue;
             }
+
+            bucketHTML += `
+                <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
+                    <div style="font-size: 9px; font-weight: bold;">${displayName}</div>
+                    <div style="font-size: 12px; margin-top: 1px;">${displayCount}</div>
+                </div>
+            `;
         }
         bucketHTML += '</div>';
         bucketContents.innerHTML = bucketHTML;
@@ -4953,7 +5384,15 @@ function initWorker() {
                 }
                 
                 startX = data.startX;
-                
+
+                // Update gems array
+                if (data.gems) {
+                    gems = data.gems;
+                }
+                if (data.nextGemId !== undefined) {
+                    nextGemId = data.nextGemId;
+                }
+
                 // Check if materialsStock changed to update warehouse panel
                 let stockChanged = false;
                 for (const key in data.materialsStock) {
@@ -4962,7 +5401,7 @@ function initWorker() {
                     }
                     materialsStock[key] = data.materialsStock[key];
                 }
-                
+
                 // Update gold
                 if (data.gold !== undefined) {
                     gold = data.gold;
@@ -4978,6 +5417,11 @@ function initWorker() {
                             // Trigger one-hit animation (stronger effect)
                             console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
                             triggerCritAnimation(transaction.x, transaction.y, true);
+                        } else if (transaction.type === 'gem-spawn') {
+                            // Trigger gem spawn animation
+                            const caratText = transaction.carat ? ` (${transaction.carat.toFixed(2)}ct)` : '';
+                            console.log(`💎 GEM FOUND! ${transaction.dwarf} discovered a ${transaction.gem}${caratText} at (${transaction.x}, ${transaction.y})!`);
+                            triggerGemSpawnAnimation(transaction.x, transaction.y, transaction.gem);
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
                         }
@@ -5094,6 +5538,8 @@ function initWorker() {
             visibleDepth,
             startX,
             materialsStock,
+            gems,
+            nextGemId,
             bucketCapacity,
             dropOff,
             house,
@@ -5148,6 +5594,8 @@ function saveGame() {
             dwarfs: dwarfs,
             startX: startX,
             materialsStock: materialsStock,
+            gems: gems,
+            nextGemId: nextGemId,
             toolsInventory: toolsInventory,
             gold: gold,
             researchtree: researchtree,
@@ -5189,6 +5637,33 @@ function loadGame() {
         // Restore game state
         grid = gameState.grid || [];
         dwarfs = gameState.dwarfs || [];
+
+        // Sanitize dwarf buckets - fix any corrupted gem data
+        for (const dwarf of dwarfs) {
+            if (dwarf.bucket) {
+                const sanitizedBucket = {};
+                for (const [key, value] of Object.entries(dwarf.bucket)) {
+                    // If value is an object (corrupted gem data), convert to 1
+                    // If value is a number, keep it
+                    // If value is a string like "[object Object]11", extract the number or default to 1
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        sanitizedBucket[key] = 1;
+                    } else if (typeof value === 'string') {
+                        // Try to extract number from corrupted string like "[object Object]11"
+                        const match = value.match(/\d+$/);
+                        sanitizedBucket[key] = match ? parseInt(match[0]) : 1;
+                    } else if (Array.isArray(value)) {
+                        sanitizedBucket[key] = value.length;
+                    } else if (typeof value === 'number') {
+                        sanitizedBucket[key] = value;
+                    } else {
+                        sanitizedBucket[key] = 1;
+                    }
+                }
+                dwarf.bucket = sanitizedBucket;
+            }
+        }
+
         startX = gameState.startX || 0;
         gold = gameState.gold !== undefined ? gameState.gold : 1000;
         
@@ -5198,7 +5673,15 @@ function loadGame() {
                 materialsStock[key] = gameState.materialsStock[key];
             }
         }
-        
+
+        // Restore gems array
+        if (gameState.gems) {
+            gems = gameState.gems;
+        }
+        if (gameState.nextGemId !== undefined) {
+            nextGemId = gameState.nextGemId;
+        }
+
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;
@@ -5295,7 +5778,8 @@ window.activateCheat = function activateCheat() {
         }
         dwarf.status = 'idle';
         dwarf.moveTarget = null;
-        
+        dwarf.bucket = {}; // Clear bucket
+
         // Give XP for one level
         const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;

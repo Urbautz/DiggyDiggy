@@ -42,6 +42,12 @@ const materials = [
   { id: 'Coal', name: 'Coal',type:'Special',                hardness: 80, probability: 80, worth: 10.5,   minlevel: 500, color: '#191919ff' },
   { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff' },
 
+  { id: 'Ruby', name: 'Ruby', type:'Gem',                   hardness: 300, probability: 0, worth: 50,    minlevel: 1000, color: '#9b111eff' },
+  { id: 'Emerald', name: 'Emerald', type:'Gem',             hardness: 400, probability: 0, worth: 50,    minlevel: 1000, color: '#50c878ff' },
+  { id: 'Sapphire', name: 'Sapphire', type:'Gem',           hardness: 500, probability: 0, worth: 50,    minlevel: 1000, color: '#0f52baff' },
+  { id: 'Diamond', name: 'Diamond', type:'Gem',             hardness: 600, probability: 0, worth: 75,   minlevel: 1000, color: '#b9f2ffff' },
+  { id: 'Amethyst', name: 'Amethyst', type:'Gem',           hardness: 900, probability: 0, worth: 90,    minlevel: 1000, color: '#9966ccff' },
+
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,     minlevel: 2000, maxlevel: 999999, color: '#7e6136ff' },
   { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',         hardness:100, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
@@ -49,8 +55,8 @@ const materials = [
   { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
   { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 750,     minlevel: 99999, color: '#c0c0c0ff' },
 
-  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 100000,  minlevel: 15000, color: '#d6a80eff' },
-  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 500000,  minlevel: 99999, color: '#ffd700ff' },
+  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 1000,  minlevel: 15000, color: '#d6a80eff' },
+  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5000,  minlevel: 99999, color: '#ffd700ff' },
   { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
   { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
@@ -82,6 +88,7 @@ const toolsInventory = [
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
     { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100°.', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: 250, requires: 'gem-cutting' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
     { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
     { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
@@ -118,6 +125,8 @@ let researchtree = [
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
+    { id: 'gem-cutting', name: 'Gem Cutting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
+      min_depth: 1000, description: 'Unlocks gem cutting at the smelter. The cutting takes 250 Ticks.' },
     { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, requires: [{'grinding-machine':1}],
       min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, requires: [{'furnace':1}],
@@ -200,6 +209,10 @@ let currentHourTimestamp = null;
 const materialsStock = {};
 // Initialize stock counts for all known materials
 for (const m of materials) materialsStock[m.id] = 0;
+
+// Gems array - separate from materials, each gem is a unique object with ID
+let gems = [];
+let nextGemId = 1;
 
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;

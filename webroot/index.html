@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diggy Diggy - Dwarf Digging Game</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/png" href="gameicon.png">
+    <!-- Cairo font is now loaded locally -->
+<link rel="stylesheet" href="css/styles.css">
     <script src="js/constants.js"></script>
     <script src="js/defs.js" defer></script>
     <script src="js/game.js" defer></script>
@@ -13,13 +15,26 @@
 <body>
     <header class="topbar">
     <div class="brand">
-        <h1>Diggy Diggy Dwarf!</h1>
-        <p class="subtitle">Help the dwarfs dig a deep hole! How deep? Yes!</p>
+        <img src="gameicon.png" alt="Diggy Diggy" class="brand-logo">
+        <div class="brand-text">
+            <h1>Diggy Diggy Dwarf!</h1>
+        </div>
     </div>
-    <div id="gold-display" class="gold-display" onclick="openTransactions()" title="Click to view finances">
-        <span class="gold-icon">💰</span>
-        <span class="gold-amount">1000</span>
-    </div>
+    <div class="topbar-controls">
+            <div>
+                <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸</button>
+                <button id="about-button" onclick="openAbout()" title="About">📖</button>
+                <button id="settings-button" onclick="openSettings()" title="Settings">⚙️</button>
+            </div>
+            <div id="gold-display" class="gold-display" onclick="openTransactions()" title="Click to view finances">
+                <span class="gold-icon">💰</span>
+                <span class="gold-amount">1000</span>
+            </div>
+        </div>
+        <!-- Stock status: displays global collected material counts -->
+        <div id="stock-status" class="stock-status" aria-live="polite"></div>
+    </header>
+
     <!-- Dwarfs overview modal -->
     <div id="dwarfs-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Dwarfs overview dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
@@ -39,14 +54,7 @@
             </footer>
         </div>
     </div>
-        <div class="topbar-controls">
-            <button id="pause-button" onclick="togglePause()" title="Pause/Resume game">⏸</button>
-            <button id="about-button" onclick="openAbout()" title="About">📖</button>
-            <button id="settings-button" onclick="openSettings()" title="Settings">⚙️</button>
-        </div>
-        <!-- Stock status: displays global collected material counts -->
-        <div id="stock-status" class="stock-status" aria-live="polite"></div>
-    </header>
+
     <main>
         <div class="grids">
         <div class="digging-grid-container">
@@ -377,9 +385,10 @@
             </header>
             <div class="modal-body">
                 <div id="gems-content">
-                    <p style="text-align: center; color: #9fbfe0; padding: 40px 20px;">
-                        Coming soon! This feature is under development.
-                    </p>
+                    <p>Your collection of precious gems discovered while digging.</p>
+                    <div id="gems-list" class="gems-list">
+                        <!-- Gems will be populated here by JavaScript -->
+                    </div>
                 </div>
             </div>
             <footer class="modal-footer">

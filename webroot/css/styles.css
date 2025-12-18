@@ -1,8 +1,16 @@
+/* Cairo font-face */
+@font-face {
+    font-family: 'Cairo';
+    src: url('../Cairo-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
 /* page base */
 body {
     background: #1a1a1a; /* deep gray */
     color: #ffffff;      /* white fonts */
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     margin: 0;
     padding: 16px;
 }
@@ -11,6 +19,8 @@ body {
 main {
     margin: 0;
     width: 100%;
+    position: relative;
+    z-index: 101;
 }
 
 /* layout for multiple grids side-by-side */
@@ -22,6 +32,8 @@ main {
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
+    position: relative;
+    z-index: 101;
 }
 .grids #side-grids { display:flex; flex-direction:column; margin:-12px; flex: 0 0 auto; }
 
@@ -201,6 +213,16 @@ main {
     100% { opacity: 0; transform: scale(1.4); }
 }
 
+/* Gem spawn - no animation */
+#digging-grid .cell.gem-spawn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+
 /* running/moving marker - intentionally lower z-index so it does not block a digging dwarf's marker */
 #digging-grid .cell .moving-marker {
     position: absolute;
@@ -228,6 +250,19 @@ main {
     animation: strikeShake 0.5s ease-in-out infinite;
 }
 
+/* gem marker for gems on grid cells */
+#digging-grid .cell .gem-marker {
+    content: '💎';
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: #cd5454;
+    transform: rotate(45deg); /* square turned into a diamond */
+    display: block;
+    z-index: 1;
+}
+
+
 /* digging animation styles */
 #digging-grid .cell.is-digging {
     animation: digGlow 1s linear infinite;
@@ -252,7 +287,6 @@ main {
 }
 
 #digging-grid .digging-marker.strike { 
-    
     animation: shovelStrike 0.9s ease-in-out infinite; 
 }
 
@@ -301,28 +335,72 @@ header, footer {
 /* top bar (site header with controls) */
 .topbar {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    background: linear-gradient(180deg, #0f0f0f 0%, #151515 100%);
-    padding: 10px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 16px;
+    width: calc(532px + 28px + 450px + 156px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px) saturate(120%);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 0;
+}
+
+.topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.brand-logo {
+    width: 100px;
+    height: 100px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.brand-text {
+    display: flex;
+    gap: 0px;
 }
 
 .topbar .brand h1 {
     margin: 0;
-    font-size: 18px;
-    letter-spacing: 0.4px;
+    font-size: 24px;
+    letter-spacing: 0.6px;
+}
+
+.topbar .brand .subtitle {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.7;
+    font-weight: 400;
+}
+
+.topbar-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.topbar-controls > div {
+    display: flex;
+    gap: 8px;
 }
 
 .gold-display {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(218, 165, 32, 0.1));
     border: 1px solid rgba(255, 215, 0, 0.2);
     border-radius: 8px;
@@ -330,7 +408,15 @@ header, footer {
     font-size: 16px;
     color: #ffd700;
     box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
-    margin-left: auto;
+    height: 38px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gold-display:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(218, 165, 32, 0.15));
+    border-color: rgba(255, 215, 0, 0.3);
+    transform: translateY(-1px);
 }
 
 .gold-display .gold-icon {
@@ -339,15 +425,7 @@ header, footer {
 }
 
 .gold-display .gold-amount {
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.5px;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
-}
-
-.topbar-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 /* stock status pills in header */
@@ -399,9 +477,9 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 280px;
-    min-width: 500px;
-    max-width: 500px;
+    width: 320px;
+    min-width: 550px;
+    max-width: 550px;
 }
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
@@ -454,7 +532,6 @@ header, footer {
 .materials-panel-subtitle {
     font-size: 12px;
     color: #dbeafe;
-    text-transform: uppercase;
     letter-spacing: 0.4px;
 }
 
@@ -526,19 +603,30 @@ header, footer {
 /* dwarf status panel in the topbar */
 /* dwarf-status cards removed from main view — visible only in the Dwarfs modal now */
 
-/* settings button shares similar visual style but is smaller */
+/* settings button shares similar visual style but is squared and smaller */
 #settings-button, #pause-button, #about-button {
-    background: #2b2b2b;
+    background: rgba(255,255,255,0.05);
     color: #fff;
-    border: 1px solid #444;
-    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 1px;
+    padding-left:4px;
+    padding-bottom:4px;
     cursor: pointer;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 18px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex: 1;
 }
 
 #settings-button:hover, #pause-button:hover, #about-button:hover, #dig-button:hover {
-    background: #333;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
 }
 
 /* modal overlay & dialog (glass effect) */
@@ -632,6 +720,7 @@ header, footer {
 .dwarfs-table th, .dwarfs-table td { padding: 8px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .dwarfs-table thead th { font-weight: 700; font-size: 13px; color: #dbeafe; }
 .dwarfs-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.dwarfs-table tbody tr:hover { background: rgba(255,255,255,0.08); cursor: pointer; }
 .dwarfs-table td { color: #e6eefc; }
 .dwarfs-table .bucket-line { font-size: 12px; padding: 2px 0; color: #cfe7ff }
 .dwarfs-table .bucket-line.empty { opacity: 0.6; color: #9fbfe0 }
@@ -683,14 +772,12 @@ header, footer {
     font-weight: 700;
     font-size: 11px;
     color: #bfdbfe;
-    text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     margin-bottom: 0;
 }
 
 .warehouse-table-header span {
-    text-transform: uppercase;
     color: #bfdbfe !important;
     font-size: 11px !important;
     font-weight: 700 !important;
@@ -734,6 +821,14 @@ header, footer {
     z-index: 1;
 }
 
+.warehouse-row:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    cursor: pointer;
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+
 .wh-col-name { 
     font-weight: 700; 
     color: #e6eefc; 
@@ -743,7 +838,6 @@ header, footer {
 .wh-col-price { 
     font-size: 12px; 
     color: #ffd700; 
-    font-family: monospace;
     text-align: right;
 }
 
@@ -758,7 +852,6 @@ header, footer {
     font-size: 12px; 
     color: #ffd700; 
     font-weight: 600;
-    font-family: monospace;
     text-align: right;
 }
 
@@ -861,15 +954,14 @@ header, footer {
 .dwarf-name { 
     font-weight: 700; 
     color: #e6eefc; 
-    font-size: 13px; 
+    font-size: 14px; 
     flex: 1;
 }
 
 .dwarf-info { 
-    font-size: 11px; 
+    font-size: 14px; 
     color: #9fbfe0; 
-    font-family: monospace; 
-    line-height: 1.4;
+    line-height: 1.2;
 }
 
 .btn-levelup-small {
@@ -892,6 +984,14 @@ header, footer {
     margin-bottom: 8px;
     width: 100%;
     box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.tool-card-panel:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+    cursor: pointer;
+    transform: translateX(2px);
 }
 
 .tool-card-header {
@@ -1010,7 +1110,6 @@ header, footer {
     font-weight: 700;
     color: #dbeafe;
     font-size: 13px;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
@@ -1032,7 +1131,6 @@ header, footer {
 .workbench-table .tool-power {
     text-align: center;
     color: #fbbf24;
-    font-family: monospace;
     font-weight: 600;
 }
 
@@ -1878,12 +1976,12 @@ header, footer {
 .dwarf-stats-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 6px;
 }
 
 .dwarf-stat-box {
-    padding: 6px;
+    padding: 4px;
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid #444;
     border-radius: 8px;
@@ -1896,7 +1994,7 @@ header, footer {
 }
 
 .dwarf-stat-value {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
 }
 
@@ -1905,20 +2003,20 @@ header, footer {
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid #444;
     border-radius: 8px;
-    height: 90px;
+    height: 116px;
     overflow-y: auto;
 }
 
 .dwarf-bucket-header {
     margin: 0 0 6px 0;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .dwarf-bucket-empty {
     opacity: 0.6;
     text-align: center;
     margin: 4px 0;
-    font-size: 11px;
+    font-size: 16px;
 }
 
 .dwarf-bucket-grid {
@@ -1946,19 +2044,22 @@ header, footer {
 .dwarf-bucket-item {
     padding: 4px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    border-radius: 4px;
     text-align: center;
     min-width: 60px;
+    max-height:60px;
     flex-shrink: 0;
 }
 
 .dwarf-bucket-item-name {
-    font-size: 9px;
+    font-size: 14px;
     font-weight: bold;
 }
 
 .dwarf-bucket-item-count {
-    font-size: 12px;
+    font-size: 18px;
+    font-weight: bold;
+
     margin-top: 1px;
 }
 
@@ -2191,4 +2292,342 @@ header, footer {
 
 .btn-cheat.visible {
     display: inline-block;
+}
+
+/* ============================================================================
+   GEMS MODAL STYLES
+   ============================================================================ */
+
+.gems-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.gem-type-section {
+    display: grid;
+    gap: 8px;
+}
+
+.gem-type-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gem-type-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.gem-type-expand-icon {
+    font-size: 12px;
+    color: #9fbfe0;
+    transition: transform 0.2s ease;
+    width: 16px;
+    text-align: center;
+}
+
+.gem-type-header:not(.collapsed) .gem-type-expand-icon {
+    transform: rotate(90deg);
+}
+
+.gem-type-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transform: rotate(45deg);
+}
+
+.gem-type-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+
+.gem-type-status-info {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9fbfe0;
+    opacity: 0.8;
+    margin-left: 8px;
+    flex: 1;
+}
+
+.gem-type-count {
+    font-size: 14px;
+    font-weight: 500;
+    color: #9fbfe0;
+    opacity: 0.8;
+}
+
+.gem-type-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fbbf24;
+    margin-left: 8px;
+}
+
+.gem-type-items {
+    display: grid;
+    gap: 8px;
+    padding-left: 28px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    max-height: 2000px;
+    opacity: 1;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.gem-type-items.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.gem-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.gem-item-compact {
+    display: block;
+    padding: 8px 12px;
+}
+
+.gem-item-compact-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.gem-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateX(4px);
+}
+
+.gem-item-icon {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gem-item-diamond {
+    width: 32px;
+    height: 32px;
+    transform: rotate(45deg);
+    background: radial-gradient(ellipse at center,
+        var(--gem-color, #ffffff) 0%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 70%, white) 30%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 40%, black) 60%,
+        color-mix(in srgb, var(--gem-color, #ffffff) 20%, black) 100%);
+    border-radius: 4px;
+    box-shadow:
+        0 0 12px color-mix(in srgb, var(--gem-color, #ffffff) 60%, transparent),
+        inset -3px -3px 6px rgba(0, 0, 0, 0.4),
+        inset 3px 3px 6px rgba(255, 255, 255, 0.5);
+}
+
+.gem-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gem-item-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.gem-item-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.gem-item-location {
+    font-size: 12px;
+    color: #9fbfe0;
+    opacity: 0.8;
+}
+
+.gem-item-carat {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fbbf24;
+    white-space: nowrap;
+}
+
+.gem-item-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fbbf24;
+    white-space: nowrap;
+}
+
+.gem-item-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: #9fbfe0;
+    white-space: nowrap;
+}
+
+.gem-polished-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.gem-unpolished-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    color: #9fbfe0;
+    white-space: nowrap;
+}
+
+.gem-item-quality {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.gem-quality-flawless {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a1a;
+}
+
+.gem-quality-excellent {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    color: #ffffff;
+}
+
+.gem-quality-good {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: #ffffff;
+}
+
+.gem-quality-fair {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: #ffffff;
+}
+
+.gem-quality-poor {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    color: #ffffff;
+}
+
+.gems-list-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9fbfe0;
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.gem-item-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.gem-sell-one-btn,
+.gem-sell-lower-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.gem-sell-one-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+}
+
+.gem-sell-one-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+}
+
+.gem-sell-lower-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+}
+
+.gem-sell-lower-btn:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    transform: translateY(-1px);
+}
+
+.gem-cut-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: #ffffff;
+}
+
+.gem-cut-btn:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    transform: translateY(-1px);
+}
+
+.gem-cutting-progress {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.gem-item-status-column {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 200px;
+    flex-shrink: 0;
 }
