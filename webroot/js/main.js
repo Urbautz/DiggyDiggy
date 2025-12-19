@@ -1121,7 +1121,7 @@ function populateGemsList() {
 
         // Calculate total value for this gem type (polished gems worth 50% more)
         const totalValue = gemsOfType.reduce((sum, gem) => {
-            const valueMultiplier = gem.polished ? 1.5 : 1;
+            const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
             return sum + (gemBaseValue * gem.carat * valueMultiplier);
         }, 0);
 
@@ -1174,13 +1174,15 @@ function populateGemsList() {
                 };
             }
             gemGroups[key].count++;
-            const valueMultiplier = gem.polished ? 1.5 : 1;
+            const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
             gemGroups[key].totalValue += gemBaseValue * gem.carat * valueMultiplier;
 
             // Track cutting status - if any gem in the group is marked for cutting
             if (gem.markedForCutting) {
                 gemGroups[key].markedForCutting = true;
-                gemGroups[key].maxProgress = 250; // From task.ticksRequired
+                // Get the ticksRequired from the gem cutting task definition
+                const gemCuttingTask = smelterTasks.find(t => t.type === 'gem-cutting');
+                gemGroups[key].maxProgress = gemCuttingTask ? gemCuttingTask.ticksRequired : 250;
                 // Track the highest cutting progress in this group
                 const currentProgress = gem.cuttingProgress || 0;
                 if (currentProgress > gemGroups[key].cuttingProgress) {
@@ -1355,7 +1357,7 @@ function sellGems(gemType, carat, polished, includeLower) {
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
-        const valueMultiplier = gem.polished ? 1.5 : 1;
+        const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
         totalValue += baseValue * gem.carat * valueMultiplier;
     });
 
@@ -3966,12 +3968,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
         const aLevel = a.level || 1;
-        const aNeeded = 250 * aLevel;
+        const aNeeded = DWARF_XP_PER_LEVEL * aLevel;
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
         const bLevel = b.level || 1;
-        const bNeeded = 250 * bLevel;
+        const bNeeded = DWARF_XP_PER_LEVEL * bLevel;
         const bCanLevelUp = bXP >= bNeeded;
 
         if (aCanLevelUp !== bCanLevelUp) {
