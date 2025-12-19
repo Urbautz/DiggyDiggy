@@ -68,10 +68,85 @@ function getMaterialById(id) {
     return materials.find(m => m.id === id) || null;
 }
 
-// Randomly select a gem from the available gems
+// Randomly select a gem from the available gems defined in materials
 function selectRandomGem() {
-    const gems = ['Ruby', 'Emerald', 'Sapphire', 'Diamond', 'Amethyst'];
-    return gems[Math.floor(Math.random() * gems.length)];
+    const gemMaterials = materials.filter(m => m.type === 'Gem');
+    if (gemMaterials.length === 0) return null;
+    return gemMaterials[Math.floor(Math.random() * gemMaterials.length)].id;
+}
+
+/**
+ * Handle block destruction logic including gem spawning and material collection
+ * @param {Object} cell - The grid cell being destroyed
+ * @param {Object} dwarf - The dwarf performing the destruction
+ * @param {number} x - X coordinate of the cell
+ * @param {number} y - Y coordinate of the cell
+ */
+function handleBlockDestruction(cell, dwarf, x, y) {
+    const matId = cell.materialId;
+    const mat = materials.find(m => m.id === matId);
+
+    // Check if this stone contains a gem BEFORE collecting it
+    if (mat && mat.type && mat.type.startsWith('Stone') && !cell.gemId && Math.random() < GEM_SPAWN_CHANCE) {
+        const gemType = selectRandomGem();
+        if (!gemType) return; // No gems available
+
+        // Calculate carat: 1 + random whole number based on depth
+        const depth = (y + startX) || 0;
+        const maxCarat = Math.floor(depth / 500);
+        const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
+
+        // Get gem material to use its hardness
+        const gemMat = materials.find(m => m.id === gemType);
+        const gemHardness = gemMat ? gemMat.hardness : 1;
+
+        // Create gem object with unique ID
+        const gem = {
+            id: nextGemId++,
+            type: gemType,
+            carat: carat,
+            polished: false,
+            x: x,
+            y: y
+        };
+        gems.push(gem);
+
+        // Replace the stone with the gem material
+        cell.materialId = gemType;
+        cell.hardness = gemHardness;
+        cell.gemId = gem.id;
+
+        pendingTransactions.push({ type: 'gem-spawn', x: x, y: y, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
+
+        // Don't collect the stone - gem is now in its place
+        // Award XP for destroying the stone
+        if (mat && typeof mat.hardness === 'number') {
+            const xpGain = Math.ceil(Math.sqrt(mat.hardness));
+            dwarf.xp = (dwarf.xp || 0) + xpGain;
+        }
+    } else {
+        // No gem - collect the material normally
+        dwarf.bucket = dwarf.bucket || {};
+
+        // If this is a gem block being collected, mark gem as collected but keep in gems array
+        if (cell.gemId) {
+            // Gem collected! Update its status but don't remove from gems array
+            const gemIndex = gems.findIndex(g => g.id === cell.gemId);
+            if (gemIndex !== -1) {
+                // Keep the gem in the array - it's now in the warehouse
+                // No need to remove it
+            }
+            delete cell.gemId;
+        }
+
+        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+
+        // Award XP only when material is destroyed
+        if (mat && typeof mat.hardness === 'number') {
+            const xpGain = Math.ceil(Math.sqrt(mat.hardness));
+            dwarf.xp = (dwarf.xp || 0) + xpGain;
+        }
+    }
 }
 
 // Check if a smelter task is unlocked by research
@@ -973,68 +1048,7 @@ function actForDwarf(dwarf) {
             
             curCell.hardness = Math.max(0, curCell.hardness - finalPower);
             if (curCell.hardness === 0) {
-                const matId = curCell.materialId;
-                const mat = materials.find(m => m.id === matId);
-
-                // Check if this stone contains a gem BEFORE collecting it
-                if (mat && mat.type && mat.type.startsWith('Stone') && !curCell.gemId && Math.random() < GEM_SPAWN_CHANCE) {
-                    const gemType = selectRandomGem();
-                    // Calculate carat: 1 + random whole number based on depth
-                    const depth = (startX + dwarf.y) || 0;
-                    const maxCarat = Math.floor(depth / 500);
-                    const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
-
-                    // Get gem material to use its hardness
-                    const gemMat = materials.find(m => m.id === gemType);
-                    const gemHardness = gemMat ? gemMat.hardness : 1;
-
-                    // Create gem object with unique ID
-                    const gem = {
-                        id: nextGemId++,
-                        type: gemType,
-                        carat: carat,
-                        polished: false,
-                        x: dwarf.x,
-                        y: dwarf.y
-                    };
-                    gems.push(gem);
-
-                    // Replace the stone with the gem material
-                    curCell.materialId = gemType;
-                    curCell.hardness = gemHardness;
-                    curCell.gemId = gem.id;
-
-                    pendingTransactions.push({ type: 'gem-spawn', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
-
-                    // Don't collect the stone - gem is now in its place
-                    // Award XP for destroying the stone
-                    if (mat && typeof mat.hardness === 'number') {
-                        const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-                        dwarf.xp = (dwarf.xp || 0) + xpGain;
-                    }
-                } else {
-                    // No gem - collect the material normally
-                    dwarf.bucket = dwarf.bucket || {};
-
-                    // If this is a gem block being collected, mark gem as collected but keep in gems array
-                    if (curCell.gemId) {
-                        // Gem collected! Update its status but don't remove from gems array
-                        const gemIndex = gems.findIndex(g => g.id === curCell.gemId);
-                        if (gemIndex !== -1) {
-                            // Keep the gem in the array - it's now in the warehouse
-                            // No need to remove it
-                        }
-                        delete curCell.gemId;
-                    }
-
-                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-
-                    // Award XP only when material is destroyed
-                    if (mat && typeof mat.hardness === 'number') {
-                        const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-                        dwarf.xp = (dwarf.xp || 0) + xpGain;
-                    }
-                }
+                handleBlockDestruction(curCell, dwarf, dwarf.x, dwarf.y);
             }
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
@@ -1139,59 +1153,7 @@ function actForDwarf(dwarf) {
             
             curCellDig.hardness = Math.max(0, curCellDig.hardness - finalPower);
             if (curCellDig.hardness === 0) {
-                const matId = curCellDig.materialId;
-                const mat = materials.find(m => m.id === matId);
-
-                // Check if this stone contains a gem BEFORE collecting it
-                if (mat && mat.type && mat.type.startsWith('Stone') && !curCellDig.gemId && Math.random() < GEM_SPAWN_CHANCE) {
-                    const gemType = selectRandomGem();
-                    // Calculate carat: 1 + random whole number based on depth
-                    const depth = (dwarf.y + startX) || 0;
-                    const maxCarat = Math.floor(depth / 500);
-                    const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
-
-                    const gemMat = materials.find(m => m.id === gemType);
-                    const gemHardness = gemMat ? gemMat.hardness : 1;
-                    console.log(`💎 GEM DISCOVERED! ${dwarf.name} found a ${carat} carat ${gemType} at (${depth})`);
-                    const gem = {
-                        id: nextGemId++,
-                        type: gemType,
-                        carat: carat,
-                        polished: false,
-                        x: dwarf.x,
-                        y: dwarf.y
-                    };
-                    gems.push(gem);
-
-                    curCellDig.materialId = gemType;
-                    curCellDig.hardness = gemHardness;
-                    curCellDig.gemId = gem.id;
-
-                    pendingTransactions.push({ type: 'gem-spawn', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
-
-                    if (mat && typeof mat.hardness === 'number') {
-                        const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-                        dwarf.xp = (dwarf.xp || 0) + xpGain;
-                    }
-                } else {
-                    dwarf.bucket = dwarf.bucket || {};
-
-                    if (curCellDig.gemId) {
-                        // Gem collected! Keep it in gems array - it's now in the warehouse
-                        const gemIndex = gems.findIndex(g => g.id === curCellDig.gemId);
-                        if (gemIndex !== -1) {
-                            // Keep the gem in the array
-                        }
-                        delete curCellDig.gemId;
-                    }
-
-                    dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-
-                    if (mat && typeof mat.hardness === 'number') {
-                        const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-                        dwarf.xp = (dwarf.xp || 0) + xpGain;
-                    }
-                }
+                handleBlockDestruction(curCellDig, dwarf, dwarf.x, dwarf.y);
             }
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
@@ -1386,47 +1348,7 @@ function actForDwarf(dwarf) {
         pendingTransactions.push({ type: 'crit-hit', x: foundCol, y: targetRowIndex, dwarf: dwarf.name });
     }
     if (target.hardness === 0) {
-        const matId = target.materialId;
-        dwarf.bucket = dwarf.bucket || {};
-        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
-
-        // Check if this stone contains a gem BEFORE collecting it
-        const mat = materials.find(m => m.id === matId);
-        if (mat && mat.type && mat.type.startsWith('Stone') && !target.gemId && Math.random() < GEM_SPAWN_CHANCE) {
-            const gemType = selectRandomGem();
-            // Calculate carat: 1 + random whole number based on depth
-            const depth = (targetRowIndex + startX) || 0;
-            const maxCarat = Math.floor(depth / 500);
-            const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
-
-            const gemMat = materials.find(m => m.id === gemType);
-            const gemHardness = gemMat ? gemMat.hardness : 1;
-
-            const gem = {
-                id: nextGemId++,
-                type: gemType,
-                carat: carat,
-                polished: false,
-                x: foundCol,
-                y: targetRowIndex
-            };
-            gems.push(gem);
-
-            target.materialId = gemType;
-            target.hardness = gemHardness;
-            target.gemId = gem.id;
-
-            pendingTransactions.push({ type: 'gem-spawn', x: foundCol, y: targetRowIndex, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
-        } else if (target.gemId) {
-            // Gem is being collected - keep it in gems array
-            const gemIndex = gems.findIndex(g => g.id === target.gemId);
-            if (gemIndex !== -1) {
-                // Keep the gem in the array
-            }
-            delete target.gemId;
-        }
-
-        //console.log(`Dwarf ${dwarf.name} collected 1 ${matId} into bucket -> ${dwarf.bucket[matId]}`);
+        handleBlockDestruction(target, dwarf, foundCol, targetRowIndex);
     }
     //console.log(`Dwarf ${dwarf.name} moved to (${foundCol},${targetRowIndex}) and reduced hardness ${prev} -> ${target.hardness}`);
     if (target.hardness === 0) {
