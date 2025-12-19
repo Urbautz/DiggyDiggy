@@ -1119,8 +1119,11 @@ function populateGemsList() {
         const gemBaseValue = gemMaterial ? gemMaterial.worth : 0;
         const gemsOfType = gemsByType[type];
 
-        // Calculate total value for this gem type
-        const totalValue = gemsOfType.reduce((sum, gem) => sum + (gemBaseValue * gem.carat), 0);
+        // Calculate total value for this gem type (polished gems worth 50% more)
+        const totalValue = gemsOfType.reduce((sum, gem) => {
+            const valueMultiplier = gem.polished ? 1.5 : 1;
+            return sum + (gemBaseValue * gem.carat * valueMultiplier);
+        }, 0);
 
         // Calculate max carat for each status
         const maxCaratRough = Math.max(...gemsOfType.filter(g => !g.polished).map(g => g.carat), 0);
@@ -1171,7 +1174,8 @@ function populateGemsList() {
                 };
             }
             gemGroups[key].count++;
-            gemGroups[key].totalValue += gemBaseValue * gem.carat;
+            const valueMultiplier = gem.polished ? 1.5 : 1;
+            gemGroups[key].totalValue += gemBaseValue * gem.carat * valueMultiplier;
 
             // Track cutting status - if any gem in the group is marked for cutting
             if (gem.markedForCutting) {
@@ -1345,13 +1349,14 @@ function sellGems(gemType, carat, polished, includeLower) {
         return;
     }
 
-    // Calculate total value
+    // Calculate total value (polished gems worth 50% more)
     const gemMaterial = getMaterialById(gemType);
     const baseValue = gemMaterial ? gemMaterial.worth : 0;
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
-        totalValue += baseValue * gem.carat;
+        const valueMultiplier = gem.polished ? 1.5 : 1;
+        totalValue += baseValue * gem.carat * valueMultiplier;
     });
 
     // Remove gems from array
