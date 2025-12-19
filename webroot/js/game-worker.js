@@ -2,8 +2,8 @@
 // This worker handles all the heavy computation for the game tick,
 // preventing UI blocking during dwarf actions and grid updates.
 
-// Import shared game constants
-importScripts('constants.js');
+// Import shared game constants and utilities
+importScripts('constants.js', 'utils.js');
 
 const DEFAULT_LOOP_INTERVAL_MS = 400;
 
@@ -64,16 +64,7 @@ function isReservedForDig(x, y) {
     return reservedDigBy.has(coordKey(x, y));
 }
 
-function getMaterialById(id) {
-    return materials.find(m => m.id === id) || null;
-}
-
-// Randomly select a gem from the available gems defined in materials
-function selectRandomGem() {
-    const gemMaterials = materials.filter(m => m.type === 'Gem');
-    if (gemMaterials.length === 0) return null;
-    return gemMaterials[Math.floor(Math.random() * gemMaterials.length)].id;
-}
+// Note: getMaterialById and selectRandomGem are now in utils.js
 
 /**
  * Handle block destruction logic including gem spawning and material collection
@@ -150,12 +141,7 @@ function handleBlockDestruction(cell, dwarf, x, y) {
 }
 
 // Check if a smelter task is unlocked by research
-function isSmelterTaskUnlocked(task) {
-    if (!task.requires) return true; // No requirement, always unlocked
-    const requiredResearch = researchtree.find(r => r.id === task.requires);
-    if (!requiredResearch) return true; // Research not found, assume unlocked
-    return (requiredResearch.level || 0) >= 1;
-}
+// Note: isSmelterTaskUnlocked is now in utils.js
 
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
@@ -269,48 +255,7 @@ function getDwarfToolPower(dwarf) {
     return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus;
 }
 
-function calculateWage(dwarf) {
-    // Get wage optimization research level
-    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
-    const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
-    
-    // Calculate wage increase rate with research reduction
-    const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
-    const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
-    
-    // Calculate wage based on dwarf level
-    const dwarfLevel = (dwarf.level || 1) - 1; // Level 1 has no increase
-    const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
-    
-    return wage;
-}
-
-function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level and have probability > 0
-    const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
-    );
-    
-    if (validMaterials.length === 0) {
-        // Fallback to first material if none match
-        return materials[0];
-    }
-    
-    // Calculate total probability for probability distribution
-    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
-    
-    // Random selection weighted by probability
-    let random = Math.random() * totalProbability;
-    for (const mat of validMaterials) {
-        random -= (mat.probability || 1);
-        if (random <= 0) {
-            return mat;
-        }
-    }
-    
-    // Fallback to last valid material
-    return validMaterials[validMaterials.length - 1];
-}
+// Note: calculateWage and randomMaterial are now in utils.js
 
 function scheduleMove(dwarf, targetX, targetY) {
     let finalY = targetY;

@@ -24,37 +24,7 @@ function updateDwarfsLevelUpBadge() {
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 
-// pick a random material from the registry based on depth level and probability (probability)
-function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level and have probability > 0
-    const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
-    );
-    
-    if (validMaterials.length === 0) {
-        // Fallback to first material if none match
-        return materials[0];
-    }
-    
-    // Calculate total probability for probability distribution
-    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
-    
-    // Random selection weighted by probability
-    let random = Math.random() * totalProbability;
-    for (const mat of validMaterials) {
-        random -= (mat.probability || 1);
-        if (random <= 0) {
-            return mat;
-        }
-    }
-    
-    // Fallback to last valid material
-    return validMaterials[validMaterials.length - 1];
-}
-
-function getMaterialById(id) {
-    return materials.find(m => m.id === id) || null;
-}
+// Note: randomMaterial and getMaterialById are now in utils.js
 
 /**
  * Unified number formatting for display throughout the GUI
@@ -115,13 +85,7 @@ function formatNumber(value, type = 'material') {
     }
 }
 
-// Check if a smelter task is unlocked by research
-function isSmelterTaskUnlocked(task) {
-    if (!task.requires) return true;
-    const requiredResearch = researchtree.find(r => r.id === task.requires);
-    if (!requiredResearch) return true;
-    return (requiredResearch.level || 0) >= 1;
-}
+// Note: isSmelterTaskUnlocked is now in utils.js
 
 // Count how many smelter tasks are currently actionable
 function countActionableSmelterTasks() {
