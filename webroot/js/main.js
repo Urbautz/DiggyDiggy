@@ -4488,15 +4488,12 @@ document.addEventListener('click', (ev) => {
 
 // Delegated event handler for sell buttons
 document.addEventListener('click', (ev) => {
-    const sellBtn = ev.target.closest('.btn-sell, .btn-sell-all');
+    const sellBtn = ev.target.closest('.btn-sell');
     if (!sellBtn) return;
-    
+
     const materialId = sellBtn.dataset.materialId;
-    const sellAmount = parseInt(sellBtn.dataset.sellAmount, 10);
-    
-    if (materialId && !isNaN(sellAmount)) {
-        console.log(`Sell button clicked: ${materialId} x${sellAmount}`);
-        sellMaterial(materialId, sellAmount);
+    if (materialId) {
+        openSellModal(materialId);
     }
 });
 
@@ -4746,6 +4743,94 @@ function updateGoldDisplay() {
     }
 }
 
+/**
+ * Open the sell modal for a specific material
+ * @param {string} materialId - The material ID to sell
+ */
+function openSellModal(materialId) {
+    const material = getMaterialById(materialId);
+    const availableStock = materialsStock[materialId] || 0;
+
+    if (!material || availableStock === 0) {
+        console.warn(`Cannot sell ${materialId}: not found or no stock`);
+        return;
+    }
+
+    // Calculate trade bonus
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+    const unitPrice = material.worth * tradeBonus;
+
+    // Update modal title
+    const title = document.getElementById('sell-modal-title');
+    if (title) title.textContent = `💰 Sell ${material.name}`;
+
+    // Update info fields
+    const availableEl = document.getElementById('sell-available');
+    if (availableEl) availableEl.textContent = formatNumber(availableStock, 'material');
+
+    const unitPriceEl = document.getElementById('sell-unit-price');
+    if (unitPriceEl) unitPriceEl.textContent = formatNumber(unitPrice, 'gold');
+
+    const tradeBonusEl = document.getElementById('sell-trade-bonus');
+    if (tradeBonusEl) tradeBonusEl.textContent = `+${Math.round((tradeBonus - 1) * 100)}%`;
+
+    // Setup slider
+    const slider = document.getElementById('sell-amount-slider');
+    const amountDisplay = document.getElementById('sell-amount-display');
+    const sliderMax = document.getElementById('sell-slider-max');
+    const totalValueEl = document.getElementById('sell-total-value');
+    const totalContainer = totalValueEl?.parentElement;
+
+    if (slider) {
+        slider.min = '1';
+        slider.max = availableStock.toString();
+        slider.value = '1';
+
+        if (sliderMax) sliderMax.textContent = formatNumber(availableStock, 'material');
+
+        // Set material color as background for total value
+        if (totalContainer) {
+            totalContainer.style.background = `linear-gradient(135deg, ${material.color}, ${material.color}dd)`;
+        }
+
+        // Update display function - gets current slider value from DOM
+        const updateDisplay = () => {
+            const currentSlider = document.getElementById('sell-amount-slider');
+            const amount = parseInt(currentSlider.value, 10);
+            if (amountDisplay) amountDisplay.textContent = formatNumber(amount, 'material');
+            if (totalValueEl) {
+                const totalValue = unitPrice * amount;
+                totalValueEl.textContent = formatNumber(totalValue, 'gold') + ' 💰';
+            }
+        };
+
+        // Remove old event listeners by cloning
+        const newSlider = slider.cloneNode(true);
+        slider.parentNode.replaceChild(newSlider, slider);
+
+        // Add event listener to the new slider
+        newSlider.addEventListener('input', updateDisplay);
+
+        // Initial update
+        updateDisplay();
+    }
+
+    // Setup button handler
+    const sellSelectedBtn = document.getElementById('sell-selected-btn');
+
+    if (sellSelectedBtn) {
+        sellSelectedBtn.onclick = () => {
+            const amount = parseInt(document.getElementById('sell-amount-slider').value, 10);
+            sellMaterial(materialId, amount);
+            closeModal('sell-modal');
+        };
+    }
+
+    // Open modal
+    openModal('sell-modal');
+}
+
 function sellMaterial(materialId, amount) {
     console.log('sellMaterial called:', materialId, amount);
     if (!materialsStock[materialId] || materialsStock[materialId] < amount) {
@@ -4760,8 +4845,8 @@ function sellMaterial(materialId, amount) {
     }
     
     // Apply better-trading research bonus (3% per level)
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
     
     // Calculate earnings with trade bonus
     const earnings = material.worth * amount * tradeBonus;
@@ -4885,20 +4970,13 @@ function initMaterialsPanel() {
         
         const buttons = document.createElement('span');
         buttons.className = 'wh-col-actions';
-        
-        const sell1Btn = document.createElement('button');
-        sell1Btn.className = 'btn-sell';
-        sell1Btn.textContent = '1';
-        sell1Btn.dataset.materialId = id;
-        sell1Btn.dataset.sellAmount = '1';
-        
-        const sellAllBtn = document.createElement('button');
-        sellAllBtn.className = 'btn-sell-all';
-        sellAllBtn.textContent = 'all';
-        sellAllBtn.dataset.materialId = id;
-        
-        buttons.appendChild(sell1Btn);
-        buttons.appendChild(sellAllBtn);
+
+        const sellBtn = document.createElement('button');
+        sellBtn.className = 'btn-sell';
+        sellBtn.textContent = 'Sell';
+        sellBtn.dataset.materialId = id;
+
+        buttons.appendChild(sellBtn);
         
         row.appendChild(name);
         row.appendChild(worth);
@@ -4928,8 +5006,8 @@ function updateMaterialsPanel() {
     }
     
     // Calculate trade bonus once for display
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
     
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
@@ -4973,13 +5051,11 @@ function updateMaterialsPanel() {
             row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
             row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
 
-            // Update sell button tooltips and data
-            const sell1Btn = row.querySelector('.btn-sell');
-            sell1Btn.title = `Sell 1 ${m.name} for ${formatNumber(actualWorth, 'gold')} gold`;
-
-            const sellAllBtn = row.querySelector('.btn-sell-all');
-            sellAllBtn.title = `Sell all ${count} ${m.name} for ${formatNumber(count * actualWorth, 'gold')} gold`;
-            sellAllBtn.dataset.sellAmount = count.toString();
+            // Update sell button tooltip
+            const sellBtn = row.querySelector('.btn-sell');
+            if (sellBtn) {
+                sellBtn.title = `Sell ${m.name}`;
+            }
         } else {
             // Hide row
             row.style.display = 'none';
@@ -5011,35 +5087,230 @@ function updateMaterialsPanel() {
             header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
         }
 
-        // Create or update Sell All button (on the right with value)
+        // Create or update Warehouse Sell button (on the right)
+        let warehouseSellBtn = document.getElementById('warehouse-sell-btn');
         if (hasAnyMaterials) {
-            if (!sellAllHeaderBtn) {
-                sellAllHeaderBtn = document.createElement('button');
-                sellAllHeaderBtn.id = 'sell-all-header-btn';
-                sellAllHeaderBtn.className = 'btn-sell-all-global';
-                sellAllHeaderBtn.onclick = sellAllMaterials;
-                sellAllHeaderBtn.style.marginLeft = 'auto';
-                header.appendChild(sellAllHeaderBtn);
+            if (!warehouseSellBtn) {
+                warehouseSellBtn = document.createElement('button');
+                warehouseSellBtn.id = 'warehouse-sell-btn';
+                warehouseSellBtn.className = 'btn-sell-all-global';
+                warehouseSellBtn.textContent = '💰 Sell';
+                warehouseSellBtn.onclick = openWarehouseSellModal;
+                warehouseSellBtn.style.marginLeft = 'auto';
+                header.appendChild(warehouseSellBtn);
             }
-            sellAllHeaderBtn.textContent = `Sell All (💰 ${formatNumber(totalStockValue, 'gold')})`;
-        } else if (sellAllHeaderBtn) {
-            sellAllHeaderBtn.remove();
+        } else if (warehouseSellBtn) {
+            warehouseSellBtn.remove();
         }
 
-        // Create or update Sell Non-Craftables button (on the right with value)
-        if (hasNotCraftableMaterials) {
-            if (!sellNotCraftableBtn) {
-                sellNotCraftableBtn = document.createElement('button');
-                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
-                sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter or forge';
-                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.appendChild(sellNotCraftableBtn);
-            }
-            sellNotCraftableBtn.textContent = `Sell Non-Craftables (💰 ${formatNumber(totalNonCraftableValue, 'gold')})`;
-        } else if (sellNotCraftableBtn) {
-            sellNotCraftableBtn.remove();
+        // Remove old buttons if they still exist
+        if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+        if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    }
+}
+
+/**
+ * Open the warehouse sell modal with all bulk sell options
+ */
+function openWarehouseSellModal() {
+    const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
+
+    // Calculate values for each category
+    const smelterInputMaterials = new Set();
+    const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
         }
+        if (task.output && task.output.material) {
+            craftableMaterials.add(task.output.material);
+        }
+    }
+
+    let looseValue = 0;
+    let stonesValue = 0;
+    let oresValue = 0;
+    let nonCraftablesValue = 0;
+    let ingotsValue = 0;
+    let heatingValue = 0;
+    let allValue = 0;
+
+    const looseMaterials = [];
+    const stonesMaterials = [];
+    const oresMaterials = [];
+    const nonCraftablesMaterials = [];
+    const ingotsMaterials = [];
+    const heatingMaterials = [];
+    const allMaterials = [];
+
+    for (const m of materials) {
+        const id = m.id;
+        const count = materialsStock[id] || 0;
+        if (count > 0) {
+            const value = count * m.worth * tradeBonus;
+            allValue += value;
+
+            // Loose materials (not in smelter inputs, not ingots)
+            if (m.type.startsWith('Loose') && value > 0) {
+                looseValue += value;
+                looseMaterials.push({ name: m.name, count });
+            }
+
+            // Stones
+            if (m.type.startsWith('Stone') && value > 0) {
+                stonesValue += value;
+                stonesMaterials.push({ name: m.name, count });
+            }
+
+            // Ores
+            if (m.type.startsWith('Ore') && value > 0) {
+                oresValue += value;
+                oresMaterials.push({ name: m.name, count });
+            }
+
+            // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
+            if (!craftableMaterials.has(id) && !smelterInputMaterials.has(id) && value > 0) {
+                nonCraftablesValue += value;
+                nonCraftablesMaterials.push({ name: m.name, count });
+            }
+
+            // Ingots
+            if (m.type.startsWith('Ingot') && value > 0) {
+                ingotsValue += value;
+                ingotsMaterials.push({ name: m.name, count });
+            }
+
+            // Heating materials
+            if (m.type.startsWith('Special') && value > 0) {
+                heatingValue += value;
+                heatingMaterials.push({ name: m.name, count });
+            }
+        }
+    }
+
+    // Helper function to format material list
+    const formatMaterialList = (materials) => {
+        if (materials.length === 0) return '';
+        return materials.map(m => `${m.name}: ${m.count}`).join(', ');
+    };
+
+    // Update modal values
+    document.getElementById('wso-loose-value').textContent = formatNumber(looseValue, 'gold') + ' 💰';
+    document.getElementById('wso-loose-details').textContent = formatMaterialList(looseMaterials);
+
+    document.getElementById('wso-stones-value').textContent = formatNumber(stonesValue, 'gold') + ' 💰';
+    document.getElementById('wso-stones-details').textContent = formatMaterialList(stonesMaterials);
+
+    document.getElementById('wso-ores-value').textContent = formatNumber(oresValue, 'gold') + ' 💰';
+    document.getElementById('wso-ores-details').textContent = formatMaterialList(oresMaterials);
+
+    document.getElementById('wso-non-craftables-value').textContent = formatNumber(nonCraftablesValue, 'gold') + ' 💰';
+    document.getElementById('wso-non-craftables-details').textContent = formatMaterialList(nonCraftablesMaterials);
+
+    document.getElementById('wso-ingots-value').textContent = formatNumber(ingotsValue, 'gold') + ' 💰';
+    document.getElementById('wso-ingots-details').textContent = formatMaterialList(ingotsMaterials);
+
+    document.getElementById('wso-heating-value').textContent = formatNumber(heatingValue, 'gold') + ' 💰';
+    document.getElementById('wso-heating-details').textContent = formatMaterialList(heatingMaterials);
+
+    document.getElementById('wso-all-value').textContent = formatNumber(allValue, 'gold') + ' 💰';
+    document.getElementById('wso-all-details').textContent = formatMaterialList(allMaterials);
+
+    // Setup event handlers for buttons
+    const modalContent = document.getElementById('warehouse-sell-content');
+    if (modalContent) {
+        modalContent.onclick = (e) => {
+            const btn = e.target.closest('.warehouse-sell-option');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            if (action) {
+                executeBulkSell(action);
+                closeModal('warehouse-sell-modal');
+            }
+        };
+    }
+
+    openModal('warehouse-sell-modal');
+}
+
+/**
+ * Execute bulk sell based on action type
+ */
+function executeBulkSell(action) {
+    const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
+    const smelterInputMaterials = new Set();
+    const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+        if (task.output && task.output.material) {
+            craftableMaterials.add(task.output.material);
+        }
+    }
+
+    let totalGold = 0;
+    let totalItems = 0;
+    const soldMaterials = [];
+
+    for (const m of materials) {
+        const id = m.id;
+        const count = materialsStock[id] || 0;
+        if (count <= 0) continue;
+
+        let shouldSell = false;
+
+        switch (action) {
+            case 'sell-loose':
+                shouldSell = !smelterInputMaterials.has(id) && m.type !== 'Ingot';
+                break;
+            case 'sell-stones':
+                shouldSell = m.type && m.type.startsWith('Stone');
+                break;
+            case 'sell-ores':
+                shouldSell = m.type && (m.type === 'Ore' || m.type.startsWith('Ore '));
+                break;
+            case 'sell-non-craftables':
+                shouldSell = !craftableMaterials.has(id);
+                break;
+            case 'sell-ingots':
+                shouldSell = m.type === 'Ingot';
+                break;
+            case 'sell-heating':
+                shouldSell = m.type === 'Heating';
+                break;
+            case 'sell-all':
+                shouldSell = true;
+                break;
+        }
+
+        if (shouldSell) {
+            const value = count * m.worth * tradeBonus;
+            totalGold += value;
+            totalItems += count;
+            soldMaterials.push(`${count}x ${m.name}`);
+            logTransaction('income', value, `Sold ${count}x ${m.name}`);
+            materialsStock[id] = 0;
+        }
+    }
+
+    if (totalItems > 0) {
+        gold += totalGold;
+        console.log(`Bulk sell (${action}): ${totalItems} items for ${formatNumber(totalGold, 'gold')} gold`);
+
+        // Update worker
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gold, materialsStock }
+            });
+        }
+
+        // Update UI
+        updateGoldDisplay();
+        updateMaterialsPanel();
+        saveGame();
     }
 }
 

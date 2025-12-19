@@ -398,6 +398,125 @@
         </div>
     </div>
 
+    <!-- Sell Material modal -->
+    <div id="sell-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Sell Material dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2 id="sell-modal-title">💰 Sell Material</h2>
+                <button class="modal-close" aria-label="Close sell" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <div id="sell-modal-content">
+                    <div class="sell-info">
+                        <div class="sell-info-row">
+                            <span class="sell-info-label">Available:</span>
+                            <span id="sell-available" class="sell-info-value">0</span>
+                        </div>
+                        <div class="sell-info-row">
+                            <span class="sell-info-label">Unit Price:</span>
+                            <span id="sell-unit-price" class="sell-info-value">0</span>
+                        </div>
+                        <div class="sell-info-row">
+                            <span class="sell-info-label">Trade Bonus:</span>
+                            <span id="sell-trade-bonus" class="sell-info-value">+0%</span>
+                        </div>
+                    </div>
+
+                    <div class="sell-slider-container">
+                        <label for="sell-amount-slider" class="sell-slider-label">
+                            Amount to sell: <span id="sell-amount-display">1</span>
+                        </label>
+                        <input type="range" id="sell-amount-slider" class="sell-slider" min="1" max="100" value="1" step="1">
+                        <div class="sell-slider-marks">
+                            <span>1</span>
+                            <span id="sell-slider-max">100</span>
+                        </div>
+                    </div>
+
+                    <div class="sell-total">
+                        <span class="sell-total-label">Total Value:</span>
+                        <span id="sell-total-value" class="sell-total-value">0 💰</span>
+                    </div>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button id="sell-selected-btn" class="btn-primary">Sell</button>
+                <button class="btn-secondary" data-action="close-modal">Cancel</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Warehouse Sell Options modal -->
+    <div id="warehouse-sell-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Warehouse Sell Options dialog">
+        <div class="modal-backdrop" data-action="close-modal"></div>
+        <div class="modal-dialog" role="document">
+            <header class="modal-header">
+                <h2>💰 Warehouse - Bulk Sell</h2>
+                <button class="modal-close" aria-label="Close warehouse sell" data-action="close-modal">×</button>
+            </header>
+            <div class="modal-body">
+                <div id="warehouse-sell-content">
+                    <div class="warehouse-sell-options">
+                        <button class="warehouse-sell-option" data-action="sell-loose">
+                            <div class="wso-header">
+                                <span class="wso-label">Sell Loose Materials</span>
+                                <span class="wso-value" id="wso-loose-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-loose-details"></span>
+                        </button>
+                        <button class="warehouse-sell-option" data-action="sell-stones">
+                            <div class="wso-header">
+                                <span class="wso-label">Sell All Stones</span>
+                                <span class="wso-value" id="wso-stones-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-stones-details"></span>
+                        </button>
+                        <button class="warehouse-sell-option" data-action="sell-non-craftables">
+                            <div class="wso-header">
+                                <span class="wso-label">Sell All Non-Craftables</span>
+                                <span class="wso-value" id="wso-non-craftables-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-non-craftables-details"></span>
+                        </button>
+                        <div class="warehouse-sell-separator"></div>
+                        <button class="warehouse-sell-option danger" data-action="sell-ores">
+                            <div class="wso-header">
+                                <span class="wso-label">⚠️ Sell All Ores</span>
+                                <span class="wso-value" id="wso-ores-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-ores-details"></span>
+                        </button>
+                        <button class="warehouse-sell-option danger" data-action="sell-ingots">
+                            <div class="wso-header">
+                                <span class="wso-label">⚠️ Sell All Ingots</span>
+                                <span class="wso-value" id="wso-ingots-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-ingots-details"></span>
+                        </button>
+                        <button class="warehouse-sell-option danger" data-action="sell-heating">
+                            <div class="wso-header">
+                                <span class="wso-label">⚠️ Sell All Heating Materials</span>
+                                <span class="wso-value" id="wso-heating-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-heating-details"></span>
+                        </button>
+                        <button class="warehouse-sell-option danger" data-action="sell-all">
+                            <div class="wso-header">
+                                <span class="wso-label">⚠️ SELL EVERYTHING</span>
+                                <span class="wso-value" id="wso-all-value">0 💰</span>
+                            </div>
+                            <span class="wso-details" id="wso-all-details"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" data-action="close-modal">Close</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- About modal -->
     <div id="about-modal" class="modal" aria-hidden="true" role="dialog" aria-label="About dialog">
         <div class="modal-backdrop" data-action="close-modal"></div>
