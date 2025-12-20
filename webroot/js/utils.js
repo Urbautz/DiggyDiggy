@@ -1,0 +1,479 @@
+// ============================================================================
+// DIGGY DIGGY DWARF - SHARED UTILITIES
+// ============================================================================
+// This file contains helper functions shared between main.js and game-worker.js
+// All functions should be pure (no side effects) where possible
+// ============================================================================
+
+// ============================================================================
+// MATERIAL UTILITIES
+// ============================================================================
+
+/**
+ * Get a material by its ID
+ * @param {string} id - Material ID to look up
+ * @returns {Object|null} Material object or null if not found
+ */
+function getMaterialById(id) {
+    return materials.find(m => m.id === id) || null;
+}
+
+/**
+ * Select a random material appropriate for the given depth level
+ * @param {number} depthLevel - The depth level to select material for
+ * @returns {Object|null} Selected material object
+ */
+function randomMaterial(depthLevel) {
+    // Filter materials available at this depth
+    const available = materials.filter(mat => {
+        const min = mat.minlevel || 0;
+        const max = mat.maxlevel || Infinity;
+        return depthLevel >= min && depthLevel <= max && mat.probability > 0;
+    });
+
+    if (available.length === 0) {
+        // Fallback to earth if nothing else is available
+        return materials.find(m => m.id === 'earth') || null;
+    }
+
+    // Calculate total probability weight
+    let totalProb = 0;
+    for (const mat of available) {
+        totalProb += (mat.probability || 0);
+    }
+
+    if (totalProb === 0) {
+        // If all have zero probability, pick randomly
+        return available[Math.floor(Math.random() * available.length)];
+    }
+
+    // Pick a weighted random material
+    let rand = Math.random() * totalProb;
+    for (const mat of available) {
+        rand -= (mat.probability || 0);
+        if (rand <= 0) return mat;
+    }
+
+    // Fallback to last material in list
+    return available[available.length - 1];
+}
+
+/**
+ * Extract base material name (removes " Ingot" suffix)
+ * @param {string} name - Material name
+ * @returns {string} Base name without suffix
+ */
+function extractMaterialBaseName(name) {
+    return name.replace(' Ingot', '');
+}
+
+// ============================================================================
+// GEM UTILITIES
+// ============================================================================
+
+/**
+ * Randomly select a gem from the available gems defined in materials
+ * @returns {string|null} Gem material ID or null if no gems available
+ */
+function selectRandomGem() {
+    const gemMaterials = materials.filter(m => m.type === 'Gem');
+    if (gemMaterials.length === 0) return null;
+    return gemMaterials[Math.floor(Math.random() * gemMaterials.length)].id;
+}
+
+/**
+ * Calculate the probability that a Ruby gem prevents energy consumption
+ * Formula uses logarithmic diminishing returns:
+ * - Carat 1: ~5%
+ * - Carat 25: ~10%
+ * - Carat 100: ~50%
+ * - Carat 1000: ~75%
+ * - Carat 10000: ~79%
+ * - Max: 80%
+ * @param {number} carat - Total carat value of Ruby gems
+ * @returns {number} Probability (0-80) as percentage
+ */
+function calculateRubyEnergyPreventionChance(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    // probability = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
+    const normalizedCarat = carat / RUBY_ENERGY_CARAT_NORMALIZER;
+    const maxNormalizedCarat = RUBY_ENERGY_MAX_CARAT / RUBY_ENERGY_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const probability = RUBY_ENERGY_MIN_CHANCE + (RUBY_ENERGY_MAX_CHANCE - RUBY_ENERGY_MIN_CHANCE) * logFactor;
+
+    // Clamp to range [MIN, MAX]
+    return Math.min(RUBY_ENERGY_MAX_CHANCE, Math.max(RUBY_ENERGY_MIN_CHANCE, probability));
+}
+
+/**
+ * Check if Ruby gems prevent energy consumption for this action
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if energy consumption should be prevented
+ */
+function shouldRubyPreventEnergyConsumption(dwarf) {
+    if (!dwarf.toolId) return false;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return false;
+    }
+
+    // Sum up all Ruby carat values
+    const totalRubyCarat = toolInstance.gems
+        .filter(gem => gem.type == 'Ruby')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalRubyCarat <= 0) {
+        return false;
+    }
+
+
+    // Calculate prevention chance and roll
+    const chance = calculateRubyEnergyPreventionChance(totalRubyCarat);
+    const roll = Math.random() * 100;
+    const prevented = roll < chance;
+
+    return prevented;
+}
+
+/**
+ * Calculate the critical strike chance multiplier from Emerald gems
+ * Formula uses logarithmic diminishing returns:
+ * - Carat 1: ~0.5 (50% increase)
+ * - Carat 25: ~1.0 (100% increase)
+ * - Carat 100: ~10.0 (1000% increase)
+ * - Carat 1000: ~30.0 (3000% increase)
+ * - Carat 10000: ~39.5 (3950% increase)
+ * - Max: 40.0 (4000% increase)
+ * @param {number} carat - Total carat value of Emerald gems
+ * @returns {number} Multiplier for critical strike chance (0.5-40.0)
+ */
+function calculateEmeraldCritMultiplier(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    // multiplier = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
+    const normalizedCarat = carat / EMERALD_CRIT_CARAT_NORMALIZER;
+    const maxNormalizedCarat = EMERALD_CRIT_MAX_CARAT / EMERALD_CRIT_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const multiplier = EMERALD_CRIT_MIN_MULTIPLIER + (EMERALD_CRIT_MAX_MULTIPLIER - EMERALD_CRIT_MIN_MULTIPLIER) * logFactor;
+
+    // Clamp to range [MIN, MAX]
+    return Math.min(EMERALD_CRIT_MAX_MULTIPLIER, Math.max(EMERALD_CRIT_MIN_MULTIPLIER, multiplier));
+}
+
+/**
+ * Get the Emerald-modified critical strike chance for a dwarf
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {number} baseCritChance - Base critical strike chance (0-1)
+ * @returns {number} Modified critical strike chance with Emerald bonus (0-1)
+ */
+function getEmeraldModifiedCritChance(dwarf, baseCritChance) {
+    if (!dwarf.toolId) return baseCritChance;
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseCritChance;
+    }
+    // Sum up all Emerald carat values
+    const totalEmeraldCarat = toolInstance.gems
+        .filter(gem => gem.type == 'Emerald')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+    if (totalEmeraldCarat <= 0) {
+        return baseCritChance;
+    }
+    // Calculate the multiplier and apply it
+    const multiplier = Math.max(1,calculateEmeraldCritMultiplier(totalEmeraldCarat)) / 100;
+    return  baseCritChance * (1+multiplier);
+}
+
+/**
+ * Calculate the strength bonus percentage from Sapphire gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Sapphire gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateSapphireStrengthBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
+    const maxNormalizedCarat = SAPPHIRE_STRENGTH_MAX_CARAT / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = SAPPHIRE_STRENGTH_MIN_BONUS + (SAPPHIRE_STRENGTH_MAX_BONUS - SAPPHIRE_STRENGTH_MIN_BONUS) * logFactor;
+
+    return Math.min(SAPPHIRE_STRENGTH_MAX_BONUS, Math.max(SAPPHIRE_STRENGTH_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Sapphire-modified strength for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} baseStrength - Base strength value
+ * @returns {number} Modified strength with Sapphire bonus
+ */
+function getSapphireModifiedStrength(dwarf, baseStrength) {
+    if (!dwarf.toolId) return baseStrength;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseStrength;
+    }
+
+    // Sum up all Sapphire carat values
+    const totalSapphireCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Sapphire')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalSapphireCarat <= 0) return baseStrength;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateSapphireStrengthBonus(totalSapphireCarat);
+    const modifiedStrength = baseStrength * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && baseStrength > 0) {
+        console.log(`💎 Sapphire Strength Boost! ${dwarf.name}'s ${totalSapphireCarat}-carat Sapphire increases strength from ${baseStrength.toFixed(1)} to ${modifiedStrength.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedStrength;
+}
+
+/**
+ * Calculate the dig power bonus percentage from Diamond gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Diamond gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateDiamondDigPowerBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
+    const maxNormalizedCarat = DIAMOND_DIGPOWER_MAX_CARAT / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = DIAMOND_DIGPOWER_MIN_BONUS + (DIAMOND_DIGPOWER_MAX_BONUS - DIAMOND_DIGPOWER_MIN_BONUS) * logFactor;
+
+    return Math.min(DIAMOND_DIGPOWER_MAX_BONUS, Math.max(DIAMOND_DIGPOWER_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Diamond-modified dig power for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} basePower - Base dig power value
+ * @returns {number} Modified dig power with Diamond bonus
+ */
+function getDiamondModifiedDigPower(dwarf, basePower) {
+    if (!dwarf.toolId) return basePower;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return basePower;
+    }
+
+    // Sum up all Diamond carat values
+    const totalDiamondCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Diamond')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalDiamondCarat <= 0) return basePower;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateDiamondDigPowerBonus(totalDiamondCarat);
+    const modifiedPower = basePower * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && basePower > 0) {
+        console.log(`💎 Diamond Dig Power Boost! ${dwarf.name}'s ${totalDiamondCarat}-carat Diamond increases dig power from ${basePower.toFixed(1)} to ${modifiedPower.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedPower;
+}
+
+/**
+ * Calculate the research bonus percentage from Amethyst gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Amethyst gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateAmethystResearchBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / AMETHYST_RESEARCH_CARAT_NORMALIZER;
+    const maxNormalizedCarat = AMETHYST_RESEARCH_MAX_CARAT / AMETHYST_RESEARCH_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = AMETHYST_RESEARCH_MIN_BONUS + (AMETHYST_RESEARCH_MAX_BONUS - AMETHYST_RESEARCH_MIN_BONUS) * logFactor;
+
+    return Math.min(AMETHYST_RESEARCH_MAX_BONUS, Math.max(AMETHYST_RESEARCH_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Amethyst-modified research points for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} baseResearchPoints - Base research points value
+ * @returns {number} Modified research points with Amethyst bonus
+ */
+function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
+    if (!dwarf.toolId) return baseResearchPoints;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseResearchPoints;
+    }
+
+    // Sum up all Amethyst carat values
+    const totalAmethystCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Amethyst')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalAmethystCarat <= 0) return baseResearchPoints;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateAmethystResearchBonus(totalAmethystCarat);
+    const modifiedPoints = baseResearchPoints * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && baseResearchPoints > 0) {
+        console.log(`💎 Amethyst Research Boost! ${dwarf.name}'s ${totalAmethystCarat}-carat Amethyst increases research points from ${baseResearchPoints.toFixed(1)} to ${modifiedPoints.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedPoints;
+}
+
+// ============================================================================
+// RESEARCH UTILITIES
+// ============================================================================
+
+/**
+ * Get a research by its ID
+ * @param {string} researchId - Research ID to look up
+ * @returns {Object|null} Research object or null if not found
+ */
+function getResearch(researchId) {
+    return researchtree.find(r => r.id === researchId) || null;
+}
+
+/**
+ * Get the current level of a research
+ * @param {string} researchId - Research ID to look up
+ * @returns {number} Current research level (0 if not found or not researched)
+ */
+function getResearchLevel(researchId) {
+    const research = getResearch(researchId);
+    return research ? (research.level || 0) : 0;
+}
+
+/**
+ * Calculate the cost for a research at a specific level
+ * @param {number} baseCost - Base cost of the research
+ * @param {number} targetLevel - Target level to calculate cost for
+ * @returns {number} Calculated cost for that level
+ */
+function calculateResearchCost(baseCost, targetLevel) {
+    return Math.round(baseCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+}
+
+/**
+ * Check if a smelter task is unlocked by research
+ * @param {Object} task - Smelter task to check
+ * @returns {boolean} True if unlocked, false otherwise
+ */
+function isSmelterTaskUnlocked(task) {
+    if (!task.requires) return true; // No requirement, always unlocked
+    const requiredResearch = getResearch(task.requires);
+    if (!requiredResearch) return true; // Research not found, assume unlocked
+    return (requiredResearch.level || 0) > 0;
+}
+
+// ============================================================================
+// DWARF UTILITIES
+// ============================================================================
+
+/**
+ * Calculate the bucket capacity for a dwarf
+ * @param {Object} dwarf - The dwarf to calculate capacity for
+ * @returns {number} Total bucket capacity
+ */
+function calculateDwarfBucketCapacity(dwarf) {
+    const bucketBonus = getResearchLevel('buckets');
+    const baseStrength = dwarf.strength || 0;
+    const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
+    return bucketCapacity + bucketBonus + Math.floor(modifiedStrength);
+}
+
+/**
+ * Calculate XP gain from material hardness
+ * @param {number} hardness - Material hardness value
+ * @returns {number} XP to award
+ */
+function calculateXPFromHardness(hardness) {
+    return Math.ceil(Math.sqrt(hardness));
+}
+
+/**
+ * Calculate wage for a dwarf based on level and research
+ * @param {Object} dwarf - The dwarf to calculate wage for
+ * @returns {number} Wage amount
+ */
+function calculateWage(dwarf) {
+    const level = dwarf.level || 1;
+    const wageOptimization = getResearchLevel('wage-optimization');
+
+    // Start with base wage
+    let wage = DWARF_BASE_WAGE;
+
+    // Calculate wage increase rate (18% per level, reduced by 1% per research level)
+    const increaseRate = DWARF_WAGE_INCREASE_RATE - (wageOptimization * RESEARCH_WAGE_OPTIMIZATION_REDUCTION);
+    const clampedRate = Math.max(DWARF_WAGE_INCREASE_MIN, increaseRate);
+
+    // Apply increase for each level above 1
+    for (let i = 1; i < level; i++) {
+        wage += wage * clampedRate;
+    }
+
+    return wage;
+}
+
+/**
+ * Check if player can afford wage, or if dwarf will strike
+ * @param {Object} dwarf - The dwarf to check for
+ * @param {number} currentGold - Current gold amount
+ * @returns {Object} {canPay: boolean, willStrike: boolean, wage: number}
+ */
+function checkCanAffordWageOrStrike(dwarf, currentGold) {
+    const wage = calculateWage(dwarf);
+
+    if (currentGold >= wage) {
+        return { canPay: true, willStrike: false, wage };
+    }
+
+    // Can't afford - check strike chance
+    const unionBusting = getResearchLevel('union-busting');
+    const strikeReduction = unionBusting * RESEARCH_UNION_BUSTING_BONUS;
+    const strikeChance = Math.max(0, DWARF_STRIKE_BASE_CHANCE - strikeReduction);
+    const willStrike = Math.random() > strikeChance;
+
+    return { canPay: false, willStrike, wage };
+}
+
+// ============================================================================
+// SMELTER UTILITIES
+// ============================================================================
+
+/**
+ * Get the gem cutting task from smelter tasks
+ * @returns {Object|null} Gem cutting task or null if not found
+ */
+function getGemCuttingTask() {
+    return smelterTasks.find(t => t.type === 'gem-cutting') || null;
+}
+
+/**
+ * Get ticks required for gem cutting from task definition
+ * @returns {number} Ticks required (defaults to 250 if not found)
+ */
+function getGemCuttingTicksRequired() {
+    const task = getGemCuttingTask();
+    return task ? (task.ticksRequired || 250) : 250;
+}

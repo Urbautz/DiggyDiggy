@@ -24,37 +24,7 @@ function updateDwarfsLevelUpBadge() {
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 
-// pick a random material from the registry based on depth level and probability (probability)
-function randomMaterial(depthLevel = 0) {
-    // Filter materials that are valid for this depth level and have probability > 0
-    const validMaterials = materials.filter(m => 
-        depthLevel >= (m.minlevel || 0) && depthLevel <= (m.maxlevel || Infinity) && (m.probability || 0) > 0
-    );
-    
-    if (validMaterials.length === 0) {
-        // Fallback to first material if none match
-        return materials[0];
-    }
-    
-    // Calculate total probability for probability distribution
-    const totalProbability = validMaterials.reduce((sum, m) => sum + (m.probability || 1), 0);
-    
-    // Random selection weighted by probability
-    let random = Math.random() * totalProbability;
-    for (const mat of validMaterials) {
-        random -= (mat.probability || 1);
-        if (random <= 0) {
-            return mat;
-        }
-    }
-    
-    // Fallback to last valid material
-    return validMaterials[validMaterials.length - 1];
-}
-
-function getMaterialById(id) {
-    return materials.find(m => m.id === id) || null;
-}
+// Note: randomMaterial and getMaterialById are now in utils.js
 
 /**
  * Unified number formatting for display throughout the GUI
@@ -67,7 +37,7 @@ function formatNumber(value, type = 'material') {
 
     if (isNaN(num)) return value;
 
-    if (type === 'money' || type === 'gold') {
+    if (type == 'money' || type == 'gold') {
         // Money formatting
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
@@ -83,7 +53,14 @@ function formatNumber(value, type = 'material') {
         }
         // > 100000: use k suffix
         return Math.round(num / 1000) + ' k';
-    } else if (type === 'xp') {
+    } else if (type == 'percent'){
+        // Percent formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        return num.toFixed(2);
+    }
+    else if (type == 'xp'){
         // XP formatting
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
@@ -115,13 +92,7 @@ function formatNumber(value, type = 'material') {
     }
 }
 
-// Check if a smelter task is unlocked by research
-function isSmelterTaskUnlocked(task) {
-    if (!task.requires) return true;
-    const requiredResearch = researchtree.find(r => r.id === task.requires);
-    if (!requiredResearch) return true;
-    return (requiredResearch.level || 0) >= 1;
-}
+// Note: isSmelterTaskUnlocked is now in utils.js
 
 // Count how many smelter tasks are currently actionable
 function countActionableSmelterTasks() {
@@ -129,7 +100,14 @@ function countActionableSmelterTasks() {
     for (const task of smelterTasks) {
         if (task.id === 'do-nothing') continue;
         if (!isSmelterTaskUnlocked(task)) continue;
-        if (task.input && task.input.material && task.input.amount) {
+
+        // Check for gem cutting tasks
+        if (task.type === 'gem-cutting') {
+            const hasGemsToPolish = gems.some(g => g.markedForCutting && !g.polished);
+            if (hasGemsToPolish) {
+                count++;
+            }
+        } else if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
                 count++;
@@ -1058,6 +1036,290 @@ function confirmEnchant(toolId) {
     alert(`✨ Tool enchanted to level ${enchantLevel}!\n\nThe tool now has +${enchantLevel} enchantment power.`);
 }
 
+// Gem Setting Modal Functions
+function openGemModal(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        console.error('Tool not found:', toolId);
+        return;
+    }
+
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+
+    if (maxGemSlots === 0) {
+        alert('You need to research Gem Setting first!');
+        return;
+    }
+
+    openModal('gem-modal');
+    populateGemModal(tool, maxGemSlots);
+}
+
+function populateGemModal(tool, maxGemSlots) {
+    const container = document.getElementById('gem-content');
+    if (!container) return;
+
+    const toolName = tool.name || `${tool.type} #${tool.id}`;
+    const toolPower = tool.power || tool.level || 0;
+
+    // Initialize tool.gems if it doesn't exist
+    if (!tool.gems) {
+        tool.gems = [];
+    }
+
+    // Get available polished gems (including currently assigned ones for this tool)
+    const currentlyAssignedIds = new Set(tool.gems.map(g => g.id));
+    const availableGems = gems.filter(g => g.polished && (!g.assignedToTool || currentlyAssignedIds.has(g.id)));
+
+    // Group gems by type and carat for display
+    const gemGroups = {};
+    availableGems.forEach(gem => {
+        const key = `${gem.type}_${gem.carat}`;
+        if (!gemGroups[key]) {
+            gemGroups[key] = {
+                type: gem.type,
+                carat: gem.carat,
+                gems: []
+            };
+        }
+        gemGroups[key].gems.push(gem);
+    });
+
+    // Sort gem groups by carat (descending), then by type (alphabetically)
+    const sortedGroups = Object.values(gemGroups).sort((a, b) => {
+        if (b.carat !== a.carat) {
+            return b.carat - a.carat; // Higher carat first
+        }
+        return a.type.localeCompare(b.type); // Alphabetical by type
+    });
+
+    // Get already assigned gem types to prevent duplicates
+    const assignedTypes = new Set(tool.gems.map(g => g.type));
+
+    let gemSlotsHTML = '';
+    for (let i = 0; i < maxGemSlots; i++) {
+        const currentGem = tool.gems[i];
+        const slotLabel = i + 1;
+
+        if (currentGem) {
+            // Show fixed value with unset button
+            const gemName = `${currentGem.carat} carat ${currentGem.type}`;
+            gemSlotsHTML += `
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 600;">Gem Slot ${slotLabel}:</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="flex: 1; padding: 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 13px;">
+                            💎 ${gemName}
+                        </div>
+                        <button onclick="unsetGem(${tool.id}, ${i})" class="btn-sell btn-tiny" style="white-space: nowrap;">Unset</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Show dropdown for empty slot
+            gemSlotsHTML += `
+                <div style="margin-bottom: 12px;">
+                    <label for="gem-slot-${i}" style="display: block; margin-bottom: 4px; font-weight: 600;">Gem Slot ${slotLabel}:</label>
+                    <select id="gem-slot-${i}" class="gem-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff; font-size: 13px;">
+                        <option value="">-- Empty --</option>
+            `;
+
+            // Add options for each gem group, excluding already assigned types
+            sortedGroups.forEach(group => {
+                if (!assignedTypes.has(group.type)) {
+                    const gemName = `${group.carat} carat ${group.type}`;
+                    const count = group.gems.length;
+                    gemSlotsHTML += `<option value="${group.type}_${group.carat}">${gemName} (${count} available)</option>`;
+                }
+            });
+
+            gemSlotsHTML += `
+                    </select>
+                </div>
+            `;
+        }
+    }
+
+    container.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0;">🔨 ${toolName}</h3>
+            <p style="margin: 0; color: #9fbfe0; font-size: 13px;">Current Power: ${toolPower}</p>
+        </div>
+
+        <div style="margin-bottom: 16px; padding: 12px; background: rgba(102, 204, 255, 0.1); border: 1px solid rgba(102, 204, 255, 0.3); border-radius: 6px;">
+            <p style="margin: 0 0 12px 0; color: #66ccff; font-size: 13px;">
+                Set polished gems into your tool to increase its power. You can set up to ${maxGemSlots} gem${maxGemSlots > 1 ? 's' : ''}.
+            </p>
+            <p>Ruby: Chance to consume no energy. Higher carat have higher chance, but diminishing returns</p>
+            <p>Sapphire: Gives dwarfs option to overload their bucket. Gems do not count to the max bucket.</p>
+            <p>Emerald: Gives tools a higher chance at a critical strike.</p>
+            <p>Diamond: Gives tools 1% more dwarf dig power per carat.</p>
+            <p>Amethyst: Gives the dwarf a chance to do more smelting and research in one tick.</p>
+            ${gemSlotsHTML}
+        </div>
+
+        ${availableGems.length === 0 ? '<p style="color: #ff6b6b; font-size: 13px; text-align: center;">No polished gems available. Polish gems in the smelter first!</p>' : ''}
+    `;
+
+    // Update the confirm button
+    const confirmBtn = document.getElementById('confirm-gem-btn');
+    if (confirmBtn) {
+        confirmBtn.onclick = () => confirmGemSetting(tool.id);
+    }
+}
+
+function confirmGemSetting(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) return;
+
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+
+    // Collect new gem selections
+    const newGems = [];
+    const usedGemKeys = new Set();
+    const usedTypes = new Set();
+    const gemsToKeep = new Set(); // Track which gems we're keeping
+
+    for (let i = 0; i < maxGemSlots; i++) {
+        // Check if this slot already has a gem assigned (will be a fixed display, not a dropdown)
+        const existingGem = tool.gems && tool.gems[i];
+
+        if (existingGem) {
+            // Keep the existing gem
+            const gem = gems.find(g => g.id === existingGem.id);
+            if (gem && gem.polished) {
+                gemsToKeep.add(gem.id);
+                usedGemKeys.add(gem.id);
+                usedTypes.add(gem.type);
+                newGems.push({
+                    id: gem.id,
+                    type: gem.type,
+                    carat: gem.carat
+                });
+            }
+        } else {
+            // Check for a new selection in the dropdown
+            const select = document.getElementById(`gem-slot-${i}`);
+            if (!select || !select.value) continue;
+
+            const [type, carat] = select.value.split('_');
+            const caratNum = parseInt(carat);
+
+            // Check if this type is already used
+            if (usedTypes.has(type)) {
+                alert(`⚠️ You can only set one ${type} gem per tool!`);
+                return;
+            }
+
+            // Find an available gem of this type/carat that hasn't been used yet
+            const availableGem = gems.find(g =>
+                g.polished &&
+                !g.assignedToTool &&
+                g.type === type &&
+                g.carat === caratNum &&
+                !usedGemKeys.has(g.id)
+            );
+
+            if (availableGem) {
+                availableGem.assignedToTool = true;
+                gemsToKeep.add(availableGem.id);
+                usedGemKeys.add(availableGem.id);
+                usedTypes.add(type);
+                newGems.push({
+                    id: availableGem.id,
+                    type: availableGem.type,
+                    carat: availableGem.carat
+                });
+            }
+        }
+    }
+
+    // Clear assignedToTool flag ONLY for gems that were previously assigned but are no longer kept
+    if (tool.gems) {
+        tool.gems.forEach(gemData => {
+            if (!gemsToKeep.has(gemData.id)) {
+                const gem = gems.find(g => g.id === gemData.id);
+                if (gem) {
+                    gem.assignedToTool = false;
+                }
+            }
+        });
+    }
+
+    // Update tool with new gems
+    tool.gems = newGems;
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { toolsInventory, gems }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Close modal and refresh UI
+    closeModal('gem-modal');
+    populateToolsInPanel(); // Refresh tools panel to show gems
+
+    // Show success message
+    if (newGems.length > 0) {
+        alert(`💎 Successfully set ${newGems.length} gem${newGems.length > 1 ? 's' : ''} into the tool!`);
+    } else {
+        alert('💎 All gems removed from the tool.');
+    }
+}
+
+function unsetGem(toolId, slotIndex) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool || !tool.gems || !tool.gems[slotIndex]) return;
+
+    const gemToRemove = tool.gems[slotIndex];
+    const gemName = `${gemToRemove.carat} carat ${gemToRemove.type}`;
+
+    // Confirmation dialog with warning
+    const confirmed = confirm(
+        `⚠️ WARNING: This will permanently destroy the gem!\n\n` +
+        `Are you sure you want to unset and destroy:\n${gemName}?\n\n` +
+        `This action CANNOT be undone!`
+    );
+
+    if (!confirmed) return;
+
+    // Find and remove the gem from the gems array
+    const gemIndex = gems.findIndex(g => g.id === gemToRemove.id);
+    if (gemIndex !== -1) {
+        gems.splice(gemIndex, 1);
+    }
+
+    // Remove gem from tool
+    tool.gems.splice(slotIndex, 1);
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { toolsInventory, gems }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Refresh the modal and tools panel
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+    populateGemModal(tool, maxGemSlots);
+    populateToolsInPanel();
+
+    // Show confirmation
+    alert(`💎 Gem destroyed: ${gemName}`);
+}
+
 function openResearch() {
     openModal('research-modal');
     populateResearch();
@@ -1119,8 +1381,11 @@ function populateGemsList() {
         const gemBaseValue = gemMaterial ? gemMaterial.worth : 0;
         const gemsOfType = gemsByType[type];
 
-        // Calculate total value for this gem type
-        const totalValue = gemsOfType.reduce((sum, gem) => sum + (gemBaseValue * gem.carat), 0);
+        // Calculate total value for this gem type (polished gems worth 50% more)
+        const totalValue = gemsOfType.reduce((sum, gem) => {
+            const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
+            return sum + (gemBaseValue * gem.carat * valueMultiplier);
+        }, 0);
 
         // Calculate max carat for each status
         const maxCaratRough = Math.max(...gemsOfType.filter(g => !g.polished).map(g => g.carat), 0);
@@ -1155,12 +1420,14 @@ function populateGemsList() {
         const itemsContainer = document.createElement('div');
         itemsContainer.className = isExpanded ? 'gem-type-items' : 'gem-type-items collapsed';
 
-        // Group gems by polished status and carat
+        // Group gems by status (assigned/polished/rough) and carat
         const gemGroups = {};
         gemsOfType.forEach(gem => {
-            const key = `${gem.polished ? 'polished' : 'rough'}_${gem.carat}`;
+            const status = gem.assignedToTool ? 'assigned' : (gem.polished ? 'polished' : 'rough');
+            const key = `${status}_${gem.carat}`;
             if (!gemGroups[key]) {
                 gemGroups[key] = {
+                    assigned: gem.assignedToTool || false,
                     polished: gem.polished,
                     carat: gem.carat,
                     count: 0,
@@ -1171,12 +1438,15 @@ function populateGemsList() {
                 };
             }
             gemGroups[key].count++;
-            gemGroups[key].totalValue += gemBaseValue * gem.carat;
+            const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
+            gemGroups[key].totalValue += gemBaseValue * gem.carat * valueMultiplier;
 
             // Track cutting status - if any gem in the group is marked for cutting
             if (gem.markedForCutting) {
                 gemGroups[key].markedForCutting = true;
-                gemGroups[key].maxProgress = 250; // From task.ticksRequired
+                // Get the ticksRequired from the gem cutting task definition
+                const gemCuttingTask = smelterTasks.find(t => t.type === 'gem-cutting');
+                gemGroups[key].maxProgress = gemCuttingTask ? gemCuttingTask.ticksRequired : 250;
                 // Track the highest cutting progress in this group
                 const currentProgress = gem.cuttingProgress || 0;
                 if (currentProgress > gemGroups[key].cuttingProgress) {
@@ -1185,9 +1455,10 @@ function populateGemsList() {
             }
         });
 
-        // Sort groups: polished first, then by carat descending
+        // Sort groups: assigned first, then polished, then rough; within each status sort by carat descending
         const sortedGroups = Object.values(gemGroups).sort((a, b) => {
-            if (a.polished !== b.polished) return b.polished ? 1 : -1; // Polished first
+            if (a.assigned !== b.assigned) return a.assigned ? -1 : 1; // Assigned first
+            if (a.polished !== b.polished) return a.polished ? -1 : 1; // Then polished
             return b.carat - a.carat; // Then by carat descending
         });
 
@@ -1199,7 +1470,9 @@ function populateGemsList() {
 
             // Build status badge with cut button or progress
             let statusSection = '';
-            if (group.polished) {
+            if (group.assigned) {
+                statusSection = '<span class="gem-assigned-badge">💎 Assigned</span>';
+            } else if (group.polished) {
                 statusSection = '<span class="gem-polished-badge">✨ Polished</span>';
             } else if (group.markedForCutting) {
                 // Show cutting progress
@@ -1224,6 +1497,14 @@ function populateGemsList() {
             const gemItem = document.createElement('div');
             gemItem.className = 'gem-item gem-item-compact';
 
+            // Don't show sell buttons for assigned gems
+            const sellButtonsHTML = group.assigned ? '' : `
+                <div class="gem-item-actions">
+                    <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                    <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                </div>
+            `;
+
             gemItem.innerHTML = `
                 <div class="gem-item-compact-content">
                     <span class="gem-item-carat">${group.carat} ct</span>
@@ -1232,10 +1513,7 @@ function populateGemsList() {
                     </div>
                     <span class="gem-item-count">×${group.count}</span>
                     <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
-                    <div class="gem-item-actions">
-                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
-                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
-                    </div>
+                    ${sellButtonsHTML}
                 </div>
             `;
 
@@ -1320,12 +1598,12 @@ function markGemsForCutting(gemType, carat) {
 }
 
 function sellGems(gemType, carat, polished, includeLower) {
-    // Find gems to sell
+    // Find gems to sell (exclude assigned gems)
     const gemsToSell = [];
 
     for (let i = gems.length - 1; i >= 0; i--) {
         const gem = gems[i];
-        if (gem.type === gemType && gem.polished === polished) {
+        if (gem.type === gemType && gem.polished === polished && !gem.assignedToTool) {
             if (includeLower) {
                 // Sell this carat and all lower carats with same polished status
                 if (gem.carat <= carat) {
@@ -1345,13 +1623,14 @@ function sellGems(gemType, carat, polished, includeLower) {
         return;
     }
 
-    // Calculate total value
+    // Calculate total value (polished gems worth 50% more)
     const gemMaterial = getMaterialById(gemType);
     const baseValue = gemMaterial ? gemMaterial.worth : 0;
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
-        totalValue += baseValue * gem.carat;
+        const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
+        totalValue += baseValue * gem.carat * valueMultiplier;
     });
 
     // Remove gems from array
@@ -3250,6 +3529,10 @@ function openDwarfs() {
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
     
+    // Remove Warehouse Sell button
+    const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
+    if (warehouseSellBtn) warehouseSellBtn.remove();
+    
     // Remove Sell Non-Craftables button from header
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
@@ -3323,6 +3606,10 @@ function showToolsPanel() {
     // Remove header buttons that are specific to warehouse
     const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+
+    // Remove Warehouse Sell button
+    const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
+    if (warehouseSellBtn) warehouseSellBtn.remove();
 
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
@@ -3432,14 +3719,36 @@ function populateToolsInPanel() {
             actions.appendChild(enchantBtn);
         }
         
-        // Gems button (placeholder)
-        const gemsBtn = document.createElement('button');
-        gemsBtn.className = 'btn-secondary btn-tiny';
-        gemsBtn.textContent = '💎 Gems';
-        gemsBtn.title = 'Add Gems (coming soon)';
-        gemsBtn.style.opacity = '0.5';
-        gemsBtn.style.cursor = 'not-allowed';
-        actions.appendChild(gemsBtn);
+        // Gems button
+        const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+        const gemSettingLevel = gemSettingResearch ? gemSettingResearch.level : 0;
+        const hasGems = tool.gems && tool.gems.length > 0;
+
+        if (hasGems) {
+            // Show gem info instead of button
+            const gemInfo = document.createElement('span');
+            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
+            gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
+            gemInfo.style.cursor = 'pointer';
+            gemInfo.onclick = () => openGemModal(tool.id);
+            actions.appendChild(gemInfo);
+        } else {
+            const gemsBtn = document.createElement('button');
+            gemsBtn.className = 'btn-secondary btn-tiny';
+            gemsBtn.textContent = '💎 Gems';
+
+            if (gemSettingLevel > 0) {
+                gemsBtn.title = 'Set gems into this tool';
+                gemsBtn.onclick = () => openGemModal(tool.id);
+            } else {
+                gemsBtn.title = 'Requires Gem Setting research';
+                gemsBtn.style.opacity = '0.5';
+                gemsBtn.style.cursor = 'not-allowed';
+                gemsBtn.disabled = true;
+            }
+            actions.appendChild(gemsBtn);
+        }
         
         // Sell button
         const sellBtn = document.createElement('button');
@@ -3961,12 +4270,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
         const aLevel = a.level || 1;
-        const aNeeded = 250 * aLevel;
+        const aNeeded = DWARF_XP_PER_LEVEL * aLevel;
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
         const bLevel = b.level || 1;
-        const bNeeded = 250 * bLevel;
+        const bNeeded = DWARF_XP_PER_LEVEL * bLevel;
         const bCanLevelUp = bXP >= bNeeded;
 
         if (aCanLevelUp !== bCanLevelUp) {
@@ -4039,10 +4348,17 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             }
         }
     }
-    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    // Apply Diamond gem bonus to dig power skill points
+    const baseDigPowerPoints = dwarf.digPower || 0;
+    const modifiedDigPowerPoints = getDiamondModifiedDigPower(dwarf, baseDigPowerPoints);
+    const levelBonus = 1 + modifiedDigPowerPoints * 0.1;
+
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
+
+    // Apply gem bonus (5% per carat for each gem)
+
     const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
 
     // Populate basic stats
@@ -4103,13 +4419,18 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Populate dig power
-    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
-    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${formatNumber(enchantBonus, 'material')} (+${enchantLevel})</div>` : '';
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'percent');
+    const enchantLine = enchantLevel > 0 ? `<div style="color: #b19cd9;">× Enchantment: ${formatNumber(enchantBonus, 'percent')} (+${enchantLevel})</div>` : '';
+    const diamondBonusPercent = ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100);
+    const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
+        ? `<div style="color: #66ccff; margin-left: 10px;">💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
+        : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
-        <div>× Level Bonus: ${formatNumber(levelBonus, 'material')} (${dwarf.digPower || 0})</div>
-        <div>× Research: ${formatNumber(researchBonus, 'material')} (${improvedDigging ? improvedDigging.level : 0})</div>
-        <div>× Tool Power: ${formatNumber(toolPower, 'material')}</div>
+        <div>× Level Bonus: ${formatNumber(levelBonus, 'percent')} (${baseDigPowerPoints} skill points)</div>
+        ${diamondBonusLine}
+        <div>× Research: ${formatNumber(researchBonus, 'percent')} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${formatNumber(toolPower, 'percent')}</div>
         ${enchantLine}
     `;
 
@@ -4144,19 +4465,46 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
         toolCurrent.appendChild(nameSpan);
         toolCurrent.appendChild(powerSpan);
-
-        // Add enchantment badge if tool is enchanted
-        if (enchantLevel > 0) {
-            const enchantSpan = document.createElement('span');
-            enchantSpan.style.cssText = 'margin-left: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
-            enchantSpan.textContent = `✨+${enchantLevel}`;
-            toolCurrent.appendChild(enchantSpan);
-        }
     } else {
         const noneP = document.createElement('p');
         noneP.className = 'dwarf-tool-none';
         noneP.textContent = 'No tool';
         toolCurrent.appendChild(noneP);
+    }
+
+    // Populate tool badges (enchantment and gems) in separate container
+    const toolBadges = document.getElementById('dwarf-tool-badges');
+    toolBadges.innerHTML = '';
+
+    if (currentTool) {
+        // Add enchantment badge if tool is enchanted
+        if (enchantLevel > 0) {
+            const enchantSpan = document.createElement('span');
+            enchantSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+            enchantSpan.textContent = `✨+${enchantLevel}`;
+            toolBadges.appendChild(enchantSpan);
+        }
+
+        // Add gem display if tool has gems
+        if (currentTool.gems && currentTool.gems.length > 0) {
+            // Group gems by type and sum carats
+            const gemsByType = {};
+            currentTool.gems.forEach(gem => {
+                if (!gemsByType[gem.type]) {
+                    gemsByType[gem.type] = 0;
+                }
+                gemsByType[gem.type] += gem.carat;
+            });
+
+            // Create a span for each gem type
+            Object.entries(gemsByType).forEach(([type, carats]) => {
+                const gemSpan = document.createElement('span');
+                gemSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(102, 204, 255, 0.15); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 3px; color: #66ccff; font-size: 10px; font-weight: bold;';
+                gemSpan.textContent = `💎 ${type} ${carats}ct`;
+                gemSpan.title = `${carats} carat ${type}`;
+                toolBadges.appendChild(gemSpan);
+            });
+        }
     }
 
     // Populate tool selector (only on initial open, not on refresh)
@@ -4224,10 +4572,48 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     };
 
     const energyLevel = Math.round(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
-    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
-    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
-    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Speed and XP Bonus `, 'wisdom'));
+
+    // Calculate Ruby energy prevention chance for display
+    let rubyEnergyChance = 0;
+    if (dwarf.toolId) {
+        const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
+            const totalRubyCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Ruby')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            if (totalRubyCarat > 0) {
+                rubyEnergyChance = calculateRubyEnergyPreventionChance(totalRubyCarat);
+            }
+        }
+    }
+
+    // Calculate gem bonuses for display
+    const baseDigPower = dwarf.digPower || 0;
+    const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
+    const diamondDigPowerPercent = modifiedDigPower > baseDigPower ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100) : 0;
+    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
+    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power<br />${diamondBonus}`;
+
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `<br />💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+
+    const baseStrength = dwarf.strength || 0;
+    const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
+    const effectiveStrength = Math.floor(modifiedStrength);
+    const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
+    const sapphireBonus = modifiedStrength > baseStrength ? ` (effective: ${effectiveStrength}, +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}<br />${sapphireBonus}`;
+
+    const baseWisdom = dwarf.wisdom || 0;
+    const baseResearchPoints = baseWisdom + 1;
+    const modifiedResearchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
+    const amethystBonusPercent = modifiedResearchPoints > baseResearchPoints ? ((modifiedResearchPoints - baseResearchPoints) / baseResearchPoints * 100) : 0;
+    const amethystBonus = modifiedResearchPoints > baseResearchPoints ? ` (+${formatNumber(amethystBonusPercent, 'percent')}% from 💎Amethyst)` : '';
+    const wisdomDesc = `Research and Smelting Speed<br />${amethystBonus}`;
+
+    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
+    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, strengthDesc, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, wisdomDesc, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');
@@ -4517,15 +4903,12 @@ document.addEventListener('click', (ev) => {
 
 // Delegated event handler for sell buttons
 document.addEventListener('click', (ev) => {
-    const sellBtn = ev.target.closest('.btn-sell, .btn-sell-all');
+    const sellBtn = ev.target.closest('.btn-sell');
     if (!sellBtn) return;
-    
+
     const materialId = sellBtn.dataset.materialId;
-    const sellAmount = parseInt(sellBtn.dataset.sellAmount, 10);
-    
-    if (materialId && !isNaN(sellAmount)) {
-        console.log(`Sell button clicked: ${materialId} x${sellAmount}`);
-        sellMaterial(materialId, sellAmount);
+    if (materialId) {
+        openSellModal(materialId);
     }
 });
 
@@ -4775,6 +5158,94 @@ function updateGoldDisplay() {
     }
 }
 
+/**
+ * Open the sell modal for a specific material
+ * @param {string} materialId - The material ID to sell
+ */
+function openSellModal(materialId) {
+    const material = getMaterialById(materialId);
+    const availableStock = materialsStock[materialId] || 0;
+
+    if (!material || availableStock === 0) {
+        console.warn(`Cannot sell ${materialId}: not found or no stock`);
+        return;
+    }
+
+    // Calculate trade bonus
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+    const unitPrice = material.worth * tradeBonus;
+
+    // Update modal title
+    const title = document.getElementById('sell-modal-title');
+    if (title) title.textContent = `💰 Sell ${material.name}`;
+
+    // Update info fields
+    const availableEl = document.getElementById('sell-available');
+    if (availableEl) availableEl.textContent = formatNumber(availableStock, 'material');
+
+    const unitPriceEl = document.getElementById('sell-unit-price');
+    if (unitPriceEl) unitPriceEl.textContent = formatNumber(unitPrice, 'gold');
+
+    const tradeBonusEl = document.getElementById('sell-trade-bonus');
+    if (tradeBonusEl) tradeBonusEl.textContent = `+${Math.round((tradeBonus - 1) * 100)}%`;
+
+    // Setup slider
+    const slider = document.getElementById('sell-amount-slider');
+    const amountDisplay = document.getElementById('sell-amount-display');
+    const sliderMax = document.getElementById('sell-slider-max');
+    const totalValueEl = document.getElementById('sell-total-value');
+    const totalContainer = totalValueEl?.parentElement;
+
+    if (slider) {
+        slider.min = '1';
+        slider.max = availableStock.toString();
+        slider.value = '1';
+
+        if (sliderMax) sliderMax.textContent = formatNumber(availableStock, 'material');
+
+        // Set material color as background for total value
+        if (totalContainer) {
+            totalContainer.style.background = `linear-gradient(135deg, ${material.color}, ${material.color}dd)`;
+        }
+
+        // Update display function - gets current slider value from DOM
+        const updateDisplay = () => {
+            const currentSlider = document.getElementById('sell-amount-slider');
+            const amount = parseInt(currentSlider.value, 10);
+            if (amountDisplay) amountDisplay.textContent = formatNumber(amount, 'material');
+            if (totalValueEl) {
+                const totalValue = unitPrice * amount;
+                totalValueEl.textContent = formatNumber(totalValue, 'gold') + ' 💰';
+            }
+        };
+
+        // Remove old event listeners by cloning
+        const newSlider = slider.cloneNode(true);
+        slider.parentNode.replaceChild(newSlider, slider);
+
+        // Add event listener to the new slider
+        newSlider.addEventListener('input', updateDisplay);
+
+        // Initial update
+        updateDisplay();
+    }
+
+    // Setup button handler
+    const sellSelectedBtn = document.getElementById('sell-selected-btn');
+
+    if (sellSelectedBtn) {
+        sellSelectedBtn.onclick = () => {
+            const amount = parseInt(document.getElementById('sell-amount-slider').value, 10);
+            sellMaterial(materialId, amount);
+            closeModal('sell-modal');
+        };
+    }
+
+    // Open modal
+    openModal('sell-modal');
+}
+
 function sellMaterial(materialId, amount) {
     console.log('sellMaterial called:', materialId, amount);
     if (!materialsStock[materialId] || materialsStock[materialId] < amount) {
@@ -4789,8 +5260,8 @@ function sellMaterial(materialId, amount) {
     }
     
     // Apply better-trading research bonus (3% per level)
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
     
     // Calculate earnings with trade bonus
     const earnings = material.worth * amount * tradeBonus;
@@ -4914,20 +5385,13 @@ function initMaterialsPanel() {
         
         const buttons = document.createElement('span');
         buttons.className = 'wh-col-actions';
-        
-        const sell1Btn = document.createElement('button');
-        sell1Btn.className = 'btn-sell';
-        sell1Btn.textContent = '1';
-        sell1Btn.dataset.materialId = id;
-        sell1Btn.dataset.sellAmount = '1';
-        
-        const sellAllBtn = document.createElement('button');
-        sellAllBtn.className = 'btn-sell-all';
-        sellAllBtn.textContent = 'all';
-        sellAllBtn.dataset.materialId = id;
-        
-        buttons.appendChild(sell1Btn);
-        buttons.appendChild(sellAllBtn);
+
+        const sellBtn = document.createElement('button');
+        sellBtn.className = 'btn-sell';
+        sellBtn.textContent = 'Sell';
+        sellBtn.dataset.materialId = id;
+
+        buttons.appendChild(sellBtn);
         
         row.appendChild(name);
         row.appendChild(worth);
@@ -4957,8 +5421,8 @@ function updateMaterialsPanel() {
     }
     
     // Calculate trade bonus once for display
-    const betterTrading = researchtree.find(r => r.id === 'trading');
-    const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
     
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
@@ -5002,13 +5466,11 @@ function updateMaterialsPanel() {
             row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
             row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
 
-            // Update sell button tooltips and data
-            const sell1Btn = row.querySelector('.btn-sell');
-            sell1Btn.title = `Sell 1 ${m.name} for ${formatNumber(actualWorth, 'gold')} gold`;
-
-            const sellAllBtn = row.querySelector('.btn-sell-all');
-            sellAllBtn.title = `Sell all ${count} ${m.name} for ${formatNumber(count * actualWorth, 'gold')} gold`;
-            sellAllBtn.dataset.sellAmount = count.toString();
+            // Update sell button tooltip
+            const sellBtn = row.querySelector('.btn-sell');
+            if (sellBtn) {
+                sellBtn.title = `Sell ${m.name}`;
+            }
         } else {
             // Hide row
             row.style.display = 'none';
@@ -5040,35 +5502,230 @@ function updateMaterialsPanel() {
             header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
         }
 
-        // Create or update Sell All button (on the right with value)
+        // Create or update Warehouse Sell button (on the right)
+        let warehouseSellBtn = document.getElementById('warehouse-sell-btn');
         if (hasAnyMaterials) {
-            if (!sellAllHeaderBtn) {
-                sellAllHeaderBtn = document.createElement('button');
-                sellAllHeaderBtn.id = 'sell-all-header-btn';
-                sellAllHeaderBtn.className = 'btn-sell-all-global';
-                sellAllHeaderBtn.onclick = sellAllMaterials;
-                sellAllHeaderBtn.style.marginLeft = 'auto';
-                header.appendChild(sellAllHeaderBtn);
+            if (!warehouseSellBtn) {
+                warehouseSellBtn = document.createElement('button');
+                warehouseSellBtn.id = 'warehouse-sell-btn';
+                warehouseSellBtn.className = 'btn-sell-all-global';
+                warehouseSellBtn.textContent = '💰 Sell';
+                warehouseSellBtn.onclick = openWarehouseSellModal;
+                warehouseSellBtn.style.marginLeft = 'auto';
+                header.appendChild(warehouseSellBtn);
             }
-            sellAllHeaderBtn.textContent = `Sell All (💰 ${formatNumber(totalStockValue, 'gold')})`;
-        } else if (sellAllHeaderBtn) {
-            sellAllHeaderBtn.remove();
+        } else if (warehouseSellBtn) {
+            warehouseSellBtn.remove();
         }
 
-        // Create or update Sell Non-Craftables button (on the right with value)
-        if (hasNotCraftableMaterials) {
-            if (!sellNotCraftableBtn) {
-                sellNotCraftableBtn = document.createElement('button');
-                sellNotCraftableBtn.id = 'sell-not-craftable-btn';
-                sellNotCraftableBtn.className = 'btn-sell-all-global';
-                sellNotCraftableBtn.title = 'Sell all materials that cannot be used in the smelter or forge';
-                sellNotCraftableBtn.onclick = sellNotCraftableMaterials;
-                header.appendChild(sellNotCraftableBtn);
-            }
-            sellNotCraftableBtn.textContent = `Sell Non-Craftables (💰 ${formatNumber(totalNonCraftableValue, 'gold')})`;
-        } else if (sellNotCraftableBtn) {
-            sellNotCraftableBtn.remove();
+        // Remove old buttons if they still exist
+        if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+        if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+    }
+}
+
+/**
+ * Open the warehouse sell modal with all bulk sell options
+ */
+function openWarehouseSellModal() {
+    const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
+
+    // Calculate values for each category
+    const smelterInputMaterials = new Set();
+    const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
         }
+        if (task.output && task.output.material) {
+            craftableMaterials.add(task.output.material);
+        }
+    }
+
+    let looseValue = 0;
+    let stonesValue = 0;
+    let oresValue = 0;
+    let nonCraftablesValue = 0;
+    let ingotsValue = 0;
+    let heatingValue = 0;
+    let allValue = 0;
+
+    const looseMaterials = [];
+    const stonesMaterials = [];
+    const oresMaterials = [];
+    const nonCraftablesMaterials = [];
+    const ingotsMaterials = [];
+    const heatingMaterials = [];
+    const allMaterials = [];
+
+    for (const m of materials) {
+        const id = m.id;
+        const count = materialsStock[id] || 0;
+        if (count > 0) {
+            const value = count * m.worth * tradeBonus;
+            allValue += value;
+
+            // Loose materials (not in smelter inputs, not ingots)
+            if (m.type.startsWith('Loose') && value > 0) {
+                looseValue += value;
+                looseMaterials.push({ name: m.name, count });
+            }
+
+            // Stones
+            if (m.type.startsWith('Stone') && value > 0) {
+                stonesValue += value;
+                stonesMaterials.push({ name: m.name, count });
+            }
+
+            // Ores
+            if (m.type.startsWith('Ore') && value > 0) {
+                oresValue += value;
+                oresMaterials.push({ name: m.name, count });
+            }
+
+            // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
+            if (!craftableMaterials.has(id) && !smelterInputMaterials.has(id) && value > 0) {
+                nonCraftablesValue += value;
+                nonCraftablesMaterials.push({ name: m.name, count });
+            }
+
+            // Ingots
+            if (m.type.startsWith('Ingot') && value > 0) {
+                ingotsValue += value;
+                ingotsMaterials.push({ name: m.name, count });
+            }
+
+            // Heating materials
+            if (m.type.startsWith('Special') && value > 0) {
+                heatingValue += value;
+                heatingMaterials.push({ name: m.name, count });
+            }
+        }
+    }
+
+    // Helper function to format material list
+    const formatMaterialList = (materials) => {
+        if (materials.length === 0) return '';
+        return materials.map(m => `${m.name}: ${m.count}`).join(', ');
+    };
+
+    // Update modal values
+    document.getElementById('wso-loose-value').textContent = formatNumber(looseValue, 'gold') + ' 💰';
+    document.getElementById('wso-loose-details').textContent = formatMaterialList(looseMaterials);
+
+    document.getElementById('wso-stones-value').textContent = formatNumber(stonesValue, 'gold') + ' 💰';
+    document.getElementById('wso-stones-details').textContent = formatMaterialList(stonesMaterials);
+
+    document.getElementById('wso-ores-value').textContent = formatNumber(oresValue, 'gold') + ' 💰';
+    document.getElementById('wso-ores-details').textContent = formatMaterialList(oresMaterials);
+
+    document.getElementById('wso-non-craftables-value').textContent = formatNumber(nonCraftablesValue, 'gold') + ' 💰';
+    document.getElementById('wso-non-craftables-details').textContent = formatMaterialList(nonCraftablesMaterials);
+
+    document.getElementById('wso-ingots-value').textContent = formatNumber(ingotsValue, 'gold') + ' 💰';
+    document.getElementById('wso-ingots-details').textContent = formatMaterialList(ingotsMaterials);
+
+    document.getElementById('wso-heating-value').textContent = formatNumber(heatingValue, 'gold') + ' 💰';
+    document.getElementById('wso-heating-details').textContent = formatMaterialList(heatingMaterials);
+
+    document.getElementById('wso-all-value').textContent = formatNumber(allValue, 'gold') + ' 💰';
+    document.getElementById('wso-all-details').textContent = formatMaterialList(allMaterials);
+
+    // Setup event handlers for buttons
+    const modalContent = document.getElementById('warehouse-sell-content');
+    if (modalContent) {
+        modalContent.onclick = (e) => {
+            const btn = e.target.closest('.warehouse-sell-option');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            if (action) {
+                executeBulkSell(action);
+                closeModal('warehouse-sell-modal');
+            }
+        };
+    }
+
+    openModal('warehouse-sell-modal');
+}
+
+/**
+ * Execute bulk sell based on action type
+ */
+function executeBulkSell(action) {
+    const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
+    const smelterInputMaterials = new Set();
+    const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+    for (const task of smelterTasks) {
+        if (task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+        if (task.output && task.output.material) {
+            craftableMaterials.add(task.output.material);
+        }
+    }
+
+    let totalGold = 0;
+    let totalItems = 0;
+    const soldMaterials = [];
+
+    for (const m of materials) {
+        const id = m.id;
+        const count = materialsStock[id] || 0;
+        if (count <= 0) continue;
+
+        let shouldSell = false;
+
+        switch (action) {
+            case 'sell-loose':
+                shouldSell = !smelterInputMaterials.has(id) && m.type !== 'Ingot';
+                break;
+            case 'sell-stones':
+                shouldSell = m.type && m.type.startsWith('Stone');
+                break;
+            case 'sell-ores':
+                shouldSell = m.type && (m.type === 'Ore' || m.type.startsWith('Ore '));
+                break;
+            case 'sell-non-craftables':
+                shouldSell = !craftableMaterials.has(id);
+                break;
+            case 'sell-ingots':
+                shouldSell = m.type === 'Ingot';
+                break;
+            case 'sell-heating':
+                shouldSell = m.type === 'Heating';
+                break;
+            case 'sell-all':
+                shouldSell = true;
+                break;
+        }
+
+        if (shouldSell) {
+            const value = count * m.worth * tradeBonus;
+            totalGold += value;
+            totalItems += count;
+            soldMaterials.push(`${count}x ${m.name}`);
+            logTransaction('income', value, `Sold ${count}x ${m.name}`);
+            materialsStock[id] = 0;
+        }
+    }
+
+    if (totalItems > 0) {
+        gold += totalGold;
+        console.log(`Bulk sell (${action}): ${totalItems} items for ${formatNumber(totalGold, 'gold')} gold`);
+
+        // Update worker
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { gold, materialsStock }
+            });
+        }
+
+        // Update UI
+        updateGoldDisplay();
+        updateMaterialsPanel();
+        saveGame();
     }
 }
 

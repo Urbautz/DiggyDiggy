@@ -70,7 +70,53 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 // GEM SPAWN CONSTANTS
 // ============================================================================
 
-const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
+const GEM_SPAWN_CHANCE = 0.15; // 4% chance to find a gem when destroying stone materials
+const GEM_CUTTING_VALUE_MULTIPLIER = 1.5; // 50% value increase when gems are cut and polished
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - RUBY
+// ============================================================================
+
+const RUBY_ENERGY_MIN_CHANCE = 5; // Minimum energy prevention chance (%)
+const RUBY_ENERGY_MAX_CHANCE = 80; // Maximum energy prevention chance (%)
+const RUBY_ENERGY_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const RUBY_ENERGY_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - EMERALD
+// ============================================================================
+
+const EMERALD_CRIT_MIN_MULTIPLIER = 0.5; // Minimum crit chance multiplier (0.5 = 50% increase)
+const EMERALD_CRIT_MAX_MULTIPLIER = 40; // Maximum crit chance multiplier (40 = 4000% increase)
+const EMERALD_CRIT_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const EMERALD_CRIT_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - SAPPHIRE
+// ============================================================================
+
+const SAPPHIRE_STRENGTH_MIN_BONUS = 1; // Minimum strength bonus (%)
+const SAPPHIRE_STRENGTH_MAX_BONUS = 50; // Maximum strength bonus (%)
+const SAPPHIRE_STRENGTH_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const SAPPHIRE_STRENGTH_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - DIAMOND
+// ============================================================================
+
+const DIAMOND_DIGPOWER_MIN_BONUS = 1; // Minimum dig power bonus (%)
+const DIAMOND_DIGPOWER_MAX_BONUS = 50; // Maximum dig power bonus (%)
+const DIAMOND_DIGPOWER_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const DIAMOND_DIGPOWER_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - AMETHYST
+// ============================================================================
+
+const AMETHYST_RESEARCH_MIN_BONUS = 1; // Minimum research bonus (%)
+const AMETHYST_RESEARCH_MAX_BONUS = 50; // Maximum research bonus (%)
+const AMETHYST_RESEARCH_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const AMETHYST_RESEARCH_MAX_CARAT = 10000; // Maximum carat value for formula scaling
 
 // ============================================================================
 // SMELTER CONSTANTS

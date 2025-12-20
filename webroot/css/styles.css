@@ -1,3 +1,4 @@
+
 /* Cairo font-face */
 @font-face {
     font-family: 'Cairo';
@@ -555,7 +556,7 @@ header, footer {
 }
 
 .btn-gems {
-    background: linear-gradient(180deg, #9a1658, #860e44);
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
     color: #fff;
     border: none;
     padding: 8px 16px;
@@ -564,11 +565,11 @@ header, footer {
     font-size: 12px;
     font-weight: 700;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+    box-shadow: 0 2px 8px rgba(102, 204, 255, 0.3);
 }
 .btn-gems:hover {
-    background: linear-gradient(180deg, #db2777, #be185d);
-    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+    background: linear-gradient(180deg, #60a5fa, #3b82f6);
+    box-shadow: 0 4px 12px rgba(102, 204, 255, 0.4);
     transform: translateY(-1px);
 }
 
@@ -2152,6 +2153,14 @@ header, footer {
     font-size: 11px;
 }
 
+.dwarf-tool-badges {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 20px;
+}
+
 /* Rename Section */
 .dwarf-rename-container {
     padding: 10px;
@@ -2497,6 +2506,17 @@ header, footer {
     white-space: nowrap;
 }
 
+.gem-assigned-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    color: #ffffff;
+    white-space: nowrap;
+    border: 1px solid rgba(138, 43, 226, 0.4);
+}
+
 .gem-polished-badge {
     padding: 3px 10px;
     border-radius: 12px;
@@ -2630,4 +2650,243 @@ header, footer {
     gap: 6px;
     min-width: 200px;
     flex-shrink: 0;
+}
+
+/* ============================================================================
+   Sell Material Modal Styling
+   ============================================================================ */
+
+.sell-info {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sell-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.sell-info-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sell-info-value {
+    font-weight: 700;
+    color: #fbbf24;
+    font-size: 15px;
+}
+
+.sell-slider-container {
+    margin: 25px 0;
+}
+
+.sell-slider-label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #ffffff;
+}
+
+#sell-amount-display {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.sell-slider {
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    margin-bottom: 10px;
+}
+
+.sell-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    cursor: pointer;
+    border: 3px solid #1f2937;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+.sell-slider::-webkit-slider-thumb:hover {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: scale(1.1);
+}
+
+.sell-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    cursor: pointer;
+    border: 3px solid #1f2937;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+.sell-slider::-moz-range-thumb:hover {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: scale(1.1);
+}
+
+.sell-slider-marks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 5px;
+}
+
+.sell-total {
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    /* Background color set dynamically via JavaScript based on material color */
+}
+
+.sell-total-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.sell-total-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #fbbf24;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#sell-modal .modal-dialog {
+    max-width: 385px; /* 30% reduction from default 550px */
+}
+
+#sell-modal .modal-footer {
+    gap: 10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+#sell-modal .btn-primary {
+    padding: 10px 20px;
+    font-weight: 600;
+}
+
+
+/* ============================================================================
+   Warehouse Sell Modal Styling
+   ============================================================================ */
+
+#warehouse-sell-modal .modal-dialog {
+    max-width: 500px;
+}
+
+.warehouse-sell-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.warehouse-sell-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #1f2937, #111827);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 15px;
+    font-weight: 600;
+    gap: 8px;
+}
+
+.warehouse-sell-option:hover {
+    background: linear-gradient(135deg, #374151, #1f2937);
+    border-color: rgba(59, 130, 246, 0.6);
+    transform: translateX(4px);
+}
+
+.warehouse-sell-option.warning {
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+.warehouse-sell-option.warning:hover {
+    border-color: rgba(251, 191, 36, 0.7);
+    background: linear-gradient(135deg, #78350f, #451a03);
+}
+
+.warehouse-sell-option.danger {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: linear-gradient(135deg, #7f1d1d, #450a0a);
+}
+
+.warehouse-sell-option.danger:hover {
+    border-color: rgba(239, 68, 68, 0.8);
+    background: linear-gradient(135deg, #991b1b, #7f1d1d);
+    transform: translateX(4px) scale(1.02);
+}
+
+.wso-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.wso-label {
+    color: #ffffff;
+    flex: 1;
+    text-align: left;
+}
+
+.warehouse-sell-option.warning .wso-label,
+.warehouse-sell-option.danger .wso-label {
+    font-weight: 700;
+}
+
+.wso-value {
+    color: #fbbf24;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: 20px;
+}
+
+.wso-details {
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.warehouse-sell-separator {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), transparent);
+    margin: 8px 0;
 }

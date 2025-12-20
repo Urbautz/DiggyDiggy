@@ -34,49 +34,60 @@ Diggy Diggy is a browser-based idle/incremental dwarf mining game. Dwarfs autono
 
 ```
 js/
-├── defs.js         # All game constants, material definitions, initial state
+├── constants.js    # All game balance constants
+├── defs.js         # All game data definitions (materials, tools, research, etc.)
 ├── game.js         # Legacy grid generation (mostly superseded)
 ├── game-worker.js  # Web Worker - game loop, dwarf AI, collision detection
 └── main.js         # Main thread - UI rendering, modals, localStorage, user actions
 ```
 
-### `defs.js` - The Single Source of Truth
-All game balance constants live here (prefixed with CAPITAL_SNAKE_CASE):
-- `DWARF_BASE_POWER`, `DWARF_ENERGY_COST_PER_DIG`, etc.
-- Material definitions (`materials` array with hardness, probability, depth ranges)
-- Initial dwarf roster, tool definitions, research tree, smelter tasks
-- **Important**: Constants are duplicated at the top of `game-worker.js` for worker context
+### `constants.js` and `defs.js` - The Single Source of Truth
+All game balance constants and data definitions live here.
+- `constants.js`: Contains all game balance constants, prefixed with CAPITAL_SNAKE_CASE (e.g., `DWARF_BASE_POWER`, `DWARF_ENERGY_COST_PER_DIG`).
+- `defs.js`: Contains all game data definitions, such as materials, tools, the research tree, and smelter tasks.
+- **Important**: Constants from `constants.js` are duplicated at the top of `game-worker.js` for worker context.
 
-### `game-worker.js` - The Game Engine
-Contains the entire dwarf AI state machine:
-- **States**: `idle`, `moving`, `digging`, `resting`, `researching`, `smelting`, `striking`, `unloading`
-- **Core functions**:
-  - `actForDwarf(dwarf)` - Main AI decision loop for each dwarf
-  - `tick()` - Called every 300ms via internal `setInterval`
-  - `getDwarfToolPower(dwarf)` - Calculates damage output
-  - `scheduleMove(dwarf, x, y)` - Path planning
-  - `checkAndShiftTopRows()` - Infinite downward scrolling mechanic
+## Game Mechanics
 
-**Reservation system**: Prevents dwarfs from colliding or double-booking:
-- `reservedDigBy` Map - cell coordinates → dwarf name
-- `researchReservedBy` - single dwarf can reserve research building
-- `smelterReservedBy` - single dwarf can reserve smelter
+### Dwarfs
+- **Leveling:** Dwarfs gain XP for actions like digging and smelting. They level up after reaching a certain XP threshold.
+- **Stats:**
+    - `digPower`: Increases digging damage.
+    - `strength`: Increases bucket capacity.
+    - `wisdom`: Reduces research costs.
+- **Energy:** Dwarfs consume energy for actions and must rest to replenish it.
+- **Wages:** Dwarfs have a base wage that increases with their level. They may go on strike if they are not paid.
 
-**Stuck detection**: If dwarf is at same position with same cell hardness for 100 ticks → teleport to house
+### Combat
+- **Critical Hits:** Dwarfs have a base chance to perform a critical hit, which deals double damage. This can be increased through research.
+- **One-Hit Kills:** With the right research, critical hits have a chance to instantly destroy a block.
 
-### `main.js` - The UI Controller (4100+ lines)
-Organized into logical sections:
-- **Lines 1-1000**: Grid rendering, dwarf display, material panel updates
-- **Lines 1000-2000**: Research tree UI, smelter task ordering, forge modal
-- **Lines 2000-3000**: Modal management, settings, transaction log
-- **Lines 3000-4000**: Worker initialization, save/load, game loop interface
-- **Lines 4000+**: Cheat code system
+### Research
+- The research tree in `defs.js` defines all available research options.
+- Research can unlock new abilities, improve dwarf stats, and provide various bonuses.
+- Research has a cost in research points and gold, and some research has dependencies on other research or a minimum depth.
 
-**Critical UI patterns**:
-- Modals use `aria-hidden="true/false"` for accessibility
-- `data-action` attributes drive modal close buttons
-- Dynamic content uses `aria-live="polite"` regions
-- Grid cells use `data-row` and `data-col` attributes for coordinate mapping
+### Smelter
+- The smelter is used to process materials.
+- **Tasks:** The `smelterTasks` array in `defs.js` defines the available tasks, such as heating the furnace, smelting ore into ingots, and polishing stones.
+- **Temperature:** The smelter has a temperature that must be managed. Different smelting tasks require different temperatures.
+- **Polishing:** Some materials can be polished to increase their value, but there is a chance of the item breaking during the process.
+
+### Forge
+- The forge is used to craft and upgrade tools.
+- The process involves hammering, cooling, and sharpening.
+- The quality of the materials and the skill of the dwarf affect the final quality of the tool.
+
+### Enchanting
+- Tools can be enchanted to increase their power.
+- Enchanting costs gold and the cost increases with each enchantment level.
+
+### Gems
+- Gems have a chance to spawn when a stone material is destroyed.
+- They can be cut and polished at the smelter to increase their value.
+
+### Materials
+- The `materials` array in `defs.js` defines all the materials in the game, including their hardness, probability, worth, and the depth at which they can be found.
 
 ## Development Workflows
 
@@ -94,17 +105,17 @@ Or just open `index.html` in a browser (works due to no server dependencies).
 4. Use `?cheat` URL parameter to enable debug helpers
 
 ### Modifying Game Balance
-1. Update constants in `defs.js` (e.g., `DWARF_BASE_POWER = 3`)
-2. **Also update** matching constant at top of `game-worker.js` (worker doesn't import modules)
-3. Increment `gameversion` in `defs.js` to invalidate old saves
-4. Test with new game (old saves auto-discard on version mismatch)
+1. Update constants in `constants.js`.
+2. **Also update** the matching constants at the top of `game-worker.js`.
+3. Increment `gameversion` in `constants.js` to invalidate old saves.
+4. Test with a new game (old saves are auto-discarded on version mismatch).
 
 ### Adding New Materials
 ```javascript
 // In defs.js materials array:
-{ 
+{
   id: 'mythril',           // Unique ID (used in materialsStock object)
-  name: 'Mythril Ore', 
+  name: 'Mythril Ore',
   type: 'Ore Hard',        // Affects expertise research bonuses
   hardness: 2000,          // HP before destroyed
   probability: 25,         // Weight in random spawn (higher = more common)
@@ -131,42 +142,6 @@ researchtree.push({
 ```
 **Research cost doubles each level** via `RESEARCH_COST_MULTIPLIER`.
 
-## Game-Specific Patterns
-
-### Grid Coordinate System
-- Grid is `Array<Array<{materialId: string, hardness: number}>>`
-- Visual grid is 10 columns × 10 visible rows
-- Actual grid is 11 rows deep (extra buffer row)
-- `startX` tracks how many rows have been "dug past" (for infinite depth)
-- When top row is fully cleared → shift grid up, add new row at bottom, increment `startX`
-
-### Dwarf AI Priority System
-1. **Energy < 25** → Return to house for rest (overrides all tasks)
-2. **Bucket full** → Return to warehouse to unload
-3. **At idle with 50% chance** → Check for research/smelting tasks
-4. **Standing on diggable cell** → Start digging
-5. **No valid target** → Random walk to find diggable cell
-
-### Smelter Task Priority
-`smelterTasks` array is user-sortable (drag-to-reorder UI):
-- Tasks execute in array order (top-to-bottom)
-- `do-nothing` task acts as a **stop marker** (tasks below it are disabled)
-- Worker checks for `task.requires` research unlock before executing
-- Temperature-gated tasks (e.g., `minTemp: 1200`) skip if furnace too cold
-
-### Transaction Logging System
-Worker queues events in `pendingTransactions[]`, main thread logs to localStorage:
-```javascript
-// In worker:
-pendingTransactions.push({ type: 'expense', amount: wage, description: 'Digging wage' });
-
-// In main.js:
-function logTransaction(type, amount, desc) {
-  transactionLog.push({ type, amount, description: desc, timestamp: Date.now() });
-  // Hourly rollup for performance
-}
-```
-
 ## Common Gotchas
 
 1. **Forgetting to sync with worker**: When changing game state in main thread (e.g., starting research), always send `update-state` message:
@@ -174,23 +149,23 @@ function logTransaction(type, amount, desc) {
    gameWorker.postMessage({ type: 'update-state', data: { activeResearch } });
    ```
 
-2. **Constants out of sync**: `game-worker.js` duplicates ~40 constants from `defs.js` because workers can't import ES modules. Keep them synchronized manually.
+2. **Constants out of sync**: `game-worker.js` duplicates constants from `constants.js` because workers can't import ES modules. Keep them synchronized manually.
 
-3. **Modal pause state**: Opening settings modal auto-pauses game via `gamePaused` flag. Don't forget to unpause in close handler.
+3. **Modal pause state**: Opening a settings modal auto-pauses the game via the `gamePaused` flag. Don't forget to unpause in the close handler.
 
-4. **Grid rendering thrash**: `updateGridDisplay()` rebuilds entire grid HTML. For animations, manipulate CSS classes instead (see `triggerCritAnimation()`).
+4. **Grid rendering thrash**: `updateGridDisplay()` rebuilds the entire grid HTML. For animations, manipulate CSS classes instead (see `triggerCritAnimation()`).
 
-5. **Save/load version mismatch**: Changing save schema requires bumping `gameversion` string in `defs.js`.
+5. **Save/load version mismatch**: Changing the save schema requires bumping the `gameversion` string in `constants.js`.
 
 ## Testing Strategies
 
-- **Cheat mode**: Add `?cheat` to URL to enable fast-forward helpers
-- **Manual tick inspection**: Set breakpoint in `actForDwarf()` to step through AI
-- **Worker console**: Worker errors show in main console, prefix messages with "Worker:"
-- **State inspection**: Type `dwarfs`, `grid`, or `materialsStock` in browser console (main thread globals)
+- **Cheat mode**: Add `?cheat` to the URL to enable fast-forward helpers.
+- **Manual tick inspection**: Set a breakpoint in `actForDwarf()` to step through the AI.
+- **Worker console**: Worker errors show in the main console; prefix messages with "Worker:" for clarity.
+- **State inspection**: Type `dwarfs`, `grid`, or `materialsStock` in the browser console (main thread globals).
 
 ## Version History Location
-See `version.html` for changelog (rendered inside About modal). GitHub issues tracked at https://github.com/Urbautz/DiggyDiggy/issues.
+See `version.html` for the changelog (rendered inside the "About" modal). GitHub issues are tracked at https://github.com/Urbautz/DiggyDiggy/issues.
 
 ---
 
