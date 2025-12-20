@@ -93,7 +93,14 @@ function countActionableSmelterTasks() {
     for (const task of smelterTasks) {
         if (task.id === 'do-nothing') continue;
         if (!isSmelterTaskUnlocked(task)) continue;
-        if (task.input && task.input.material && task.input.amount) {
+
+        // Check for gem cutting tasks
+        if (task.type === 'gem-cutting') {
+            const hasGemsToPolish = gems.some(g => g.markedForCutting && !g.polished);
+            if (hasGemsToPolish) {
+                count++;
+            }
+        } else if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
                 count++;
@@ -1022,6 +1029,290 @@ function confirmEnchant(toolId) {
     alert(`✨ Tool enchanted to level ${enchantLevel}!\n\nThe tool now has +${enchantLevel} enchantment power.`);
 }
 
+// Gem Setting Modal Functions
+function openGemModal(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) {
+        console.error('Tool not found:', toolId);
+        return;
+    }
+
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+
+    if (maxGemSlots === 0) {
+        alert('You need to research Gem Setting first!');
+        return;
+    }
+
+    openModal('gem-modal');
+    populateGemModal(tool, maxGemSlots);
+}
+
+function populateGemModal(tool, maxGemSlots) {
+    const container = document.getElementById('gem-content');
+    if (!container) return;
+
+    const toolName = tool.name || `${tool.type} #${tool.id}`;
+    const toolPower = tool.power || tool.level || 0;
+
+    // Initialize tool.gems if it doesn't exist
+    if (!tool.gems) {
+        tool.gems = [];
+    }
+
+    // Get available polished gems (including currently assigned ones for this tool)
+    const currentlyAssignedIds = new Set(tool.gems.map(g => g.id));
+    const availableGems = gems.filter(g => g.polished && (!g.assignedToTool || currentlyAssignedIds.has(g.id)));
+
+    // Group gems by type and carat for display
+    const gemGroups = {};
+    availableGems.forEach(gem => {
+        const key = `${gem.type}_${gem.carat}`;
+        if (!gemGroups[key]) {
+            gemGroups[key] = {
+                type: gem.type,
+                carat: gem.carat,
+                gems: []
+            };
+        }
+        gemGroups[key].gems.push(gem);
+    });
+
+    // Sort gem groups by carat (descending), then by type (alphabetically)
+    const sortedGroups = Object.values(gemGroups).sort((a, b) => {
+        if (b.carat !== a.carat) {
+            return b.carat - a.carat; // Higher carat first
+        }
+        return a.type.localeCompare(b.type); // Alphabetical by type
+    });
+
+    // Get already assigned gem types to prevent duplicates
+    const assignedTypes = new Set(tool.gems.map(g => g.type));
+
+    let gemSlotsHTML = '';
+    for (let i = 0; i < maxGemSlots; i++) {
+        const currentGem = tool.gems[i];
+        const slotLabel = i + 1;
+
+        if (currentGem) {
+            // Show fixed value with unset button
+            const gemName = `${currentGem.carat} carat ${currentGem.type}`;
+            gemSlotsHTML += `
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 600;">Gem Slot ${slotLabel}:</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="flex: 1; padding: 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 13px;">
+                            💎 ${gemName}
+                        </div>
+                        <button onclick="unsetGem(${tool.id}, ${i})" class="btn-sell btn-tiny" style="white-space: nowrap;">Unset</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Show dropdown for empty slot
+            gemSlotsHTML += `
+                <div style="margin-bottom: 12px;">
+                    <label for="gem-slot-${i}" style="display: block; margin-bottom: 4px; font-weight: 600;">Gem Slot ${slotLabel}:</label>
+                    <select id="gem-slot-${i}" class="gem-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff; font-size: 13px;">
+                        <option value="">-- Empty --</option>
+            `;
+
+            // Add options for each gem group, excluding already assigned types
+            sortedGroups.forEach(group => {
+                if (!assignedTypes.has(group.type)) {
+                    const gemName = `${group.carat} carat ${group.type}`;
+                    const count = group.gems.length;
+                    gemSlotsHTML += `<option value="${group.type}_${group.carat}">${gemName} (${count} available)</option>`;
+                }
+            });
+
+            gemSlotsHTML += `
+                    </select>
+                </div>
+            `;
+        }
+    }
+
+    container.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0;">🔨 ${toolName}</h3>
+            <p style="margin: 0; color: #9fbfe0; font-size: 13px;">Current Power: ${toolPower}</p>
+        </div>
+
+        <div style="margin-bottom: 16px; padding: 12px; background: rgba(138, 43, 226, 0.1); border: 1px solid rgba(138, 43, 226, 0.3); border-radius: 6px;">
+            <p style="margin: 0 0 12px 0; color: #dda0ff; font-size: 13px;">
+                Set polished gems into your tool to increase its power. You can set up to ${maxGemSlots} gem${maxGemSlots > 1 ? 's' : ''}.
+            </p>
+            <p>Ruby: Chance to consume no energy when digging or walking.</p>
+            <p>Sapphire: Gives dwarfs option to overload their bucket. Gems do not count to the max bucket.</p>
+            <p>Emerald: Gives tools a higher chance at a critical strike.</p>
+            <p>Diamond: Gives tools 1% more dwarf dig power per carat.</p>
+            <p>Amethyst: Gives the dwarf a chance to do more smelting and research in one tick.</p>
+            ${gemSlotsHTML}
+        </div>
+
+        ${availableGems.length === 0 ? '<p style="color: #ff6b6b; font-size: 13px; text-align: center;">No polished gems available. Polish gems in the smelter first!</p>' : ''}
+    `;
+
+    // Update the confirm button
+    const confirmBtn = document.getElementById('confirm-gem-btn');
+    if (confirmBtn) {
+        confirmBtn.onclick = () => confirmGemSetting(tool.id);
+    }
+}
+
+function confirmGemSetting(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) return;
+
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+
+    // Collect new gem selections
+    const newGems = [];
+    const usedGemKeys = new Set();
+    const usedTypes = new Set();
+    const gemsToKeep = new Set(); // Track which gems we're keeping
+
+    for (let i = 0; i < maxGemSlots; i++) {
+        // Check if this slot already has a gem assigned (will be a fixed display, not a dropdown)
+        const existingGem = tool.gems && tool.gems[i];
+
+        if (existingGem) {
+            // Keep the existing gem
+            const gem = gems.find(g => g.id === existingGem.id);
+            if (gem && gem.polished) {
+                gemsToKeep.add(gem.id);
+                usedGemKeys.add(gem.id);
+                usedTypes.add(gem.type);
+                newGems.push({
+                    id: gem.id,
+                    type: gem.type,
+                    carat: gem.carat
+                });
+            }
+        } else {
+            // Check for a new selection in the dropdown
+            const select = document.getElementById(`gem-slot-${i}`);
+            if (!select || !select.value) continue;
+
+            const [type, carat] = select.value.split('_');
+            const caratNum = parseInt(carat);
+
+            // Check if this type is already used
+            if (usedTypes.has(type)) {
+                alert(`⚠️ You can only set one ${type} gem per tool!`);
+                return;
+            }
+
+            // Find an available gem of this type/carat that hasn't been used yet
+            const availableGem = gems.find(g =>
+                g.polished &&
+                !g.assignedToTool &&
+                g.type === type &&
+                g.carat === caratNum &&
+                !usedGemKeys.has(g.id)
+            );
+
+            if (availableGem) {
+                availableGem.assignedToTool = true;
+                gemsToKeep.add(availableGem.id);
+                usedGemKeys.add(availableGem.id);
+                usedTypes.add(type);
+                newGems.push({
+                    id: availableGem.id,
+                    type: availableGem.type,
+                    carat: availableGem.carat
+                });
+            }
+        }
+    }
+
+    // Clear assignedToTool flag ONLY for gems that were previously assigned but are no longer kept
+    if (tool.gems) {
+        tool.gems.forEach(gemData => {
+            if (!gemsToKeep.has(gemData.id)) {
+                const gem = gems.find(g => g.id === gemData.id);
+                if (gem) {
+                    gem.assignedToTool = false;
+                }
+            }
+        });
+    }
+
+    // Update tool with new gems
+    tool.gems = newGems;
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { toolsInventory, gems }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Close modal and refresh UI
+    closeModal('gem-modal');
+    populateToolsInPanel(); // Refresh tools panel to show gems
+
+    // Show success message
+    if (newGems.length > 0) {
+        alert(`💎 Successfully set ${newGems.length} gem${newGems.length > 1 ? 's' : ''} into the tool!`);
+    } else {
+        alert('💎 All gems removed from the tool.');
+    }
+}
+
+function unsetGem(toolId, slotIndex) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool || !tool.gems || !tool.gems[slotIndex]) return;
+
+    const gemToRemove = tool.gems[slotIndex];
+    const gemName = `${gemToRemove.carat} carat ${gemToRemove.type}`;
+
+    // Confirmation dialog with warning
+    const confirmed = confirm(
+        `⚠️ WARNING: This will permanently destroy the gem!\n\n` +
+        `Are you sure you want to unset and destroy:\n${gemName}?\n\n` +
+        `This action CANNOT be undone!`
+    );
+
+    if (!confirmed) return;
+
+    // Find and remove the gem from the gems array
+    const gemIndex = gems.findIndex(g => g.id === gemToRemove.id);
+    if (gemIndex !== -1) {
+        gems.splice(gemIndex, 1);
+    }
+
+    // Remove gem from tool
+    tool.gems.splice(slotIndex, 1);
+
+    // Sync to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { toolsInventory, gems }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Refresh the modal and tools panel
+    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
+    populateGemModal(tool, maxGemSlots);
+    populateToolsInPanel();
+
+    // Show confirmation
+    alert(`💎 Gem destroyed: ${gemName}`);
+}
+
 function openResearch() {
     openModal('research-modal');
     populateResearch();
@@ -1122,12 +1413,14 @@ function populateGemsList() {
         const itemsContainer = document.createElement('div');
         itemsContainer.className = isExpanded ? 'gem-type-items' : 'gem-type-items collapsed';
 
-        // Group gems by polished status and carat
+        // Group gems by status (assigned/polished/rough) and carat
         const gemGroups = {};
         gemsOfType.forEach(gem => {
-            const key = `${gem.polished ? 'polished' : 'rough'}_${gem.carat}`;
+            const status = gem.assignedToTool ? 'assigned' : (gem.polished ? 'polished' : 'rough');
+            const key = `${status}_${gem.carat}`;
             if (!gemGroups[key]) {
                 gemGroups[key] = {
+                    assigned: gem.assignedToTool || false,
                     polished: gem.polished,
                     carat: gem.carat,
                     count: 0,
@@ -1155,9 +1448,10 @@ function populateGemsList() {
             }
         });
 
-        // Sort groups: polished first, then by carat descending
+        // Sort groups: assigned first, then polished, then rough; within each status sort by carat descending
         const sortedGroups = Object.values(gemGroups).sort((a, b) => {
-            if (a.polished !== b.polished) return b.polished ? 1 : -1; // Polished first
+            if (a.assigned !== b.assigned) return a.assigned ? -1 : 1; // Assigned first
+            if (a.polished !== b.polished) return a.polished ? -1 : 1; // Then polished
             return b.carat - a.carat; // Then by carat descending
         });
 
@@ -1169,7 +1463,9 @@ function populateGemsList() {
 
             // Build status badge with cut button or progress
             let statusSection = '';
-            if (group.polished) {
+            if (group.assigned) {
+                statusSection = '<span class="gem-assigned-badge">💎 Assigned</span>';
+            } else if (group.polished) {
                 statusSection = '<span class="gem-polished-badge">✨ Polished</span>';
             } else if (group.markedForCutting) {
                 // Show cutting progress
@@ -1194,6 +1490,14 @@ function populateGemsList() {
             const gemItem = document.createElement('div');
             gemItem.className = 'gem-item gem-item-compact';
 
+            // Don't show sell buttons for assigned gems
+            const sellButtonsHTML = group.assigned ? '' : `
+                <div class="gem-item-actions">
+                    <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                    <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                </div>
+            `;
+
             gemItem.innerHTML = `
                 <div class="gem-item-compact-content">
                     <span class="gem-item-carat">${group.carat} ct</span>
@@ -1202,10 +1506,7 @@ function populateGemsList() {
                     </div>
                     <span class="gem-item-count">×${group.count}</span>
                     <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
-                    <div class="gem-item-actions">
-                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
-                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
-                    </div>
+                    ${sellButtonsHTML}
                 </div>
             `;
 
@@ -1290,12 +1591,12 @@ function markGemsForCutting(gemType, carat) {
 }
 
 function sellGems(gemType, carat, polished, includeLower) {
-    // Find gems to sell
+    // Find gems to sell (exclude assigned gems)
     const gemsToSell = [];
 
     for (let i = gems.length - 1; i >= 0; i--) {
         const gem = gems[i];
-        if (gem.type === gemType && gem.polished === polished) {
+        if (gem.type === gemType && gem.polished === polished && !gem.assignedToTool) {
             if (includeLower) {
                 // Sell this carat and all lower carats with same polished status
                 if (gem.carat <= carat) {
@@ -3403,14 +3704,36 @@ function populateToolsInPanel() {
             actions.appendChild(enchantBtn);
         }
         
-        // Gems button (placeholder)
-        const gemsBtn = document.createElement('button');
-        gemsBtn.className = 'btn-secondary btn-tiny';
-        gemsBtn.textContent = '💎 Gems';
-        gemsBtn.title = 'Add Gems (coming soon)';
-        gemsBtn.style.opacity = '0.5';
-        gemsBtn.style.cursor = 'not-allowed';
-        actions.appendChild(gemsBtn);
+        // Gems button
+        const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+        const gemSettingLevel = gemSettingResearch ? gemSettingResearch.level : 0;
+        const hasGems = tool.gems && tool.gems.length > 0;
+
+        if (hasGems) {
+            // Show gem info instead of button
+            const gemInfo = document.createElement('span');
+            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
+            gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
+            gemInfo.style.cursor = 'pointer';
+            gemInfo.onclick = () => openGemModal(tool.id);
+            actions.appendChild(gemInfo);
+        } else {
+            const gemsBtn = document.createElement('button');
+            gemsBtn.className = 'btn-secondary btn-tiny';
+            gemsBtn.textContent = '💎 Gems';
+
+            if (gemSettingLevel > 0) {
+                gemsBtn.title = 'Set gems into this tool';
+                gemsBtn.onclick = () => openGemModal(tool.id);
+            } else {
+                gemsBtn.title = 'Requires Gem Setting research';
+                gemsBtn.style.opacity = '0.5';
+                gemsBtn.style.cursor = 'not-allowed';
+                gemsBtn.disabled = true;
+            }
+            actions.appendChild(gemsBtn);
+        }
         
         // Sell button
         const sellBtn = document.createElement('button');
@@ -4014,7 +4337,15 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
+
+    // Apply gem bonus (5% per carat for each gem)
+    let gemBonus = 1;
+    if (currentTool && currentTool.gems && currentTool.gems.length > 0) {
+        const totalCarats = currentTool.gems.reduce((sum, gem) => sum + gem.carat, 0);
+        gemBonus = 1 + totalCarats * 0.05; // 5% bonus per carat
+    }
+
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus * gemBonus;
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
@@ -4115,19 +4446,46 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
         toolCurrent.appendChild(nameSpan);
         toolCurrent.appendChild(powerSpan);
-
-        // Add enchantment badge if tool is enchanted
-        if (enchantLevel > 0) {
-            const enchantSpan = document.createElement('span');
-            enchantSpan.style.cssText = 'margin-left: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
-            enchantSpan.textContent = `✨+${enchantLevel}`;
-            toolCurrent.appendChild(enchantSpan);
-        }
     } else {
         const noneP = document.createElement('p');
         noneP.className = 'dwarf-tool-none';
         noneP.textContent = 'No tool';
         toolCurrent.appendChild(noneP);
+    }
+
+    // Populate tool badges (enchantment and gems) in separate container
+    const toolBadges = document.getElementById('dwarf-tool-badges');
+    toolBadges.innerHTML = '';
+
+    if (currentTool) {
+        // Add enchantment badge if tool is enchanted
+        if (enchantLevel > 0) {
+            const enchantSpan = document.createElement('span');
+            enchantSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+            enchantSpan.textContent = `✨+${enchantLevel}`;
+            toolBadges.appendChild(enchantSpan);
+        }
+
+        // Add gem display if tool has gems
+        if (currentTool.gems && currentTool.gems.length > 0) {
+            // Group gems by type and sum carats
+            const gemsByType = {};
+            currentTool.gems.forEach(gem => {
+                if (!gemsByType[gem.type]) {
+                    gemsByType[gem.type] = 0;
+                }
+                gemsByType[gem.type] += gem.carat;
+            });
+
+            // Create a span for each gem type
+            Object.entries(gemsByType).forEach(([type, carats]) => {
+                const gemSpan = document.createElement('span');
+                gemSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+                gemSpan.textContent = `+ ${type} ${carats}ct`;
+                gemSpan.title = `${carats} carat ${type}`;
+                toolBadges.appendChild(gemSpan);
+            });
+        }
     }
 
     // Populate tool selector (only on initial open, not on refresh)
