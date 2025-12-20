@@ -3529,6 +3529,10 @@ function openDwarfs() {
     const sellAllBtn = document.getElementById('sell-all-header-btn');
     if (sellAllBtn) sellAllBtn.remove();
     
+    // Remove Warehouse Sell button
+    const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
+    if (warehouseSellBtn) warehouseSellBtn.remove();
+    
     // Remove Sell Non-Craftables button from header
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
@@ -3602,6 +3606,10 @@ function showToolsPanel() {
     // Remove header buttons that are specific to warehouse
     const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
+
+    // Remove Warehouse Sell button
+    const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
+    if (warehouseSellBtn) warehouseSellBtn.remove();
 
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
