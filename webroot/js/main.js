@@ -37,7 +37,7 @@ function formatNumber(value, type = 'material') {
 
     if (isNaN(num)) return value;
 
-    if (type === 'money' || type === 'gold') {
+    if (type == 'money' || type == 'gold') {
         // Money formatting
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
@@ -53,7 +53,14 @@ function formatNumber(value, type = 'material') {
         }
         // > 100000: use k suffix
         return Math.round(num / 1000) + ' k';
-    } else if (type === 'xp') {
+    } else if (type == 'percent'){
+        // Percent formatting
+        if (num < 0) {
+            return '-' + formatNumber(Math.abs(num), type);
+        }
+        return num.toFixed(2);
+    }
+    else if (type == 'xp'){
         // XP formatting
         if (num < 0) {
             return '-' + formatNumber(Math.abs(num), type);
@@ -1102,7 +1109,7 @@ function populateGemModal(tool, maxGemSlots) {
                 <div style="margin-bottom: 12px;">
                     <label style="display: block; margin-bottom: 4px; font-weight: 600;">Gem Slot ${slotLabel}:</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="flex: 1; padding: 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 13px;">
+                        <div style="flex: 1; padding: 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 13px;">
                             💎 ${gemName}
                         </div>
                         <button onclick="unsetGem(${tool.id}, ${i})" class="btn-sell btn-tiny" style="white-space: nowrap;">Unset</button>
@@ -1140,8 +1147,8 @@ function populateGemModal(tool, maxGemSlots) {
             <p style="margin: 0; color: #9fbfe0; font-size: 13px;">Current Power: ${toolPower}</p>
         </div>
 
-        <div style="margin-bottom: 16px; padding: 12px; background: rgba(138, 43, 226, 0.1); border: 1px solid rgba(138, 43, 226, 0.3); border-radius: 6px;">
-            <p style="margin: 0 0 12px 0; color: #dda0ff; font-size: 13px;">
+        <div style="margin-bottom: 16px; padding: 12px; background: rgba(102, 204, 255, 0.1); border: 1px solid rgba(102, 204, 255, 0.3); border-radius: 6px;">
+            <p style="margin: 0 0 12px 0; color: #66ccff; font-size: 13px;">
                 Set polished gems into your tool to increase its power. You can set up to ${maxGemSlots} gem${maxGemSlots > 1 ? 's' : ''}.
             </p>
             <p>Ruby: Chance to consume no energy. Higher carat have higher chance, but diminishing returns</p>
@@ -3712,7 +3719,7 @@ function populateToolsInPanel() {
         if (hasGems) {
             // Show gem info instead of button
             const gemInfo = document.createElement('span');
-            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 11px; font-weight: bold; white-space: nowrap;';
             gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
             gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
             gemInfo.style.cursor = 'pointer';
@@ -4333,19 +4340,18 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             }
         }
     }
-    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
+    // Apply Diamond gem bonus to dig power skill points
+    const baseDigPowerPoints = dwarf.digPower || 0;
+    const modifiedDigPowerPoints = getDiamondModifiedDigPower(dwarf, baseDigPowerPoints);
+    const levelBonus = 1 + modifiedDigPowerPoints * 0.1;
+
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
 
     // Apply gem bonus (5% per carat for each gem)
-    let gemBonus = 1;
-    if (currentTool && currentTool.gems && currentTool.gems.length > 0) {
-        const totalCarats = currentTool.gems.reduce((sum, gem) => sum + gem.carat, 0);
-        gemBonus = 1 + totalCarats * 0.05; // 5% bonus per carat
-    }
 
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus * gemBonus;
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
@@ -4405,13 +4411,18 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Populate dig power
-    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
-    const enchantLine = enchantLevel > 0 ? `<div>× Enchantment: ${formatNumber(enchantBonus, 'material')} (+${enchantLevel})</div>` : '';
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'percent');
+    const enchantLine = enchantLevel > 0 ? `<div style="color: #b19cd9;">× Enchantment: ${formatNumber(enchantBonus, 'percent')} (+${enchantLevel})</div>` : '';
+    const diamondBonusPercent = ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100);
+    const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
+        ? `<div style="color: #66ccff; margin-left: 10px;">💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
+        : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
-        <div>× Level Bonus: ${formatNumber(levelBonus, 'material')} (${dwarf.digPower || 0})</div>
-        <div>× Research: ${formatNumber(researchBonus, 'material')} (${improvedDigging ? improvedDigging.level : 0})</div>
-        <div>× Tool Power: ${formatNumber(toolPower, 'material')}</div>
+        <div>× Level Bonus: ${formatNumber(levelBonus, 'percent')} (${baseDigPowerPoints} skill points)</div>
+        ${diamondBonusLine}
+        <div>× Research: ${formatNumber(researchBonus, 'percent')} (${improvedDigging ? improvedDigging.level : 0})</div>
+        <div>× Tool Power: ${formatNumber(toolPower, 'percent')}</div>
         ${enchantLine}
     `;
 
@@ -4480,8 +4491,8 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             // Create a span for each gem type
             Object.entries(gemsByType).forEach(([type, carats]) => {
                 const gemSpan = document.createElement('span');
-                gemSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
-                gemSpan.textContent = `+ ${type} ${carats}ct`;
+                gemSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(102, 204, 255, 0.15); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 3px; color: #66ccff; font-size: 10px; font-weight: bold;';
+                gemSpan.textContent = `💎 ${type} ${carats}ct`;
                 gemSpan.title = `${carats} carat ${type}`;
                 toolBadges.appendChild(gemSpan);
             });
@@ -4553,10 +4564,48 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     };
 
     const energyLevel = Math.round(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
-    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, `+${(dwarf.digPower || 0) * 10}% power`, 'digPower'));
-    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, `Maximum Energy: ${dwarf.maxEnergy || 100}`, 'maxEnergy'));
-    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, `Bucket Capacity: ${dwarfCapacity}`, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, `Research and Smelting Speed and XP Bonus `, 'wisdom'));
+
+    // Calculate Ruby energy prevention chance for display
+    let rubyEnergyChance = 0;
+    if (dwarf.toolId) {
+        const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
+            const totalRubyCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Ruby')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            if (totalRubyCarat > 0) {
+                rubyEnergyChance = calculateRubyEnergyPreventionChance(totalRubyCarat);
+            }
+        }
+    }
+
+    // Calculate gem bonuses for display
+    const baseDigPower = dwarf.digPower || 0;
+    const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
+    const diamondDigPowerPercent = modifiedDigPower > baseDigPower ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100) : 0;
+    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
+    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power<br />${diamondBonus}`;
+
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `<br />💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+
+    const baseStrength = dwarf.strength || 0;
+    const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
+    const effectiveStrength = Math.floor(modifiedStrength);
+    const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
+    const sapphireBonus = modifiedStrength > baseStrength ? ` (effective: ${effectiveStrength}, +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}<br />${sapphireBonus}`;
+
+    const baseWisdom = dwarf.wisdom || 0;
+    const baseResearchPoints = baseWisdom + 1;
+    const modifiedResearchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
+    const amethystBonusPercent = modifiedResearchPoints > baseResearchPoints ? ((modifiedResearchPoints - baseResearchPoints) / baseResearchPoints * 100) : 0;
+    const amethystBonus = modifiedResearchPoints > baseResearchPoints ? ` (+${formatNumber(amethystBonusPercent, 'percent')}% from 💎Amethyst)` : '';
+    const wisdomDesc = `Research and Smelting Speed<br />${amethystBonus}`;
+
+    statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
+    statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, strengthDesc, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, wisdomDesc, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');

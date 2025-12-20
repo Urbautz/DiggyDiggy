@@ -226,9 +226,11 @@ function findActionableSmelterTask() {
 }
 
 function getDwarfToolPower(dwarf) {
-    
+
     // Calculate power: (Dwarf Base Power * Level Bonus) * Research Bonus * Tool Power
-    const levelBonus = 1 + (dwarf.digPower || 0) * DWARF_DIG_POWER_BONUS;
+    const baseDigPower = dwarf.digPower || 0;
+    const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
+    const levelBonus = 1 + modifiedDigPower * DWARF_DIG_POWER_BONUS;
     
     // Apply improved-digging research bonus
     const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
@@ -574,7 +576,8 @@ function actForDwarf(dwarf) {
                 activeResearch.progress = 0;
             }
             // Base points + wisdom bonus
-            const researchPoints = (dwarf.wisdom || 0)+ 1;
+            const baseResearchPoints = (dwarf.wisdom || 0) + 1;
+            const researchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
             activeResearch.progress += researchPoints;
             const WisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (WisdomMultiplier > 0 ? WisdomMultiplier : 1);

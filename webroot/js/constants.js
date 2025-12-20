@@ -92,6 +92,33 @@ const EMERALD_CRIT_CARAT_NORMALIZER = 2.5; // Normalization factor for carat val
 const EMERALD_CRIT_MAX_CARAT = 10000; // Maximum carat value for formula scaling
 
 // ============================================================================
+// GEM EFFECT CONSTANTS - SAPPHIRE
+// ============================================================================
+
+const SAPPHIRE_STRENGTH_MIN_BONUS = 1; // Minimum strength bonus (%)
+const SAPPHIRE_STRENGTH_MAX_BONUS = 50; // Maximum strength bonus (%)
+const SAPPHIRE_STRENGTH_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const SAPPHIRE_STRENGTH_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - DIAMOND
+// ============================================================================
+
+const DIAMOND_DIGPOWER_MIN_BONUS = 1; // Minimum dig power bonus (%)
+const DIAMOND_DIGPOWER_MAX_BONUS = 50; // Maximum dig power bonus (%)
+const DIAMOND_DIGPOWER_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const DIAMOND_DIGPOWER_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - AMETHYST
+// ============================================================================
+
+const AMETHYST_RESEARCH_MIN_BONUS = 1; // Minimum research bonus (%)
+const AMETHYST_RESEARCH_MAX_BONUS = 50; // Maximum research bonus (%)
+const AMETHYST_RESEARCH_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const AMETHYST_RESEARCH_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
 // SMELTER CONSTANTS
 // ============================================================================
 

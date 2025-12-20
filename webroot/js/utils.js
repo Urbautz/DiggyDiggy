@@ -188,6 +188,159 @@ function getEmeraldModifiedCritChance(dwarf, baseCritChance) {
     return  baseCritChance * (1+multiplier);
 }
 
+/**
+ * Calculate the strength bonus percentage from Sapphire gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Sapphire gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateSapphireStrengthBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
+    const maxNormalizedCarat = SAPPHIRE_STRENGTH_MAX_CARAT / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = SAPPHIRE_STRENGTH_MIN_BONUS + (SAPPHIRE_STRENGTH_MAX_BONUS - SAPPHIRE_STRENGTH_MIN_BONUS) * logFactor;
+
+    return Math.min(SAPPHIRE_STRENGTH_MAX_BONUS, Math.max(SAPPHIRE_STRENGTH_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Sapphire-modified strength for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} baseStrength - Base strength value
+ * @returns {number} Modified strength with Sapphire bonus
+ */
+function getSapphireModifiedStrength(dwarf, baseStrength) {
+    if (!dwarf.toolId) return baseStrength;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseStrength;
+    }
+
+    // Sum up all Sapphire carat values
+    const totalSapphireCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Sapphire')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalSapphireCarat <= 0) return baseStrength;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateSapphireStrengthBonus(totalSapphireCarat);
+    const modifiedStrength = baseStrength * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && baseStrength > 0) {
+        console.log(`💎 Sapphire Strength Boost! ${dwarf.name}'s ${totalSapphireCarat}-carat Sapphire increases strength from ${baseStrength.toFixed(1)} to ${modifiedStrength.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedStrength;
+}
+
+/**
+ * Calculate the dig power bonus percentage from Diamond gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Diamond gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateDiamondDigPowerBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
+    const maxNormalizedCarat = DIAMOND_DIGPOWER_MAX_CARAT / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = DIAMOND_DIGPOWER_MIN_BONUS + (DIAMOND_DIGPOWER_MAX_BONUS - DIAMOND_DIGPOWER_MIN_BONUS) * logFactor;
+
+    return Math.min(DIAMOND_DIGPOWER_MAX_BONUS, Math.max(DIAMOND_DIGPOWER_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Diamond-modified dig power for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} basePower - Base dig power value
+ * @returns {number} Modified dig power with Diamond bonus
+ */
+function getDiamondModifiedDigPower(dwarf, basePower) {
+    if (!dwarf.toolId) return basePower;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return basePower;
+    }
+
+    // Sum up all Diamond carat values
+    const totalDiamondCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Diamond')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalDiamondCarat <= 0) return basePower;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateDiamondDigPowerBonus(totalDiamondCarat);
+    const modifiedPower = basePower * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && basePower > 0) {
+        console.log(`💎 Diamond Dig Power Boost! ${dwarf.name}'s ${totalDiamondCarat}-carat Diamond increases dig power from ${basePower.toFixed(1)} to ${modifiedPower.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedPower;
+}
+
+/**
+ * Calculate the research bonus percentage from Amethyst gems
+ * Formula uses logarithmic diminishing returns (1% to 50%)
+ * @param {number} carat - Total carat value of Amethyst gems
+ * @returns {number} Bonus percentage (1-50)
+ */
+function calculateAmethystResearchBonus(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    const normalizedCarat = carat / AMETHYST_RESEARCH_CARAT_NORMALIZER;
+    const maxNormalizedCarat = AMETHYST_RESEARCH_MAX_CARAT / AMETHYST_RESEARCH_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const bonus = AMETHYST_RESEARCH_MIN_BONUS + (AMETHYST_RESEARCH_MAX_BONUS - AMETHYST_RESEARCH_MIN_BONUS) * logFactor;
+
+    return Math.min(AMETHYST_RESEARCH_MAX_BONUS, Math.max(AMETHYST_RESEARCH_MIN_BONUS, bonus));
+}
+
+/**
+ * Get the Amethyst-modified research points for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} baseResearchPoints - Base research points value
+ * @returns {number} Modified research points with Amethyst bonus
+ */
+function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
+    if (!dwarf.toolId) return baseResearchPoints;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseResearchPoints;
+    }
+
+    // Sum up all Amethyst carat values
+    const totalAmethystCarat = toolInstance.gems
+        .filter(gem => gem.type === 'Amethyst')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalAmethystCarat <= 0) return baseResearchPoints;
+
+    // Calculate bonus and apply it
+    const bonusPercent = calculateAmethystResearchBonus(totalAmethystCarat);
+    const modifiedPoints = baseResearchPoints * (1 + bonusPercent / 100);
+
+    // Log occasionally (1% chance)
+    if (Math.random() < 0.01 && baseResearchPoints > 0) {
+        console.log(`💎 Amethyst Research Boost! ${dwarf.name}'s ${totalAmethystCarat}-carat Amethyst increases research points from ${baseResearchPoints.toFixed(1)} to ${modifiedPoints.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
+    }
+
+    return modifiedPoints;
+}
+
 // ============================================================================
 // RESEARCH UTILITIES
 // ============================================================================
@@ -244,8 +397,9 @@ function isSmelterTaskUnlocked(task) {
  */
 function calculateDwarfBucketCapacity(dwarf) {
     const bucketBonus = getResearchLevel('buckets');
-    const dwarfStrength = dwarf.strength || 0;
-    return bucketCapacity + bucketBonus + dwarfStrength;
+    const baseStrength = dwarf.strength || 0;
+    const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
+    return bucketCapacity + bucketBonus + Math.floor(modifiedStrength);
 }
 
 /**

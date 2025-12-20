@@ -556,7 +556,7 @@ header, footer {
 }
 
 .btn-gems {
-    background: linear-gradient(180deg, #9a1658, #860e44);
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
     color: #fff;
     border: none;
     padding: 8px 16px;
@@ -565,11 +565,11 @@ header, footer {
     font-size: 12px;
     font-weight: 700;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+    box-shadow: 0 2px 8px rgba(102, 204, 255, 0.3);
 }
 .btn-gems:hover {
-    background: linear-gradient(180deg, #db2777, #be185d);
-    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+    background: linear-gradient(180deg, #60a5fa, #3b82f6);
+    box-shadow: 0 4px 12px rgba(102, 204, 255, 0.4);
     transform: translateY(-1px);
 }
 
