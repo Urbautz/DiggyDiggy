@@ -1144,7 +1144,7 @@ function populateGemModal(tool, maxGemSlots) {
             <p style="margin: 0 0 12px 0; color: #dda0ff; font-size: 13px;">
                 Set polished gems into your tool to increase its power. You can set up to ${maxGemSlots} gem${maxGemSlots > 1 ? 's' : ''}.
             </p>
-            <p>Ruby: Chance to consume no energy when digging or walking.</p>
+            <p>Ruby: Chance to consume no energy. Higher carat have higher chance, but diminishing returns</p>
             <p>Sapphire: Gives dwarfs option to overload their bucket. Gems do not count to the max bucket.</p>
             <p>Emerald: Gives tools a higher chance at a critical strike.</p>
             <p>Diamond: Gives tools 1% more dwarf dig power per carat.</p>

@@ -81,6 +81,113 @@ function selectRandomGem() {
     return gemMaterials[Math.floor(Math.random() * gemMaterials.length)].id;
 }
 
+/**
+ * Calculate the probability that a Ruby gem prevents energy consumption
+ * Formula uses logarithmic diminishing returns:
+ * - Carat 1: ~5%
+ * - Carat 25: ~10%
+ * - Carat 100: ~50%
+ * - Carat 1000: ~75%
+ * - Carat 10000: ~79%
+ * - Max: 80%
+ * @param {number} carat - Total carat value of Ruby gems
+ * @returns {number} Probability (0-80) as percentage
+ */
+function calculateRubyEnergyPreventionChance(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    // probability = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
+    const normalizedCarat = carat / RUBY_ENERGY_CARAT_NORMALIZER;
+    const maxNormalizedCarat = RUBY_ENERGY_MAX_CARAT / RUBY_ENERGY_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const probability = RUBY_ENERGY_MIN_CHANCE + (RUBY_ENERGY_MAX_CHANCE - RUBY_ENERGY_MIN_CHANCE) * logFactor;
+
+    // Clamp to range [MIN, MAX]
+    return Math.min(RUBY_ENERGY_MAX_CHANCE, Math.max(RUBY_ENERGY_MIN_CHANCE, probability));
+}
+
+/**
+ * Check if Ruby gems prevent energy consumption for this action
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if energy consumption should be prevented
+ */
+function shouldRubyPreventEnergyConsumption(dwarf) {
+    if (!dwarf.toolId) return false;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return false;
+    }
+
+    // Sum up all Ruby carat values
+    const totalRubyCarat = toolInstance.gems
+        .filter(gem => gem.type == 'Ruby')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+
+    if (totalRubyCarat <= 0) {
+        return false;
+    }
+
+
+    // Calculate prevention chance and roll
+    const chance = calculateRubyEnergyPreventionChance(totalRubyCarat);
+    const roll = Math.random() * 100;
+    const prevented = roll < chance;
+
+    return prevented;
+}
+
+/**
+ * Calculate the critical strike chance multiplier from Emerald gems
+ * Formula uses logarithmic diminishing returns:
+ * - Carat 1: ~0.5 (50% increase)
+ * - Carat 25: ~1.0 (100% increase)
+ * - Carat 100: ~10.0 (1000% increase)
+ * - Carat 1000: ~30.0 (3000% increase)
+ * - Carat 10000: ~39.5 (3950% increase)
+ * - Max: 40.0 (4000% increase)
+ * @param {number} carat - Total carat value of Emerald gems
+ * @returns {number} Multiplier for critical strike chance (0.5-40.0)
+ */
+function calculateEmeraldCritMultiplier(carat) {
+    if (carat <= 0) return 0;
+
+    // Logarithmic formula with diminishing returns
+    // multiplier = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
+    const normalizedCarat = carat / EMERALD_CRIT_CARAT_NORMALIZER;
+    const maxNormalizedCarat = EMERALD_CRIT_MAX_CARAT / EMERALD_CRIT_CARAT_NORMALIZER;
+    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
+    const multiplier = EMERALD_CRIT_MIN_MULTIPLIER + (EMERALD_CRIT_MAX_MULTIPLIER - EMERALD_CRIT_MIN_MULTIPLIER) * logFactor;
+
+    // Clamp to range [MIN, MAX]
+    return Math.min(EMERALD_CRIT_MAX_MULTIPLIER, Math.max(EMERALD_CRIT_MIN_MULTIPLIER, multiplier));
+}
+
+/**
+ * Get the Emerald-modified critical strike chance for a dwarf
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {number} baseCritChance - Base critical strike chance (0-1)
+ * @returns {number} Modified critical strike chance with Emerald bonus (0-1)
+ */
+function getEmeraldModifiedCritChance(dwarf, baseCritChance) {
+    if (!dwarf.toolId) return baseCritChance;
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return baseCritChance;
+    }
+    // Sum up all Emerald carat values
+    const totalEmeraldCarat = toolInstance.gems
+        .filter(gem => gem.type == 'Emerald')
+        .reduce((sum, gem) => sum + gem.carat, 0);
+    if (totalEmeraldCarat <= 0) {
+        return baseCritChance;
+    }
+    // Calculate the multiplier and apply it
+    const multiplier = Math.max(1,calculateEmeraldCritMultiplier(totalEmeraldCarat)) / 100;
+    return  baseCritChance * (1+multiplier);
+}
+
 // ============================================================================
 // RESEARCH UTILITIES
 // ============================================================================

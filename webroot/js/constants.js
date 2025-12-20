@@ -74,6 +74,24 @@ const GEM_SPAWN_CHANCE = 0.15; // 4% chance to find a gem when destroying stone 
 const GEM_CUTTING_VALUE_MULTIPLIER = 1.5; // 50% value increase when gems are cut and polished
 
 // ============================================================================
+// GEM EFFECT CONSTANTS - RUBY
+// ============================================================================
+
+const RUBY_ENERGY_MIN_CHANCE = 5; // Minimum energy prevention chance (%)
+const RUBY_ENERGY_MAX_CHANCE = 80; // Maximum energy prevention chance (%)
+const RUBY_ENERGY_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const RUBY_ENERGY_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
+// GEM EFFECT CONSTANTS - EMERALD
+// ============================================================================
+
+const EMERALD_CRIT_MIN_MULTIPLIER = 0.5; // Minimum crit chance multiplier (0.5 = 50% increase)
+const EMERALD_CRIT_MAX_MULTIPLIER = 40; // Maximum crit chance multiplier (40 = 4000% increase)
+const EMERALD_CRIT_CARAT_NORMALIZER = 2.5; // Normalization factor for carat values
+const EMERALD_CRIT_MAX_CARAT = 10000; // Maximum carat value for formula scaling
+
+// ============================================================================
 // SMELTER CONSTANTS
 // ============================================================================
 

@@ -565,7 +565,11 @@ function actForDwarf(dwarf) {
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
-            dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_RESEARCH);
+
+            // Check Ruby gem effect before consuming energy
+            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_RESEARCH);
+            }
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -668,7 +672,11 @@ function actForDwarf(dwarf) {
                     // Pay the dwarf, consume energy and award XP (wage already calculated above)
                     gold = Math.max(0, gold - wage);
                     pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-                    dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+
+                    // Check Ruby gem effect before consuming energy
+                    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                        dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+                    }
                     dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
 
                     return;
@@ -721,7 +729,11 @@ function actForDwarf(dwarf) {
             // Pay the dwarf, consume energy and award XP
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-            dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+
+            // Check Ruby gem effect before consuming energy
+            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+            }
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
@@ -956,14 +968,19 @@ function actForDwarf(dwarf) {
             reservedDigBy.set(curKey, dwarf.name);
             dwarf.status = 'digging';
             const prev = curCell.hardness;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+
+            // Check Ruby gem effect before consuming energy
+            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+            }
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed
             
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
-            const critChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -1029,7 +1046,11 @@ function actForDwarf(dwarf) {
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_MOVE);
+
+            // Check Ruby gem effect before consuming energy
+            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_MOVE);
+            }
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
@@ -1061,14 +1082,19 @@ function actForDwarf(dwarf) {
                 }
             }
             const prev = curCellDig.hardness;
-            dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+
+            // Check Ruby gem effect before consuming energy
+            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+            }
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed (see above)
             
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
-            const critChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -1283,13 +1309,16 @@ function actForDwarf(dwarf) {
         }
     }
     target.hardness = Math.max(0, target.hardness - power);
-    dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+      dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+    }
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
     
     // Check for critical hit (5% base + 5% per research level)
     const materialScience = researchtree.find(r => r.id === 'material-science');
-    const critChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+    const baseCritChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
+    const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
     const isCrit = Math.random() < critChance;
     const finalPower = isCrit ? power * 2 : power;
     
