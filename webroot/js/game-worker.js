@@ -254,14 +254,7 @@ function getDwarfToolPower(dwarf) {
     // Apply enchantment bonus (1% per enchantment level)
     const enchantBonus = 1 + (toolInstance.enchantLevel || 0) * ENCHANT_POWER_BONUS;
 
-    // Apply gem bonus (5% per carat for each gem)
-    let gemBonus = 1;
-    if (toolInstance.gems && toolInstance.gems.length > 0) {
-        const totalCarats = toolInstance.gems.reduce((sum, gem) => sum + gem.carat, 0);
-        gemBonus = 1 + totalCarats * 0.05; // 5% bonus per carat
-    }
-
-    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus * gemBonus;
+    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus;
 }
 
 // Note: calculateWage and randomMaterial are now in utils.js
