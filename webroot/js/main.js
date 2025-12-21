@@ -2612,7 +2612,7 @@ function populateResearch() {
             <h3>🔬 Currently Researching</h3>
             <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
             <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: ${progress} / ${actualCost} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                 <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
