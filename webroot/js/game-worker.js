@@ -33,8 +33,9 @@ let pendingTransactions = []; // Queue of transactions to send to main thread
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
-let smelterMinTemp = 25; // Minimum temperature to maintain (user configurable)
-let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable)
+let smelterCoalMinTemp = 25; // Minimum temperature for coal heating (user configurable)
+let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user configurable)
+let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
@@ -189,15 +190,25 @@ function findActionableSmelterTask() {
         
         // For heating tasks, use hysteresis: start heating when below min, stop when above max
         if (task.type === 'heating') {
-            // Update heating mode based on temperature
-            if (smelterTemperature < smelterMinTemp) {
-                smelterHeatingMode = true; // Start heating when below min
-            } else if (smelterTemperature >= smelterMaxTemp) {
-                smelterHeatingMode = false; // Stop heating when at/above max
-            }
-            // Skip heating if not in heating mode
-            if (!smelterHeatingMode) {
-                continue;
+            // For magma (dynamic), only activate when below min temp
+            // For coal, use hysteresis with min and max
+            if (task.heatGain === 'dynamic') {
+                // Magma: only heat when below magma min temp (it instantly goes to max)
+                if (smelterTemperature >= smelterMagmaMinTemp) {
+                    continue; // Skip magma heating if at or above magma min temp
+                }
+            } else {
+                // Coal: use hysteresis
+                // Update heating mode based on temperature
+                if (smelterTemperature < smelterCoalMinTemp) {
+                    smelterHeatingMode = true; // Start heating when below coal min
+                } else if (smelterTemperature >= smelterCoalMaxTemp) {
+                    smelterHeatingMode = false; // Stop heating when at/above coal max
+                }
+                // Skip heating if not in heating mode
+                if (!smelterHeatingMode) {
+                    continue;
+                }
             }
         }
         
@@ -690,9 +701,21 @@ function actForDwarf(dwarf) {
 
             // Handle heating task
             if (task.type === 'heating' && task.heatGain) {
-                // Add heat to the furnace (capped at 1500 degrees)
-                smelterTemperature = Math.min(1500, smelterTemperature + task.heatGain);
-                //console.log(`Dwarf ${dwarf.name} heated furnace by ${task.heatGain}° (now ${Math.round(smelterTemperature)}°)`);
+                // Calculate max temperature based on furnace-temperature research
+                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+                if (task.heatGain === 'dynamic') {
+                    // Magma furnace: set temperature directly to max
+                    smelterTemperature = maxTemp;
+                    //console.log(`Dwarf ${dwarf.name} used magma to heat furnace to max ${Math.round(smelterTemperature)}°`);
+                } else {
+                    // Coal: add heat gain, capped at 2000°
+                    const coalMaxTemp = 2000;
+                    smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
+                    //console.log(`Dwarf ${dwarf.name} heated furnace by ${task.heatGain}° (now ${Math.round(smelterTemperature)}°, coal max: ${coalMaxTemp}°)`);
+                }
             } else if (task.output) {
                 // Regular smelting task with output
                 const outputMaterial = task.output.material;
@@ -1395,8 +1418,9 @@ function tick() {
                 researchtree,
                 shifted,
                 smelterTemperature,
-                smelterMinTemp,
-                smelterMaxTemp,
+                smelterCoalMinTemp,
+                smelterCoalMaxTemp,
+                smelterMagmaMinTemp,
                 smelterHeatingMode,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
@@ -1449,8 +1473,9 @@ self.addEventListener('message', (e) => {
             }
             // Initialize smelter temperature state
             if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
-            if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
-            if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+            if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;
+            if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
+            if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
             if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
@@ -1509,8 +1534,9 @@ self.addEventListener('message', (e) => {
                     smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
                 }
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
-                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
-                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;
+                if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
+                if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             }
             break;

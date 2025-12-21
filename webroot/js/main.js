@@ -2266,14 +2266,27 @@ function populateSmelter() {
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat`;
+            // Calculate display info for heating tasks
+            let heatingDisplay = '';
+            if (task.heatGain === 'dynamic') {
+                // Magma: show "to max temp"
+                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)`;
+            } else {
+                // Coal: show heat gain and max 2000°
+                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)`;
+            }
+            taskRecipe.textContent = heatingDisplay;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
-            // Add temperature display and controls inside the heating task
+
+            // Add temperature display and controls for heating tasks
             const tempControls = document.createElement('div');
             tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
             // Current temperature with bar
@@ -2287,33 +2300,60 @@ function populateSmelter() {
             const tempBarContainer = document.createElement('div');
             tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
             const tempBar = document.createElement('div');
-            const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
+            // Calculate max temperature based on furnace-temperature research
+            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
             tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
             tempBarContainer.appendChild(tempBar);
             tempControls.appendChild(tempBarContainer);
+
             // Temperature range controls
             const rangeControls = document.createElement('div');
-            rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
-            // Min temperature control
-            const minControl = document.createElement('div');
-            minControl.innerHTML = `
-                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMinTemp}°</label>
-                <div style="display: flex; gap: 3px;">
-                    <button class="temp-btn" onclick="adjustMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                    <button class="temp-btn" onclick="adjustMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                </div>
-            `;
-            rangeControls.appendChild(minControl);
-            // Max temperature control
-            const maxControl = document.createElement('div');
-            maxControl.innerHTML = `
-                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterMaxTemp}°</label>
-                <div style="display: flex; gap: 3px;">
-                    <button class="temp-btn" onclick="adjustMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                    <button class="temp-btn" onclick="adjustMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                </div>
-            `;
-            rangeControls.appendChild(maxControl);
+            // For magma (dynamic), only show min control (single column)
+            // For coal, show both min and max (two columns)
+            if (task.heatGain === 'dynamic') {
+                rangeControls.style.cssText = 'font-size: 12px;';
+            } else {
+                rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
+            }
+
+            // Temperature controls depend on task type
+            if (task.heatGain === 'dynamic') {
+                // Magma: only show min control
+                const minControl = document.createElement('div');
+                minControl.innerHTML = `
+                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMagmaMinTemp}°</label>
+                    <div style="display: flex; gap: 3px;">
+                        <button class="temp-btn" onclick="adjustMagmaMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                        <button class="temp-btn" onclick="adjustMagmaMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                    </div>
+                `;
+                rangeControls.appendChild(minControl);
+            } else {
+                // Coal: show both min and max controls
+                const minControl = document.createElement('div');
+                minControl.innerHTML = `
+                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterCoalMinTemp}°</label>
+                    <div style="display: flex; gap: 3px;">
+                        <button class="temp-btn" onclick="adjustCoalMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                        <button class="temp-btn" onclick="adjustCoalMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                    </div>
+                `;
+                rangeControls.appendChild(minControl);
+
+                const maxControl = document.createElement('div');
+                maxControl.innerHTML = `
+                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterCoalMaxTemp}°</label>
+                    <div style="display: flex; gap: 3px;">
+                        <button class="temp-btn" onclick="adjustCoalMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                        <button class="temp-btn" onclick="adjustCoalMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                    </div>
+                `;
+                rangeControls.appendChild(maxControl);
+            }
+
             tempControls.appendChild(rangeControls);
             taskInfo.appendChild(tempControls);
         }
@@ -2369,60 +2409,88 @@ function populateSmelter() {
 
 // Efficiently update just the temperature display in smelter (not full rebuild)
 function updateSmelterTemperatureDisplay() {
-    // Find the heating task row
+    // Find the heating task rows (both coal and magma)
     const taskList = document.getElementById('smelter-task-list');
     if (!taskList) return;
-    
-    const heatingTaskRow = taskList.querySelector('[data-task-id="heat-furnace"]');
-    if (!heatingTaskRow) return;
-    
-    // Update temperature display within the heating task
-    const tempValue = Math.round(smelterTemperature);
-    const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
-    
-    // Update current temperature text
-    const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
-    if (tempDisplays.length > 0) {
-        tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
-    }
-    
-    // Update temperature bar
-    const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
-    if (tempBars.length > 0) {
-        const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
-        tempBars[0].style.width = `${tempPercent}%`;
-    }
-    
-    // Update task actionability based on temperature
-    const task = smelterTasks.find(t => t.id === 'heat-furnace');
-    if (task) {
-        const stockAmount = materialsStock[task.input.material] || 0;
-        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
-        const isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
-        
-        // Update row class
-        heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
-        heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
-        
-        // Update status indicator
-        const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
-        if (statusIndicator && isUnlocked) {
-            if (isActionable) {
-                statusIndicator.textContent = '✅';
-                statusIndicator.title = 'Ready - materials available and temperature below minimum';
-            } else {
-                statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
-            }
+
+    // Update both heating tasks
+    const heatingTaskIds = ['heat-furnace', 'heat-magma-furnace'];
+
+    for (const taskId of heatingTaskIds) {
+        const heatingTaskRow = taskList.querySelector(`[data-task-id="${taskId}"]`);
+        if (!heatingTaskRow) continue;
+
+        // Update temperature display within the heating task
+        const tempValue = Math.round(smelterTemperature);
+        const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+
+        // Update current temperature text
+        const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
+        if (tempDisplays.length > 0) {
+            tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
         }
-        
-        // Update recipe stock info
-        const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
-        if (recipeSpan) {
-            const inputMat = getMaterialById(task.input.material);
-            const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
-            recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+
+        // Update temperature bar
+        const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
+        if (tempBars.length > 0) {
+            // Calculate max temperature based on furnace-temperature research
+            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+            tempBars[0].style.width = `${tempPercent}%`;
+        }
+
+        // Update task actionability based on temperature
+        const task = smelterTasks.find(t => t.id === taskId);
+        if (task) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+
+            // For magma, only check if temp is below min (always heats to max)
+            // For coal, check both min and max
+            let isActionable;
+            if (task.heatGain === 'dynamic') {
+                isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMagmaMinTemp);
+            } else {
+                isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterCoalMinTemp) && (smelterTemperature < smelterCoalMaxTemp);
+            }
+
+            // Update row class
+            heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
+            heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+
+            // Update status indicator
+            const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
+            if (statusIndicator && isUnlocked) {
+                if (isActionable) {
+                    statusIndicator.textContent = '✅';
+                    statusIndicator.title = 'Ready - materials available and temperature below minimum';
+                } else {
+                    statusIndicator.textContent = '❌';
+                    statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+                }
+            }
+
+            // Update recipe stock info
+            const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
+            if (recipeSpan) {
+                const inputMat = getMaterialById(task.input.material);
+                const inputName = inputMat ? inputMat.name : task.input.material;
+                const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
+
+                // Display format depends on task type
+                if (task.heatGain === 'dynamic') {
+                    // Magma: show "to max temp"
+                    const furnaceTempRes = researchtree.find(r => r.id === 'furnace-temperature');
+                    const furnaceTempLvl = furnaceTempRes ? (furnaceTempRes.level || 0) : 0;
+                    const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLvl * 100);
+                    recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → Heat to ${maxTemp}° (max)`;
+                } else {
+                    // Coal: show heat gain
+                    recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat (max 2000°)`;
+                }
+            }
         }
     }
 }
@@ -2508,46 +2576,77 @@ function moveSmelterTask(index, direction) {
     populateSmelter();
 }
 
-// Adjust minimum temperature setting
-window.adjustMinTemp = function(amount) {
-    smelterMinTemp = Math.max(25, Math.min(1500, smelterMinTemp + amount));
+// Adjust coal minimum temperature setting
+window.adjustCoalMinTemp = function(amount) {
+    // Calculate max temperature limit based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    smelterCoalMinTemp = Math.max(25, Math.min(maxTempLimit, smelterCoalMinTemp + amount));
     // Ensure min doesn't exceed max
-    if (smelterMinTemp > smelterMaxTemp) {
-        smelterMinTemp = smelterMaxTemp;
+    if (smelterCoalMinTemp > smelterCoalMaxTemp) {
+        smelterCoalMinTemp = smelterCoalMaxTemp;
     }
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                smelterMinTemp: smelterMinTemp
+                smelterCoalMinTemp: smelterCoalMinTemp
             }
         });
     }
-    
+
     saveGame();
     populateSmelter();
 }
 
-// Adjust maximum temperature setting
-window.adjustMaxTemp = function(amount) {
-    smelterMaxTemp = Math.max(25, Math.min(1500, smelterMaxTemp + amount));
+// Adjust coal maximum temperature setting
+window.adjustCoalMaxTemp = function(amount) {
+    // Coal max is capped at 2000°
+    const coalMaxLimit = 2000;
+
+    smelterCoalMaxTemp = Math.max(25, Math.min(coalMaxLimit, smelterCoalMaxTemp + amount));
     // Ensure max doesn't go below min
-    if (smelterMaxTemp < smelterMinTemp) {
-        smelterMaxTemp = smelterMinTemp;
+    if (smelterCoalMaxTemp < smelterCoalMinTemp) {
+        smelterCoalMaxTemp = smelterCoalMinTemp;
     }
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                smelterMaxTemp: smelterMaxTemp
+                smelterCoalMaxTemp: smelterCoalMaxTemp
             }
         });
     }
-    
+
+    saveGame();
+    populateSmelter();
+}
+
+// Adjust magma minimum temperature setting
+window.adjustMagmaMinTemp = function(amount) {
+    // Calculate max temperature limit based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    smelterMagmaMinTemp = Math.max(25, Math.min(maxTempLimit, smelterMagmaMinTemp + amount));
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMagmaMinTemp: smelterMagmaMinTemp
+            }
+        });
+    }
+
     saveGame();
     populateSmelter();
 }

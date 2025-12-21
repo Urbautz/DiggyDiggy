@@ -26,16 +26,16 @@ const materials = [
 
   { id: 'Marble', name: 'Marble', type:'Stone Medium',      hardness: 250, probability: 200, worth: 10,   minlevel: 4000, maxlevel: 29999, color: '#7a706eff' },
   { id: 'Polished Marble', name: 'Polished Marble', type:'Processed', hardness: 0, probability: 0, worth: 40,  minlevel: 99999, color: '#c8c0beff' },
-  { id: 'Slate', name: 'Slate', type: 'Stone Medium',       hardness: 400, probability: 400, worth: 5,   minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },
+  { id: 'Slate', name: 'Slate', type: 'Stone Medium',       hardness: 800, probability: 400, worth: 5,   minlevel: 5000, maxlevel: 99999, color: '#483b37ff' },
   { id: 'Schist', name: 'Schist', type: 'Stone Medium',     hardness: 400, probability: 200, worth: 5,   minlevel: 5000, maxlevel: 199999, color: '#1d354dff' },
-  { id: 'Dolomite', name: 'Dolomite', type: 'Stone Medium', hardness: 400, probability: 200, worth: 12,   minlevel: 5000, maxlevel: 99999, color: '#956f88ff' },
+  { id: 'Dolomite', name: 'Dolomite', type: 'Stone Medium', hardness: 900, probability: 200, worth: 12,   minlevel: 5000, maxlevel: 99999, color: '#956f88ff' },
 
-  { id: 'Granite', name: 'Granite', type:'Stone Hard',      hardness: 500, probability: 400, worth: 12,   minlevel: 18000,  color: '#280918ff' },
+  { id: 'Granite', name: 'Granite', type:'Stone Hard',      hardness: 1100, probability: 400, worth: 12,   minlevel: 18000,  color: '#280918ff' },
   { id: 'Polished Granite', name: 'Polished Granite', type:'Processed', hardness: 0, probability: 0, worth: 50, minlevel: 99999, color: '#4a1828ff' },
 
-  { id: 'Basalt', name: 'Basalt', type: 'Stone Hard',       hardness: 750, probability: 400, worth: 17,    minlevel: 95000, color: '#484848ff' },
-  { id: 'Obsidian', name: 'Obsidian', type: 'Stone Hard',   hardness: 950, probability: 200, worth: 25,   minlevel: 195000, color: '#184f48ff' },
-  { id: 'Quartzite', name: 'Quartzite', type: 'Stone Hard', hardness: 1500, probability: 200, worth: 31,  minlevel: 135000, color: '#c35858ff' }, 
+  { id: 'Basalt', name: 'Basalt', type: 'Stone Hard',       hardness: 1750, probability: 400, worth: 17,    minlevel: 95000, color: '#484848ff' },
+  { id: 'Obsidian', name: 'Obsidian', type: 'Stone Hard',   hardness: 1950, probability: 200, worth: 25,   minlevel: 195000, color: '#184f48ff' },
+  { id: 'Quartzite', name: 'Quartzite', type: 'Stone Hard', hardness: 2500, probability: 200, worth: 31,  minlevel: 135000, color: '#c35858ff' }, 
   { id: 'Polished Obsidian', name: 'Polished Obsidian', type:'Processed', hardness: 0, probability: 0, worth: 100, minlevel: 99999, color: '#2a6f68ff' },
 
 
@@ -57,13 +57,13 @@ const materials = [
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 1000,  minlevel: 15000, color: '#d6a80eff' },
   { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5000,  minlevel: 99999, color: '#ffd700ff' },
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
+  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 1500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
   { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
   
-  { id: 'Platinum Ore', name: 'Platinum Ore', type:'Ore Hard',    hardness: 1000, probability: 15, worth: 2500, minlevel: 75000, color: '#c75e41ff' },
-  { id: 'Titanium Ore', name: 'Titanium Ore', type:'Ore Hard',    hardness: 200, probability: 15, worth: 3000, minlevel: 100000, color: '#57375dff' },
-  { id: 'Adamantine Ore', name: 'Adamantine Ore', type:'Ore Hard', hardness: 7000, probability: 15, worth: 7000, minlevel: 250000, color: '#8eb95eff' }
+  { id: 'Platinum Ore', name: 'Platinum Ore', type:'Ore Hard',    hardness: 4000, probability: 15, worth: 2500, minlevel: 75000, color: '#c75e41ff' },
+  { id: 'Titanium Ore', name: 'Titanium Ore', type:'Ore Hard',    hardness: 6000, probability: 15, worth: 3000, minlevel: 100000, color: '#57375dff' },
+  { id: 'Adamantine Ore', name: 'Adamantine Ore', type:'Ore Hard', hardness: 10000, probability: 15, worth: 7000, minlevel: 250000, color: '#8eb95eff' }
 
 
 ];
@@ -87,7 +87,8 @@ const toolsInventory = [
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
-    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100°.', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'heat-magma-furnace', name: 'Heat up furnace (Magma)', description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.', input: { material: 'Magma', amount: 1 }, output: null, type: 'heating', heatGain: 'dynamic', requires: 'magma-furnace' },
     { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: 250, requires: 'gem-cutting' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
     { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
@@ -104,8 +105,9 @@ let smelterTasks = [
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
-let smelterMinTemp = 25; // Minimum temperature to maintain (user configurable)
-let smelterMaxTemp = 1200; // Maximum temperature to maintain (user configurable)
+let smelterCoalMinTemp = 25; // Minimum temperature for coal heating (user configurable)
+let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user configurable)
+let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
 let researchtree = [
@@ -145,6 +147,8 @@ let researchtree = [
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.' },
     { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
       min_depth: 20000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
+    { id: 'magma-furnace', name: 'Magma Operated Furnace', cost: 25000, goldCost: 50000, level: 0, maxlevel: 1, requires: [{'furnace-insulation':5}, {'furnace-temperature':10}],
+      min_depth: 8000, description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.' },
     ];
 let activeResearch = null; // Track which research is currently being researched
     
