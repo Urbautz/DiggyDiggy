@@ -3525,25 +3525,15 @@ function openDwarfs() {
         }
     });
     
-    // Remove Sell All button from header
-    const sellAllBtn = document.getElementById('sell-all-header-btn');
-    if (sellAllBtn) sellAllBtn.remove();
     
     // Remove Warehouse Sell button
     const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
     if (warehouseSellBtn) warehouseSellBtn.remove();
-    
-    // Remove Sell Non-Craftables button from header
-    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+
 
     // Remove Gems button from header
     const gemsBtn = document.getElementById('gems-header-btn');
     if (gemsBtn) gemsBtn.remove();
-
-    // Remove total stock value from header
-    const totalValueSpan = document.getElementById('total-stock-value');
-    if (totalValueSpan) totalValueSpan.remove();
     
     // Set grid layout for dwarfs
     const list = document.getElementById('materials-list');
@@ -5584,7 +5574,10 @@ function openWarehouseSellModal() {
             }
 
             // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
-            if (!craftableMaterials.has(id) && !smelterInputMaterials.has(id) && value > 0) {
+            if (!craftableMaterials.has(id) 
+                && !smelterInputMaterials.has(id) 
+                && !m.type.startsWith('Gem')
+                && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
             }
