@@ -512,6 +512,27 @@ function updateGridDisplay() {
                         smelterIcon.appendChild(smelterBadge);
                         iconContainer.appendChild(smelterIcon);
                         cell.appendChild(iconContainer);
+
+                        // Add temperature progress bar
+                        const tempValue = Math.round(smelterTemperature);
+                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+                        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+
+                        const tempContainer = document.createElement('div');
+                        tempContainer.className = 'smelter-temp-container';
+                        tempContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+
+                        const tempBar = document.createElement('div');
+                        tempBar.className = 'smelter-temp-bar';
+                        tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
+
+                        tempContainer.appendChild(tempBar);
+                        cell.appendChild(tempContainer);
+
+                        // Update title with temperature info
+                        smelterIcon.title = `${smelterIcon.title}\nTemperature: ${tempValue}°/${maxTempLimit}° (${Math.round(tempPercent)}%)`;
                     }
 
                     // show resting marker when dwarf is resting here
@@ -2170,8 +2191,14 @@ function populateSmelter() {
             stockAmount = materialsStock[task.input.material] || 0;
             // For heating tasks, only actionable if temp is below min and below max
             if (task.type === 'heating') {
-                // Heating is actionable if enough materials and temperature is below max (hysteresis)
-                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMaxTemp);
+                // Heating is actionable if enough materials and temperature is below appropriate max
+                if (task.heatGain === 'dynamic') {
+                    // Magma: check against magma min
+                    isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMagmaMinTemp);
+                } else {
+                    // Coal: check against coal max
+                    isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterCoalMaxTemp);
+                }
             } else if (task.minTemp) {
                 // For smelting tasks with temp requirements, check both materials and temperature
                 isActionable = (stockAmount >= task.input.amount) && (smelterTemperature >= task.minTemp);
@@ -6213,8 +6240,9 @@ function initWorker() {
                 
                 // Update smelter temperature state from worker
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
-                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
-                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;
+                if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
+                if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
                 
                 // Update UI to reflect new state
@@ -6301,8 +6329,9 @@ function initWorker() {
             activeResearch,
             researchtree,
             smelterTemperature,
-            smelterMinTemp,
-            smelterMaxTemp
+            smelterCoalMinTemp,
+            smelterCoalMaxTemp,
+            smelterMagmaMinTemp
         }
     });
     
@@ -6354,8 +6383,9 @@ function saveGame() {
             currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
             smelterTemperature: smelterTemperature,
-            smelterMinTemp: smelterMinTemp,
-            smelterMaxTemp: smelterMaxTemp,
+            smelterCoalMinTemp: smelterCoalMinTemp,
+            smelterCoalMaxTemp: smelterCoalMaxTemp,
+            smelterMagmaMinTemp: smelterMagmaMinTemp,
             smelterHeatingMode: smelterHeatingMode,
             timestamp: Date.now(),
             version: gameversion
@@ -6485,9 +6515,19 @@ function loadGame() {
         
         // Restore smelter temperature state
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
-        if (gameState.smelterMinTemp !== undefined) smelterMinTemp = gameState.smelterMinTemp;
-        if (gameState.smelterMaxTemp !== undefined) smelterMaxTemp = gameState.smelterMaxTemp;
+        if (gameState.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = gameState.smelterCoalMinTemp;
+        if (gameState.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = gameState.smelterCoalMaxTemp;
+        if (gameState.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = gameState.smelterMagmaMinTemp;
         if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
+
+        // Backwards compatibility: if old variables exist but new ones don't, migrate them
+        if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {
+            smelterCoalMinTemp = gameState.smelterMinTemp;
+            smelterMagmaMinTemp = gameState.smelterMinTemp;
+        }
+        if (gameState.smelterMaxTemp !== undefined && gameState.smelterCoalMaxTemp === undefined) {
+            smelterCoalMaxTemp = gameState.smelterMaxTemp;
+        }
         
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

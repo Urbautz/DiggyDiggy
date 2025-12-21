@@ -52,15 +52,21 @@ const materials = [
   { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',         hardness:100, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
   { id: 'Copper', name: 'Copper Ingot', type:'Ingot',         hardness:180, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
-  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 190,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
-  { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 750,     minlevel: 99999, color: '#c0c0c0ff' },
+  { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',       hardness: 650, probability: 25, worth: 200,   minlevel: 15000, maxlevel: 999999, color: '#8ec281ff' },
+  { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 300,     minlevel: 99999, color: '#fbd86eff' },
 
-  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',    hardness: 400, probability: 15, worth: 1000,  minlevel: 15000, color: '#d6a80eff' },
-  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5000,  minlevel: 99999, color: '#ffd700ff' },
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',    hardness: 1500, probability: 50, worth: 800,    minlevel: 20000, maxlevel: 99999, color: '#572012ff' },
-  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 3200,    minlevel: 99999, color: '#4a4a4aff' },
-  { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 1150,   minlevel: 31000, maxlevel: 99999, color: '#8ec281ff' },
-  
+  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 1900,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
+  { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff' },
+  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',      hardness: 400, probability: 15, worth: 3000,  minlevel: 15000, color: '#d6a80eff' },
+  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5500,    minlevel: 99999, color: '#ffd700ff' },
+    
+  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',      hardness: 1500, probability: 50, worth: 400,    minlevel: 30000, color: '#572012ff' },
+  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 500,    minlevel: 99999,  color: '#4a4a4aff' },
+  { id: 'Iron', name: 'Iron Ingot', type:'Ingot',             hardness: 250, probability: 0, worth: 600,    minlevel: 99999, color: '#4a4a4aff' },
+  { id: 'Steel', name: 'Steel',                               hardness: 400, probability: 0, worth: 700,    minlevel: 99999, color: '#3f3939ff' },
+  { id: 'Hardened Steel', name: 'Hardened Steel',             hardness: 450, probability: 0, worth: 720,    minlevel: 99999, color: '#2d2121ff' },
+  { id: 'Dwarf Steel', name: 'Dwarf Steel',                   hardness: 500, probability: 0, worth: 800,    minlevel: 99999, color: '#2d2121ff' },
+
   { id: 'Platinum Ore', name: 'Platinum Ore', type:'Ore Hard',    hardness: 4000, probability: 15, worth: 2500, minlevel: 75000, color: '#c75e41ff' },
   { id: 'Titanium Ore', name: 'Titanium Ore', type:'Ore Hard',    hardness: 6000, probability: 15, worth: 3000, minlevel: 100000, color: '#57375dff' },
   { id: 'Adamantine Ore', name: 'Adamantine Ore', type:'Ore Hard', hardness: 10000, probability: 15, worth: 7000, minlevel: 250000, color: '#8eb95eff' }
@@ -100,8 +106,14 @@ let smelterTasks = [
     { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore (requires 1085°).', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
     { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore (requires 962°).', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
     { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore (requires 1064°).', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
-    { id: 'smelt-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron (requires 1200°).', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' }
-];
+    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron (requires 1200°).', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
+    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron (requires 1100°).', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron Ingot', amount: 1 }, minTemp: 1100, requires: 'furnace' },
+   
+    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel (requires 1350°).', input: { material: 'Pig Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
+    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel (requires 1450°).', input: { material: 'Iron', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
+    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt hardened steel (requires 2200°)', input: { material: 'Hardened Steel', amount: 1 }, output: { material: 'Dwarfen Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
+
+  ];
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -137,6 +149,8 @@ let researchtree = [
       min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Unlocks the forge for crafting and upgrading tools.' },
+    { id: 'alloys', name: 'Alloys', cost: 4000, goldCost: 8000, level: 0, maxlevel: 1, requires: [{'furnace':1}],
+      min_depth: 15000, description: 'Unlocks the ability to create alloys in the smelter.' },
     { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5,
       min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
     { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20,
@@ -146,8 +160,8 @@ let researchtree = [
     { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, requires: [{'material-science':5}, {'expertise-stone':1}],
       min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.' },
     { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, requires: [{'forge':1}],
-      min_depth: 20000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
-    { id: 'magma-furnace', name: 'Magma Operated Furnace', cost: 25000, goldCost: 50000, level: 0, maxlevel: 1, requires: [{'furnace-insulation':5}, {'furnace-temperature':10}],
+      min_depth: 6000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
+    { id: 'magma-furnace', name: 'Magma Operated Furnace', cost: 25000, goldCost: 50000, level: 0, maxlevel: 1, requires: [{'furnace-insulation':5},  {'furnace-temperature':10}],
       min_depth: 8000, description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.' },
     ];
 let activeResearch = null; // Track which research is currently being researched
