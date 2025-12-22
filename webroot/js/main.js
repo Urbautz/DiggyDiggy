@@ -3128,7 +3128,7 @@ function populateResearch() {
             <h3>🔬 Currently Researching</h3>
             <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
             <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬<br>Gold paid: ${actualGoldCost} 💰</small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                 <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
@@ -3182,57 +3182,82 @@ function populateResearch() {
         nameTd.appendChild(nameDiv);
         
         const levelTd = document.createElement('td');
-        levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
-        
+        // Calculate effective hardness for display
+        const baseHardness = researchItem.hardness || 10;
+        const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
+        const effectiveHardness = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
+
+        // Check if research is possible: max wisdom * 100 must be >= hardness
+        // Find max wisdom from all dwarfs
+        const maxWisdom = dwarfs.reduce((max, d) => Math.max(max, d.wisdom || 0), 0);
+        const maxPossiblePower = maxWisdom * 100; // Best case: wisdom * roll(100)
+        const isImpossible = maxPossiblePower < effectiveHardness;
+        const minWisdomRequired = Math.ceil(effectiveHardness / 100);
+
+        levelTd.innerHTML = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}<br><small style="opacity: 0.7;">Hardness: ${effectiveHardness}</small>`;
+
         const costTd = document.createElement('td');
         // Calculate actual cost for next level using formula: baseCost * (1.15^(targetLevel-1))
         const targetLevel = currentLevel + 1;
         const actualCost = Math.round(researchItem.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
-        costTd.textContent = `${actualCost} 🔬 / ${actualGoldCost} 💰`;
-        costTd.title = 'Research points / Gold required';
+        costTd.innerHTML = `${actualCost} 🔬<br>${actualGoldCost} 💰`;
+        costTd.title = 'Research points\nGold required';
         
         const actionTd = document.createElement('td');
-        const researchBtn = document.createElement('button');
-        
-        // Check if this research is already active
-        const isActive = activeResearch && activeResearch.id === researchItem.id;
-        
-        // Check if requirements are met
-        const requirementsMet = checkResearchRequirements(researchItem);
 
-        // Check if player has enough gold
-        const hasEnoughGold = gold >= actualGoldCost;
-
-        if (isActive) {
-            researchBtn.className = 'btn-research active';
-            researchBtn.textContent = 'Active';
-            researchBtn.disabled = true;
-        } else if (!requirementsMet.met) {
-            // Requirements not met - gray out
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Locked';
-            researchBtn.disabled = true;
-            researchBtn.title = requirementsMet.reason;
-        } else if (!hasEnoughGold) {
-            // Not enough gold
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Research';
-            researchBtn.disabled = true;
-            researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
-        } else if (activeResearch) {
-            // Another research is active
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Research';
-            researchBtn.disabled = true;
-            researchBtn.title = 'Another research is in progress';
+        // If research is impossible, show warning instead of button
+        if (isImpossible) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.color = '#ff6b6b';
+            warningDiv.style.fontWeight = 'bold';
+            warningDiv.style.fontSize = '12px';
+            warningDiv.style.textAlign = 'center';
+            warningDiv.innerHTML = `⚠️ Dwarf with<br>Wisdom ${minWisdomRequired} required`;
+            warningDiv.title = `No dwarf can complete this research!\nRequired hardness: ${effectiveHardness}\nMax possible: ${maxPossiblePower} (Wisdom ${maxWisdom} × 100)\n\nYou need a dwarf with at least Wisdom ${minWisdomRequired}\nor use Amethyst gems to reduce hardness.`;
+            actionTd.appendChild(warningDiv);
         } else {
-            researchBtn.className = 'btn-research';
-            researchBtn.textContent = 'Research';
-            researchBtn.dataset.researchId = researchItem.id;
+            const researchBtn = document.createElement('button');
+
+            // Check if this research is already active
+            const isActive = activeResearch && activeResearch.id === researchItem.id;
+
+            // Check if requirements are met
+            const requirementsMet = checkResearchRequirements(researchItem);
+
+            // Check if player has enough gold
+            const hasEnoughGold = gold >= actualGoldCost;
+
+            if (isActive) {
+                researchBtn.className = 'btn-research active';
+                researchBtn.textContent = 'Active';
+                researchBtn.disabled = true;
+            } else if (!requirementsMet.met) {
+                // Requirements not met - gray out
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Locked';
+                researchBtn.disabled = true;
+                researchBtn.title = requirementsMet.reason;
+            } else if (!hasEnoughGold) {
+                // Not enough gold
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Research';
+                researchBtn.disabled = true;
+                researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
+            } else if (activeResearch) {
+                // Another research is active
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Research';
+                researchBtn.disabled = true;
+                researchBtn.title = 'Another research is in progress';
+            } else {
+                researchBtn.className = 'btn-research';
+                researchBtn.textContent = 'Research';
+                researchBtn.dataset.researchId = researchItem.id;
+            }
+
+            actionTd.appendChild(researchBtn);
         }
-        
-        actionTd.appendChild(researchBtn);
         
         tr.appendChild(nameTd);
         tr.appendChild(levelTd);
@@ -5114,12 +5139,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
     const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
-    const baseWisdom = dwarf.wisdom || 0;
-    const baseResearchPoints = baseWisdom + 1;
-    const modifiedResearchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
-    const amethystBonusPercent = modifiedResearchPoints > baseResearchPoints ? ((modifiedResearchPoints - baseResearchPoints) / baseResearchPoints * 100) : 0;
-    const amethystBonus = modifiedResearchPoints > baseResearchPoints ? ` (+${formatNumber(amethystBonusPercent, 'percent')}% from 💎Amethyst)` : '';
-    const wisdomDesc = `Research and Smelting Speed\n${amethystBonus}`;
+    const amethystReduction = getAmethystHardnessReduction(dwarf);
+    const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
+    const wisdomDesc = `Research and Smelting Speed\nEach point adds 5% success chance${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));

@@ -1289,6 +1289,11 @@ header, footer {
 
 .research-table th:nth-child(3),
 .research-table td:nth-child(3) {
+    width: 100px;
+}
+
+.research-table th:nth-child(4),
+.research-table td:nth-child(4) {
     width: 140px;
 }
 

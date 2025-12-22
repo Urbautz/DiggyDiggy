@@ -62,7 +62,12 @@ const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
 const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
-const RESEARCH_COST_MULTIPLIER = 1.15; // Research cost formula: baseCost * (1.15^(level-1)), rounded to 0 digits
+const RESEARCH_COST_MULTIPLIER = 1.3; // Research cost formula: baseCost * (1.3^(level-1)), rounded to 0 digits
+const RESEARCH_WISDOM_PROBABILITY_BONUS = 2; // 2% probability bonus per wisdom point
+const RESEARCH_HARDNESS_SCALING_PER_LEVEL = 1; // Hardness increase per research level
+const RESEARCH_HARDNESS_MAX = 9999; // Maximum hardness for endless researches
+const RESEARCH_HARDNESS_MIN = 10; // Minimum hardness (cannot be reduced below this)
+const RESEARCH_MIN_SUCCESS_CHANCE = 0.05; // Minimum 5% success chance for any dwarf attempting research
 
 // ============================================================================
 // GRID GENERATION CONSTANTS
