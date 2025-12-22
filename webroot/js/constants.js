@@ -6,7 +6,7 @@
 // ============================================================================
 
 // Game version
-const gameversion = '0.13.0';
+const gameversion = '0.14.0';
 
 // ============================================================================
 // DWARF CONSTANTS
@@ -24,10 +24,17 @@ const DWARF_BASE_WAGE = 0.01; // Base gold cost per dig action
 const DWARF_WAGE_INCREASE_RATE = 0.18; // 18% wage increase per level
 const DWARF_WAGE_INCREASE_MIN = 0.01; // Minimum wage increase rate (with research)
 const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
-const DWARF_XP_PER_LEVEL = 250; // XP needed per level
-const DWARF_STRIKE_BASE_CHANCE = 0.1; // 10% chance to continue without pay
+
+// XP calculation function - uses exponential scaling
+// Target: Level 1: 50xp, Level 5: 300, Level 10: 1000, Level 25: 25000, Level 50: 100000
+function getDwarfXpForLevel(level) {
+    // Formula: 50 * level^1.8 (rounded)
+    // This creates exponential growth matching the target progression
+    return Math.round(50 * Math.pow(level, 1.6));
+}
+const DWARF_STRIKE_BASE_CHANCE = 0.3; // 30% chance to continue without pay
 const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
-const DWARF_LEVELUP_STRENGTH_BONUS = 1; // Bucket capacity increase per strength point
+const DWARF_LEVELUP_STRENGTH_BONUS = 5; // Bucket capacity increase per strength point
 const DWARF_RESET_COST_PER_LEVEL = 1000; // Gold cost per level to reset points
 
 // ============================================================================
@@ -36,8 +43,8 @@ const DWARF_RESET_COST_PER_LEVEL = 1000; // Gold cost per level to reset points
 
 const CRITICAL_HIT_BASE_CHANCE = 0.02; // 2% base critical hit chance
 const CRITICAL_HIT_DAMAGE_MULTIPLIER = 2; // Critical hits do double damage
-const CRITICAL_HIT_ANIMATION_DURATION = 320; // Milliseconds for crit animation
-const ONE_HIT_ANIMATION_DURATION = 320; // Milliseconds for one-hit animation
+const CRITICAL_HIT_ANIMATION_DURATION = 300; // Milliseconds for crit animation
+const ONE_HIT_ANIMATION_DURATION = 300; // Milliseconds for one-hit animation
 const STONE_EXPERTISE_ONE_HIT_CHANCE = 0.02; // 2% per level
 const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03; // 3% per level
 
@@ -70,7 +77,7 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 // GEM SPAWN CONSTANTS
 // ============================================================================
 
-const GEM_SPAWN_CHANCE = 0.15; // 4% chance to find a gem when destroying stone materials
+const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
 const GEM_CUTTING_VALUE_MULTIPLIER = 1.5; // 50% value increase when gems are cut and polished
 
 // ============================================================================

@@ -7,7 +7,7 @@ function updateDwarfsLevelUpBadge() {
     const dwarfsCanLevelUp = dwarfs.filter(d => {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         return currentXP >= xpNeeded;
     });
     if (dwarfsCanLevelUp.length !== lastDwarfsLevelUpCount) {
@@ -4485,9 +4485,9 @@ function populateDwarfsOverview() {
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
-        
+
         // Find the tool assigned to this dwarf
         const toolTd = document.createElement('td');
         if (d.toolId) {
@@ -4500,10 +4500,10 @@ function populateDwarfsOverview() {
         } else {
             toolTd.textContent = '-';
         }
-        
+
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
         const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
-        
+
         // Action column - show level up button if XP threshold reached
         const actionTd = document.createElement('td');
         if (currentXP >= xpNeeded) {
@@ -4544,7 +4544,7 @@ function updateDwarfsInPanel() {
 
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
 
         // Update level up highlight and class
@@ -4638,13 +4638,13 @@ function populateDwarfsInPanel() {
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
-        
+
         if (canLevelUp) {
             row.classList.add('can-level-up');
         }
-        
+
         // Header with name and level indicator/XP display
         const header = document.createElement('div');
         header.className = 'dwarf-header';
@@ -4778,12 +4778,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
         const aLevel = a.level || 1;
-        const aNeeded = DWARF_XP_PER_LEVEL * aLevel;
+        const aNeeded = getDwarfXpForLevel(aLevel);
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
         const bLevel = b.level || 1;
-        const bNeeded = DWARF_XP_PER_LEVEL * bLevel;
+        const bNeeded = getDwarfXpForLevel(bLevel);
         const bCanLevelUp = bXP >= bNeeded;
 
         if (aCanLevelUp !== bCanLevelUp) {
@@ -4796,7 +4796,7 @@ function populateDwarfSwitcher(currentDwarfName) {
         if (d.name !== currentDwarfName) {
             const currentXP = d.xp || 0;
             const currentLevel = d.level || 1;
-            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+            const xpNeeded = getDwarfXpForLevel(currentLevel);
             const canLevelUp = currentXP >= xpNeeded;
             const levelUpIndicator = canLevelUp ? ' ⭐' : '';
 
@@ -4822,7 +4822,7 @@ function populateDwarfSwitcher(currentDwarfName) {
 function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
-    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
     const bucketWeight = calculateBucketWeight(dwarf.bucket);
@@ -5161,7 +5161,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
-    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
     const bucketWeight = calculateBucketWeight(dwarf.bucket);
@@ -5233,8 +5233,8 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
 // Apply the chosen level up upgrade
 function applyLevelUp(dwarf, upgradeType) {
-    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
-    
+    const xpNeeded = getDwarfXpForLevel(dwarf.level);
+
     if (dwarf.xp < xpNeeded) {
         console.error('Not enough XP to level up');
         return;
@@ -5313,7 +5313,7 @@ function resetDwarfPoints(dwarf) {
     // Calculate XP to return (all earned XP)
     let totalXP = dwarf.xp || 0;
     for (let i = 1; i < currentLevel; i++) {
-        totalXP += DWARF_XP_PER_LEVEL * i;
+        totalXP += getDwarfXpForLevel(i);
     }
 
     // Find actual dwarf and reset
@@ -6988,7 +6988,7 @@ window.activateCheat = function activateCheat() {
         dwarf.bucket = {}; // Clear bucket
 
         // Give XP for one level
-        const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
+        const xpForLevel = getDwarfXpForLevel(dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;
     }
     
