@@ -1562,6 +1562,31 @@ header, footer {
     color: #fff;
 }
 
+/* Smelter Drag and Drop Styles */
+.smelter-task-row {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.smelter-task-row:active {
+    cursor: grabbing;
+}
+
+.smelter-task-dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.smelter-drop-above {
+    border-top: 3px solid #ffa726;
+    margin-top: -2px;
+}
+
+.smelter-drop-below {
+    border-bottom: 3px solid #ffa726;
+    margin-bottom: -2px;
+}
+
 /* Task Details Modal Styles */
 .task-detail-section {
     margin-bottom: 20px;

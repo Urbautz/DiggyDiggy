@@ -2172,6 +2172,8 @@ function populateSmelter() {
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
         taskRow.dataset.taskId = task.id;
+        taskRow.dataset.taskIndex = index;
+        taskRow.draggable = true;
         
         // Check if this task is unreachable (below "do-nothing")
         const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
@@ -2375,15 +2377,6 @@ function populateSmelter() {
         infoBtn.onclick = () => openTaskDetailsModal(task, isUnlocked, requiredResearchName);
         btnContainer.appendChild(infoBtn);
 
-        // Move up button
-        const upBtn = document.createElement('button');
-        upBtn.className = 'smelter-btn-move';
-        upBtn.innerHTML = '⬆';
-        upBtn.title = 'Move up (higher priority)';
-        upBtn.disabled = index === 0;
-        upBtn.onclick = () => moveSmelterTask(index, -1);
-        btnContainer.appendChild(upBtn);
-
         // Move to top button
         const topBtn = document.createElement('button');
         topBtn.className = 'smelter-btn-move';
@@ -2392,6 +2385,15 @@ function populateSmelter() {
         topBtn.disabled = index === 0;
         topBtn.onclick = () => moveSmelterTaskToTop(index);
         btnContainer.appendChild(topBtn);
+
+        // Move up button
+        const upBtn = document.createElement('button');
+        upBtn.className = 'smelter-btn-move';
+        upBtn.innerHTML = '⬆';
+        upBtn.title = 'Move up (higher priority)';
+        upBtn.disabled = index === 0;
+        upBtn.onclick = () => moveSmelterTask(index, -1);
+        btnContainer.appendChild(upBtn);
 
         // Move down button
         const downBtn = document.createElement('button');
@@ -2414,8 +2416,113 @@ function populateSmelter() {
         taskRow.appendChild(btnContainer);
         taskList.appendChild(taskRow);
     });
-    
+
     container.appendChild(taskList);
+
+    // Set up drag and drop event listeners
+    setupSmelterDragAndDrop();
+}
+
+// Set up drag and drop for smelter tasks
+function setupSmelterDragAndDrop() {
+    const taskList = document.getElementById('smelter-task-list');
+    if (!taskList) return;
+
+    let draggedElement = null;
+    let draggedIndex = null;
+
+    taskList.addEventListener('dragstart', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (!taskRow) return;
+
+        draggedElement = taskRow;
+        draggedIndex = parseInt(taskRow.dataset.taskIndex);
+        taskRow.classList.add('smelter-task-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', taskRow.innerHTML);
+    });
+
+    taskList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (!taskRow || taskRow === draggedElement) return;
+
+        const rect = taskRow.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+
+        // Remove all drop indicators
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+
+        // Add indicator based on mouse position
+        if (e.clientY < midpoint) {
+            taskRow.classList.add('smelter-drop-above');
+        } else {
+            taskRow.classList.add('smelter-drop-below');
+        }
+    });
+
+    taskList.addEventListener('dragleave', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (taskRow) {
+            taskRow.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        }
+    });
+
+    taskList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const targetRow = e.target.closest('.smelter-task-row');
+        if (!targetRow || !draggedElement || targetRow === draggedElement) return;
+
+        const targetIndex = parseInt(targetRow.dataset.taskIndex);
+        const rect = targetRow.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+
+        // Determine if we're dropping above or below the target
+        let newIndex;
+        if (e.clientY < midpoint) {
+            // Drop above target
+            newIndex = targetIndex;
+        } else {
+            // Drop below target
+            newIndex = targetIndex + 1;
+        }
+
+        // Adjust index if dragging down
+        if (draggedIndex < newIndex) {
+            newIndex--;
+        }
+
+        // Move the task in the array
+        if (draggedIndex !== newIndex) {
+            const movedTask = smelterTasks.splice(draggedIndex, 1)[0];
+            smelterTasks.splice(newIndex, 0, movedTask);
+            saveGame();
+            populateSmelter();
+        }
+
+        // Clean up
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+    });
+
+    taskList.addEventListener('dragend', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (taskRow) {
+            taskRow.classList.remove('smelter-task-dragging');
+        }
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+        draggedElement = null;
+        draggedIndex = null;
+    });
 }
 
 // Open task details modal
