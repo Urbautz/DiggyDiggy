@@ -477,3 +477,29 @@ function getGemCuttingTicksRequired() {
     const task = getGemCuttingTask();
     return task ? (task.ticksRequired || 250) : 250;
 }
+
+/**
+ * Check if there are enough materials in stock for a smelter task
+ * Handles both single input and multiple inputs (alloys)
+ * @param {Object} task - The smelter task to check
+ * @param {Object} materialsStock - The materials stock object
+ * @returns {boolean} True if all required materials are available
+ */
+function hasMaterialsForTask(task, materialsStock) {
+    // Handle multiple inputs (alloy format)
+    if (task.inputs && Array.isArray(task.inputs)) {
+        return task.inputs.every(input => {
+            const stock = materialsStock[input.material] || 0;
+            return stock >= input.amount;
+        });
+    }
+
+    // Handle single input (legacy format)
+    if (task.input && task.input.material && task.input.amount) {
+        const stock = materialsStock[task.input.material] || 0;
+        return stock >= task.input.amount;
+    }
+
+    // No input requirements (e.g., gem cutting, do nothing)
+    return true;
+}
