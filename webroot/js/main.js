@@ -3107,7 +3107,8 @@ function createForgeInterface(container) {
     
     // Populate ingot dropdown with hardness and stock info
     const materialSelect = step1.querySelector('#base-material');
-    const ingots = materials.filter(m => m.type === 'Ingot');
+    // Filter materials that can be used as forge base materials
+    const ingots = materials.filter(m => m.forge === 'Base');
     for (const ingot of ingots) {
         const stockAmount = materialsStock[ingot.id] || 0;
         const option = document.createElement('option');
@@ -5477,6 +5478,9 @@ function initMaterialsPanel() {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+        }
         if (task.output && task.output.material) {
             smelterOutputMaterials.add(task.output.material);
         }
@@ -5592,12 +5596,15 @@ function updateMaterialsPanel() {
     // Calculate trade bonus once for display
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
-    
+
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
     }
     
@@ -5705,6 +5712,9 @@ function openWarehouseSellModal() {
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
         if (task.output && task.output.material) {
             craftableMaterials.add(task.output.material);
@@ -5831,6 +5841,9 @@ function executeBulkSell(action) {
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
         if (task.output && task.output.material) {
             craftableMaterials.add(task.output.material);
@@ -5967,6 +5980,9 @@ function sellNotCraftableMaterials() {
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
     }
     
