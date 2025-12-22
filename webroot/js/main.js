@@ -3970,6 +3970,8 @@ function openModal(modalname) {
     // Pause game when opening settings modal
     if ((modalname === 'settings-modal') && !gamePaused) {
         gamePaused = true;
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) pauseBtn.classList.add('paused');
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
         }
@@ -3990,6 +3992,8 @@ function closeModal(modalName) {
         // Resume game when closing settings modal
         if ((modalName === 'settings-modal') && gamePaused) {
             gamePaused = false;
+            const pauseBtn = document.getElementById('pause-button');
+            if (pauseBtn) pauseBtn.classList.remove('paused');
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
             }
@@ -4025,6 +4029,8 @@ function closeModal(modalName) {
         // Resume game when closing settings modal
         if (id === 'settings-modal' && gamePaused) {
             gamePaused = false;
+            const pauseBtn = document.getElementById('pause-button');
+            if (pauseBtn) pauseBtn.classList.remove('paused');
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
             }
@@ -6760,6 +6766,12 @@ function togglePause() {
     if (btn) {
         btn.textContent = gamePaused ? '▶' : '⏸';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
+        // Add/remove paused class for visual styling
+        if (gamePaused) {
+            btn.classList.add('paused');
+        } else {
+            btn.classList.remove('paused');
+        }
     }
     // Notify worker of pause state change
     if (gameWorker && workerInitialized) {

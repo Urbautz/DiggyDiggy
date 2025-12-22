@@ -114,7 +114,7 @@ let smelterTasks = [
     { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
     { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
     { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'Pig Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
-    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'Iron', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
+    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'Steel', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
     { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'Hardened Steel', amount: 5 }, output: { material: 'Dwarf Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
     
     { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
