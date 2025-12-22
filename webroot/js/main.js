@@ -5499,8 +5499,9 @@ function initMaterialsPanel() {
     container.appendChild(tableHeader);
     
     // Sort materials by worth (high to low) for consistent display order
-    const sortedMaterials = [...materials].sort((a, b) => b.worth - a.worth);
-    
+    // Filter out gems - they have their own panel
+    const sortedMaterials = [...materials].filter(m => m.type !== 'Gem').sort((a, b) => b.worth - a.worth);
+
     // Create a row for each material (hidden by default)
     for (const m of sortedMaterials) {
         const id = m.id;
