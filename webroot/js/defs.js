@@ -56,7 +56,9 @@ const materials = [
   { id: 'Zinc', name: 'Zinc Ingot', type:'Ingot',             hardness: 300, probability: 0, worth: 350,     minlevel: 99999, color: '#a8b5c0ff', forge: 'Plating' },
   { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 275,     minlevel: 99999, color: '#fbd86eff', forge: 'Base' },
 
+  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Medium',      hardness: 350, probability: 0, worth: 1200,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating' },
   { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating' },
+
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',      hardness: 400, probability: 15, worth: 3000,  minlevel: 15000, color: '#d6a80eff' },
   { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5500,    minlevel: 99999, color: '#ffd700ff', forge: 'Plating' },
 

@@ -5020,20 +5020,33 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         const card = document.createElement('div');
         card.className = 'levelup-option';
         card.style.padding = '10px';
-        card.innerHTML = `
-            <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
-            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Skill Points invested: ${level}</p>
-            <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
-        `;
+
+        const headerEl = document.createElement('h4');
+        headerEl.style.cssText = 'margin: 0 0 6px 0; font-size: 13px;';
+        headerEl.textContent = `${icon} ${name}`;
+        card.appendChild(headerEl);
+
+        const skillPointsEl = document.createElement('p');
+        skillPointsEl.style.cssText = 'font-size: 16px; font-weight: bold; margin: 6px 0; display: flex; align-items: center; justify-content: center; gap: 6px;';
+        skillPointsEl.innerHTML = `Skill Points invested: ${level}`;
+
         if (hasEnoughXP) {
             const btn = document.createElement('button');
             btn.className = 'btn-primary';
-            btn.textContent = '⭐ Invest Point';
+            btn.textContent = '+1';
             btn.dataset.upgradeType = upgradeType;
             btn.dataset.dwarfName = dwarf.name;
-            btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-            card.appendChild(btn);
+            btn.style.cssText = 'padding: 2px 8px; font-size: 11px; margin: 0; min-width: auto;';
+            skillPointsEl.appendChild(btn);
         }
+
+        card.appendChild(skillPointsEl);
+
+        const descEl = document.createElement('p');
+        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0;';
+        descEl.textContent = description;
+        card.appendChild(descEl);
+
         return card;
     };
 
