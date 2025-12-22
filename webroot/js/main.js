@@ -5087,7 +5087,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         card.appendChild(skillPointsEl);
 
         const descEl = document.createElement('p');
-        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0;';
+        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0; white-space: pre-line;';
         descEl.textContent = description;
         card.appendChild(descEl);
 
@@ -5115,23 +5115,23 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const diamondDigPowerPercent = modifiedDigPower > baseDigPower ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100) : 0;
     const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
-    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power<br />${diamondBonus}`;
+    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
 
-    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `<br />💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
 
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
     const effectiveStrength = Math.floor(modifiedStrength);
     const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
     const sapphireBonus = modifiedStrength > baseStrength ? ` (effective: ${effectiveStrength}, +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
-    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}<br />${sapphireBonus}`;
+    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}\n${sapphireBonus}`;
 
     const baseWisdom = dwarf.wisdom || 0;
     const baseResearchPoints = baseWisdom + 1;
     const modifiedResearchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
     const amethystBonusPercent = modifiedResearchPoints > baseResearchPoints ? ((modifiedResearchPoints - baseResearchPoints) / baseResearchPoints * 100) : 0;
     const amethystBonus = modifiedResearchPoints > baseResearchPoints ? ` (+${formatNumber(amethystBonusPercent, 'percent')}% from 💎Amethyst)` : '';
-    const wisdomDesc = `Research and Smelting Speed<br />${amethystBonus}`;
+    const wisdomDesc = `Research and Smelting Speed\n${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
@@ -6104,41 +6104,43 @@ function openWarehouseSellModal() {
             const value = count * m.worth * tradeBonus;
             allValue += value;
 
+            const materialType = m.type || '';
+
             // Loose materials (not in smelter inputs, not ingots)
-            if (m.type.startsWith('Loose') && value > 0) {
+            if (materialType.startsWith('Loose') && value > 0) {
                 looseValue += value;
                 looseMaterials.push({ name: m.name, count });
             }
 
             // Stones
-            if (m.type.startsWith('Stone') && value > 0) {
+            if (materialType.startsWith('Stone') && value > 0) {
                 stonesValue += value;
                 stonesMaterials.push({ name: m.name, count });
             }
 
             // Ores
-            if (m.type.startsWith('Ore') && value > 0) {
+            if (materialType.startsWith('Ore') && value > 0) {
                 oresValue += value;
                 oresMaterials.push({ name: m.name, count });
             }
 
             // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
-            if (!craftableMaterials.has(id) 
-                && !smelterInputMaterials.has(id) 
-                && !m.type.startsWith('Gem')
+            if (!craftableMaterials.has(id)
+                && !smelterInputMaterials.has(id)
+                && !materialType.startsWith('Gem')
                 && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
             }
 
             // Ingots
-            if (m.type.startsWith('Ingot') && value > 0) {
+            if (materialType.startsWith('Ingot') && value > 0) {
                 ingotsValue += value;
                 ingotsMaterials.push({ name: m.name, count });
             }
 
             // Heating materials
-            if (m.type.startsWith('Special') && value > 0) {
+            if (materialType.startsWith('Special') && value > 0) {
                 heatingValue += value;
                 heatingMaterials.push({ name: m.name, count });
             }
