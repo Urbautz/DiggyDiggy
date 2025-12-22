@@ -5141,7 +5141,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     const amethystReduction = getAmethystHardnessReduction(dwarf);
     const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
-    const wisdomDesc = `Research and Smelting Speed\nEach point adds 5% success chance${amethystBonus}`;
+    const wisdomDesc = `Research and Smelting Speed\nIncreases research success probability${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
