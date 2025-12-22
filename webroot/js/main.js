@@ -107,6 +107,15 @@ function countActionableSmelterTasks() {
             if (hasGemsToPolish) {
                 count++;
             }
+        } else if (task.inputs && Array.isArray(task.inputs)) {
+            // Multiple inputs (alloy format)
+            const hasAllInputs = task.inputs.every(input => {
+                const stock = materialsStock[input.material] || 0;
+                return stock >= input.amount;
+            });
+            if (hasAllInputs) {
+                count++;
+            }
         } else if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
@@ -512,6 +521,27 @@ function updateGridDisplay() {
                         smelterIcon.appendChild(smelterBadge);
                         iconContainer.appendChild(smelterIcon);
                         cell.appendChild(iconContainer);
+
+                        // Add temperature progress bar
+                        const tempValue = Math.round(smelterTemperature);
+                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+                        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+
+                        const tempContainer = document.createElement('div');
+                        tempContainer.className = 'smelter-temp-container';
+                        tempContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+
+                        const tempBar = document.createElement('div');
+                        tempBar.className = 'smelter-temp-bar';
+                        tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
+
+                        tempContainer.appendChild(tempBar);
+                        cell.appendChild(tempContainer);
+
+                        // Update title with temperature info
+                        smelterIcon.title = `${smelterIcon.title}\nTemperature: ${tempValue}°/${maxTempLimit}° (${Math.round(tempPercent)}%)`;
                     }
 
                     // show resting marker when dwarf is resting here
@@ -2142,6 +2172,8 @@ function populateSmelter() {
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
         taskRow.dataset.taskId = task.id;
+        taskRow.dataset.taskIndex = index;
+        taskRow.draggable = true;
         
         // Check if this task is unreachable (below "do-nothing")
         const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
@@ -2166,17 +2198,29 @@ function populateSmelter() {
             // For gem cutting tasks, check if there are any gems marked for cutting
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
             isActionable = !!gemToProcess;
-        } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
-            stockAmount = materialsStock[task.input.material] || 0;
-            // For heating tasks, only actionable if temp is below min and below max
+        } else if (isUnlocked) {
+            // Use utility function to check materials
+            const hasMaterials = hasMaterialsForTask(task, materialsStock);
+
+            // For single input tasks, also track stock amount for display
+            if (task.input && task.input.material) {
+                stockAmount = materialsStock[task.input.material] || 0;
+            }
+
+            // For heating tasks, only actionable if temp is below appropriate threshold
             if (task.type === 'heating') {
-                // Heating is actionable if enough materials and temperature is below max (hysteresis)
-                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature < smelterMaxTemp);
+                if (task.heatGain === 'dynamic') {
+                    // Magma: check against magma min
+                    isActionable = hasMaterials && (smelterTemperature < smelterMagmaMinTemp);
+                } else {
+                    // Coal: check against coal max
+                    isActionable = hasMaterials && (smelterTemperature < smelterCoalMaxTemp);
+                }
             } else if (task.minTemp) {
                 // For smelting tasks with temp requirements, check both materials and temperature
-                isActionable = (stockAmount >= task.input.amount) && (smelterTemperature >= task.minTemp);
+                isActionable = hasMaterials && (smelterTemperature >= task.minTemp);
             } else {
-                isActionable = stockAmount >= task.input.amount;
+                isActionable = hasMaterials;
             }
         }
         
@@ -2220,6 +2264,17 @@ function populateSmelter() {
             } else if (task.type === 'gem-cutting') {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - no gems marked for cutting`;
+            } else if (task.inputs && Array.isArray(task.inputs)) {
+                // Multiple inputs - show all missing materials
+                statusIndicator.textContent = '❌';
+                const missingMaterials = task.inputs.filter(input => {
+                    const stock = materialsStock[input.material] || 0;
+                    return stock < input.amount;
+                }).map(input => {
+                    const stock = materialsStock[input.material] || 0;
+                    return `${input.material}: ${formatNumber(stock, 'material')}/${input.amount}`;
+                }).join(', ');
+                statusIndicator.title = `Blocked - need ${missingMaterials}`;
             } else if (task.input && task.input.amount) {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
@@ -2238,14 +2293,29 @@ function populateSmelter() {
         taskName.className = 'smelter-task-name';
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
-        
-        const taskDesc = document.createElement('span');
-        taskDesc.className = 'smelter-task-desc';
-        taskDesc.textContent = task.description;
-        taskInfo.appendChild(taskDesc);
-        
+
         // Show input/output if applicable (compact, no stock info)
-        if (task.input && task.output) {
+        if (task.inputs && task.output) {
+            // Multiple inputs (alloy format)
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+            const inputsText = task.inputs.map(input => {
+                const inputMat = getMaterialById(input.material);
+                const inputName = inputMat ? inputMat.name : input.material;
+                return `${input.amount}x ${inputName}`;
+            }).join(' + ');
+            const outputMat = getMaterialById(task.output.material);
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
+            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
+            taskInfo.appendChild(taskRecipe);
+        } else if (task.input && task.output) {
+            // Single input (legacy format)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
@@ -2266,73 +2336,41 @@ function populateSmelter() {
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat`;
+            // Calculate display info for heating tasks
+            let heatingDisplay = '';
+            if (task.heatGain === 'dynamic') {
+                // Magma: show "to max temp"
+                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)`;
+            } else {
+                // Coal: show heat gain and max 2000°
+                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)`;
+            }
+            taskRecipe.textContent = heatingDisplay;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
-            // Add temperature display and controls inside the heating task
-            const tempControls = document.createElement('div');
-            tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
-            // Current temperature with bar
-            const tempValue = Math.round(smelterTemperature);
-            const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
-            const tempDisplay = document.createElement('div');
-            tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
-            tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
-            tempControls.appendChild(tempDisplay);
-            // Temperature bar
-            const tempBarContainer = document.createElement('div');
-            tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
-            const tempBar = document.createElement('div');
-            const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
-            tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
-            tempBarContainer.appendChild(tempBar);
-            tempControls.appendChild(tempBarContainer);
-            // Temperature range controls
-            const rangeControls = document.createElement('div');
-            rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
-            // Min temperature control
-            const minControl = document.createElement('div');
-            minControl.innerHTML = `
-                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMinTemp}°</label>
-                <div style="display: flex; gap: 3px;">
-                    <button class="temp-btn" onclick="adjustMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                    <button class="temp-btn" onclick="adjustMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                </div>
-            `;
-            rangeControls.appendChild(minControl);
-            // Max temperature control
-            const maxControl = document.createElement('div');
-            maxControl.innerHTML = `
-                <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterMaxTemp}°</label>
-                <div style="display: flex; gap: 3px;">
-                    <button class="temp-btn" onclick="adjustMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                    <button class="temp-btn" onclick="adjustMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                </div>
-            `;
-            rangeControls.appendChild(maxControl);
-            tempControls.appendChild(rangeControls);
-            taskInfo.appendChild(tempControls);
         }
         
         taskRow.appendChild(taskInfo);
-        
+
         // Move buttons container
         const btnContainer = document.createElement('div');
         btnContainer.className = 'smelter-task-buttons';
-        
-        // Move up button
-        const upBtn = document.createElement('button');
-        upBtn.className = 'smelter-btn-move';
-        upBtn.innerHTML = '⬆';
-        upBtn.title = 'Move up (higher priority)';
-        upBtn.disabled = index === 0;
-        upBtn.onclick = () => moveSmelterTask(index, -1);
-        btnContainer.appendChild(upBtn);
-        
+
+        // Info button
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'smelter-btn-info';
+        infoBtn.innerHTML = 'ℹ️';
+        infoBtn.title = 'Show task details';
+        infoBtn.onclick = () => openTaskDetailsModal(task, isUnlocked, requiredResearchName);
+        btnContainer.appendChild(infoBtn);
+
         // Move to top button
         const topBtn = document.createElement('button');
         topBtn.className = 'smelter-btn-move';
@@ -2341,7 +2379,16 @@ function populateSmelter() {
         topBtn.disabled = index === 0;
         topBtn.onclick = () => moveSmelterTaskToTop(index);
         btnContainer.appendChild(topBtn);
-        
+
+        // Move up button
+        const upBtn = document.createElement('button');
+        upBtn.className = 'smelter-btn-move';
+        upBtn.innerHTML = '⬆';
+        upBtn.title = 'Move up (higher priority)';
+        upBtn.disabled = index === 0;
+        upBtn.onclick = () => moveSmelterTask(index, -1);
+        btnContainer.appendChild(upBtn);
+
         // Move down button
         const downBtn = document.createElement('button');
         downBtn.className = 'smelter-btn-move';
@@ -2350,7 +2397,7 @@ function populateSmelter() {
         downBtn.disabled = index === smelterTasks.length - 1;
         downBtn.onclick = () => moveSmelterTask(index, 1);
         btnContainer.appendChild(downBtn);
-        
+
         // Deactivate button (move to end)
         const deactivateBtn = document.createElement('button');
         deactivateBtn.className = 'smelter-btn-move';
@@ -2359,70 +2406,503 @@ function populateSmelter() {
         deactivateBtn.disabled = index === smelterTasks.length - 1;
         deactivateBtn.onclick = () => moveSmelterTaskToBottom(index);
         btnContainer.appendChild(deactivateBtn);
-        
+
         taskRow.appendChild(btnContainer);
         taskList.appendChild(taskRow);
     });
-    
+
     container.appendChild(taskList);
+
+    // Set up drag and drop event listeners
+    setupSmelterDragAndDrop();
+}
+
+// Set up drag and drop for smelter tasks
+function setupSmelterDragAndDrop() {
+    const taskList = document.getElementById('smelter-task-list');
+    if (!taskList) return;
+
+    let draggedElement = null;
+    let draggedIndex = null;
+
+    taskList.addEventListener('dragstart', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (!taskRow) return;
+
+        draggedElement = taskRow;
+        draggedIndex = parseInt(taskRow.dataset.taskIndex);
+        taskRow.classList.add('smelter-task-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', taskRow.innerHTML);
+    });
+
+    taskList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (!taskRow || taskRow === draggedElement) return;
+
+        const rect = taskRow.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+
+        // Remove all drop indicators
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+
+        // Add indicator based on mouse position
+        if (e.clientY < midpoint) {
+            taskRow.classList.add('smelter-drop-above');
+        } else {
+            taskRow.classList.add('smelter-drop-below');
+        }
+    });
+
+    taskList.addEventListener('dragleave', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (taskRow) {
+            taskRow.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        }
+    });
+
+    taskList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const targetRow = e.target.closest('.smelter-task-row');
+        if (!targetRow || !draggedElement || targetRow === draggedElement) return;
+
+        const targetIndex = parseInt(targetRow.dataset.taskIndex);
+        const rect = targetRow.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+
+        // Determine if we're dropping above or below the target
+        let newIndex;
+        if (e.clientY < midpoint) {
+            // Drop above target
+            newIndex = targetIndex;
+        } else {
+            // Drop below target
+            newIndex = targetIndex + 1;
+        }
+
+        // Adjust index if dragging down
+        if (draggedIndex < newIndex) {
+            newIndex--;
+        }
+
+        // Move the task in the array
+        if (draggedIndex !== newIndex) {
+            const movedTask = smelterTasks.splice(draggedIndex, 1)[0];
+            smelterTasks.splice(newIndex, 0, movedTask);
+            saveGame();
+            populateSmelter();
+        }
+
+        // Clean up
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+    });
+
+    taskList.addEventListener('dragend', (e) => {
+        const taskRow = e.target.closest('.smelter-task-row');
+        if (taskRow) {
+            taskRow.classList.remove('smelter-task-dragging');
+        }
+        document.querySelectorAll('.smelter-task-row').forEach(row => {
+            row.classList.remove('smelter-drop-above', 'smelter-drop-below');
+        });
+        draggedElement = null;
+        draggedIndex = null;
+    });
+}
+
+// Helper function to add a table row
+function addTableRow(table, headerText, contentText) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = headerText;
+    const td = document.createElement('td');
+    td.textContent = contentText;
+    tr.appendChild(th);
+    tr.appendChild(td);
+    table.appendChild(tr);
+}
+
+// Helper function to create threshold control row
+function createThresholdRow(label, spanId, currentValue, adjustFunctionName) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = label;
+
+    const td = document.createElement('td');
+    const controlDiv = document.createElement('div');
+    controlDiv.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+    const valueSpan = document.createElement('span');
+    valueSpan.id = spanId;
+    valueSpan.textContent = `${currentValue}°`;
+
+    const decreaseBtn = document.createElement('button');
+    decreaseBtn.textContent = '-25°';
+    decreaseBtn.style.cssText = 'padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;';
+    decreaseBtn.onclick = () => {
+        window[adjustFunctionName](-25);
+        updateTaskDetailTemperature();
+    };
+
+    const increaseBtn = document.createElement('button');
+    increaseBtn.textContent = '+25°';
+    increaseBtn.style.cssText = 'padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;';
+    increaseBtn.onclick = () => {
+        window[adjustFunctionName](25);
+        updateTaskDetailTemperature();
+    };
+
+    controlDiv.appendChild(valueSpan);
+    controlDiv.appendChild(decreaseBtn);
+    controlDiv.appendChild(increaseBtn);
+    td.appendChild(controlDiv);
+    tr.appendChild(th);
+    tr.appendChild(td);
+
+    return tr;
+}
+
+// Open task details modal
+function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
+    openModal('task-details-modal');
+
+    // Get all elements
+    const titleEl = document.getElementById('task-details-title');
+    const descriptionEl = document.getElementById('task-description');
+    const materialsSection = document.getElementById('task-materials-section');
+    const materialsTable = document.getElementById('task-materials-table');
+    const tempSection = document.getElementById('task-temperature-section');
+    const tempTable = document.getElementById('task-temperature-table');
+    const tempBarContainer = document.getElementById('task-temp-bar-container');
+    const requirementsEl = document.getElementById('task-requirements');
+
+    if (!titleEl || !descriptionEl) return;
+
+    // Set title and description
+    titleEl.textContent = task.name;
+    descriptionEl.textContent = task.description;
+
+    // Clear previous content
+    materialsTable.innerHTML = '';
+    tempTable.innerHTML = '';
+    materialsSection.style.display = 'none';
+    tempSection.style.display = 'none';
+    tempBarContainer.style.display = 'none';
+
+    // Input/Output Materials section
+    if ((task.input && task.output) || (task.inputs && task.output) || task.type === 'gem-cutting') {
+        materialsSection.style.display = '';
+
+        if (task.type === 'gem-cutting') {
+            // Gem cutting task
+            addTableRow(materialsTable, 'Input', 'Any gem marked for cutting');
+            addTableRow(materialsTable, 'Output', 'Polished gem (+50% value)');
+            addTableRow(materialsTable, 'Time', `${task.ticksRequired || 0} ticks`);
+        } else if (task.inputs && Array.isArray(task.inputs)) {
+            // Multiple inputs (alloy format)
+            task.inputs.forEach(input => {
+                const inputMat = getMaterialById(input.material);
+                const inputName = inputMat ? inputMat.name : input.material;
+                const stockAmount = materialsStock[input.material] || 0;
+
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                th.textContent = 'Input';
+
+                const td = document.createElement('td');
+                td.textContent = `${input.amount}x ${inputName} `;
+
+                const stockSpan = document.createElement('span');
+                stockSpan.style.color = stockAmount >= input.amount ? '#81c784' : '#e57373';
+                stockSpan.textContent = `(Stock: ${formatNumber(stockAmount, 'material')})`;
+                td.appendChild(stockSpan);
+
+                tr.appendChild(th);
+                tr.appendChild(td);
+                materialsTable.appendChild(tr);
+            });
+
+            const outputMat = getMaterialById(task.output.material);
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+        } else if (task.input && task.output) {
+            // Single input
+            const inputMat = getMaterialById(task.input.material);
+            const outputMat = getMaterialById(task.output.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            const stockAmount = materialsStock[task.input.material] || 0;
+
+            const inputTr = document.createElement('tr');
+            const inputTh = document.createElement('th');
+            inputTh.textContent = 'Input';
+
+            const inputTd = document.createElement('td');
+            inputTd.textContent = `${task.input.amount}x ${inputName} `;
+
+            const stockSpan = document.createElement('span');
+            stockSpan.style.color = stockAmount >= task.input.amount ? '#81c784' : '#e57373';
+            stockSpan.textContent = `(Stock: ${formatNumber(stockAmount, 'material')})`;
+            inputTd.appendChild(stockSpan);
+
+            inputTr.appendChild(inputTh);
+            inputTr.appendChild(inputTd);
+            materialsTable.appendChild(inputTr);
+
+            addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+        } else if (task.input && task.type === 'heating') {
+            // Heating task
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockAmount = materialsStock[task.input.material] || 0;
+            const heatInfo = task.heatGain === 'dynamic' ? 'Heat to max temperature' : `+${task.heatGain}° (max 2000°)`;
+
+            const inputTr = document.createElement('tr');
+            const inputTh = document.createElement('th');
+            inputTh.textContent = 'Input';
+
+            const inputTd = document.createElement('td');
+            inputTd.textContent = `${task.input.amount}x ${inputName} `;
+
+            const stockSpan = document.createElement('span');
+            stockSpan.style.color = stockAmount >= task.input.amount ? '#81c784' : '#e57373';
+            stockSpan.textContent = `(Stock: ${formatNumber(stockAmount, 'material')})`;
+            inputTd.appendChild(stockSpan);
+
+            inputTr.appendChild(inputTh);
+            inputTr.appendChild(inputTd);
+            materialsTable.appendChild(inputTr);
+
+            addTableRow(materialsTable, 'Effect', heatInfo);
+        }
+
+        if (task.breakChance) {
+            addTableRow(materialsTable, 'Break Chance', `${Math.round(task.breakChance * 100)}%`);
+        }
+    }
+
+    // Heating/Temperature Settings section
+    if (task.minTemp || task.type === 'heating') {
+        tempSection.style.display = '';
+
+        if (task.minTemp) {
+            const currentTemp = Math.round(smelterTemperature);
+            const tempStatus = currentTemp >= task.minTemp ? '✅ Ready' : `❌ Too low (${currentTemp}°)`;
+
+            addTableRow(tempTable, 'Required Temp', `${task.minTemp}°`);
+
+            const currentTempTr = document.createElement('tr');
+            const currentTempTh = document.createElement('th');
+            currentTempTh.textContent = 'Current Temp';
+            const currentTempTd = document.createElement('td');
+            currentTempTd.style.color = currentTemp >= task.minTemp ? '#81c784' : '#e57373';
+            currentTempTd.textContent = tempStatus;
+            currentTempTr.appendChild(currentTempTh);
+            currentTempTr.appendChild(currentTempTd);
+            tempTable.appendChild(currentTempTr);
+        } else if (task.type === 'heating') {
+            const currentTemp = Math.round(smelterTemperature);
+            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+            // Temperature bar
+            tempBarContainer.style.display = '';
+            const tempBar = document.getElementById('task-detail-temp-bar');
+            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+            tempBar.style.width = `${tempPercent}%`;
+
+            // Current temp display
+            const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
+            const currentTempRow = document.createElement('tr');
+            const currentTempTh = document.createElement('th');
+            currentTempTh.textContent = 'Current Temp';
+            const currentTempTd = document.createElement('td');
+            currentTempTd.id = 'task-detail-current-temp';
+            currentTempTd.style.color = tempColor;
+            currentTempTd.style.fontWeight = 'bold';
+            currentTempTd.textContent = `${currentTemp}°`;
+            currentTempRow.appendChild(currentTempTh);
+            currentTempRow.appendChild(currentTempTd);
+            tempTable.appendChild(currentTempRow);
+
+            if (task.heatGain === 'dynamic') {
+                addTableRow(tempTable, 'Max Temp', `${maxTempLimit}°`);
+
+                // Magma min threshold control
+                const minThresholdRow = createThresholdRow('Min Threshold', 'task-detail-magma-min', smelterMagmaMinTemp, 'adjustMagmaMinTemp');
+                tempTable.appendChild(minThresholdRow);
+            } else {
+                addTableRow(tempTable, 'Heat Gain', `+${task.heatGain}° per use`);
+
+                // Coal min threshold control
+                const minThresholdRow = createThresholdRow('Min Threshold', 'task-detail-coal-min', smelterCoalMinTemp, 'adjustCoalMinTemp');
+                tempTable.appendChild(minThresholdRow);
+
+                // Coal max threshold control
+                const maxThresholdRow = createThresholdRow('Max Threshold', 'task-detail-coal-max', smelterCoalMaxTemp, 'adjustCoalMaxTemp');
+                tempTable.appendChild(maxThresholdRow);
+            }
+        }
+    }
+
+    // Requirements section
+    if (task.requires) {
+        const status = isUnlocked ? '✅ Unlocked' : '🔒 Locked';
+        const statusColor = isUnlocked ? '#81c784' : '#e57373';
+        requirementsEl.style.color = statusColor;
+        requirementsEl.textContent = `${requiredResearchName} - ${status}`;
+    } else {
+        requirementsEl.style.color = '#81c784';
+        requirementsEl.textContent = '✅ None required';
+    }
+
+    // Set up auto-refresh for temperature values if this is a heating task
+    if (task.type === 'heating' || task.minTemp) {
+        if (window.taskDetailRefreshInterval) {
+            clearInterval(window.taskDetailRefreshInterval);
+        }
+        window.taskDetailRefreshInterval = setInterval(() => {
+            const modal = document.getElementById('task-details-modal');
+            if (modal && modal.getAttribute('aria-hidden') === 'false') {
+                updateTaskDetailTemperature();
+            } else {
+                clearInterval(window.taskDetailRefreshInterval);
+                window.taskDetailRefreshInterval = null;
+            }
+        }, 100); // Update every 100ms for smooth updates
+    }
+}
+
+// Update temperature values in task details modal
+function updateTaskDetailTemperature() {
+    const currentTempEl = document.getElementById('task-detail-current-temp');
+    const tempBarEl = document.getElementById('task-detail-temp-bar');
+    const coalMinEl = document.getElementById('task-detail-coal-min');
+    const coalMaxEl = document.getElementById('task-detail-coal-max');
+    const magmaMinEl = document.getElementById('task-detail-magma-min');
+
+    if (currentTempEl) {
+        const currentTemp = Math.round(smelterTemperature);
+        const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
+        currentTempEl.textContent = `${currentTemp}°`;
+        currentTempEl.style.color = tempColor;
+    }
+
+    if (tempBarEl) {
+        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+        tempBarEl.style.width = `${tempPercent}%`;
+    }
+
+    if (coalMinEl) {
+        coalMinEl.textContent = `${smelterCoalMinTemp}°`;
+    }
+
+    if (coalMaxEl) {
+        coalMaxEl.textContent = `${smelterCoalMaxTemp}°`;
+    }
+
+    if (magmaMinEl) {
+        magmaMinEl.textContent = `${smelterMagmaMinTemp}°`;
+    }
 }
 
 // Efficiently update just the temperature display in smelter (not full rebuild)
 function updateSmelterTemperatureDisplay() {
-    // Find the heating task row
+    // Find the heating task rows (both coal and magma)
     const taskList = document.getElementById('smelter-task-list');
     if (!taskList) return;
-    
-    const heatingTaskRow = taskList.querySelector('[data-task-id="heat-furnace"]');
-    if (!heatingTaskRow) return;
-    
-    // Update temperature display within the heating task
-    const tempValue = Math.round(smelterTemperature);
-    const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
-    
-    // Update current temperature text
-    const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
-    if (tempDisplays.length > 0) {
-        tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
-    }
-    
-    // Update temperature bar
-    const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
-    if (tempBars.length > 0) {
-        const tempPercent = Math.min(100, (smelterTemperature / 1500) * 100);
-        tempBars[0].style.width = `${tempPercent}%`;
-    }
-    
-    // Update task actionability based on temperature
-    const task = smelterTasks.find(t => t.id === 'heat-furnace');
-    if (task) {
-        const stockAmount = materialsStock[task.input.material] || 0;
-        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
-        const isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMinTemp) && (smelterTemperature < smelterMaxTemp);
-        
-        // Update row class
-        heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
-        heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
-        
-        // Update status indicator
-        const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
-        if (statusIndicator && isUnlocked) {
-            if (isActionable) {
-                statusIndicator.textContent = '✅';
-                statusIndicator.title = 'Ready - materials available and temperature below minimum';
-            } else {
-                statusIndicator.textContent = '❌';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
-            }
+
+    // Update both heating tasks
+    const heatingTaskIds = ['heat-furnace', 'heat-magma-furnace'];
+
+    for (const taskId of heatingTaskIds) {
+        const heatingTaskRow = taskList.querySelector(`[data-task-id="${taskId}"]`);
+        if (!heatingTaskRow) continue;
+
+        // Update temperature display within the heating task
+        const tempValue = Math.round(smelterTemperature);
+        const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
+
+        // Update current temperature text
+        const tempDisplays = heatingTaskRow.querySelectorAll('div[style*="margin-bottom: 8px"]');
+        if (tempDisplays.length > 0) {
+            tempDisplays[0].innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
         }
-        
-        // Update recipe stock info
-        const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
-        if (recipeSpan) {
-            const inputMat = getMaterialById(task.input.material);
-            const inputName = inputMat ? inputMat.name : task.input.material;
-            const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
-            recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat`;
+
+        // Update temperature bar
+        const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
+        if (tempBars.length > 0) {
+            // Calculate max temperature based on furnace-temperature research
+            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+            tempBars[0].style.width = `${tempPercent}%`;
+        }
+
+        // Update task actionability based on temperature
+        const task = smelterTasks.find(t => t.id === taskId);
+        if (task) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+
+            // For magma, only check if temp is below min (always heats to max)
+            // For coal, check both min and max
+            let isActionable;
+            if (task.heatGain === 'dynamic') {
+                isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMagmaMinTemp);
+            } else {
+                isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterCoalMinTemp) && (smelterTemperature < smelterCoalMaxTemp);
+            }
+
+            // Update row class
+            heatingTaskRow.classList.remove('smelter-task-actionable', 'smelter-task-blocked');
+            heatingTaskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+
+            // Update status indicator
+            const statusIndicator = heatingTaskRow.querySelector('.smelter-task-status');
+            if (statusIndicator && isUnlocked) {
+                if (isActionable) {
+                    statusIndicator.textContent = '✅';
+                    statusIndicator.title = 'Ready - materials available and temperature below minimum';
+                } else {
+                    statusIndicator.textContent = '❌';
+                    statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+                }
+            }
+
+            // Update recipe stock info
+            const recipeSpan = heatingTaskRow.querySelector('.smelter-task-recipe');
+            if (recipeSpan) {
+                const inputMat = getMaterialById(task.input.material);
+                const inputName = inputMat ? inputMat.name : task.input.material;
+                const stockInfo = `(${formatNumber(stockAmount, 'material')}/${task.input.amount})`;
+
+                // Display format depends on task type
+                if (task.heatGain === 'dynamic') {
+                    // Magma: show "to max temp"
+                    const furnaceTempRes = researchtree.find(r => r.id === 'furnace-temperature');
+                    const furnaceTempLvl = furnaceTempRes ? (furnaceTempRes.level || 0) : 0;
+                    const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLvl * 100);
+                    recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → Heat to ${maxTemp}° (max)`;
+                } else {
+                    // Coal: show heat gain
+                    recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → +${task.heatGain}° Heat (max 2000°)`;
+                }
+            }
         }
     }
 }
@@ -2508,46 +2988,77 @@ function moveSmelterTask(index, direction) {
     populateSmelter();
 }
 
-// Adjust minimum temperature setting
-window.adjustMinTemp = function(amount) {
-    smelterMinTemp = Math.max(25, Math.min(1500, smelterMinTemp + amount));
+// Adjust coal minimum temperature setting
+window.adjustCoalMinTemp = function(amount) {
+    // Calculate max temperature limit based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    smelterCoalMinTemp = Math.max(25, Math.min(maxTempLimit, smelterCoalMinTemp + amount));
     // Ensure min doesn't exceed max
-    if (smelterMinTemp > smelterMaxTemp) {
-        smelterMinTemp = smelterMaxTemp;
+    if (smelterCoalMinTemp > smelterCoalMaxTemp) {
+        smelterCoalMinTemp = smelterCoalMaxTemp;
     }
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                smelterMinTemp: smelterMinTemp
+                smelterCoalMinTemp: smelterCoalMinTemp
             }
         });
     }
-    
+
     saveGame();
     populateSmelter();
 }
 
-// Adjust maximum temperature setting
-window.adjustMaxTemp = function(amount) {
-    smelterMaxTemp = Math.max(25, Math.min(1500, smelterMaxTemp + amount));
+// Adjust coal maximum temperature setting
+window.adjustCoalMaxTemp = function(amount) {
+    // Coal max is capped at 2000°
+    const coalMaxLimit = 2000;
+
+    smelterCoalMaxTemp = Math.max(25, Math.min(coalMaxLimit, smelterCoalMaxTemp + amount));
     // Ensure max doesn't go below min
-    if (smelterMaxTemp < smelterMinTemp) {
-        smelterMaxTemp = smelterMinTemp;
+    if (smelterCoalMaxTemp < smelterCoalMinTemp) {
+        smelterCoalMaxTemp = smelterCoalMinTemp;
     }
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                smelterMaxTemp: smelterMaxTemp
+                smelterCoalMaxTemp: smelterCoalMaxTemp
             }
         });
     }
-    
+
+    saveGame();
+    populateSmelter();
+}
+
+// Adjust magma minimum temperature setting
+window.adjustMagmaMinTemp = function(amount) {
+    // Calculate max temperature limit based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    smelterMagmaMinTemp = Math.max(25, Math.min(maxTempLimit, smelterMagmaMinTemp + amount));
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                smelterMagmaMinTemp: smelterMagmaMinTemp
+            }
+        });
+    }
+
     saveGame();
     populateSmelter();
 }
@@ -2612,7 +3123,7 @@ function populateResearch() {
             <h3>🔬 Currently Researching</h3>
             <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
             <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: ${progress} / ${actualCost} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                 <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
@@ -2929,7 +3440,8 @@ function createForgeInterface(container) {
     
     // Populate ingot dropdown with hardness and stock info
     const materialSelect = step1.querySelector('#base-material');
-    const ingots = materials.filter(m => m.type === 'Ingot');
+    // Filter materials that can be used as forge base materials
+    const ingots = materials.filter(m => m.forge === 'Base');
     for (const ingot of ingots) {
         const stockAmount = materialsStock[ingot.id] || 0;
         const option = document.createElement('option');
@@ -3484,6 +3996,14 @@ function closeModal(modalName) {
             clearInterval(window.transactionRefreshInterval);
             window.transactionRefreshInterval = null;
         }
+        // If we just closed the task details modal, reopen the smelter modal
+        if (modalName === 'task-details-modal') {
+            if (window.taskDetailRefreshInterval) {
+                clearInterval(window.taskDetailRefreshInterval);
+                window.taskDetailRefreshInterval = null;
+            }
+            openModal('smelter-modal');
+        }
         return;
     }
     // close any open modal
@@ -3525,25 +4045,15 @@ function openDwarfs() {
         }
     });
     
-    // Remove Sell All button from header
-    const sellAllBtn = document.getElementById('sell-all-header-btn');
-    if (sellAllBtn) sellAllBtn.remove();
     
     // Remove Warehouse Sell button
     const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
     if (warehouseSellBtn) warehouseSellBtn.remove();
-    
-    // Remove Sell Non-Craftables button from header
-    const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
-    if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
+
 
     // Remove Gems button from header
     const gemsBtn = document.getElementById('gems-header-btn');
     if (gemsBtn) gemsBtn.remove();
-
-    // Remove total stock value from header
-    const totalValueSpan = document.getElementById('total-stock-value');
-    if (totalValueSpan) totalValueSpan.remove();
     
     // Set grid layout for dwarfs
     const list = document.getElementById('materials-list');
@@ -4554,20 +5064,33 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         const card = document.createElement('div');
         card.className = 'levelup-option';
         card.style.padding = '10px';
-        card.innerHTML = `
-            <h4 style="margin: 0 0 6px 0; font-size: 13px;">${icon} ${name}</h4>
-            <p style="font-size: 16px; font-weight: bold; margin: 6px 0;">Skill Points invested: ${level}</p>
-            <p style="font-size: 13px; opacity: 0.8; margin: 0;">${description}</p>
-        `;
+
+        const headerEl = document.createElement('h4');
+        headerEl.style.cssText = 'margin: 0 0 6px 0; font-size: 13px;';
+        headerEl.textContent = `${icon} ${name}`;
+        card.appendChild(headerEl);
+
+        const skillPointsEl = document.createElement('p');
+        skillPointsEl.style.cssText = 'font-size: 16px; font-weight: bold; margin: 6px 0; display: flex; align-items: center; justify-content: center; gap: 6px;';
+        skillPointsEl.innerHTML = `Skill Points invested: ${level}`;
+
         if (hasEnoughXP) {
             const btn = document.createElement('button');
             btn.className = 'btn-primary';
-            btn.textContent = '⭐ Invest Point';
+            btn.textContent = '+1';
             btn.dataset.upgradeType = upgradeType;
             btn.dataset.dwarfName = dwarf.name;
-            btn.style.cssText = 'margin-top: 8px; width: 100%; padding: 6px; font-size: 12px;';
-            card.appendChild(btn);
+            btn.style.cssText = 'padding: 2px 8px; font-size: 11px; margin: 0; min-width: auto; background: linear-gradient(135deg, #ffd700, #ffa726); border-color: #ffa726;';
+            skillPointsEl.appendChild(btn);
         }
+
+        card.appendChild(skillPointsEl);
+
+        const descEl = document.createElement('p');
+        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0;';
+        descEl.textContent = description;
+        card.appendChild(descEl);
+
         return card;
     };
 
@@ -4870,7 +5393,13 @@ document.addEventListener('click', (ev) => {
     const el = ev.target;
     if (!el) return;
     if (el.dataset && el.dataset.action === 'close-modal') {
-        closeModal();
+        // Find which modal this close button belongs to
+        const modal = el.closest('.modal');
+        if (modal && modal.id) {
+            closeModal(modal.id);
+        } else {
+            closeModal();
+        }
     }
 });
 
@@ -5309,6 +5838,9 @@ function initMaterialsPanel() {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+        }
         if (task.output && task.output.material) {
             smelterOutputMaterials.add(task.output.material);
         }
@@ -5331,8 +5863,9 @@ function initMaterialsPanel() {
     container.appendChild(tableHeader);
     
     // Sort materials by worth (high to low) for consistent display order
-    const sortedMaterials = [...materials].sort((a, b) => b.worth - a.worth);
-    
+    // Filter out gems - they have their own panel
+    const sortedMaterials = [...materials].filter(m => m.type !== 'Gem').sort((a, b) => b.worth - a.worth);
+
     // Create a row for each material (hidden by default)
     for (const m of sortedMaterials) {
         const id = m.id;
@@ -5423,12 +5956,15 @@ function updateMaterialsPanel() {
     // Calculate trade bonus once for display
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
-    
+
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
     }
     
@@ -5537,6 +6073,9 @@ function openWarehouseSellModal() {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+        }
         if (task.output && task.output.material) {
             craftableMaterials.add(task.output.material);
         }
@@ -5584,7 +6123,10 @@ function openWarehouseSellModal() {
             }
 
             // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
-            if (!craftableMaterials.has(id) && !smelterInputMaterials.has(id) && value > 0) {
+            if (!craftableMaterials.has(id) 
+                && !smelterInputMaterials.has(id) 
+                && !m.type.startsWith('Gem')
+                && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
             }
@@ -5659,6 +6201,9 @@ function executeBulkSell(action) {
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
         if (task.output && task.output.material) {
             craftableMaterials.add(task.output.material);
@@ -5795,6 +6340,9 @@ function sellNotCraftableMaterials() {
     for (const task of smelterTasks) {
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
     }
     
@@ -6121,8 +6669,9 @@ function initWorker() {
                 
                 // Update smelter temperature state from worker
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
-                if (data.smelterMinTemp !== undefined) smelterMinTemp = data.smelterMinTemp;
-                if (data.smelterMaxTemp !== undefined) smelterMaxTemp = data.smelterMaxTemp;
+                if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;
+                if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
+                if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
                 
                 // Update UI to reflect new state
@@ -6209,8 +6758,9 @@ function initWorker() {
             activeResearch,
             researchtree,
             smelterTemperature,
-            smelterMinTemp,
-            smelterMaxTemp
+            smelterCoalMinTemp,
+            smelterCoalMaxTemp,
+            smelterMagmaMinTemp
         }
     });
     
@@ -6262,8 +6812,9 @@ function saveGame() {
             currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
             smelterTemperature: smelterTemperature,
-            smelterMinTemp: smelterMinTemp,
-            smelterMaxTemp: smelterMaxTemp,
+            smelterCoalMinTemp: smelterCoalMinTemp,
+            smelterCoalMaxTemp: smelterCoalMaxTemp,
+            smelterMagmaMinTemp: smelterMagmaMinTemp,
             smelterHeatingMode: smelterHeatingMode,
             timestamp: Date.now(),
             version: gameversion
@@ -6393,9 +6944,19 @@ function loadGame() {
         
         // Restore smelter temperature state
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
-        if (gameState.smelterMinTemp !== undefined) smelterMinTemp = gameState.smelterMinTemp;
-        if (gameState.smelterMaxTemp !== undefined) smelterMaxTemp = gameState.smelterMaxTemp;
+        if (gameState.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = gameState.smelterCoalMinTemp;
+        if (gameState.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = gameState.smelterCoalMaxTemp;
+        if (gameState.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = gameState.smelterMagmaMinTemp;
         if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
+
+        // Backwards compatibility: if old variables exist but new ones don't, migrate them
+        if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {
+            smelterCoalMinTemp = gameState.smelterMinTemp;
+            smelterMagmaMinTemp = gameState.smelterMinTemp;
+        }
+        if (gameState.smelterMaxTemp !== undefined && gameState.smelterCoalMaxTemp === undefined) {
+            smelterCoalMaxTemp = gameState.smelterMaxTemp;
+        }
         
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

@@ -1355,36 +1355,60 @@ header, footer {
 .smelter-task-info {
     flex: 1;
     display: flex;
-    flex-direction: column;
-    gap: 1px;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
 }
 
 .smelter-task-name {
     font-weight: 600;
     font-size: 13px;
     color: #fff;
+    white-space: nowrap;
 }
 
 .smelter-task-desc {
     font-size: 12px;
     color: #9fbfe0;
+    display: none; /* Hidden in compact mode */
 }
 
 .smelter-task-recipe {
     font-size: 10px;
     color: #81d4fa;
-    margin-top: 2px;
     padding: 3px 6px;
     background: rgba(129, 212, 250, 0.1);
     border-radius: 4px;
     display: inline-block;
-    width: fit-content;
+    white-space: nowrap;
 }
 
 .smelter-task-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+    align-items: center;
+}
+
+.smelter-btn-info {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1));
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.smelter-btn-info:hover {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
 }
 
 .smelter-btn-move {
@@ -1536,6 +1560,80 @@ header, footer {
 .smelter-badge-paused {
     background: #ff9800;
     color: #fff;
+}
+
+/* Smelter Drag and Drop Styles */
+.smelter-task-row {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.smelter-task-row:active {
+    cursor: grabbing;
+}
+
+.smelter-task-dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.smelter-drop-above {
+    border-top: 3px solid #ffa726;
+    margin-top: -2px;
+}
+
+.smelter-drop-below {
+    border-bottom: 3px solid #ffa726;
+    margin-bottom: -2px;
+}
+
+/* Task Details Modal Styles */
+.task-detail-section {
+    margin-bottom: 20px;
+}
+
+.task-detail-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffa726;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 167, 38, 0.3);
+    padding-bottom: 6px;
+}
+
+.task-detail-section p {
+    font-size: 13px;
+    color: #e0e0e0;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.task-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.task-detail-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: #9fbfe0;
+    font-weight: 600;
+    width: 35%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-detail-table td {
+    padding: 8px 12px;
+    color: #e0e0e0;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-detail-table tr:hover th,
+.task-detail-table tr:hover td {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 /* Forge Interface Styles */
@@ -1970,7 +2068,7 @@ header, footer {
 
 /* Custom width for the Smelter Modal */
 #smelter-modal .modal-dialog {
-    width: clamp(280px, 40vw, 500px);
+    width: clamp(364px, 52vw, 650px);
 }
 
 /* Dwarf Detail Modal Styles */
