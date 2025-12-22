@@ -50,6 +50,33 @@ const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
 let failsafeTickCounter = 0;
 
 /**
+ * Calculate the effective hardness for the current research
+ * @param {Object} dwarf - The dwarf attempting research (for gem calculations)
+ * @returns {Object} Object containing baseHardness, levelHardnessIncrease, hardnessBeforeGem, amethystReduction, and effectiveHardness
+ */
+function calculateResearchEffectiveHardness(dwarf) {
+    if (!activeResearch) return null;
+
+    const currentLevel = activeResearch.level || 0;
+    const baseHardness = activeResearch.hardness || RESEARCH_HARDNESS_MIN;
+    const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
+    const hardnessBeforeGem = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
+
+    // Apply Amethyst gem hardness reduction
+    const amethystReduction = getAmethystHardnessReduction(dwarf);
+    const effectiveHardness = Math.max(RESEARCH_HARDNESS_MIN, hardnessBeforeGem - amethystReduction);
+
+    return {
+        currentLevel,
+        baseHardness,
+        levelHardnessIncrease,
+        hardnessBeforeGem,
+        amethystReduction,
+        effectiveHardness
+    };
+}
+
+/**
  * Check if a dwarf has enough wisdom to attempt the current research
  * @param {Object} dwarf - The dwarf to check
  * @returns {boolean} True if dwarf can attempt research
@@ -57,17 +84,8 @@ let failsafeTickCounter = 0;
 function canDwarfAttemptResearch(dwarf) {
     if (!activeResearch) return false;
 
-    const currentLevel = activeResearch.level || 0;
-    const baseHardness = activeResearch.hardness || RESEARCH_HARDNESS_MIN;
-    const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
-    let effectiveHardness = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
-
-    // Apply Amethyst gem hardness reduction
-    const amethystReduction = getAmethystHardnessReduction(dwarf);
-    effectiveHardness = Math.max(RESEARCH_HARDNESS_MIN, effectiveHardness - amethystReduction);
-
-    // With minimum 10% chance, any dwarf can attempt any research
-    // (They always have at least 10% chance to succeed)
+    // With minimum 5% chance, any dwarf can attempt any research
+    // (They always have at least 5% chance to succeed)
     return true;
 }
 
@@ -625,17 +643,9 @@ function actForDwarf(dwarf) {
             }
 
             // New probability-based research point generation
-            const currentLevel = activeResearch.level || 0;
-            const baseHardness = activeResearch.hardness || RESEARCH_HARDNESS_MIN;
-
-            // Calculate effective hardness: base hardness + (level scaling) up to max
-            const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
-            let effectiveHardness = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
-
-            // Apply Amethyst gem hardness reduction (carat / 100), with minimum
-            const amethystReduction = getAmethystHardnessReduction(dwarf);
-            const hardnessBeforeGem = effectiveHardness;
-            effectiveHardness = Math.max(RESEARCH_HARDNESS_MIN, effectiveHardness - amethystReduction);
+            // Calculate effective hardness using helper function
+            const hardnessData = calculateResearchEffectiveHardness(dwarf);
+            const { currentLevel, baseHardness, levelHardnessIncrease, hardnessBeforeGem, amethystReduction, effectiveHardness } = hardnessData;
 
             // Debug: Log research attempt start
             const debugRuns = [];
