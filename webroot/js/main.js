@@ -107,6 +107,15 @@ function countActionableSmelterTasks() {
             if (hasGemsToPolish) {
                 count++;
             }
+        } else if (task.inputs && Array.isArray(task.inputs)) {
+            // Multiple inputs (alloy format)
+            const hasAllInputs = task.inputs.every(input => {
+                const stock = materialsStock[input.material] || 0;
+                return stock >= input.amount;
+            });
+            if (hasAllInputs) {
+                count++;
+            }
         } else if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
@@ -2187,6 +2196,18 @@ function populateSmelter() {
             // For gem cutting tasks, check if there are any gems marked for cutting
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
             isActionable = !!gemToProcess;
+        } else if (isUnlocked && task.inputs && Array.isArray(task.inputs)) {
+            // Multiple inputs (alloy format) - check if all inputs are available
+            const hasAllInputs = task.inputs.every(input => {
+                const stock = materialsStock[input.material] || 0;
+                return stock >= input.amount;
+            });
+            if (task.minTemp) {
+                // For smelting tasks with temp requirements, check both materials and temperature
+                isActionable = hasAllInputs && (smelterTemperature >= task.minTemp);
+            } else {
+                isActionable = hasAllInputs;
+            }
         } else if (isUnlocked && task.input && task.input.material && task.input.amount) {
             stockAmount = materialsStock[task.input.material] || 0;
             // For heating tasks, only actionable if temp is below min and below max
@@ -2247,6 +2268,17 @@ function populateSmelter() {
             } else if (task.type === 'gem-cutting') {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - no gems marked for cutting`;
+            } else if (task.inputs && Array.isArray(task.inputs)) {
+                // Multiple inputs - show all missing materials
+                statusIndicator.textContent = '❌';
+                const missingMaterials = task.inputs.filter(input => {
+                    const stock = materialsStock[input.material] || 0;
+                    return stock < input.amount;
+                }).map(input => {
+                    const stock = materialsStock[input.material] || 0;
+                    return `${input.material}: ${formatNumber(stock, 'material')}/${input.amount}`;
+                }).join(', ');
+                statusIndicator.title = `Blocked - need ${missingMaterials}`;
             } else if (task.input && task.input.amount) {
                 statusIndicator.textContent = '❌';
                 statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
@@ -2272,7 +2304,27 @@ function populateSmelter() {
         taskInfo.appendChild(taskDesc);
         
         // Show input/output if applicable (compact, no stock info)
-        if (task.input && task.output) {
+        if (task.inputs && task.output) {
+            // Multiple inputs (alloy format)
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+            const inputsText = task.inputs.map(input => {
+                const inputMat = getMaterialById(input.material);
+                const inputName = inputMat ? inputMat.name : input.material;
+                return `${input.amount}x ${inputName}`;
+            }).join(' + ');
+            const outputMat = getMaterialById(task.output.material);
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
+            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}`;
+            if (!isUnlocked) {
+                taskRecipe.classList.add('recipe-locked');
+            } else {
+                taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
+            }
+            taskInfo.appendChild(taskRecipe);
+        } else if (task.input && task.output) {
+            // Single input (legacy format)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);

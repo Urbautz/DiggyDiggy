@@ -51,18 +51,18 @@ const materials = [
   { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,     minlevel: 2000, maxlevel: 999999, color: '#7e6136ff' },
   { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',         hardness:100, probability: 0, worth: 75,      minlevel: 99999, color: '#cd7f32ff' },
   { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, maxlevel: 99999, color: '#c75e41ff' },
-  { id: 'Copper', name: 'Copper Ingot', type:'Ingot',         hardness:180, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
+  { id: 'Copper', name: 'Copper Ingot', type:'Ingot',         hardness:175, probability: 0, worth: 200,     minlevel: 99999, color: '#962c0cff' },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',       hardness: 650, probability: 25, worth: 200,   minlevel: 15000, maxlevel: 999999, color: '#8ec281ff' },
   { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 300,     minlevel: 99999, color: '#fbd86eff' },
 
-  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',  hardness: 350, probability: 15, worth: 1900,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
+  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Soft',    hardness: 250, probability: 15, worth: 1900,    minlevel: 6000, maxlevel: 99999, color: '#c5c5c5ff' },
   { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff' },
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',      hardness: 400, probability: 15, worth: 3000,  minlevel: 15000, color: '#d6a80eff' },
   { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5500,    minlevel: 99999, color: '#ffd700ff' },
     
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',      hardness: 1500, probability: 50, worth: 400,    minlevel: 30000, color: '#572012ff' },
-  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ingot',     hardness: 10, probability: 0, worth: 500,    minlevel: 99999,  color: '#4a4a4aff' },
-  { id: 'Iron', name: 'Iron Ingot', type:'Ingot',             hardness: 250, probability: 0, worth: 600,    minlevel: 99999, color: '#4a4a4aff' },
+  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',      hardness: 500, probability: 50, worth: 400,    minlevel: 30000, color: '#572012ff' },
+  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ore Medium',hardness: 10, probability: 0, worth: 500,    minlevel: 99999,  color: '#4a4a4aff' },
+  { id: 'Iron', name: 'Iron Ingot', type:'Ingot',             hardness: 325, probability: 0, worth: 600,    minlevel: 99999, color: '#4a4a4aff' },
   { id: 'Steel', name: 'Steel',                               hardness: 400, probability: 0, worth: 700,    minlevel: 99999, color: '#3f3939ff' },
   { id: 'Hardened Steel', name: 'Hardened Steel',             hardness: 450, probability: 0, worth: 720,    minlevel: 99999, color: '#2d2121ff' },
   { id: 'Dwarf Steel', name: 'Dwarf Steel',                   hardness: 500, probability: 0, worth: 800,    minlevel: 99999, color: '#2d2121ff' },
@@ -104,15 +104,17 @@ let smelterTasks = [
     { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore (requires 950°).', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
     { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore (requires 1085°).', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
-    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore (requires 962°).', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
-    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore (requires 1064°).', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
+
+    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy (requires 950°).', inputs: [{ material: 'Bronce', amount: 2 }, { material: 'Copper', amount: 1 }], output: { material: 'Brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
     { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron (requires 1200°).', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
     { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron (requires 1100°).', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron Ingot', amount: 1 }, minTemp: 1100, requires: 'furnace' },
    
     { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel (requires 1350°).', input: { material: 'Pig Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
     { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel (requires 1450°).', input: { material: 'Iron', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
     { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt hardened steel (requires 2200°)', input: { material: 'Hardened Steel', amount: 1 }, output: { material: 'Dwarfen Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
-
+    
+    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore (requires 962°).', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
+    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore (requires 1064°).', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
   ];
 
 // Smelter temperature system
@@ -128,7 +130,7 @@ let researchtree = [
     { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 100, level: 0,
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
     { id: 'trading', name: 'Better trading', cost: 100, goldCost: 100, level: 0,
-      description: 'Sell Prices for materials are improved by 3% per level' },
+      description: 'Prices are improved by 3% per level' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, goldCost: 500, level: 0, maxlevel:10,
       description: 'Increases bucket capacity by 1 per level.' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15,

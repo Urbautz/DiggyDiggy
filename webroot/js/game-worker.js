@@ -165,10 +165,21 @@ function smelterHasWork() {
                 return true;
             }
         }
+        // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
                 return true; // Found a task with enough materials
+            }
+        }
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stockAmount = materialsStock[input.material] || 0;
+                return stockAmount >= input.amount;
+            });
+            if (hasAllInputs) {
+                return true; // Found a task with all required materials
             }
         }
     }
@@ -226,9 +237,20 @@ function findActionableSmelterTask() {
             continue; // No gems available, try next task
         }
 
+        // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
+                return task;
+            }
+        }
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stockAmount = materialsStock[input.material] || 0;
+                return stockAmount >= input.amount;
+            });
+            if (hasAllInputs) {
                 return task;
             }
         }
@@ -691,11 +713,16 @@ function actForDwarf(dwarf) {
             }
 
             // Perform the smelting action
-            const inputMaterial = task.input ? task.input.material : null;
-            const inputAmount = task.input ? task.input.amount : 0;
-
-            // Consume input materials (if task has input)
-            if (inputMaterial && inputAmount) {
+            // Consume input materials - support both single input and multiple inputs (for alloys)
+            if (task.inputs && Array.isArray(task.inputs)) {
+                // Multiple inputs (alloy format)
+                task.inputs.forEach(input => {
+                    materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                });
+            } else if (task.input && task.input.material && task.input.amount) {
+                // Single input (legacy format)
+                const inputMaterial = task.input.material;
+                const inputAmount = task.input.amount;
                 materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
             }
 
