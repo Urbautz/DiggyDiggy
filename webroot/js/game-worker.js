@@ -801,13 +801,10 @@ function actForDwarf(dwarf) {
         return;
     }
 
-    // Full bucket handling
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
-    // Apply bucket research bonus (1 capacity per level)
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
-    if (typeof bucketCapacity === 'number' && bucketTotal >= dwarfCapacity) {
+    // Full bucket handling (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
+    if (bucketWeight >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
                 if (dwarf.status !== 'unloading') {

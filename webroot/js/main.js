@@ -3017,8 +3017,13 @@ window.adjustCoalMinTemp = function(amount) {
 
 // Adjust coal maximum temperature setting
 window.adjustCoalMaxTemp = function(amount) {
-    // Coal max is capped at 2000°
-    const coalMaxLimit = 2000;
+    // Calculate max temperature based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? furnaceTemp.level : 0;
+    const researchMaxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    // Coal max is capped at the lower of research max or 2000°
+    const coalMaxLimit = Math.min(researchMaxTemp, 2000);
 
     smelterCoalMaxTemp = Math.max(25, Math.min(coalMaxLimit, smelterCoalMaxTemp + amount));
     // Ensure max doesn't go below min
@@ -4567,14 +4572,8 @@ function updateDwarfsInPanel() {
         // Update info panel
         const info = document.getElementById(`dwarf-info-${d.name}`);
         if (info) {
-            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
-                if (Array.isArray(b)) return a + b.length;
-                if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
-                return a + b;
-            }, 0) : 0;
-            const bucketResearch = researchtree.find(r => r.id === 'buckets');
-            const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-            const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
+            const bucketWeight = calculateBucketWeight(d.bucket);
+            const dwarfCapacity = calculateDwarfBucketCapacity(d);
 
             const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
             const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
@@ -4605,7 +4604,7 @@ function updateDwarfsInPanel() {
             }
             
             const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${d.level || 1}</span>`;
-            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
+            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
                 info.innerHTML = newHTML;
@@ -4698,30 +4697,23 @@ function populateDwarfsInPanel() {
             }
         }
         
-        // Calculate bucket fill
-        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
-            if (Array.isArray(b)) return a + b.length;
-            if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
-            return a + b;
-        }, 0) : 0;
-        // Apply bucket research bonus (1 capacity per level)
-        const bucketResearch = researchtree.find(r => r.id === 'buckets');
-        const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-        const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
-        
+        // Calculate bucket fill (weight-based)
+        const bucketWeight = calculateBucketWeight(d.bucket);
+        const dwarfCapacity = calculateDwarfBucketCapacity(d);
+
         // Get tool name for display
         const toolName = d.toolId ? (() => {
             const tool = toolsInventory.find(t => t.id === d.toolId);
             return tool ? (tool.name || tool.type) : 'None';
         })() : 'None';
-        
+
         const info = document.createElement('div');
         info.className = 'dwarf-info';
         info.id = `dwarf-info-${d.name}`;
-        
+
         // Create level display with XP tooltip
         const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
-        
+
         // Calculate wage using same logic as game-worker.js
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
@@ -4729,8 +4721,8 @@ function populateDwarfsInPanel() {
         const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
         const dwarfLevel = (currentLevel || 1) - 1;
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
-        
-        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
+
+        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
         row.appendChild(header);
         row.appendChild(info);
@@ -4826,19 +4818,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
-        if (Array.isArray(b)) {
-            return a + b.length; // Gems as array: count array length
-        }
-        if (typeof b === 'object' && b !== null) {
-            return a + 1; // Gem object: counts as 1
-        }
-        return a + b; // Regular materials: add count
-    }, 0) : 0;
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+    // Calculate bucket info (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
     // Calculate dig power components
     const baseDwarfPower = 3;
@@ -4878,9 +4860,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Populate bucket
-    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
         const bucketGrid = document.createElement('div');
         bucketGrid.className = 'dwarf-bucket-grid';
 
@@ -5123,8 +5105,8 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
     const effectiveStrength = Math.floor(modifiedStrength);
     const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
-    const sapphireBonus = modifiedStrength > baseStrength ? ` (effective: ${effectiveStrength}, +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
-    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}\n${sapphireBonus}`;
+    const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
     const baseWisdom = dwarf.wisdom || 0;
     const baseResearchPoints = baseWisdom + 1;
@@ -5175,19 +5157,9 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const currentLevel = dwarf.level || 1;
     const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
 
-    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
-        if (Array.isArray(b)) {
-            return a + b.length; // Gems as array: count array length
-        }
-        if (typeof b === 'object' && b !== null) {
-            return a + 1; // Gem object: counts as 1
-        }
-        return a + b; // Regular materials: add count
-    }, 0) : 0;
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+    // Calculate bucket info (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
     // Calculate dig power
     const baseDwarfPower = 3;
@@ -5215,9 +5187,9 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Update bucket header and contents
-    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
         let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             // Handle both regular materials (count is a number) and gems (count might be an object)
@@ -6222,25 +6194,28 @@ function executeBulkSell(action) {
         if (count <= 0) continue;
 
         let shouldSell = false;
+        const materialType = m.type || '';
 
         switch (action) {
             case 'sell-loose':
-                shouldSell = !smelterInputMaterials.has(id) && m.type !== 'Ingot';
+                shouldSell = materialType.startsWith('Loose');
                 break;
             case 'sell-stones':
-                shouldSell = m.type && m.type.startsWith('Stone');
+                shouldSell = materialType.startsWith('Stone');
                 break;
             case 'sell-ores':
-                shouldSell = m.type && (m.type === 'Ore' || m.type.startsWith('Ore '));
+                shouldSell = materialType.startsWith('Ore');
                 break;
             case 'sell-non-craftables':
-                shouldSell = !craftableMaterials.has(id);
+                shouldSell = !craftableMaterials.has(id)
+                    && !smelterInputMaterials.has(id)
+                    && !materialType.startsWith('Gem');
                 break;
             case 'sell-ingots':
-                shouldSell = m.type === 'Ingot';
+                shouldSell = materialType.startsWith('Ingot');
                 break;
             case 'sell-heating':
-                shouldSell = m.type === 'Heating';
+                shouldSell = materialType.startsWith('Special');
                 break;
             case 'sell-all':
                 shouldSell = true;

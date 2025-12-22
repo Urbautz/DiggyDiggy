@@ -391,15 +391,41 @@ function isSmelterTaskUnlocked(task) {
 // ============================================================================
 
 /**
- * Calculate the bucket capacity for a dwarf
+ * Calculate the bucket capacity for a dwarf (in kg)
+ * Base capacity: 50kg
+ * Strength bonus: +5kg per strength point
+ * Research bonus: +5% per research level
  * @param {Object} dwarf - The dwarf to calculate capacity for
- * @returns {number} Total bucket capacity
+ * @returns {number} Total bucket capacity in kg
  */
 function calculateDwarfBucketCapacity(dwarf) {
-    const bucketBonus = getResearchLevel('buckets');
+    const baseCapacity = 50; // Base capacity in kg
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
-    return bucketCapacity + bucketBonus + Math.floor(modifiedStrength);
+    const strengthBonus = Math.floor(modifiedStrength) * 5; // 5kg per strength point
+
+    const bucketResearchLevel = getResearchLevel('buckets');
+    const researchMultiplier = 1 + (bucketResearchLevel * 0.05); // 5% per level
+
+    return Math.floor((baseCapacity + strengthBonus) * researchMultiplier);
+}
+
+/**
+ * Calculate the current weight of materials in a dwarf's bucket
+ * @param {Object} bucket - The bucket object with material counts
+ * @returns {number} Total weight in kg
+ */
+function calculateBucketWeight(bucket) {
+    if (!bucket || Object.keys(bucket).length === 0) return 0;
+
+    let totalWeight = 0;
+    for (const [materialId, count] of Object.entries(bucket)) {
+        const material = materials.find(m => m.id === materialId);
+        if (material && material.weight) {
+            totalWeight += material.weight * count;
+        }
+    }
+    return totalWeight;
 }
 
 /**

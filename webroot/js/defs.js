@@ -54,7 +54,7 @@ const materials = [
   { id: 'Copper', name: 'Copper Ingot', type:'Ingot',       hardness: 175, probability: 0, worth: 200,    minlevel: 99999, color: '#962c0cff', forge: 'Base', weight: 18 },
   { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 200,   minlevel: 15000, color: '#8ec281ff', weight: 40 },
   { id: 'Zinc', name: 'Zinc Ingot', type:'Ingot',           hardness: 300, probability: 0, worth: 350,    minlevel: 99999, color: '#a8b5c0ff', forge: 'Plating', weight: 15 },
-  { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 275,    minlevel: 99999, color: '#fbd86eff', forge: 'Base', weight: 18 },
+  { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 750,    minlevel: 99999, color: '#fbd86eff', forge: 'Base', weight: 18 },
 
   { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Medium',      hardness: 350, probability: 0, worth: 1200,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 42 },
   { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 20 },
@@ -136,7 +136,7 @@ let researchtree = [
     { id: 'trading', name: 'Better trading', cost: 100, goldCost: 100, level: 0,
       description: 'Prices are improved by 3% per level' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, goldCost: 500, level: 0, maxlevel:10,
-      description: 'Increases bucket capacity by 1 per level.' },
+      description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
       { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 2500, goldCost: 2500, level: 0, maxlevel: 30,
