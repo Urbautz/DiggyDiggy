@@ -7,7 +7,7 @@ function updateDwarfsLevelUpBadge() {
     const dwarfsCanLevelUp = dwarfs.filter(d => {
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         return currentXP >= xpNeeded;
     });
     if (dwarfsCanLevelUp.length !== lastDwarfsLevelUpCount) {
@@ -3017,8 +3017,13 @@ window.adjustCoalMinTemp = function(amount) {
 
 // Adjust coal maximum temperature setting
 window.adjustCoalMaxTemp = function(amount) {
-    // Coal max is capped at 2000°
-    const coalMaxLimit = 2000;
+    // Calculate max temperature based on furnace-temperature research
+    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTempLevel = furnaceTemp ? furnaceTemp.level : 0;
+    const researchMaxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+    // Coal max is capped at the lower of research max or 2000°
+    const coalMaxLimit = Math.min(researchMaxTemp, 2000);
 
     smelterCoalMaxTemp = Math.max(25, Math.min(coalMaxLimit, smelterCoalMaxTemp + amount));
     // Ensure max doesn't go below min
@@ -3123,7 +3128,7 @@ function populateResearch() {
             <h3>🔬 Currently Researching</h3>
             <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
             <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬 • Gold paid: ${actualGoldCost} 💰</small></p>
+            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬<br>Gold paid: ${actualGoldCost} 💰</small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                 <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
@@ -3177,57 +3182,82 @@ function populateResearch() {
         nameTd.appendChild(nameDiv);
         
         const levelTd = document.createElement('td');
-        levelTd.textContent = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}`;
-        
+        // Calculate effective hardness for display
+        const baseHardness = researchItem.hardness || 10;
+        const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
+        const effectiveHardness = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
+
+        // Check if research is possible: max wisdom * 100 must be >= hardness
+        // Find max wisdom from all dwarfs
+        const maxWisdom = dwarfs.reduce((max, d) => Math.max(max, d.wisdom || 0), 0);
+        const maxPossiblePower = maxWisdom * 100; // Best case: wisdom * roll(100)
+        const isImpossible = maxPossiblePower < effectiveHardness;
+        const minWisdomRequired = Math.ceil(effectiveHardness / 100);
+
+        levelTd.innerHTML = `${currentLevel} / ${maxLevel === Infinity ? '∞' : maxLevel}<br><small style="opacity: 0.7;">Hardness: ${effectiveHardness}</small>`;
+
         const costTd = document.createElement('td');
         // Calculate actual cost for next level using formula: baseCost * (1.15^(targetLevel-1))
         const targetLevel = currentLevel + 1;
         const actualCost = Math.round(researchItem.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
         const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
-        costTd.textContent = `${actualCost} 🔬 / ${actualGoldCost} 💰`;
-        costTd.title = 'Research points / Gold required';
+        costTd.innerHTML = `${actualCost} 🔬<br>${actualGoldCost} 💰`;
+        costTd.title = 'Research points\nGold required';
         
         const actionTd = document.createElement('td');
-        const researchBtn = document.createElement('button');
-        
-        // Check if this research is already active
-        const isActive = activeResearch && activeResearch.id === researchItem.id;
-        
-        // Check if requirements are met
-        const requirementsMet = checkResearchRequirements(researchItem);
 
-        // Check if player has enough gold
-        const hasEnoughGold = gold >= actualGoldCost;
-
-        if (isActive) {
-            researchBtn.className = 'btn-research active';
-            researchBtn.textContent = 'Active';
-            researchBtn.disabled = true;
-        } else if (!requirementsMet.met) {
-            // Requirements not met - gray out
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Locked';
-            researchBtn.disabled = true;
-            researchBtn.title = requirementsMet.reason;
-        } else if (!hasEnoughGold) {
-            // Not enough gold
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Research';
-            researchBtn.disabled = true;
-            researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
-        } else if (activeResearch) {
-            // Another research is active
-            researchBtn.className = 'btn-research disabled';
-            researchBtn.textContent = 'Research';
-            researchBtn.disabled = true;
-            researchBtn.title = 'Another research is in progress';
+        // If research is impossible, show warning instead of button
+        if (isImpossible) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.color = '#ff6b6b';
+            warningDiv.style.fontWeight = 'bold';
+            warningDiv.style.fontSize = '12px';
+            warningDiv.style.textAlign = 'center';
+            warningDiv.innerHTML = `⚠️ Dwarf with<br>Wisdom ${minWisdomRequired} required`;
+            warningDiv.title = `No dwarf can complete this research!\nRequired hardness: ${effectiveHardness}\nMax possible: ${maxPossiblePower} (Wisdom ${maxWisdom} × 100)\n\nYou need a dwarf with at least Wisdom ${minWisdomRequired}\nor use Amethyst gems to reduce hardness.`;
+            actionTd.appendChild(warningDiv);
         } else {
-            researchBtn.className = 'btn-research';
-            researchBtn.textContent = 'Research';
-            researchBtn.dataset.researchId = researchItem.id;
+            const researchBtn = document.createElement('button');
+
+            // Check if this research is already active
+            const isActive = activeResearch && activeResearch.id === researchItem.id;
+
+            // Check if requirements are met
+            const requirementsMet = checkResearchRequirements(researchItem);
+
+            // Check if player has enough gold
+            const hasEnoughGold = gold >= actualGoldCost;
+
+            if (isActive) {
+                researchBtn.className = 'btn-research active';
+                researchBtn.textContent = 'Active';
+                researchBtn.disabled = true;
+            } else if (!requirementsMet.met) {
+                // Requirements not met - gray out
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Locked';
+                researchBtn.disabled = true;
+                researchBtn.title = requirementsMet.reason;
+            } else if (!hasEnoughGold) {
+                // Not enough gold
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Research';
+                researchBtn.disabled = true;
+                researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
+            } else if (activeResearch) {
+                // Another research is active
+                researchBtn.className = 'btn-research disabled';
+                researchBtn.textContent = 'Research';
+                researchBtn.disabled = true;
+                researchBtn.title = 'Another research is in progress';
+            } else {
+                researchBtn.className = 'btn-research';
+                researchBtn.textContent = 'Research';
+                researchBtn.dataset.researchId = researchItem.id;
+            }
+
+            actionTd.appendChild(researchBtn);
         }
-        
-        actionTd.appendChild(researchBtn);
         
         tr.appendChild(nameTd);
         tr.appendChild(levelTd);
@@ -3965,6 +3995,8 @@ function openModal(modalname) {
     // Pause game when opening settings modal
     if ((modalname === 'settings-modal') && !gamePaused) {
         gamePaused = true;
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) pauseBtn.classList.add('paused');
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
         }
@@ -3985,6 +4017,8 @@ function closeModal(modalName) {
         // Resume game when closing settings modal
         if ((modalName === 'settings-modal') && gamePaused) {
             gamePaused = false;
+            const pauseBtn = document.getElementById('pause-button');
+            if (pauseBtn) pauseBtn.classList.remove('paused');
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
             }
@@ -4020,6 +4054,8 @@ function closeModal(modalName) {
         // Resume game when closing settings modal
         if (id === 'settings-modal' && gamePaused) {
             gamePaused = false;
+            const pauseBtn = document.getElementById('pause-button');
+            if (pauseBtn) pauseBtn.classList.remove('paused');
             if (gameWorker) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
             }
@@ -4474,9 +4510,9 @@ function populateDwarfsOverview() {
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
-        
+
         // Find the tool assigned to this dwarf
         const toolTd = document.createElement('td');
         if (d.toolId) {
@@ -4489,10 +4525,10 @@ function populateDwarfsOverview() {
         } else {
             toolTd.textContent = '-';
         }
-        
+
         const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
         const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
-        
+
         // Action column - show level up button if XP threshold reached
         const actionTd = document.createElement('td');
         if (currentXP >= xpNeeded) {
@@ -4533,7 +4569,7 @@ function updateDwarfsInPanel() {
 
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
 
         // Update level up highlight and class
@@ -4567,14 +4603,8 @@ function updateDwarfsInPanel() {
         // Update info panel
         const info = document.getElementById(`dwarf-info-${d.name}`);
         if (info) {
-            const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
-                if (Array.isArray(b)) return a + b.length;
-                if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
-                return a + b;
-            }, 0) : 0;
-            const bucketResearch = researchtree.find(r => r.id === 'buckets');
-            const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-            const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
+            const bucketWeight = calculateBucketWeight(d.bucket);
+            const dwarfCapacity = calculateDwarfBucketCapacity(d);
 
             const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
             const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
@@ -4605,7 +4635,7 @@ function updateDwarfsInPanel() {
             }
             
             const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${d.level || 1}</span>`;
-            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
+            const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
                 info.innerHTML = newHTML;
@@ -4633,13 +4663,13 @@ function populateDwarfsInPanel() {
         
         const currentXP = d.xp || 0;
         const currentLevel = d.level || 1;
-        const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
-        
+
         if (canLevelUp) {
             row.classList.add('can-level-up');
         }
-        
+
         // Header with name and level indicator/XP display
         const header = document.createElement('div');
         header.className = 'dwarf-header';
@@ -4698,30 +4728,23 @@ function populateDwarfsInPanel() {
             }
         }
         
-        // Calculate bucket fill
-        const bucketTotal = d.bucket ? Object.values(d.bucket).reduce((a, b) => {
-            if (Array.isArray(b)) return a + b.length;
-            if (typeof b === 'object' && b !== null) return a + 1; // Gem object counts as 1
-            return a + b;
-        }, 0) : 0;
-        // Apply bucket research bonus (1 capacity per level)
-        const bucketResearch = researchtree.find(r => r.id === 'buckets');
-        const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-        const dwarfCapacity = bucketCapacity + bucketBonus + (d.strength || 0);
-        
+        // Calculate bucket fill (weight-based)
+        const bucketWeight = calculateBucketWeight(d.bucket);
+        const dwarfCapacity = calculateDwarfBucketCapacity(d);
+
         // Get tool name for display
         const toolName = d.toolId ? (() => {
             const tool = toolsInventory.find(t => t.id === d.toolId);
             return tool ? (tool.name || tool.type) : 'None';
         })() : 'None';
-        
+
         const info = document.createElement('div');
         info.className = 'dwarf-info';
         info.id = `dwarf-info-${d.name}`;
-        
+
         // Create level display with XP tooltip
         const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
-        
+
         // Calculate wage using same logic as game-worker.js
         const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
@@ -4729,8 +4752,8 @@ function populateDwarfsInPanel() {
         const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
         const dwarfLevel = (currentLevel || 1) - 1;
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
-        
-        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketTotal}/${dwarfCapacity} | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
+
+        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
         row.appendChild(header);
         row.appendChild(info);
@@ -4780,12 +4803,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
         const aLevel = a.level || 1;
-        const aNeeded = DWARF_XP_PER_LEVEL * aLevel;
+        const aNeeded = getDwarfXpForLevel(aLevel);
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
         const bLevel = b.level || 1;
-        const bNeeded = DWARF_XP_PER_LEVEL * bLevel;
+        const bNeeded = getDwarfXpForLevel(bLevel);
         const bCanLevelUp = bXP >= bNeeded;
 
         if (aCanLevelUp !== bCanLevelUp) {
@@ -4798,7 +4821,7 @@ function populateDwarfSwitcher(currentDwarfName) {
         if (d.name !== currentDwarfName) {
             const currentXP = d.xp || 0;
             const currentLevel = d.level || 1;
-            const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+            const xpNeeded = getDwarfXpForLevel(currentLevel);
             const canLevelUp = currentXP >= xpNeeded;
             const levelUpIndicator = canLevelUp ? ' ⭐' : '';
 
@@ -4824,21 +4847,11 @@ function populateDwarfSwitcher(currentDwarfName) {
 function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
-    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
 
-    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
-        if (Array.isArray(b)) {
-            return a + b.length; // Gems as array: count array length
-        }
-        if (typeof b === 'object' && b !== null) {
-            return a + 1; // Gem object: counts as 1
-        }
-        return a + b; // Regular materials: add count
-    }, 0) : 0;
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+    // Calculate bucket info (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
     // Calculate dig power components
     const baseDwarfPower = 3;
@@ -4878,9 +4891,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Populate bucket
-    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
         const bucketGrid = document.createElement('div');
         bucketGrid.className = 'dwarf-bucket-grid';
 
@@ -5087,7 +5100,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         card.appendChild(skillPointsEl);
 
         const descEl = document.createElement('p');
-        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0;';
+        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0; white-space: pre-line;';
         descEl.textContent = description;
         card.appendChild(descEl);
 
@@ -5115,23 +5128,20 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const diamondDigPowerPercent = modifiedDigPower > baseDigPower ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100) : 0;
     const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
-    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power<br />${diamondBonus}`;
+    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
 
-    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `<br />💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
 
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
     const effectiveStrength = Math.floor(modifiedStrength);
     const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
-    const sapphireBonus = modifiedStrength > baseStrength ? ` (effective: ${effectiveStrength}, +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
-    const strengthDesc = `Bucket Capacity: ${dwarfCapacity}<br />${sapphireBonus}`;
+    const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
-    const baseWisdom = dwarf.wisdom || 0;
-    const baseResearchPoints = baseWisdom + 1;
-    const modifiedResearchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
-    const amethystBonusPercent = modifiedResearchPoints > baseResearchPoints ? ((modifiedResearchPoints - baseResearchPoints) / baseResearchPoints * 100) : 0;
-    const amethystBonus = modifiedResearchPoints > baseResearchPoints ? ` (+${formatNumber(amethystBonusPercent, 'percent')}% from 💎Amethyst)` : '';
-    const wisdomDesc = `Research and Smelting Speed<br />${amethystBonus}`;
+    const amethystReduction = getAmethystHardnessReduction(dwarf);
+    const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
+    const wisdomDesc = `Research and Smelting Speed\nIncreases research success probability${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
@@ -5173,21 +5183,11 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
     const currentXP = dwarf.xp || 0;
     const currentLevel = dwarf.level || 1;
-    const xpNeeded = DWARF_XP_PER_LEVEL * currentLevel;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
 
-    // Calculate bucket info (gems can be objects, arrays, or regular materials are numbers)
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => {
-        if (Array.isArray(b)) {
-            return a + b.length; // Gems as array: count array length
-        }
-        if (typeof b === 'object' && b !== null) {
-            return a + 1; // Gem object: counts as 1
-        }
-        return a + b; // Regular materials: add count
-    }, 0) : 0;
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
+    // Calculate bucket info (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
     // Calculate dig power
     const baseDwarfPower = 3;
@@ -5215,9 +5215,9 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Update bucket header and contents
-    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketTotal}/${dwarfCapacity})`;
+    document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketTotal > 0) {
+    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
         let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             // Handle both regular materials (count is a number) and gems (count might be an object)
@@ -5255,8 +5255,8 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
 // Apply the chosen level up upgrade
 function applyLevelUp(dwarf, upgradeType) {
-    const xpNeeded = DWARF_XP_PER_LEVEL * dwarf.level;
-    
+    const xpNeeded = getDwarfXpForLevel(dwarf.level);
+
     if (dwarf.xp < xpNeeded) {
         console.error('Not enough XP to level up');
         return;
@@ -5335,7 +5335,7 @@ function resetDwarfPoints(dwarf) {
     // Calculate XP to return (all earned XP)
     let totalXP = dwarf.xp || 0;
     for (let i = 1; i < currentLevel; i++) {
-        totalXP += DWARF_XP_PER_LEVEL * i;
+        totalXP += getDwarfXpForLevel(i);
     }
 
     // Find actual dwarf and reset
@@ -6104,41 +6104,43 @@ function openWarehouseSellModal() {
             const value = count * m.worth * tradeBonus;
             allValue += value;
 
+            const materialType = m.type || '';
+
             // Loose materials (not in smelter inputs, not ingots)
-            if (m.type.startsWith('Loose') && value > 0) {
+            if (materialType.startsWith('Loose') && value > 0) {
                 looseValue += value;
                 looseMaterials.push({ name: m.name, count });
             }
 
             // Stones
-            if (m.type.startsWith('Stone') && value > 0) {
+            if (materialType.startsWith('Stone') && value > 0) {
                 stonesValue += value;
                 stonesMaterials.push({ name: m.name, count });
             }
 
             // Ores
-            if (m.type.startsWith('Ore') && value > 0) {
+            if (materialType.startsWith('Ore') && value > 0) {
                 oresValue += value;
                 oresMaterials.push({ name: m.name, count });
             }
 
             // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
-            if (!craftableMaterials.has(id) 
-                && !smelterInputMaterials.has(id) 
-                && !m.type.startsWith('Gem')
+            if (!craftableMaterials.has(id)
+                && !smelterInputMaterials.has(id)
+                && !materialType.startsWith('Gem')
                 && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
             }
 
             // Ingots
-            if (m.type.startsWith('Ingot') && value > 0) {
+            if (materialType.startsWith('Ingot') && value > 0) {
                 ingotsValue += value;
                 ingotsMaterials.push({ name: m.name, count });
             }
 
             // Heating materials
-            if (m.type.startsWith('Special') && value > 0) {
+            if (materialType.startsWith('Special') && value > 0) {
                 heatingValue += value;
                 heatingMaterials.push({ name: m.name, count });
             }
@@ -6220,25 +6222,28 @@ function executeBulkSell(action) {
         if (count <= 0) continue;
 
         let shouldSell = false;
+        const materialType = m.type || '';
 
         switch (action) {
             case 'sell-loose':
-                shouldSell = !smelterInputMaterials.has(id) && m.type !== 'Ingot';
+                shouldSell = materialType.startsWith('Loose');
                 break;
             case 'sell-stones':
-                shouldSell = m.type && m.type.startsWith('Stone');
+                shouldSell = materialType.startsWith('Stone');
                 break;
             case 'sell-ores':
-                shouldSell = m.type && (m.type === 'Ore' || m.type.startsWith('Ore '));
+                shouldSell = materialType.startsWith('Ore');
                 break;
             case 'sell-non-craftables':
-                shouldSell = !craftableMaterials.has(id);
+                shouldSell = !craftableMaterials.has(id)
+                    && !smelterInputMaterials.has(id)
+                    && !materialType.startsWith('Gem');
                 break;
             case 'sell-ingots':
-                shouldSell = m.type === 'Ingot';
+                shouldSell = materialType.startsWith('Ingot');
                 break;
             case 'sell-heating':
-                shouldSell = m.type === 'Heating';
+                shouldSell = materialType.startsWith('Special');
                 break;
             case 'sell-all':
                 shouldSell = true;
@@ -6783,6 +6788,12 @@ function togglePause() {
     if (btn) {
         btn.textContent = gamePaused ? '▶' : '⏸';
         btn.title = gamePaused ? 'Resume game' : 'Pause game';
+        // Add/remove paused class for visual styling
+        if (gamePaused) {
+            btn.classList.add('paused');
+        } else {
+            btn.classList.remove('paused');
+        }
     }
     // Notify worker of pause state change
     if (gameWorker && workerInitialized) {
@@ -6999,7 +7010,7 @@ window.activateCheat = function activateCheat() {
         dwarf.bucket = {}; // Clear bucket
 
         // Give XP for one level
-        const xpForLevel = DWARF_XP_PER_LEVEL * (dwarf.level || 1);
+        const xpForLevel = getDwarfXpForLevel(dwarf.level || 1);
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;
     }
     

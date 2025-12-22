@@ -309,17 +309,16 @@ function calculateAmethystResearchBonus(carat) {
 }
 
 /**
- * Get the Amethyst-modified research points for a dwarf
+ * Get the Amethyst hardness reduction for a dwarf
  * @param {Object} dwarf - The dwarf
- * @param {number} baseResearchPoints - Base research points value
- * @returns {number} Modified research points with Amethyst bonus
+ * @returns {number} Hardness reduction from Amethyst gems
  */
-function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
-    if (!dwarf.toolId) return baseResearchPoints;
+function getAmethystHardnessReduction(dwarf) {
+    if (!dwarf.toolId) return 0;
 
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
     if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return baseResearchPoints;
+        return 0;
     }
 
     // Sum up all Amethyst carat values
@@ -327,18 +326,23 @@ function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
         .filter(gem => gem.type === 'Amethyst')
         .reduce((sum, gem) => sum + gem.carat, 0);
 
-    if (totalAmethystCarat <= 0) return baseResearchPoints;
+    if (totalAmethystCarat <= 0) return 0;
 
-    // Calculate bonus and apply it
-    const bonusPercent = calculateAmethystResearchBonus(totalAmethystCarat);
-    const modifiedPoints = baseResearchPoints * (1 + bonusPercent / 100);
+    // Hardness reduction: carat / 100
+    return totalAmethystCarat / 100;
+}
 
-    // Log occasionally (1% chance)
-    if (Math.random() < 0.01 && baseResearchPoints > 0) {
-        console.log(`💎 Amethyst Research Boost! ${dwarf.name}'s ${totalAmethystCarat}-carat Amethyst increases research points from ${baseResearchPoints.toFixed(1)} to ${modifiedPoints.toFixed(1)} (+${bonusPercent.toFixed(1)}%)`);
-    }
-
-    return modifiedPoints;
+/**
+ * Get the Amethyst-modified research points for a dwarf
+ * @param {Object} dwarf - The dwarf
+ * @param {number} baseResearchPoints - Base research points value
+ * @returns {number} Modified research points with Amethyst bonus
+ * @deprecated This function is deprecated. Use getAmethystHardnessReduction instead.
+ */
+function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
+    // Amethyst no longer modifies research points, it reduces hardness instead
+    // Keeping this function for backward compatibility, but it just returns the base value
+    return baseResearchPoints;
 }
 
 // ============================================================================
@@ -391,15 +395,41 @@ function isSmelterTaskUnlocked(task) {
 // ============================================================================
 
 /**
- * Calculate the bucket capacity for a dwarf
+ * Calculate the bucket capacity for a dwarf (in kg)
+ * Base capacity: 50kg
+ * Strength bonus: +5kg per strength point
+ * Research bonus: +5% per research level
  * @param {Object} dwarf - The dwarf to calculate capacity for
- * @returns {number} Total bucket capacity
+ * @returns {number} Total bucket capacity in kg
  */
 function calculateDwarfBucketCapacity(dwarf) {
-    const bucketBonus = getResearchLevel('buckets');
+    const baseCapacity = 50; // Base capacity in kg
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
-    return bucketCapacity + bucketBonus + Math.floor(modifiedStrength);
+    const strengthBonus = Math.floor(modifiedStrength) * 5; // 5kg per strength point
+
+    const bucketResearchLevel = getResearchLevel('buckets');
+    const researchMultiplier = 1 + (bucketResearchLevel * 0.05); // 5% per level
+
+    return Math.floor((baseCapacity + strengthBonus) * researchMultiplier);
+}
+
+/**
+ * Calculate the current weight of materials in a dwarf's bucket
+ * @param {Object} bucket - The bucket object with material counts
+ * @returns {number} Total weight in kg
+ */
+function calculateBucketWeight(bucket) {
+    if (!bucket || Object.keys(bucket).length === 0) return 0;
+
+    let totalWeight = 0;
+    for (const [materialId, count] of Object.entries(bucket)) {
+        const material = materials.find(m => m.id === materialId);
+        if (material && material.weight) {
+            totalWeight += material.weight * count;
+        }
+    }
+    return totalWeight;
 }
 
 /**

@@ -49,6 +49,46 @@ const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
 // Failsafe tick counter
 let failsafeTickCounter = 0;
 
+/**
+ * Calculate the effective hardness for the current research
+ * @param {Object} dwarf - The dwarf attempting research (for gem calculations)
+ * @returns {Object} Object containing baseHardness, levelHardnessIncrease, hardnessBeforeGem, amethystReduction, and effectiveHardness
+ */
+function calculateResearchEffectiveHardness(dwarf) {
+    if (!activeResearch) return null;
+
+    const currentLevel = activeResearch.level || 0;
+    const baseHardness = activeResearch.hardness || RESEARCH_HARDNESS_MIN;
+    const levelHardnessIncrease = currentLevel * RESEARCH_HARDNESS_SCALING_PER_LEVEL;
+    const hardnessBeforeGem = Math.min(RESEARCH_HARDNESS_MAX, baseHardness + levelHardnessIncrease);
+
+    // Apply Amethyst gem hardness reduction
+    const amethystReduction = getAmethystHardnessReduction(dwarf);
+    const effectiveHardness = Math.max(RESEARCH_HARDNESS_MIN, hardnessBeforeGem - amethystReduction);
+
+    return {
+        currentLevel,
+        baseHardness,
+        levelHardnessIncrease,
+        hardnessBeforeGem,
+        amethystReduction,
+        effectiveHardness
+    };
+}
+
+/**
+ * Check if a dwarf has enough wisdom to attempt the current research
+ * @param {Object} dwarf - The dwarf to check
+ * @returns {boolean} True if dwarf can attempt research
+ */
+function canDwarfAttemptResearch(dwarf) {
+    if (!activeResearch) return false;
+
+    // With minimum 5% chance, any dwarf can attempt any research
+    // (They always have at least 5% chance to succeed)
+    return true;
+}
+
 // Game loop state
 let gameLoopIntervalId = null;
 let gamePaused = false;
@@ -531,9 +571,9 @@ function actForDwarf(dwarf) {
             dwarf.energy = maxEnergy;
             
             // After resting, check for special tasks
-            const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+            const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf);
             const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
-            
+
             if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
                 if (canResearch && canSmelt) {
                     // Both available - split evenly
@@ -601,18 +641,98 @@ function actForDwarf(dwarf) {
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
-            // Base points + wisdom bonus
-            const baseResearchPoints = (dwarf.wisdom || 0) + 1;
-            const researchPoints = getAmethystModifiedResearchPoints(dwarf, baseResearchPoints);
+
+            // New probability-based research point generation
+            // Calculate effective hardness using helper function
+            const hardnessData = calculateResearchEffectiveHardness(dwarf);
+            const { currentLevel, baseHardness, levelHardnessIncrease, hardnessBeforeGem, amethystReduction, effectiveHardness } = hardnessData;
+
+            // Debug: Log research attempt start
+            const debugRuns = [];
+
+            // Calculate research points with multiple runs based on wisdom
+            let totalResearchPoints = 0;
+            let currentWisdom = Math.max(1, dwarf.wisdom || 0); // Ensure at least 1 wisdom for minimum chance
+            let runNumber = 0;
+
+            while (currentWisdom > 0) {
+                runNumber++;
+
+                // Roll for success with minimum 10% chance
+                const roll = Math.random() * 100 + 1; // Random between 1 and 100
+                const researchPower = currentWisdom * roll;
+
+                // Apply minimum success chance: if roll is <= 10, always succeed
+                const minChanceSuccess = roll <= (RESEARCH_MIN_SUCCESS_CHANCE * 100);
+                const powerSuccess = researchPower >= effectiveHardness;
+                const success = minChanceSuccess || powerSuccess;
+
+                if (success) {
+                    totalResearchPoints += 1;
+                } else {
+                    // Debug: Track this failed run
+                    debugRuns.push({
+                        run: runNumber,
+                        wisdom: currentWisdom,
+                        roll: roll.toFixed(1),
+                        power: researchPower.toFixed(1),
+                        hardness: effectiveHardness,
+                        minChance: false,
+                        success: success
+                    });
+                    // If failed, stop additional runs on this tick
+                    break;
+                }
+
+                // Debug: Track this successful run
+                debugRuns.push({
+                    run: runNumber,
+                    wisdom: currentWisdom,
+                    roll: roll.toFixed(1),
+                    power: researchPower.toFixed(1),
+                    hardness: effectiveHardness,
+                    minChance: minChanceSuccess,
+                    success: success
+                });
+
+                // Halve wisdom for next run (rounded down), but only if actual wisdom > 0
+                if ((dwarf.wisdom || 0) > 0) {
+                    currentWisdom = Math.floor(currentWisdom / 2);
+                } else {
+                    // Dwarf has 0 wisdom, only gets 1 roll with minimum chance
+                    break;
+                }
+
+                // Safety check: prevent infinite loops
+                if (runNumber > 20) break;
+            }
+
+            // Research points are applied directly (no gem modifier to points anymore)
+            const researchPoints = totalResearchPoints;
             activeResearch.progress += researchPoints;
+
+            // Debug output
+            // console.log(`[RESEARCH] ${dwarf.name} researching ${activeResearch.name} (Lv${currentLevel})`);
+            // console.log(`  Hardness: ${baseHardness} base + ${levelHardnessIncrease} (level scaling) = ${hardnessBeforeGem}`);
+            // if (amethystReduction > 0) {
+            //     console.log(`  💎 Amethyst: -${amethystReduction.toFixed(2)} hardness → ${effectiveHardness.toFixed(2)} effective hardness`);
+            // } else {
+            //     console.log(`  Effective hardness: ${effectiveHardness}`);
+            // }
+            // console.log(`  Dwarf Wisdom: ${dwarf.wisdom || 0} (min 10% chance per roll)`);
+            // debugRuns.forEach(run => {
+            //     const result = run.success ? (run.minChance ? '✓ SUCCESS (min chance!)' : '✓ SUCCESS') : '✗ FAIL';
+            //     console.log(`  Run ${run.run}: wisdom=${run.wisdom} × roll=${run.roll} = ${run.power} vs ${run.hardness} → ${result}`);
+            // });
+            // console.log(`  Total: ${totalResearchPoints} research points`);
+
             const WisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (WisdomMultiplier > 0 ? WisdomMultiplier : 1);
             
             // console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
-            
+
             // Check if research is complete using formula: baseCost * (1.15^(targetLevel-1))
             // Current level is what we have, target level is current + 1
-            const currentLevel = activeResearch.level || 0;
             const targetLevel = currentLevel + 1;
             const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
             if (activeResearch.progress >= actualCost) {
@@ -801,13 +921,10 @@ function actForDwarf(dwarf) {
         return;
     }
 
-    // Full bucket handling
-    const bucketTotal = dwarf.bucket ? Object.values(dwarf.bucket).reduce((a, b) => a + b, 0) : 0;
-    // Apply bucket research bonus (1 capacity per level)
-    const bucketResearch = researchtree.find(r => r.id === 'buckets');
-    const bucketBonus = bucketResearch ? (bucketResearch.level || 0) : 0;
-    const dwarfCapacity = bucketCapacity + bucketBonus + (dwarf.strength || 0);
-    if (typeof bucketCapacity === 'number' && bucketTotal >= dwarfCapacity) {
+    // Full bucket handling (weight-based)
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
+    if (bucketWeight >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
                 if (dwarf.status !== 'unloading') {
@@ -859,9 +976,9 @@ function actForDwarf(dwarf) {
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
                                 // Determine available special tasks
-                                const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+                                const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf);
                                 const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
-                                
+
                                 // Check for special task
                                 if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
                                     if (canResearch && canSmelt) {
@@ -929,8 +1046,8 @@ function actForDwarf(dwarf) {
     const row = grid[rowIndex];
     
     // Check if dwarf is at research location BEFORE accessing grid cells (research is outside main grid)
-    if (dwarf.status === 'idle' && typeof research === 'object' && research !== null && 
-        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
+    if (dwarf.status === 'idle' && typeof research === 'object' && research !== null &&
+        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH && canDwarfAttemptResearch(dwarf)) {
         // Only start researching if this dwarf has reserved it or it's not reserved
         if (researchReservedBy === dwarf.name || !researchReservedBy) {
             researchReservedBy = dwarf.name;
@@ -960,7 +1077,7 @@ function actForDwarf(dwarf) {
     // Idle dwarf - check for special tasks (research or smelting)
     // Use a single random check, then evenly distribute between available tasks
     if (dwarf.status === 'idle' && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
-        const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null;
+        const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf);
         const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
         
         // Check for special task
@@ -1548,9 +1665,9 @@ self.addEventListener('message', (e) => {
                 if (data.toolsInventory) toolsInventory = data.toolsInventory;
                 if (data.activeResearch !== undefined) {
                     activeResearch = data.activeResearch;
-                    if (activeResearch) {
-                        console.log('Worker: Active research updated:', activeResearch.name);
-                    }
+                    // if (activeResearch) {
+                    //     console.log('Worker: Active research updated:', activeResearch.name);
+                    // }
                 }
                 if (data.researchtree) {
                     // Copy the full researchtree from main thread
