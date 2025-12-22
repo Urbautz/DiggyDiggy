@@ -2297,12 +2297,7 @@ function populateSmelter() {
         taskName.className = 'smelter-task-name';
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
-        
-        const taskDesc = document.createElement('span');
-        taskDesc.className = 'smelter-task-desc';
-        taskDesc.textContent = task.description;
-        taskInfo.appendChild(taskDesc);
-        
+
         // Show input/output if applicable (compact, no stock info)
         if (task.inputs && task.output) {
             // Multiple inputs (alloy format)
@@ -2364,85 +2359,22 @@ function populateSmelter() {
                 taskRecipe.classList.add(isActionable ? 'recipe-ready' : 'recipe-blocked');
             }
             taskInfo.appendChild(taskRecipe);
-
-            // Add temperature display and controls for heating tasks
-            const tempControls = document.createElement('div');
-            tempControls.style.cssText = 'margin-top: 10px; padding: 10px; background: #1a2a3a; border-radius: 3px; border: 1px solid #3a4a5a;';
-            // Current temperature with bar
-            const tempValue = Math.round(smelterTemperature);
-            const tempColor = tempValue > 1000 ? '#ff4444' : tempValue > 500 ? '#ff8800' : tempValue > 100 ? '#ffbb00' : '#88ccff';
-            const tempDisplay = document.createElement('div');
-            tempDisplay.style.cssText = 'margin-bottom: 8px; font-size: 14px;';
-            tempDisplay.innerHTML = `<strong>Current:</strong> <span style="color: ${tempColor}">${tempValue}°</span>`;
-            tempControls.appendChild(tempDisplay);
-            // Temperature bar
-            const tempBarContainer = document.createElement('div');
-            tempBarContainer.style.cssText = 'width: 100%; height: 12px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 2px; overflow: hidden; margin-bottom: 10px;';
-            const tempBar = document.createElement('div');
-            // Calculate max temperature based on furnace-temperature research
-            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
-            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
-            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
-            tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
-            tempBarContainer.appendChild(tempBar);
-            tempControls.appendChild(tempBarContainer);
-
-            // Temperature range controls
-            const rangeControls = document.createElement('div');
-            // For magma (dynamic), only show min control (single column)
-            // For coal, show both min and max (two columns)
-            if (task.heatGain === 'dynamic') {
-                rangeControls.style.cssText = 'font-size: 12px;';
-            } else {
-                rangeControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;';
-            }
-
-            // Temperature controls depend on task type
-            if (task.heatGain === 'dynamic') {
-                // Magma: only show min control
-                const minControl = document.createElement('div');
-                minControl.innerHTML = `
-                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterMagmaMinTemp}°</label>
-                    <div style="display: flex; gap: 3px;">
-                        <button class="temp-btn" onclick="adjustMagmaMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                        <button class="temp-btn" onclick="adjustMagmaMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                    </div>
-                `;
-                rangeControls.appendChild(minControl);
-            } else {
-                // Coal: show both min and max controls
-                const minControl = document.createElement('div');
-                minControl.innerHTML = `
-                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Min: ${smelterCoalMinTemp}°</label>
-                    <div style="display: flex; gap: 3px;">
-                        <button class="temp-btn" onclick="adjustCoalMinTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                        <button class="temp-btn" onclick="adjustCoalMinTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                    </div>
-                `;
-                rangeControls.appendChild(minControl);
-
-                const maxControl = document.createElement('div');
-                maxControl.innerHTML = `
-                    <label style="display: block; margin-bottom: 3px; color: #9fbfe0; font-size: 11px;">Max: ${smelterCoalMaxTemp}°</label>
-                    <div style="display: flex; gap: 3px;">
-                        <button class="temp-btn" onclick="adjustCoalMaxTemp(-25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
-                        <button class="temp-btn" onclick="adjustCoalMaxTemp(25)" style="flex: 1; padding: 3px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
-                    </div>
-                `;
-                rangeControls.appendChild(maxControl);
-            }
-
-            tempControls.appendChild(rangeControls);
-            taskInfo.appendChild(tempControls);
         }
         
         taskRow.appendChild(taskInfo);
-        
+
         // Move buttons container
         const btnContainer = document.createElement('div');
         btnContainer.className = 'smelter-task-buttons';
-        
+
+        // Info button
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'smelter-btn-info';
+        infoBtn.innerHTML = 'ℹ️';
+        infoBtn.title = 'Show task details';
+        infoBtn.onclick = () => openTaskDetailsModal(task, isUnlocked, requiredResearchName);
+        btnContainer.appendChild(infoBtn);
+
         // Move up button
         const upBtn = document.createElement('button');
         upBtn.className = 'smelter-btn-move';
@@ -2451,7 +2383,7 @@ function populateSmelter() {
         upBtn.disabled = index === 0;
         upBtn.onclick = () => moveSmelterTask(index, -1);
         btnContainer.appendChild(upBtn);
-        
+
         // Move to top button
         const topBtn = document.createElement('button');
         topBtn.className = 'smelter-btn-move';
@@ -2460,7 +2392,7 @@ function populateSmelter() {
         topBtn.disabled = index === 0;
         topBtn.onclick = () => moveSmelterTaskToTop(index);
         btnContainer.appendChild(topBtn);
-        
+
         // Move down button
         const downBtn = document.createElement('button');
         downBtn.className = 'smelter-btn-move';
@@ -2469,7 +2401,7 @@ function populateSmelter() {
         downBtn.disabled = index === smelterTasks.length - 1;
         downBtn.onclick = () => moveSmelterTask(index, 1);
         btnContainer.appendChild(downBtn);
-        
+
         // Deactivate button (move to end)
         const deactivateBtn = document.createElement('button');
         deactivateBtn.className = 'smelter-btn-move';
@@ -2478,12 +2410,262 @@ function populateSmelter() {
         deactivateBtn.disabled = index === smelterTasks.length - 1;
         deactivateBtn.onclick = () => moveSmelterTaskToBottom(index);
         btnContainer.appendChild(deactivateBtn);
-        
+
         taskRow.appendChild(btnContainer);
         taskList.appendChild(taskRow);
     });
     
     container.appendChild(taskList);
+}
+
+// Open task details modal
+function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
+    openModal('task-details-modal');
+
+    const titleEl = document.getElementById('task-details-title');
+    const contentEl = document.getElementById('task-details-content');
+
+    if (!titleEl || !contentEl) return;
+
+    titleEl.textContent = task.name;
+    contentEl.innerHTML = '';
+
+    // Description section
+    const descSection = document.createElement('div');
+    descSection.className = 'task-detail-section';
+    descSection.innerHTML = `<h3>Description</h3><p>${task.description}</p>`;
+    contentEl.appendChild(descSection);
+
+    // Input/Output Materials section
+    if ((task.input && task.output) || (task.inputs && task.output) || task.type === 'gem-cutting') {
+        const materialsSection = document.createElement('div');
+        materialsSection.className = 'task-detail-section';
+        materialsSection.innerHTML = '<h3>Materials</h3>';
+
+        const materialsTable = document.createElement('table');
+        materialsTable.className = 'task-detail-table';
+
+        if (task.type === 'gem-cutting') {
+            materialsTable.innerHTML = `
+                <tr><th>Input</th><td>Any gem marked for cutting</td></tr>
+                <tr><th>Output</th><td>Polished gem (+50% value)</td></tr>
+                <tr><th>Time</th><td>${task.ticksRequired || 0} ticks</td></tr>
+            `;
+        } else if (task.inputs && Array.isArray(task.inputs)) {
+            // Multiple inputs (alloy format)
+            const inputRows = task.inputs.map(input => {
+                const inputMat = getMaterialById(input.material);
+                const inputName = inputMat ? inputMat.name : input.material;
+                const stockAmount = materialsStock[input.material] || 0;
+                return `<tr><th>Input</th><td>${input.amount}x ${inputName} <span style="color: ${stockAmount >= input.amount ? '#81c784' : '#e57373'};">(Stock: ${formatNumber(stockAmount, 'material')})</span></td></tr>`;
+            }).join('');
+
+            const outputMat = getMaterialById(task.output.material);
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            materialsTable.innerHTML = `
+                ${inputRows}
+                <tr><th>Output</th><td>${task.output.amount}x ${outputName}</td></tr>
+            `;
+        } else if (task.input && task.output) {
+            // Single input
+            const inputMat = getMaterialById(task.input.material);
+            const outputMat = getMaterialById(task.output.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const outputName = outputMat ? outputMat.name : task.output.material;
+            const stockAmount = materialsStock[task.input.material] || 0;
+            materialsTable.innerHTML = `
+                <tr><th>Input</th><td>${task.input.amount}x ${inputName} <span style="color: ${stockAmount >= task.input.amount ? '#81c784' : '#e57373'};">(Stock: ${formatNumber(stockAmount, 'material')})</span></td></tr>
+                <tr><th>Output</th><td>${task.output.amount}x ${outputName}</td></tr>
+            `;
+        } else if (task.input && task.type === 'heating') {
+            // Heating task
+            const inputMat = getMaterialById(task.input.material);
+            const inputName = inputMat ? inputMat.name : task.input.material;
+            const stockAmount = materialsStock[task.input.material] || 0;
+            const heatInfo = task.heatGain === 'dynamic' ? 'Heat to max temperature' : `+${task.heatGain}° (max 2000°)`;
+            materialsTable.innerHTML = `
+                <tr><th>Input</th><td>${task.input.amount}x ${inputName} <span style="color: ${stockAmount >= task.input.amount ? '#81c784' : '#e57373'};">(Stock: ${formatNumber(stockAmount, 'material')})</span></td></tr>
+                <tr><th>Effect</th><td>${heatInfo}</td></tr>
+            `;
+        }
+
+        if (task.breakChance) {
+            const breakRow = document.createElement('tr');
+            breakRow.innerHTML = `<th>Break Chance</th><td>${Math.round(task.breakChance * 100)}%</td>`;
+            materialsTable.appendChild(breakRow);
+        }
+
+        materialsSection.appendChild(materialsTable);
+        contentEl.appendChild(materialsSection);
+    }
+
+    // Heating/Temperature Settings section
+    if (task.minTemp || task.type === 'heating') {
+        const tempSection = document.createElement('div');
+        tempSection.className = 'task-detail-section';
+        tempSection.innerHTML = '<h3>Temperature Settings</h3>';
+
+        const tempTable = document.createElement('table');
+        tempTable.className = 'task-detail-table';
+
+        if (task.minTemp) {
+            const currentTemp = Math.round(smelterTemperature);
+            const tempStatus = currentTemp >= task.minTemp ? '✅ Ready' : `❌ Too low (${currentTemp}°)`;
+            tempTable.innerHTML = `
+                <tr><th>Required Temp</th><td>${task.minTemp}°</td></tr>
+                <tr><th>Current Temp</th><td style="color: ${currentTemp >= task.minTemp ? '#81c784' : '#e57373'};">${tempStatus}</td></tr>
+            `;
+        } else if (task.type === 'heating') {
+            const currentTemp = Math.round(smelterTemperature);
+            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+            // Temperature bar
+            const tempBarContainer = document.createElement('div');
+            tempBarContainer.style.cssText = 'width: 100%; height: 20px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 4px; overflow: hidden; margin-bottom: 12px;';
+            const tempBar = document.createElement('div');
+            tempBar.id = 'task-detail-temp-bar';
+            const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+            tempBar.style.cssText = `width: ${tempPercent}%; height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;`;
+            tempBarContainer.appendChild(tempBar);
+            tempSection.appendChild(tempBarContainer);
+
+            // Current temp display
+            const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
+            const currentTempRow = document.createElement('tr');
+            currentTempRow.innerHTML = `<th>Current Temp</th><td id="task-detail-current-temp" style="color: ${tempColor}; font-weight: bold;">${currentTemp}°</td>`;
+            tempTable.appendChild(currentTempRow);
+
+            if (task.heatGain === 'dynamic') {
+                tempTable.innerHTML += `
+                    <tr><th>Max Temp</th><td>${maxTempLimit}°</td></tr>
+                `;
+
+                // Magma min threshold control
+                const minThresholdRow = document.createElement('tr');
+                minThresholdRow.innerHTML = `
+                    <th>Min Threshold</th>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="task-detail-magma-min">${smelterMagmaMinTemp}°</span>
+                            <button onclick="adjustMagmaMinTemp(-25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                            <button onclick="adjustMagmaMinTemp(25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                        </div>
+                    </td>
+                `;
+                tempTable.appendChild(minThresholdRow);
+            } else {
+                tempTable.innerHTML += `
+                    <tr><th>Heat Gain</th><td>+${task.heatGain}° per use</td></tr>
+                `;
+
+                // Coal min threshold control
+                const minThresholdRow = document.createElement('tr');
+                minThresholdRow.innerHTML = `
+                    <th>Min Threshold</th>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="task-detail-coal-min">${smelterCoalMinTemp}°</span>
+                            <button onclick="adjustCoalMinTemp(-25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                            <button onclick="adjustCoalMinTemp(25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                        </div>
+                    </td>
+                `;
+                tempTable.appendChild(minThresholdRow);
+
+                // Coal max threshold control
+                const maxThresholdRow = document.createElement('tr');
+                maxThresholdRow.innerHTML = `
+                    <th>Max Threshold</th>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="task-detail-coal-max">${smelterCoalMaxTemp}°</span>
+                            <button onclick="adjustCoalMaxTemp(-25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">-25°</button>
+                            <button onclick="adjustCoalMaxTemp(25); updateTaskDetailTemperature()" style="padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;">+25°</button>
+                        </div>
+                    </td>
+                `;
+                tempTable.appendChild(maxThresholdRow);
+            }
+        }
+
+        tempSection.appendChild(tempTable);
+        contentEl.appendChild(tempSection);
+    }
+
+    // Requirements section
+    const reqSection = document.createElement('div');
+    reqSection.className = 'task-detail-section';
+    reqSection.innerHTML = '<h3>Requirements</h3>';
+
+    const reqTable = document.createElement('table');
+    reqTable.className = 'task-detail-table';
+
+    if (task.requires) {
+        const status = isUnlocked ? '✅ Unlocked' : `🔒 Locked`;
+        const statusColor = isUnlocked ? '#81c784' : '#e57373';
+        reqTable.innerHTML = `
+            <tr><th>Research</th><td style="color: ${statusColor};">${requiredResearchName} - ${status}</td></tr>
+        `;
+    } else {
+        reqTable.innerHTML = `<tr><th>Research</th><td style="color: #81c784;">✅ None required</td></tr>`;
+    }
+
+    reqSection.appendChild(reqTable);
+    contentEl.appendChild(reqSection);
+
+    // Set up auto-refresh for temperature values if this is a heating task
+    if (task.type === 'heating' || task.minTemp) {
+        if (window.taskDetailRefreshInterval) {
+            clearInterval(window.taskDetailRefreshInterval);
+        }
+        window.taskDetailRefreshInterval = setInterval(() => {
+            const modal = document.getElementById('task-details-modal');
+            if (modal && modal.getAttribute('aria-hidden') === 'false') {
+                updateTaskDetailTemperature();
+            } else {
+                clearInterval(window.taskDetailRefreshInterval);
+                window.taskDetailRefreshInterval = null;
+            }
+        }, 100); // Update every 100ms for smooth updates
+    }
+}
+
+// Update temperature values in task details modal
+function updateTaskDetailTemperature() {
+    const currentTempEl = document.getElementById('task-detail-current-temp');
+    const tempBarEl = document.getElementById('task-detail-temp-bar');
+    const coalMinEl = document.getElementById('task-detail-coal-min');
+    const coalMaxEl = document.getElementById('task-detail-coal-max');
+    const magmaMinEl = document.getElementById('task-detail-magma-min');
+
+    if (currentTempEl) {
+        const currentTemp = Math.round(smelterTemperature);
+        const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
+        currentTempEl.textContent = `${currentTemp}°`;
+        currentTempEl.style.color = tempColor;
+    }
+
+    if (tempBarEl) {
+        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+        tempBarEl.style.width = `${tempPercent}%`;
+    }
+
+    if (coalMinEl) {
+        coalMinEl.textContent = `${smelterCoalMinTemp}°`;
+    }
+
+    if (coalMaxEl) {
+        coalMaxEl.textContent = `${smelterCoalMaxTemp}°`;
+    }
+
+    if (magmaMinEl) {
+        magmaMinEl.textContent = `${smelterMagmaMinTemp}°`;
+    }
 }
 
 // Efficiently update just the temperature display in smelter (not full rebuild)
@@ -3662,6 +3844,14 @@ function closeModal(modalName) {
         if (modalName === 'transactions-modal' && window.transactionRefreshInterval) {
             clearInterval(window.transactionRefreshInterval);
             window.transactionRefreshInterval = null;
+        }
+        // If we just closed the task details modal, reopen the smelter modal
+        if (modalName === 'task-details-modal') {
+            if (window.taskDetailRefreshInterval) {
+                clearInterval(window.taskDetailRefreshInterval);
+                window.taskDetailRefreshInterval = null;
+            }
+            openModal('smelter-modal');
         }
         return;
     }
@@ -5039,7 +5229,13 @@ document.addEventListener('click', (ev) => {
     const el = ev.target;
     if (!el) return;
     if (el.dataset && el.dataset.action === 'close-modal') {
-        closeModal();
+        // Find which modal this close button belongs to
+        const modal = el.closest('.modal');
+        if (modal && modal.id) {
+            closeModal(modal.id);
+        } else {
+            closeModal();
+        }
     }
 });
 
