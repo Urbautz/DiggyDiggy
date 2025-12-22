@@ -104,21 +104,21 @@ let smelterTasks = [
     { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'Marble', amount: 1 }, output: { material: 'Polished Marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore (requires 950°).', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
-    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore (requires 1085°).', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
-    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore (requires 420°).', input: { material: 'Zinc Ore', amount: 1 }, output: { material: 'Zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
+    
+    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore.', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
+    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore.', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
+    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore.', input: { material: 'Zinc Ore', amount: 1 }, output: { material: 'Zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
 
-    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy (requires 950°).', inputs: [{ material: 'Bronce', amount: 2 }, { material: 'Copper', amount: 1 }], output: { material: 'Brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
+    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy.', inputs: [{ material: 'Bronce', amount: 2 }, { material: 'Copper', amount: 1 }], output: { material: 'Brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
     
-    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron (requires 1200°).', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
-    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron (requires 1100°).', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },
-   
-    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel (requires 1650°).', input: { material: 'Pig Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
-    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel (requires 2050°).', input: { material: 'Iron', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
-    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel (requires 2525°)', input: { material: 'Hardened Steel', amount: 5 }, output: { material: 'Dwarf Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
+    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
+    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
+    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'Pig Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
+    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'Iron', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
+    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'Hardened Steel', amount: 5 }, output: { material: 'Dwarf Steel', amount: 1 }, minTemp: 1400, requires: 'furnace' },
     
-    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore (requires 962°).', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
-    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore (requires 1064°).', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
+    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
+    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore.', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
   ];
 
 // Smelter temperature system
