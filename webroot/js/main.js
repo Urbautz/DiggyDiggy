@@ -6207,9 +6207,6 @@ function executeBulkSell(action) {
         if (task.inputs && Array.isArray(task.inputs)) {
             task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
-        if (task.output && task.output.material) {
-            craftableMaterials.add(task.output.material);
-        }
     }
 
     let totalGold = 0;
