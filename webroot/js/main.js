@@ -4950,7 +4950,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
-        <div>× Level Bonus: ${formatNumber(levelBonus, 'percent')} (${baseDigPowerPoints} skill points)</div>
+        <div>× Level Bonus: ${formatNumber(levelBonus, 'percent')}</div>
         ${diamondBonusLine}
         <div>× Research: ${formatNumber(researchBonus, 'percent')} (${improvedDigging ? improvedDigging.level : 0})</div>
         <div>× Tool Power: ${formatNumber(toolPower, 'percent')}</div>
@@ -5141,7 +5141,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     const amethystReduction = getAmethystHardnessReduction(dwarf);
     const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
-    const wisdomDesc = `Research and Smelting Speed\nIncreases research success probability${amethystBonus}`;
+    const wisdomDesc = `Research success probability and Smelting Speed\n${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
@@ -5286,7 +5286,7 @@ function applyLevelUp(dwarf, upgradeType) {
             break;
         case 'strength':
             const oldStrength = actualDwarf.strength || 0;
-            actualDwarf.strength = oldStrength + DWARF_LEVELUP_STRENGTH_BONUS;
+            actualDwarf.strength = oldStrength + 1;
             console.log(`Leveled up strength: ${oldStrength} -> ${actualDwarf.strength}`);
             break;
         case 'wisdom':
