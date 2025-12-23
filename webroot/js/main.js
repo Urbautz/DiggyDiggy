@@ -3103,6 +3103,27 @@ function checkResearchRequirements(researchItem) {
     return { met: true };
 }
 
+function updateResearchProgress() {
+    // Lightweight function to update only the active research progress without redrawing the entire panel
+    if (!activeResearch) return;
+
+    const progressElement = document.getElementById('research-progress');
+    const percentElement = document.getElementById('research-percent');
+    const fillElement = document.getElementById('research-progress-fill');
+
+    if (!progressElement || !percentElement || !fillElement) return;
+
+    const progress = activeResearch.progress || 0;
+    const currentLevel = activeResearch.level || 0;
+    const targetLevel = currentLevel + 1;
+    const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+    const progressPercent = Math.floor((progress / actualCost) * 100);
+
+    progressElement.textContent = formatNumber(progress, 'material');
+    percentElement.textContent = `${progressPercent}%`;
+    fillElement.style.width = `${progressPercent}%`;
+}
+
 function populateResearch() {
     const container = document.getElementById('research-content');
     if (!container) return;
@@ -3117,6 +3138,7 @@ function populateResearch() {
     if (activeResearch) {
         const activeDiv = document.createElement('div');
         activeDiv.className = 'active-research';
+        activeDiv.id = 'active-research-display';
         const progress = activeResearch.progress || 0;
         // Calculate actual cost using formula: baseCost * (1.15^(targetLevel-1))
         const currentLevel = activeResearch.level || 0;
@@ -3126,11 +3148,11 @@ function populateResearch() {
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong>${activeResearch.name}</strong> (Level ${targetLevel}) • ${progressPercent}% complete</p>
+            <p><strong id="research-name">${activeResearch.name}</strong> (Level ${targetLevel}) • <span id="research-percent">${progressPercent}%</span> complete</p>
             <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: ${formatNumber(progress, 'material')} / ${formatNumber(actualCost,'material')} 🔬<br>Gold paid: ${actualGoldCost} 💰</small></p>
+            <p><small>Progress: <span id="research-progress">${formatNumber(progress, 'material')}</span> / <span id="research-cost">${formatNumber(actualCost,'material')}</span> 🔬<br>Gold paid: ${actualGoldCost} 💰</small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-                <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+                <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" id="research-progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
             </div>
         `;
@@ -6903,10 +6925,16 @@ function initWorker() {
                     }
                 }
                 
-                // Update research modal if it's open and research state changed
+                // Update research modal if it's open
                 const researchModal = document.getElementById('research-modal');
-                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false' && researchStateChanged) {
-                    populateResearch();
+                if (researchModal && researchModal.getAttribute('aria-hidden') === 'false') {
+                    if (researchStateChanged) {
+                        // Full redraw when state changes (new research, queue changes, etc.)
+                        populateResearch();
+                    } else if (activeResearch) {
+                        // Lightweight progress update when only progress changes
+                        updateResearchProgress();
+                    }
                 }
                 
                 // Autosave after each tick
