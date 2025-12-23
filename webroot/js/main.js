@@ -3147,7 +3147,47 @@ function populateResearch() {
         
         container.appendChild(activeDiv);
     }
-    
+
+    // Show research queue if any
+    if (researchQueue.length > 0) {
+        const queueDiv = document.createElement('div');
+        queueDiv.className = 'research-queue';
+        queueDiv.style.cssText = 'background: #2a2a3e; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #444;';
+
+        let queueHTML = '<h3 style="margin-top: 0; color: #ffa500;">📋 Research Queue</h3>';
+        queueHTML += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+
+        researchQueue.forEach((queuedResearch, index) => {
+            queueHTML += `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #1e1e2e; padding: 8px 12px; border-radius: 4px; border: 1px solid #555;">
+                    <div style="flex: 1;">
+                        <strong>${index + 1}. ${queuedResearch.name}</strong> (Level ${queuedResearch.targetLevel})
+                        <span style="color: #888; font-size: 11px; margin-left: 8px;">Gold paid: ${formatNumber(queuedResearch.goldCost, 'gold')} 💰</span>
+                    </div>
+                    <button class="btn-remove-from-queue" data-index="${index}" style="padding: 4px 8px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">✖ Remove</button>
+                </div>
+            `;
+        });
+
+        queueHTML += '</div>';
+        queueHTML += `<p style="margin-top: 8px; margin-bottom: 0; font-size: 11px; color: #888;">Queue: ${researchQueue.length}/5 slots used</p>`;
+        queueDiv.innerHTML = queueHTML;
+
+        // Add remove button handlers
+        container.appendChild(queueDiv);
+        queueDiv.querySelectorAll('.btn-remove-from-queue').forEach(btn => {
+            const index = parseInt(btn.dataset.index);
+            btn.onmouseover = () => { btn.style.background = '#ff5252'; };
+            btn.onmouseout = () => { btn.style.background = '#ff6b6b'; };
+            btn.onclick = () => {
+                const research = researchQueue[index];
+                if (confirm(`Remove ${research.name} from queue?\n\n${formatNumber(research.goldCost, 'gold')} 💰 will be refunded.`)) {
+                    removeFromResearchQueue(index);
+                }
+            };
+        });
+    }
+
     const researchTable = document.createElement('table');
     researchTable.className = 'research-table';
     
@@ -3219,8 +3259,9 @@ function populateResearch() {
         } else {
             const researchBtn = document.createElement('button');
 
-            // Check if this research is already active
+            // Check if this research is already active or in queue
             const isActive = activeResearch && activeResearch.id === researchItem.id;
+            const isInQueue = researchQueue.some(r => r.id === researchItem.id);
 
             // Check if requirements are met
             const requirementsMet = checkResearchRequirements(researchItem);
@@ -3232,6 +3273,12 @@ function populateResearch() {
                 researchBtn.className = 'btn-research active';
                 researchBtn.textContent = 'Active';
                 researchBtn.disabled = true;
+            } else if (isInQueue) {
+                researchBtn.className = 'btn-research active';
+                researchBtn.textContent = 'Queued';
+                researchBtn.disabled = true;
+                const queuePos = researchQueue.findIndex(r => r.id === researchItem.id) + 1;
+                researchBtn.title = `In queue (position ${queuePos})`;
             } else if (!requirementsMet.met) {
                 // Requirements not met - gray out
                 researchBtn.className = 'btn-research disabled';
@@ -3241,15 +3288,21 @@ function populateResearch() {
             } else if (!hasEnoughGold) {
                 // Not enough gold
                 researchBtn.className = 'btn-research disabled';
-                researchBtn.textContent = 'Research';
+                researchBtn.textContent = activeResearch ? 'Queue' : 'Research';
                 researchBtn.disabled = true;
                 researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
             } else if (activeResearch) {
-                // Another research is active
-                researchBtn.className = 'btn-research disabled';
-                researchBtn.textContent = 'Research';
-                researchBtn.disabled = true;
-                researchBtn.title = 'Another research is in progress';
+                // Another research is active - show queue button
+                researchBtn.className = 'btn-research';
+                researchBtn.textContent = researchQueue.length >= 5 ? 'Queue Full' : 'Queue';
+                researchBtn.disabled = researchQueue.length >= 5;
+                researchBtn.dataset.researchId = researchItem.id;
+                if (researchQueue.length >= 5) {
+                    researchBtn.className = 'btn-research disabled';
+                    researchBtn.title = 'Research queue is full (max 5)';
+                } else {
+                    researchBtn.title = `Add to queue (${researchQueue.length}/5 slots used)`;
+                }
             } else {
                 researchBtn.className = 'btn-research';
                 researchBtn.textContent = 'Research';
@@ -3323,9 +3376,66 @@ function startResearch(researchId) {
         return;
     }
 
-    // Check if another research is active
+    // Check if research is already in queue or active
+    if (activeResearch && activeResearch.id === researchId) {
+        console.error('This research is already active');
+        return;
+    }
+    if (researchQueue.some(r => r.id === researchId)) {
+        console.error('This research is already in the queue');
+        return;
+    }
+
+    // If another research is active, add to queue
     if (activeResearch) {
-        console.error('Another research is already active');
+        if (researchQueue.length >= 5) {
+            alert('Research queue is full! Maximum 5 researches can be queued.');
+            return;
+        }
+
+        // Calculate gold cost for next level
+        const currentLevel = researchItem.level || 0;
+        const targetLevel = currentLevel + 1;
+        const goldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+
+        // Check if player has enough gold
+        if (gold < goldCost) {
+            console.error(`Not enough gold to queue research. Required: ${goldCost}, Available: ${gold}`);
+            alert(`Not enough gold! Required: ${formatNumber(goldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`);
+            return;
+        }
+
+        // Deduct gold cost and add to queue
+        gold -= goldCost;
+        logTransaction('expense', goldCost, `Queued research: ${researchItem.name} (Level ${targetLevel})`);
+
+        researchQueue.push({
+            id: researchItem.id,
+            name: researchItem.name,
+            level: currentLevel,
+            targetLevel: targetLevel,
+            goldCost: goldCost
+        });
+
+        console.log(`[MAIN] Added to research queue: ${researchItem.name} (Position ${researchQueue.length})`);
+        console.log('[MAIN] Current queue:', researchQueue);
+
+        // Sync with worker
+        if (gameWorker && workerInitialized) {
+            console.log('[MAIN] Syncing queue to worker...');
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: {
+                    researchQueue: researchQueue,
+                    gold: gold
+                }
+            });
+        } else {
+            console.warn('[MAIN] Worker not initialized, queue not synced');
+        }
+
+        populateResearch();
+        saveGame();
         return;
     }
 
@@ -3352,7 +3462,7 @@ function startResearch(researchId) {
 
     // Set as active
     activeResearch = researchItem;
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
@@ -3360,16 +3470,59 @@ function startResearch(researchId) {
             data: {
                 activeResearch: activeResearch,
                 researchtree: researchtree,
-                gold: gold
+                gold: gold,
+                researchQueue: researchQueue
             }
         });
     }
-    
+
     // Update displays
     populateResearch();
     saveGame();
-    
+
     console.log(`Started researching: ${researchItem.name}`);
+}
+
+function startNextQueuedResearch() {
+    if (researchQueue.length === 0) {
+        console.log('No more researches in queue');
+        return;
+    }
+
+    const nextResearch = researchQueue.shift();
+    const researchItem = researchtree.find(r => r.id === nextResearch.id);
+
+    if (!researchItem) {
+        console.error('Queued research not found:', nextResearch.id);
+        startNextQueuedResearch(); // Try next in queue
+        return;
+    }
+
+    // Initialize progress if not set
+    if (researchItem.progress === undefined) {
+        researchItem.progress = 0;
+    }
+
+    // Set as active
+    activeResearch = researchItem;
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                activeResearch: activeResearch,
+                researchtree: researchtree,
+                researchQueue: researchQueue
+            }
+        });
+    }
+
+    // Update displays
+    populateResearch();
+    saveGame();
+
+    console.log(`Started next queued research: ${researchItem.name} (${researchQueue.length} remaining in queue)`);
 }
 
 function cancelResearch() {
@@ -3389,31 +3542,65 @@ function cancelResearch() {
 
     // Clear active research
     activeResearch = null;
-    
+
     // Make all researching dwarfs idle
     for (const dwarf of dwarfs) {
         if (dwarf.status === 'researching') {
             dwarf.status = 'idle';
         }
     }
-    
+
+    // Start next queued research
+    startNextQueuedResearch();
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
-                activeResearch: null,
+                activeResearch: activeResearch,
                 dwarfs: dwarfs,
+                gold: gold,
+                researchQueue: researchQueue
+            }
+        });
+    }
+
+    // Update displays
+    populateResearch();
+    saveGame();
+
+    console.log(`Cancelled research: ${researchName}`);
+}
+
+function removeFromResearchQueue(index) {
+    if (index < 0 || index >= researchQueue.length) {
+        console.error('Invalid queue index:', index);
+        return;
+    }
+
+    const removed = researchQueue.splice(index, 1)[0];
+
+    // Refund gold
+    gold += removed.goldCost;
+    logTransaction('income', removed.goldCost, `Removed from queue: ${removed.name} (Level ${removed.targetLevel}) - refund`);
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                researchQueue: researchQueue,
                 gold: gold
             }
         });
     }
-    
+
     // Update displays
     populateResearch();
     saveGame();
-    
-    console.log(`Cancelled research: ${researchName}`);
+
+    console.log(`Removed from queue: ${removed.name}`);
 }
 
 function populateForge() {
@@ -6208,7 +6395,6 @@ function executeBulkSell(action) {
             task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
     }
-
     let totalGold = 0;
     let totalItems = 0;
     const soldMaterials = [];
@@ -6655,6 +6841,13 @@ function initWorker() {
                     }
                     activeResearch = data.activeResearch;
                 }
+                if (data.researchQueue !== undefined) {
+                    if (JSON.stringify(researchQueue) !== JSON.stringify(data.researchQueue)) {
+                        researchStateChanged = true;
+                        console.log('[MAIN] Research queue changed from worker:', data.researchQueue);
+                    }
+                    researchQueue = data.researchQueue;
+                }
                 if (data.researchtree) {
                     // Merge research progress from worker with current definitions
                     for (const workerResearch of data.researchtree) {
@@ -6758,6 +6951,7 @@ function initWorker() {
             gold,
             toolsInventory,
             activeResearch,
+            researchQueue,
             researchtree,
             smelterTemperature,
             smelterCoalMinTemp,
@@ -6815,6 +7009,7 @@ function saveGame() {
             gold: gold,
             researchtree: researchtree,
             activeResearch: activeResearch,
+            researchQueue: researchQueue,
             transactionLog: transactionLog,
             transactionHistory: transactionHistory,
             currentHourTimestamp: currentHourTimestamp,
@@ -6920,7 +7115,12 @@ function loadGame() {
         if (gameState.activeResearch) {
             activeResearch = gameState.activeResearch;
         }
-        
+
+        // Restore research queue
+        if (gameState.researchQueue && Array.isArray(gameState.researchQueue)) {
+            researchQueue = gameState.researchQueue;
+        }
+
         // Restore transaction log
         if (gameState.transactionLog) {
             transactionLog = gameState.transactionLog;

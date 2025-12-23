@@ -171,6 +171,7 @@ let researchtree = [
       min_depth: 8000, description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.' },
     ];
 let activeResearch = null; // Track which research is currently being researched
+let researchQueue = []; // Queue for up to 5 researches
     
 let grid = [];
 let startX = 0;
