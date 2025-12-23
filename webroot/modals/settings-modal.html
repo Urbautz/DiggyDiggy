@@ -1,0 +1,22 @@
+<!-- Settings modal -->
+<div id="settings-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Settings dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>Settings</h2>
+            <button class="modal-close" aria-label="Close settings" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <p>Your game is automatically saved after each action. You can delete your saved progress below.</p>
+            <div id="settings-cheat-section" class="settings-cheat-section">
+                <h3 class="settings-cheat-title">🎮 Cheat Mode</h3>
+                <p class="settings-cheat-description">For testing purposes only</p>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Activate Cheat</button>
+            <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>

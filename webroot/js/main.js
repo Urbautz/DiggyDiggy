@@ -7421,6 +7421,16 @@ function checkCheatMode() {
     }
 }
 
+// Listen for modals loaded event to re-check cheat mode (in case elements weren't available initially)
+window.addEventListener('modalsLoaded', () => {
+    if (cheatModeEnabled) {
+        const cheatSection = document.getElementById('settings-cheat-section');
+        const cheatButton = document.getElementById('settings-cheat-button');
+        if (cheatSection) cheatSection.classList.add('visible');
+        if (cheatButton) cheatButton.classList.add('visible');
+    }
+});
+
 // Start the game
 checkCheatMode();
 initGame();

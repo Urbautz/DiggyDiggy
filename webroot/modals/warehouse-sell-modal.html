@@ -1,0 +1,69 @@
+<!-- Warehouse Sell Options modal -->
+<div id="warehouse-sell-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Warehouse Sell Options dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>💰 Warehouse - Bulk Sell</h2>
+            <button class="modal-close" aria-label="Close warehouse sell" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <div id="warehouse-sell-content">
+                <div class="warehouse-sell-options">
+                    <button class="warehouse-sell-option" data-action="sell-loose">
+                        <div class="wso-header">
+                            <span class="wso-label">Sell Loose Materials</span>
+                            <span class="wso-value" id="wso-loose-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-loose-details"></span>
+                    </button>
+                    <button class="warehouse-sell-option" data-action="sell-stones">
+                        <div class="wso-header">
+                            <span class="wso-label">Sell All Stones</span>
+                            <span class="wso-value" id="wso-stones-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-stones-details"></span>
+                    </button>
+                    <button class="warehouse-sell-option" data-action="sell-non-craftables">
+                        <div class="wso-header">
+                            <span class="wso-label">Sell All Non-Craftables</span>
+                            <span class="wso-value" id="wso-non-craftables-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-non-craftables-details"></span>
+                    </button>
+                    <div class="warehouse-sell-separator"></div>
+                    <button class="warehouse-sell-option danger" data-action="sell-ores">
+                        <div class="wso-header">
+                            <span class="wso-label">⚠️ Sell All Ores</span>
+                            <span class="wso-value" id="wso-ores-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-ores-details"></span>
+                    </button>
+                    <button class="warehouse-sell-option danger" data-action="sell-ingots">
+                        <div class="wso-header">
+                            <span class="wso-label">⚠️ Sell All Ingots</span>
+                            <span class="wso-value" id="wso-ingots-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-ingots-details"></span>
+                    </button>
+                    <button class="warehouse-sell-option danger" data-action="sell-heating">
+                        <div class="wso-header">
+                            <span class="wso-label">⚠️ Sell All Heating Materials</span>
+                            <span class="wso-value" id="wso-heating-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-heating-details"></span>
+                    </button>
+                    <button class="warehouse-sell-option danger" data-action="sell-all">
+                        <div class="wso-header">
+                            <span class="wso-label">⚠️ SELL EVERYTHING</span>
+                            <span class="wso-value" id="wso-all-value">0 💰</span>
+                        </div>
+                        <span class="wso-details" id="wso-all-details"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>
