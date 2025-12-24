@@ -236,7 +236,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     // Populate dig power
     document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'percent');
     const enchantLine = enchantLevel > 0 ? `<div style="color: #b19cd9;">× Enchantment: ${formatNumber(enchantBonus, 'percent')} (+${enchantLevel})</div>` : '';
-    const diamondBonusPercent = ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100);
+    const diamondBonusPercent = baseDigPowerPoints > 0
+        ? ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100)
+        : 0;
     const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
         ? `<div style="color: #66ccff; margin-left: 10px;">💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
         : '';
@@ -418,7 +420,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     // Calculate gem bonuses for display
     const baseDigPower = dwarf.digPower || 0;
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
-    const diamondDigPowerPercent = modifiedDigPower > baseDigPower ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100) : 0;
+    const diamondDigPowerPercent = (modifiedDigPower > baseDigPower && baseDigPower > 0)
+        ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100)
+        : 0;
     const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
     const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
 
@@ -427,7 +431,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
     const effectiveStrength = Math.floor(modifiedStrength);
-    const sapphireBonusPercent = modifiedStrength > baseStrength ? ((modifiedStrength - baseStrength) / baseStrength * 100) : 0;
+    const sapphireBonusPercent = (modifiedStrength > baseStrength && baseStrength > 0)
+        ? ((modifiedStrength - baseStrength) / baseStrength * 100)
+        : 0;
     const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
     const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
