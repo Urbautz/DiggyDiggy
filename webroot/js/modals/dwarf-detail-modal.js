@@ -4,6 +4,25 @@
  */
 
 /**
+ * Helper function to convert coordinates to location name
+ */
+function getLocationName(x, y) {
+    if (typeof house === 'object' && house !== null && x === house.x && y === house.y) {
+        return '🏠 House';
+    }
+    if (typeof dropOff === 'object' && dropOff !== null && x === dropOff.x && y === dropOff.y) {
+        return '📦 Warehouse';
+    }
+    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
+        return '🔬 Research Lab';
+    }
+    if (typeof smelter === 'object' && smelter !== null && x === smelter.x && y === smelter.y) {
+        return '🔥 Smelter';
+    }
+    return '📍 (' + x + ' | ' + y + ')';
+}
+
+/**
  * Opens the dwarfs panel view
  */
 function openDwarfs() {
@@ -514,28 +533,11 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
-    // Update debug information
-    document.getElementById('dwarf-position').textContent = `📍 (${dwarf.x || 0}, ${dwarf.y || 0})`;
+    // Update location information with friendly names
+    document.getElementById('dwarf-position').textContent = getLocationName(dwarf.x || 0, dwarf.y || 0);
     document.getElementById('dwarf-move-target').textContent = dwarf.moveTarget
-        ? `→ (${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})`
+        ? getLocationName(dwarf.moveTarget.x, dwarf.moveTarget.y)
         : '→ None';
-
-    // Build reservations text
-    const reservations = [];
-    if (dwarf.reservations) {
-        if (dwarf.reservations.dig && dwarf.reservations.dig.length > 0) {
-            reservations.push(`Dig: ${dwarf.reservations.dig.length} cell(s)`);
-        }
-        if (dwarf.reservations.research) {
-            reservations.push('Research');
-        }
-        if (dwarf.reservations.smelter) {
-            reservations.push('Smelter');
-        }
-    }
-    document.getElementById('dwarf-reservations').textContent = reservations.length > 0
-        ? `📌 ${reservations.join(', ')}`
-        : '📌 None';
 
     // Update bucket header and contents
     document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
