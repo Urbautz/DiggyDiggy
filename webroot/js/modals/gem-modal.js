@@ -443,7 +443,7 @@ function populateGemsList() {
                     <div class="gem-item-status-column">
                         ${statusSection}
                     </div>
-                    <span class="gem-item-count">×${group.count}</span>
+                    <span class="gem-item-count">×${group.gems.length}</span>
                     <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
                     ${sellButtonsHTML}
                 </div>
