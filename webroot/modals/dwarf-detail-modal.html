@@ -1,0 +1,101 @@
+<!-- Dwarf Detail modal -->
+<div id="dwarf-detail-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Dwarf Detail dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>⭐ Level Up!</h2>
+            <button class="modal-close" aria-label="Close level up" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <div id="dwarf-detail-content">
+                <!-- Top section: Stats and Bucket -->
+                <div class="dwarf-stats-container">
+                    <!-- Left: Basic stats -->
+                    <div class="dwarf-stats-container">
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">Level</div>
+                            <div id="dwarf-level" class="dwarf-stat-value">⭐ 1</div>
+                        </div>
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">XP</div>
+                            <div id="dwarf-xp" class="dwarf-stat-value">0/100</div>
+                        </div>
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">Energy</div>
+                            <div id="dwarf-energy" class="dwarf-stat-value">⚡ 100/100</div>
+                        </div>
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">Status</div>
+                            <div id="dwarf-status" class="dwarf-stat-value">💼 idle</div>
+                        </div>
+                    </div>
+                    <!-- Right: Bucket contents -->
+                    <div class="dwarf-bucket-container">
+                        <h4 id="dwarf-bucket-header" class="dwarf-bucket-header">🪣 Bucket (0/10)</h4>
+                        <div id="dwarf-bucket-contents">
+                            <p class="dwarf-bucket-empty">Empty</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dig Power, Wage & Tools section -->
+                <div class="dwarf-power-wage-tools">
+                    <!-- Left: Dig power calculation -->
+                    <div>
+                        <h4 class="dwarf-section-title">⛏️ Dig Power</h4>
+                        <div id="dwarf-digpower-total" class="dwarf-section-main-value dwarf-digpower-value">3.0</div>
+                        <div id="dwarf-digpower-calc" class="dwarf-section-details">
+                            <div>Base: 3</div>
+                            <div>× Level Bonus: 1.00 (0)</div>
+                            <div>× Research: 1.00 (0)</div>
+                            <div>× Tool Power: 1.00</div>
+                        </div>
+                    </div>
+                    <!-- Middle: Wage section -->
+                    <div class="dwarf-section-divider-left">
+                        <h4 class="dwarf-section-title">💰 Wage</h4>
+                        <div id="dwarf-wage-current" class="dwarf-section-main-value dwarf-wage-value">0.01</div>
+                        <div id="dwarf-wage-calc" class="dwarf-section-details">
+                            <div>Base: 0.01</div>
+                            <div>× Level: 1.00</div>
+                            <div id="dwarf-wage-next" class="dwarf-wage-next">Next level: 0.0125</div>
+                        </div>
+                    </div>
+                    <!-- Right: Tool section -->
+                    <div class="dwarf-section-divider-right">
+                        <h4 class="dwarf-section-title">⛏️ Tool</h4>
+                        <div id="dwarf-tool-current" class="dwarf-tool-current">
+                            <p class="dwarf-tool-none">No tool</p>
+                        </div>
+                        <select id="dwarf-tool-select" class="dwarf-tool-select">
+                            <option value="">None</option>
+                        </select>
+                        <div id="dwarf-tool-badges" class="dwarf-tool-badges"></div>
+                    </div>
+                </div>
+
+                <!-- Stats and level up section -->
+                <div class="dwarf-stats-section">
+                    <div id="dwarf-stats-grid" class="dwarf-stats-grid">
+                        <!-- Stats will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Rename and Reset section -->
+                <div class="dwarf-rename-container">
+                    <div class="dwarf-rename-form">
+                        <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" class="dwarf-rename-input">
+                        <button id="dwarf-rename-btn" data-action="rename-dwarf" class="dwarf-rename-btn">Rename</button>
+                        <button id="dwarf-reset-btn" data-action="reset-dwarf" class="btn-danger" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;">🔄 Reset (<span id="dwarf-reset-cost">0</span>💰)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <select id="dwarf-switcher" class="dwarf-switcher">
+                <option value="">Switch to...</option>
+            </select>
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>

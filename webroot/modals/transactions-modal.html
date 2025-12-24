@@ -1,0 +1,24 @@
+<!-- Finances modal -->
+<div id="transactions-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Finances dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>💰 Finances</h2>
+            <button class="modal-close" aria-label="Close finances" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <!-- Tab buttons -->
+            <div class="finances-tabs-container">
+                <button id="finances-tab-summary" class="finances-tab active" onclick="switchFinancesTab('summary')">Hourly Summary</button>
+                <button id="finances-tab-recent" class="finances-tab" onclick="switchFinancesTab('recent')">Recent Transactions</button>
+            </div>
+
+            <div id="transactions-content" class="transactions-content">
+                <!-- Content will be added here -->
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>

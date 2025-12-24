@@ -1,0 +1,54 @@
+<!-- Smelter Task Details modal -->
+<div id="task-details-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Task Details dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2 id="task-details-title">Task Details</h2>
+            <button class="modal-close" aria-label="Close task details" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <div id="task-details-content">
+                <!-- Description Section -->
+                <div class="task-detail-section">
+                    <h3>Description</h3>
+                    <p id="task-description"></p>
+                </div>
+
+                <!-- Materials Section (hidden by default) -->
+                <div id="task-materials-section" class="task-detail-section" style="display: none;">
+                    <h3>Materials</h3>
+                    <table class="task-detail-table">
+                        <tbody id="task-materials-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- Temperature Section (hidden by default) -->
+                <div id="task-temperature-section" class="task-detail-section" style="display: none;">
+                    <h3>Temperature Settings</h3>
+                    <div id="task-temp-bar-container" style="display: none; width: 100%; height: 20px; background: #0a1a2a; border: 1px solid #3a4a5a; border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+                        <div id="task-detail-temp-bar" style="height: 100%; background: linear-gradient(to right, #4488ff, #ff8800, #ff4444); transition: width 0.3s;"></div>
+                    </div>
+                    <table class="task-detail-table">
+                        <tbody id="task-temperature-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- Requirements Section -->
+                <div class="task-detail-section">
+                    <h3>Requirements</h3>
+                    <table class="task-detail-table">
+                        <tbody>
+                            <tr>
+                                <th>Research</th>
+                                <td id="task-requirements"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>

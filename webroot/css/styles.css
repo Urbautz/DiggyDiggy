@@ -764,8 +764,10 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     backdrop-filter: blur(10px) saturate(120%);
-    max-height: 340px;
+    max-height: 270px;
+    width:540px;
     overflow-y: auto;
+    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.3) transparent;
 }
@@ -815,17 +817,17 @@ header, footer {
 .warehouse-row {
     display: grid;
     grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
-    padding: 4px 12px;
+    padding: 4px 8px;
     border: 1px solid rgba(255,255,255,0.08);
     border-top: none;
     position: relative;
     overflow: hidden;
     border-radius: 4px;
     margin-bottom: 6px;
-    margin-left: 4px;
-    margin-right: 4px;
+    margin-left: 0;
+    margin-right: 0;
     margin-top: 6px;
 }
 

@@ -28,6 +28,7 @@ let dropGridStartX = 10;
 let gold = 1000;
 let toolsInventory = [];
 let activeResearch = null;
+let researchQueue = [];
 let researchtree = [];
 let pendingTransactions = []; // Queue of transactions to send to main thread
 
@@ -739,14 +740,16 @@ function actForDwarf(dwarf) {
                 const completedResearch = activeResearch;
                 completedResearch.level = (completedResearch.level || 0) + 1;
                 completedResearch.progress = 0;
-                
+
                 // Find and update in researchtree
                 const treeItem = researchtree.find(r => r.id === completedResearch.id);
                 if (treeItem) {
                     treeItem.level = completedResearch.level;
                     treeItem.progress = 0;
                 }
-                
+
+                console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
+
                 // Clear active research and release reservation
                 activeResearch = null;
                 if (researchReservedBy === dwarf.name) {
@@ -754,7 +757,30 @@ function actForDwarf(dwarf) {
                     //console.log(`Research reservation released by ${dwarf.name}`);
                 }
                 dwarf.status = 'idle';
-                console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
+
+                // Start next queued research if available
+                console.log(`[WORKER] Research completed. Queue length: ${researchQueue.length}`);
+                if (researchQueue.length > 0) {
+                    const nextResearch = researchQueue.shift();
+                    console.log(`[WORKER] Starting next queued research:`, nextResearch);
+                    const nextResearchItem = researchtree.find(r => r.id === nextResearch.id);
+
+                    if (nextResearchItem) {
+                        // Initialize progress if not set
+                        if (nextResearchItem.progress === undefined) {
+                            nextResearchItem.progress = 0;
+                        }
+
+                        // Set as active
+                        activeResearch = nextResearchItem;
+                        console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
+                    } else {
+                        console.error('[WORKER] Queued research not found:', nextResearch.id);
+                        // Recursively try next in queue by re-processing
+                    }
+                } else {
+                    console.log('[WORKER] No researches in queue to start');
+                }
             }
             return;
         } else {
@@ -1559,6 +1585,7 @@ function tick() {
                 gold,
                 toolsInventory,
                 activeResearch,
+                researchQueue,
                 researchtree,
                 shifted,
                 smelterTemperature,
@@ -1611,6 +1638,7 @@ self.addEventListener('message', (e) => {
             gold = data.gold !== undefined ? data.gold : 1000;
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
+            researchQueue = data.researchQueue ? JSON.parse(JSON.stringify(data.researchQueue)) : [];
             if (data.researchtree) {
                 // Copy the full researchtree from main thread
                 researchtree = JSON.parse(JSON.stringify(data.researchtree));
@@ -1668,6 +1696,10 @@ self.addEventListener('message', (e) => {
                     // if (activeResearch) {
                     //     console.log('Worker: Active research updated:', activeResearch.name);
                     // }
+                }
+                if (data.researchQueue !== undefined) {
+                    researchQueue = JSON.parse(JSON.stringify(data.researchQueue));
+                    console.log(`[WORKER] Research queue updated. Length: ${researchQueue.length}`, researchQueue);
                 }
                 if (data.researchtree) {
                     // Copy the full researchtree from main thread
