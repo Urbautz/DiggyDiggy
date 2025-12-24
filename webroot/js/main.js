@@ -2234,8 +2234,6 @@ function closeModal(modalName) {
                 gameWorker.postMessage({ type: 'set-pause', paused: false });
             }
         }
-        // If we just closed the dwarfs modal, stop live updates
-        if (modalName === 'dwarfs-modal') stopDwarfsLiveUpdate();
         // If we just closed the transactions modal, stop refresh interval
         if (modalName === 'transactions-modal' && window.transactionRefreshInterval) {
             clearInterval(window.transactionRefreshInterval);
@@ -2257,7 +2255,6 @@ function closeModal(modalName) {
         
         m.setAttribute('aria-hidden','true');
         m.style.display = 'none';
-        if (id === 'dwarfs-modal') stopDwarfsLiveUpdate();
         if (id === 'transactions-modal' && window.transactionRefreshInterval) {
             clearInterval(window.transactionRefreshInterval);
             window.transactionRefreshInterval = null;
@@ -2656,7 +2653,77 @@ function sellToolFromPanel(toolId) {
     logTransaction('income', sellValue, `Sold ${tool.type} #${toolId}`);
 }
 
-// Dwarf modal code moved to modals/dwarf-modal.js
+// Dwarf modal code moved to modals/dwarf-detail-modal.js
+
+/**
+ * Populate the dwarfs modal with a compact table showing state for each dwarf
+ */
+function populateDwarfsOverview() {
+    const container = document.getElementById('dwarfs-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const table = document.createElement('table');
+    table.className = 'dwarfs-table';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Name</th><th>Level</th><th>XP</th><th>Tool</th><th>Status</th><th>Energy</th><th>Action</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const d of dwarfs) {
+        const tr = document.createElement('tr');
+
+        // create cells manually so bucket can render one resource per line
+        const nameTd = document.createElement('td'); nameTd.textContent = d.name;
+        const levelTd = document.createElement('td'); levelTd.textContent = d.level ?? '-';
+
+        // XP display with progress to next level
+        const xpTd = document.createElement('td');
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
+        xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
+
+        // Find the tool assigned to this dwarf
+        const toolTd = document.createElement('td');
+        if (d.toolId) {
+            const toolInstance = toolsInventory.find(t => t.id === d.toolId);
+            if (toolInstance) {
+                toolTd.textContent = `${toolInstance.type} (Q${toolInstance.level})`;
+            } else {
+                toolTd.textContent = `Tool #${d.toolId}`;
+            }
+        } else {
+            toolTd.textContent = '-';
+        }
+
+        const statusTd = document.createElement('td'); statusTd.textContent = d.status ?? 'idle';
+        const energyTd = document.createElement('td'); energyTd.textContent = (typeof d.energy === 'number') ? d.energy : '-';
+
+        // Action column - show level up button if XP threshold reached
+        const actionTd = document.createElement('td');
+        if (currentXP >= xpNeeded) {
+            const levelUpBtn = document.createElement('button');
+            levelUpBtn.className = 'btn-levelup';
+            levelUpBtn.textContent = 'Level Up!';
+            levelUpBtn.dataset.dwarfName = d.name;
+            actionTd.appendChild(levelUpBtn);
+        }
+
+        tr.appendChild(nameTd);
+        tr.appendChild(levelTd);
+        tr.appendChild(xpTd);
+        tr.appendChild(toolTd);
+        tr.appendChild(statusTd);
+        tr.appendChild(energyTd);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
 
 // Efficiently update dwarf info in the panel without rebuilding the whole thing
 function updateDwarfsInPanel() {
@@ -3471,9 +3538,9 @@ function initWorker() {
                 }
 
                 // Update dwarf detail modal if it's open
-                const levelupModal = document.getElementById('levelup-modal');
-                if (levelupModal && levelupModal.getAttribute('aria-hidden') === 'false') {
-                    const dwarfName = levelupModal.dataset.dwarfName;
+                const dwarfDetailModal = document.getElementById('dwarf-detail-modal');
+                if (dwarfDetailModal && dwarfDetailModal.getAttribute('aria-hidden') === 'false') {
+                    const dwarfName = dwarfDetailModal.dataset.dwarfName;
                     const dwarf = dwarfs.find(d => d.name === dwarfName);
                     if (dwarf) {
                         refreshDwarfDetailModal(dwarf);

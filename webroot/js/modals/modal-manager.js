@@ -6,12 +6,11 @@
 class ModalManager {
     constructor() {
         this.modals = [
-            'dwarfs-modal',
             'forge-modal',
             'forging-animation-modal',
             'enchant-modal',
             'gem-modal',
-            'levelup-modal',
+            'dwarf-detail-modal',
             'research-modal',
             'smelter-modal',
             'task-details-modal',
@@ -40,7 +39,7 @@ class ModalManager {
 
     /**
      * Load a single modal HTML file
-     * @param {string} modalName - The name of the modal (e.g., 'dwarfs-modal')
+     * @param {string} modalName - The name of the modal (e.g., 'dwarf-detail-modal')
      */
     async loadModal(modalName) {
         // Return existing promise if already loading
