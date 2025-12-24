@@ -2,10 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(node --check:*)",
-      "Bash(mkdir:*)",
-      "Bash(python:*)",
-      "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mkdir:*)"
     ]
   }
 }
