@@ -100,6 +100,21 @@ function openDwarfDetailModal(dwarf) {
 }
 
 /**
+ * Find the next dwarf that can level up (excluding the current dwarf)
+ * @param {string} currentDwarfName - Name of the current dwarf to exclude
+ * @returns {Object|null} - The next dwarf that can level up, or null if none
+ */
+function findNextLevelUpDwarf(currentDwarfName) {
+    return dwarfs.find(d => {
+        if (d.name === currentDwarfName) return false;
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
+        return currentXP >= xpNeeded;
+    });
+}
+
+/**
  * Populate the dwarf switcher dropdown
  */
 function populateDwarfSwitcher(currentDwarfName) {
@@ -153,23 +168,16 @@ function populateDwarfSwitcher(currentDwarfName) {
 }
 
 /**
- * Populate the static template with dwarf data (full population on open)
+ * Calculate dig power statistics for a dwarf
+ * @returns {Object} Object containing all dig power related values
  */
-function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
-    const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
-    const xpNeeded = getDwarfXpForLevel(currentLevel);
-
-    // Calculate bucket info (weight-based)
-    const bucketWeight = calculateBucketWeight(dwarf.bucket);
-    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
-
-    // Calculate dig power components
+function calculateDwarfDigPowerStats(dwarf) {
     const baseDwarfPower = 3;
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
     let toolPower = 1.0;
     let toolName = 'None';
     let enchantLevel = 0;
+
     if (currentTool) {
         toolName = currentTool.name || currentTool.type;
         enchantLevel = currentTool.enchantLevel || 0;
@@ -182,6 +190,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             }
         }
     }
+
     // Apply Diamond gem bonus to dig power skill points
     const baseDigPowerPoints = dwarf.digPower || 0;
     const modifiedDigPowerPoints = getDiamondModifiedDigPower(dwarf, baseDigPowerPoints);
@@ -191,24 +200,36 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
 
-    // Apply gem bonus (5% per carat for each gem)
-
     const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
 
-    // Populate basic stats
-    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
-    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
-    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+    return {
+        baseDwarfPower,
+        currentTool,
+        toolPower,
+        toolName,
+        enchantLevel,
+        baseDigPowerPoints,
+        modifiedDigPowerPoints,
+        levelBonus,
+        improvedDigging,
+        researchBonus,
+        enchantBonus,
+        totalDigPower
+    };
+}
 
-    // Populate bucket
-    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
-    const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
+/**
+ * Render bucket contents into a container element
+ * @param {HTMLElement} container - The container to render into
+ * @param {Object} bucket - The bucket contents
+ * @param {number} bucketWeight - The current bucket weight
+ */
+function renderBucketContents(container, bucket, bucketWeight) {
+    if (bucket && Object.keys(bucket).length > 0 && bucketWeight > 0) {
         const bucketGrid = document.createElement('div');
         bucketGrid.className = 'dwarf-bucket-grid';
 
-        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
+        for (const [materialId, count] of Object.entries(bucket)) {
             // Handle both regular materials (count is a number) and gems (count might be an object)
             let displayCount = count;
             let displayName = materialId;
@@ -242,15 +263,73 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             bucketGrid.appendChild(item);
         }
 
-        bucketContents.innerHTML = '';
-        bucketContents.appendChild(bucketGrid);
+        container.innerHTML = '';
+        container.appendChild(bucketGrid);
     } else {
         const emptyP = document.createElement('p');
         emptyP.className = 'dwarf-bucket-empty';
         emptyP.textContent = 'Empty';
-        bucketContents.innerHTML = '';
-        bucketContents.appendChild(emptyP);
+        container.innerHTML = '';
+        container.appendChild(emptyP);
     }
+}
+
+/**
+ * Update basic dwarf stats in the modal (level, XP, energy, status)
+ */
+function updateBasicDwarfStats(dwarf) {
+    const currentXP = dwarf.xp || 0;
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
+
+    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
+    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+}
+
+/**
+ * Update bucket display in the modal
+ */
+function updateBucketDisplay(dwarf) {
+    const bucketWeight = calculateBucketWeight(dwarf.bucket);
+    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
+
+    document.getElementById('dwarf-bucket-header').textContent = `🪣 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
+    const bucketContents = document.getElementById('dwarf-bucket-contents');
+    renderBucketContents(bucketContents, dwarf.bucket, bucketWeight);
+}
+
+/**
+ * Populate the static template with dwarf data (full population on open)
+ */
+function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
+    const currentXP = dwarf.xp || 0;
+    const currentLevel = dwarf.level || 1;
+    const xpNeeded = getDwarfXpForLevel(currentLevel);
+
+    // Calculate dig power stats
+    const digPowerStats = calculateDwarfDigPowerStats(dwarf);
+    const {
+        baseDwarfPower,
+        currentTool,
+        toolPower,
+        toolName,
+        enchantLevel,
+        baseDigPowerPoints,
+        modifiedDigPowerPoints,
+        levelBonus,
+        improvedDigging,
+        researchBonus,
+        enchantBonus,
+        totalDigPower
+    } = digPowerStats;
+
+    // Populate basic stats using helper
+    updateBasicDwarfStats(dwarf);
+
+    // Populate bucket using helper
+    updateBucketDisplay(dwarf);
 
     // Populate dig power
     document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'percent');
@@ -476,6 +555,18 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     resetBtn.dataset.dwarfName = dwarf.name;
     const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
     document.getElementById('dwarf-reset-cost').textContent = resetCost;
+
+    // Update "Next ⭐" button visibility and data
+    const nextLevelUpBtn = document.getElementById('dwarf-next-levelup-btn');
+    if (nextLevelUpBtn) {
+        const nextDwarf = findNextLevelUpDwarf(dwarf.name);
+        if (nextDwarf) {
+            nextLevelUpBtn.style.display = 'inline-block';
+            nextLevelUpBtn.dataset.dwarfName = nextDwarf.name;
+        } else {
+            nextLevelUpBtn.style.display = 'none';
+        }
+    }
 }
 
 /**
@@ -499,83 +590,19 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
         return;
     }
 
-    // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
-    const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
-    const xpNeeded = getDwarfXpForLevel(currentLevel);
+    // Only update dynamic data that changes frequently using shared helper functions
+    updateBasicDwarfStats(dwarf);
+    updateBucketDisplay(dwarf);
 
-    // Calculate bucket info (weight-based)
-    const bucketWeight = calculateBucketWeight(dwarf.bucket);
-    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
-
-    // Calculate dig power
-    const baseDwarfPower = 3;
-    const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
-    let toolPower = 1.0;
-    if (currentTool) {
-        if (currentTool.power !== undefined) {
-            toolPower = currentTool.power / 100;
-        } else {
-            const toolDef = getToolByType(currentTool.type);
-            if (toolDef) {
-                toolPower = toolDef.power / 100;
-            }
-        }
-    }
-    const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
-    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
-    const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
-
-    // Update only the dynamic text content (fast, non-blocking)
-    document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
-    document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
-    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
-    document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+    // Calculate and update dig power using shared helper
+    const digPowerStats = calculateDwarfDigPowerStats(dwarf);
+    document.getElementById('dwarf-digpower-total').textContent = formatNumber(digPowerStats.totalDigPower, 'material');
 
     // Update location information with friendly names
     document.getElementById('dwarf-position').textContent = getLocationName(dwarf.x || 0, dwarf.y || 0);
     document.getElementById('dwarf-move-target').textContent = dwarf.moveTarget
         ? getLocationName(dwarf.moveTarget.x, dwarf.moveTarget.y)
         : '→ None';
-
-    // Update bucket header and contents
-    document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
-    const bucketContents = document.getElementById('dwarf-bucket-contents');
-    if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
-        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
-        for (const [materialId, count] of Object.entries(dwarf.bucket)) {
-            // Handle both regular materials (count is a number) and gems (count might be an object)
-            let displayCount = count;
-            let displayName = materialId;
-
-            if (typeof count === 'object' && count !== null) {
-                // This is a gem object with properties like {id, type, carat, polished}
-                displayCount = 1;
-                const gemType = count.type || materialId;
-                const mat = getMaterialById(gemType);
-                displayName = mat ? `${mat.name} (${count.carat}ct)` : `${gemType} (${count.carat}ct)`;
-            } else if (count > 0) {
-                const mat = getMaterialById(materialId);
-                displayName = mat ? mat.name : materialId;
-            } else {
-                continue;
-            }
-
-            bucketHTML += `
-                <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
-                    <div style="font-size: 9px; font-weight: bold;">${displayName}</div>
-                    <div style="font-size: 12px; margin-top: 1px;">${displayCount}</div>
-                </div>
-            `;
-        }
-        bucketHTML += '</div>';
-        bucketContents.innerHTML = bucketHTML;
-    } else {
-        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
-    }
-
-    document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
 }
 
 /**
@@ -707,8 +734,16 @@ function resetDwarfPoints(dwarf) {
  */
 let _dwarfsModalRefreshId = null;
 function startDwarfsLiveUpdate(intervalMs = 1000) {
+    // Stop any existing interval first
+    stopDwarfsLiveUpdate();
 
+    // Initial population
     populateDwarfsInPanel();
+
+    // Set up recurring updates
+    _dwarfsModalRefreshId = setInterval(() => {
+        populateDwarfsInPanel();
+    }, intervalMs);
 }
 
 /**
@@ -868,6 +903,21 @@ document.addEventListener('click', (ev) => {
     if (!confirm(confirmMsg)) return;
 
     resetDwarfPoints(dwarf);
+});
+
+// Delegated event handler for "Next ⭐" button
+document.addEventListener('click', (ev) => {
+    const nextBtn = ev.target.closest('#dwarf-next-levelup-btn');
+    if (!nextBtn) return;
+
+    const dwarfName = nextBtn.dataset.dwarfName;
+    if (dwarfName) {
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (dwarf) {
+            console.log(`Jumping to next level-up dwarf: ${dwarfName}`);
+            openDwarfDetailModal(dwarf);
+        }
+    }
 });
 
 // Delegated event handler for tool dropdown change - auto-assign on selection
