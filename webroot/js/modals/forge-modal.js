@@ -23,6 +23,14 @@ function sleep(ms) {
  * Opens the forge modal
  */
 function openForge() {
+    // Check if forge research is unlocked
+    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
+
+    if (!isForgeUnlocked) {
+        return;
+    }
+
     openModal('forge-modal');
     populateForge();
 }

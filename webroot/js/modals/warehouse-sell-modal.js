@@ -19,9 +19,10 @@ function openWarehouseSellModal() {
         if (task.inputs && Array.isArray(task.inputs)) {
             task.inputs.forEach(input => smelterInputMaterials.add(input.material));
         }
+        /* Output materials should NOT be added to the craftable list.
         if (task.output && task.output.material) {
             craftableMaterials.add(task.output.material);
-        }
+        } */
     }
 
     let looseValue = 0;

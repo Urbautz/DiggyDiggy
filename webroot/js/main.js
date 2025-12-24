@@ -2222,7 +2222,12 @@ function initWorker() {
                         updateResearchProgress();
                     }
                 }
-                
+
+                // Update functions list when research state changes (e.g., forge unlocked)
+                if (researchStateChanged) {
+                    populateFunctionsList();
+                }
+
                 // Autosave after each tick
                 saveGame();
                 break;
@@ -2635,6 +2640,17 @@ function populateFunctionsList() {
         e.preventDefault();
         openForge();
     };
+
+    // Check if forge is unlocked
+    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
+
+    if (!isForgeUnlocked) {
+        forgeLink.style.opacity = '0.5';
+        forgeLink.style.cursor = 'not-allowed';
+        forgeLink.title = 'Requires Forge research';
+    }
+
     list.appendChild(forgeLink);
     
     // Automation function (placeholder for future) - last position
