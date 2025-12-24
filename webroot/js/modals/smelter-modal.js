@@ -344,12 +344,12 @@ function updateSmelterTemperatureDisplay() {
             const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
 
             // For magma, only check if temp is below min (always heats to max)
-            // For coal, check both min and max
+            // For coal, use smelterHeatingMode for accurate status (respects hysteresis)
             let isActionable;
             if (task.heatGain === 'dynamic') {
                 isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterMagmaMinTemp);
             } else {
-                isActionable = isUnlocked && (stockAmount >= task.input.amount) && (smelterTemperature < smelterCoalMinTemp) && (smelterTemperature < smelterCoalMaxTemp);
+                isActionable = isUnlocked && (stockAmount >= task.input.amount) && smelterHeatingMode;
             }
 
             // Update row class
@@ -363,8 +363,15 @@ function updateSmelterTemperatureDisplay() {
                     statusIndicator.textContent = '✅';
                     statusIndicator.title = 'Ready - materials available and temperature below minimum';
                 } else {
-                    statusIndicator.textContent = '❌';
-                    statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+                    // For coal heating, check if it's blocked due to temperature or materials
+                    if (task.heatGain !== 'dynamic' && stockAmount >= task.input.amount && !smelterHeatingMode) {
+                        // Temperature is adequate (not in heating mode)
+                        statusIndicator.textContent = '🔥';
+                        statusIndicator.title = 'Temperature adequate - no heating needed';
+                    } else {
+                        statusIndicator.textContent = '❌';
+                        statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+                    }
                 }
             }
 
@@ -457,8 +464,8 @@ function populateSmelter() {
                     // Magma: check against magma min
                     isActionable = hasMaterials && (smelterTemperature < smelterMagmaMinTemp);
                 } else {
-                    // Coal: check against coal max
-                    isActionable = hasMaterials && (smelterTemperature < smelterCoalMaxTemp);
+                    // Coal: use smelterHeatingMode for accurate status (respects hysteresis)
+                    isActionable = hasMaterials && smelterHeatingMode;
                 }
             } else if (task.minTemp) {
                 // For smelting tasks with temp requirements, check both materials and temperature
@@ -502,7 +509,11 @@ function populateSmelter() {
             statusIndicator.title = 'Ready - materials available';
         } else {
             // Determine why task is blocked
-            if (task.minTemp && smelterTemperature < task.minTemp) {
+            if (task.type === 'heating' && task.heatGain !== 'dynamic' && stockAmount >= task.input.amount && !smelterHeatingMode) {
+                // Coal heating task: temperature is adequate (not in heating mode)
+                statusIndicator.textContent = '🔥';
+                statusIndicator.title = 'Temperature adequate - no heating needed';
+            } else if (task.minTemp && smelterTemperature < task.minTemp) {
                 statusIndicator.textContent = '🌡️';
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
             } else if (task.type === 'gem-cutting') {
