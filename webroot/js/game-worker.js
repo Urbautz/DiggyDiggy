@@ -488,6 +488,17 @@ function actForDwarf(dwarf) {
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
     if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
 
+    // Track current reservations for debugging
+    const digReservations = [];
+    for (const [key, val] of reservedDigBy.entries()) {
+        if (val === dwarf.name) digReservations.push(key);
+    }
+    dwarf.reservations = {
+        dig: digReservations,
+        research: researchReservedBy === dwarf.name,
+        smelter: smelterReservedBy === dwarf.name
+    };
+
     // Check for stuck dwarf - only track when actively moving or digging
     const shouldTrackStuck = (dwarf.status === 'moving' || dwarf.status === 'digging' || dwarf.status === 'idle');
     const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
@@ -505,7 +516,19 @@ function actForDwarf(dwarf) {
                 tracked.ticks++;
                 if (tracked.ticks >= STUCK_DETECTION_TICKS) {
                     // Stuck! Teleport to house and reset
+                    // Gather debug information about reservations
+                    const digReservations = [];
+                    for (const [key, val] of reservedDigBy.entries()) {
+                        if (val === dwarf.name) digReservations.push(key);
+                    }
+                    const hasResearch = researchReservedBy === dwarf.name;
+                    const hasSmelter = smelterReservedBy === dwarf.name;
+
                     console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    console.log(`  Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
+                    console.log(`  Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
+                    console.log(`  Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
+
                     dwarf.x = house.x;
                     dwarf.y = house.y;
                     dwarf.status = 'idle';

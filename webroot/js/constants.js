@@ -30,7 +30,7 @@ const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
 function getDwarfXpForLevel(level) {
     // Formula: 50 * level^1.6 (rounded)
     // This creates exponential growth matching the target progression
-    return Math.round(50 * Math.pow(level, 1.6));
+    return Math.round(50 * Math.pow(level, 1.4));
 }
 const DWARF_STRIKE_BASE_CHANCE = 0.3; // 30% chance to continue without pay
 const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup

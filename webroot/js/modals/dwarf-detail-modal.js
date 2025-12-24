@@ -514,6 +514,29 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
+    // Update debug information
+    document.getElementById('dwarf-position').textContent = `📍 (${dwarf.x || 0}, ${dwarf.y || 0})`;
+    document.getElementById('dwarf-move-target').textContent = dwarf.moveTarget
+        ? `→ (${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})`
+        : '→ None';
+
+    // Build reservations text
+    const reservations = [];
+    if (dwarf.reservations) {
+        if (dwarf.reservations.dig && dwarf.reservations.dig.length > 0) {
+            reservations.push(`Dig: ${dwarf.reservations.dig.length} cell(s)`);
+        }
+        if (dwarf.reservations.research) {
+            reservations.push('Research');
+        }
+        if (dwarf.reservations.smelter) {
+            reservations.push('Smelter');
+        }
+    }
+    document.getElementById('dwarf-reservations').textContent = reservations.length > 0
+        ? `📌 ${reservations.join(', ')}`
+        : '📌 None';
+
     // Update bucket header and contents
     document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
