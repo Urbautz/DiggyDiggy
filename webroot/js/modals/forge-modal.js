@@ -8,6 +8,7 @@ let forgeState = {
     baseMaterial: null,      // Selected ingot material
     hammeringCount: 1,       // 1-10 iterations
     coolingOilQuality: 1,    // 1-25 quality
+    platingMaterial: '',     // Selected plating material (optional)
     handleQuality: 1,        // 1-100 quality
     retryCount: 1            // 1-stock amount
 };
@@ -135,27 +136,55 @@ function createForgeInterface(container) {
     `;
     container.appendChild(step4);
 
-    // Step 5: Mount Handle
+    // Step 5: Plating (optional)
     const step5 = document.createElement('div');
     step5.className = 'forge-step';
     step5.innerHTML = `
-        <h3>Step 5: Mount Handle</h3>
+        <h3>Step 5: Plating (Optional)</h3>
+        <label for="plating-material">Select Plating Material:</label>
+        <select id="plating-material">
+            <option value="">-- No Plating --</option>
+        </select>
+        <p id="plating-description" class="forge-info"></p>
+    `;
+    container.appendChild(step5);
+
+    // Populate plating dropdown with available plating materials
+    const platingSelect = step5.querySelector('#plating-material');
+    const platingMaterials = materials.filter(m => m.forge === 'Plating');
+    for (const plating of platingMaterials) {
+        const stockAmount = materialsStock[plating.id] || 0;
+        const option = document.createElement('option');
+        option.value = plating.id;
+        option.textContent = `${plating.name} (Stock: ${stockAmount})`;
+        option.disabled = stockAmount <= 0;
+        if (stockAmount <= 0) {
+            option.textContent += ' - OUT OF STOCK';
+        }
+        platingSelect.appendChild(option);
+    }
+
+    // Step 6: Mount Handle
+    const stepHandle = document.createElement('div');
+    stepHandle.className = 'forge-step';
+    stepHandle.innerHTML = `
+        <h3>Step 6: Mount Handle</h3>
         <label for="handle-slider">Handle Quality: <span id="handle-value">1</span> (Cost: <span id="handle-cost">${FORGE_HANDLE_BASE_COST}</span> 💰) <span id="handle-affordable" class="affordability-indicator"></span></label>
         <input type="range" id="handle-slider" min="1" max="${FORGE_HANDLE_MAX_QUALITY}" value="1" step="1">
         <p class="forge-info">The handle determines comfort and durability. Better handles improve the overall tool quality.</p>
     `;
-    container.appendChild(step5);
+    container.appendChild(stepHandle);
 
-    // Step 6: Retries
-    const step6 = document.createElement('div');
-    step6.className = 'forge-step';
-    step6.innerHTML = `
-        <h3>Step 6: Retry Attempts</h3>
+    // Step 7: Retries
+    const stepRetry = document.createElement('div');
+    stepRetry.className = 'forge-step';
+    stepRetry.innerHTML = `
+        <h3>Step 7: Retry Attempts</h3>
         <label for="retry-slider">Number of Retries: <span id="retry-value">1</span> (Max: <span id="retry-max">1</span> based on stock)</label>
         <input type="range" id="retry-slider" min="1" max="1" value="1" step="1">
         <p class="forge-info">If forging fails, automatically retry with another ingot. Limited by available stock.</p>
     `;
-    container.appendChild(step6);
+    container.appendChild(stepRetry);
 
     // Forge button
     const forgeAction = document.createElement('div');
@@ -176,6 +205,7 @@ function setupForgeListeners() {
     const materialSelect = document.getElementById('base-material');
     const hammeringSlider = document.getElementById('hammering-slider');
     const coolingSlider = document.getElementById('cooling-slider');
+    const platingSelect = document.getElementById('plating-material');
     const handleSlider = document.getElementById('handle-slider');
     const retrySlider = document.getElementById('retry-slider');
 
@@ -187,6 +217,9 @@ function setupForgeListeners() {
     }
     if (coolingSlider) {
         coolingSlider.addEventListener('input', updateForgeState);
+    }
+    if (platingSelect) {
+        platingSelect.addEventListener('change', updateForgeState);
     }
     if (handleSlider) {
         handleSlider.addEventListener('input', updateForgeState);
@@ -203,6 +236,7 @@ function restoreForgeState() {
     const materialSelect = document.getElementById('base-material');
     const hammeringSlider = document.getElementById('hammering-slider');
     const coolingSlider = document.getElementById('cooling-slider');
+    const platingSelect = document.getElementById('plating-material');
     const handleSlider = document.getElementById('handle-slider');
     const retrySlider = document.getElementById('retry-slider');
 
@@ -217,6 +251,9 @@ function restoreForgeState() {
     }
     if (coolingSlider) {
         coolingSlider.value = forgeState.coolingOilQuality;
+    }
+    if (platingSelect && forgeState.platingMaterial) {
+        platingSelect.value = forgeState.platingMaterial;
     }
     if (handleSlider) {
         handleSlider.value = forgeState.handleQuality;
@@ -294,6 +331,23 @@ function updateForgeState() {
         }
     }
 
+    // Update plating material and description
+    const platingSelect = document.getElementById('plating-material');
+    if (platingSelect) {
+        forgeState.platingMaterial = platingSelect.value;
+        const platingDescription = document.getElementById('plating-description');
+        if (platingDescription) {
+            if (forgeState.platingMaterial && platingEffects[forgeState.platingMaterial]) {
+                const effect = platingEffects[forgeState.platingMaterial];
+                platingDescription.textContent = `Effect: ${effect.description}`;
+                platingDescription.className = 'forge-info plating-effect';
+            } else {
+                platingDescription.textContent = '';
+                platingDescription.className = 'forge-info';
+            }
+        }
+    }
+
     if (handleSlider) {
         forgeState.handleQuality = parseInt(handleSlider.value);
         const handleValue = document.getElementById('handle-value');
@@ -335,6 +389,7 @@ function updateForgeState() {
     if (totalCostDisplay) {
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
         const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
+        // Plating doesn't cost gold, just consumes 1 ingot
         const totalCost = coolingCost + handleCost;
         totalCostDisplay.textContent = `${formatNumber(totalCost, 'gold')} 💰`;
 
@@ -407,11 +462,20 @@ async function startForging() {
         return;
     }
 
-    // Check stock
+    // Check stock for base material
     const stockAmount = materialsStock[forgeState.baseMaterial] || 0;
     if (stockAmount < forgeState.retryCount) {
         alert(`Not enough ${forgeState.baseMaterial} in stock! Need ${forgeState.retryCount}, have ${stockAmount}.`);
         return;
+    }
+
+    // Check stock for plating material if selected
+    if (forgeState.platingMaterial) {
+        const platingStock = materialsStock[forgeState.platingMaterial] || 0;
+        if (platingStock < forgeState.retryCount) {
+            alert(`Not enough ${forgeState.platingMaterial} in stock! Need ${forgeState.retryCount} for plating, have ${platingStock}.`);
+            return;
+        }
     }
 
     // Calculate costs for validation
@@ -539,6 +603,31 @@ async function startForging() {
         animationContent.innerHTML = `<div class="forging-anvil">❄️</div><div class="forging-message forging-success">Cooling successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
         await sleep(1200);
 
+        // Plating step (optional)
+        if (forgeState.platingMaterial) {
+            // Consume plating material
+            materialsStock[forgeState.platingMaterial]--;
+            updateStockDisplay();
+            saveGame();
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: { materialsStock: materialsStock }
+                });
+            }
+
+            animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Applying plating...</div>`;
+            await sleep(1800);
+
+            // Get plating material name
+            const platingMat = materials.find(m => m.id === forgeState.platingMaterial);
+            const platingName = platingMat ? platingMat.name : forgeState.platingMaterial;
+
+            // Show plating success
+            animationContent.innerHTML = `<div class="forging-anvil">🌟</div><div class="forging-message forging-success">Plating applied!</div><div class="forging-quality">${platingName} plating complete</div>`;
+            await sleep(1200);
+        }
+
         // Deduct handle cost before mounting
         const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
         gold -= handleCost;
@@ -605,6 +694,12 @@ async function startForging() {
             level: finalQuality,
             power: finalQuality
         };
+
+        // Add plating effect if plating was applied
+        if (forgeState.platingMaterial && platingEffects[forgeState.platingMaterial]) {
+            newTool.plating = forgeState.platingMaterial;
+        }
+
         toolsInventory.push(newTool);
 
         // Build dwarf options with current tool info

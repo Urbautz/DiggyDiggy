@@ -56,7 +56,7 @@ const materials = [
   { id: 'Zinc', name: 'Zinc Ingot', type:'Ingot',           hardness: 300, probability: 0, worth: 350,    minlevel: 99999, color: '#a8b5c0ff', forge: 'Plating', weight: 15 },
   { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 750,    minlevel: 99999, color: '#fbd86eff', forge: 'Base', weight: 18 },
 
-  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Medium',      hardness: 350, probability: 0, worth: 1200,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 42 },
+  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Medium',      hardness: 350, probability: 0, worth: 1200,     minlevel: 99999, color: '#c0c0c0ff', weight: 42 },
   { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 20 },
 
   { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',      hardness: 400, probability: 15, worth: 3000,  minlevel: 15000, color: '#d6a80eff', weight: 45 },
@@ -91,6 +91,28 @@ const toolsInventory = [
     { id: 5, type: 'Stone', power: 100 },
     { id: 6, type: 'Stone', power: 100 }
 ];
+
+// Plating effects - define what each plating material does when applied to tools
+const platingEffects = {
+    'Zinc': {
+        name: 'Zinc Plating',
+        description: 'Digging consumes 2 less energy',
+        effect: 'energyReduction',
+        value: 2
+    },
+    'Silver': {
+        name: 'Silver Plating',
+        description: '+20% gem probability',
+        effect: 'gemProbability',
+        value: 0.20
+    },
+    'Gold': {
+        name: 'Gold Plating',
+        description: '+10% higher critical strike chance',
+        effect: 'criticalStrike',
+        value: 0.10
+    }
+};
 
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
 let smelterTasks = [
