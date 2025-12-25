@@ -46,6 +46,9 @@ function populateForge() {
 
     // Create forge interface directly (no tabs)
     createForgeInterface(container);
+
+    // Restore previous forge state settings
+    restoreForgeState();
 }
 
 /**
@@ -191,6 +194,39 @@ function setupForgeListeners() {
     if (retrySlider) {
         retrySlider.addEventListener('input', updateForgeState);
     }
+}
+
+/**
+ * Restore forge state to UI elements
+ */
+function restoreForgeState() {
+    const materialSelect = document.getElementById('base-material');
+    const hammeringSlider = document.getElementById('hammering-slider');
+    const coolingSlider = document.getElementById('cooling-slider');
+    const handleSlider = document.getElementById('handle-slider');
+    const retrySlider = document.getElementById('retry-slider');
+
+    // Restore material selection
+    if (materialSelect && forgeState.baseMaterial) {
+        materialSelect.value = forgeState.baseMaterial;
+    }
+
+    // Restore slider values
+    if (hammeringSlider) {
+        hammeringSlider.value = forgeState.hammeringCount;
+    }
+    if (coolingSlider) {
+        coolingSlider.value = forgeState.coolingOilQuality;
+    }
+    if (handleSlider) {
+        handleSlider.value = forgeState.handleQuality;
+    }
+    if (retrySlider) {
+        retrySlider.value = forgeState.retryCount;
+    }
+
+    // Update UI to reflect restored state
+    updateForgeState();
 }
 
 /**
