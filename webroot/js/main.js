@@ -1033,21 +1033,34 @@ function populateToolsInPanel() {
         const header = document.createElement('div');
         header.className = 'tool-card-header';
         const displayName = tool.name || `${tool.type} #${tool.id}`;
-        header.innerHTML = `
-            <span class="tool-name">${displayName}</span>
-            <span class="tool-power">⚒️ ${toolPower}</span>
-        `;
-        
-        const actions = document.createElement('div');
-        actions.className = 'tool-card-actions';
-        
-        // Rename button
+
+        // Tool name span (will be replaced with input when editing)
+        const toolNameSpan = document.createElement('span');
+        toolNameSpan.className = 'tool-name';
+        toolNameSpan.id = `tool-name-${tool.id}`;
+        toolNameSpan.textContent = displayName;
+
+                // Rename button next to name
         const renameBtn = document.createElement('button');
         renameBtn.className = 'btn-secondary btn-tiny';
+        renameBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 11px; vertical-align: left;';
         renameBtn.textContent = '✏️';
         renameBtn.title = 'Rename tool';
-        renameBtn.onclick = () => renameToolFromPanel(tool.id);
-        actions.appendChild(renameBtn);
+        renameBtn.onclick = () => startInlineRename(tool.id);
+        toolNameSpan.appendChild(renameBtn);
+
+
+        header.appendChild(toolNameSpan);
+
+
+        // Tool power
+        const toolPowerSpan = document.createElement('span');
+        toolPowerSpan.className = 'tool-power';
+        toolPowerSpan.textContent = `⚒️ ${toolPower}`;
+        header.appendChild(toolPowerSpan);
+
+        const actions = document.createElement('div');
+        actions.className = 'tool-card-actions';
         
         // Dropdown for assigning (shows current assignment or allows selection)
         const select = document.createElement('select');
@@ -1057,7 +1070,20 @@ function populateToolsInPanel() {
             dwarfs.map(d => `<option value="${d.name}"${d.name === (assignedDwarf?.name || '') ? ' selected' : ''}>${d.name}</option>`).join('');
         select.onchange = () => assignToolFromPanel(tool.id, toolPower);
         actions.appendChild(select);
-        
+
+        // Plating info (before enchant button)
+        if (tool.plating && platingEffects[tool.plating]) {
+            const platingEffect = platingEffects[tool.plating];
+            const platingMaterial = materials.find(m => m.id === tool.plating);
+            const platingColor = platingMaterial ? platingMaterial.color : '#888888';
+
+            const platingInfo = document.createElement('span');
+            platingInfo.style.cssText = `padding: 4px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 11px; white-space: nowrap; text-shadow: 0 2px 3px rgba(0,0,0,0.5); cursor: help; line-height: 1;`;
+            platingInfo.textContent = platingEffect.name;
+            platingInfo.title = platingEffect.description;
+            actions.appendChild(platingInfo);
+        }
+
         // Enchant button
         const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
         const enchantLevel = enchantResearch ? enchantResearch.level : 0;
@@ -1086,7 +1112,7 @@ function populateToolsInPanel() {
             }
             actions.appendChild(enchantBtn);
         }
-        
+
         // Gems button
         const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
         const gemSettingLevel = gemSettingResearch ? gemSettingResearch.level : 0;
@@ -1217,18 +1243,89 @@ function assignToolFromPanel(toolId, newToolPower) {
 }
 
 // Rename tool from tools panel
+// Start inline rename of a tool
+function startInlineRename(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) return;
+
+    const nameSpan = document.getElementById(`tool-name-${toolId}`);
+    if (!nameSpan) return;
+
+    const currentName = tool.name || `${tool.type} #${tool.id}`;
+
+    // Create input field
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.maxLength = 20;
+    input.style.cssText = 'padding: 2px 4px; font-size: 12px; width: 150px; border: 1px solid #555; border-radius: 3px; background-color: #2a2a2a; color: #fff;';
+    input.className = 'tool-name-input';
+
+    let isSaving = false;
+
+    // Function to save the name
+    const saveName = () => {
+        if (isSaving) return; // Prevent double-saving
+        isSaving = true;
+
+        const trimmedName = input.value.trim();
+        if (trimmedName === '') {
+            // Clear custom name, revert to default
+            delete tool.name;
+        } else {
+            tool.name = trimmedName.substring(0, 20); // Enforce max length
+        }
+
+        // Sync with worker and save
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { toolsInventory: toolsInventory }
+            });
+        }
+        saveGame();
+
+        // Refresh the tools panel to show the new name
+        populateToolsPanel();
+    };
+
+    // Handle Enter key
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            input.blur(); // This will trigger saveName via blur event
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            isSaving = true; // Prevent blur from saving
+            // Cancel editing, restore original
+            populateToolsPanel();
+        }
+    });
+
+    // Handle blur (losing focus)
+    input.addEventListener('blur', () => {
+        saveName();
+    });
+
+    // Replace the span with the input
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+}
+
 function renameToolFromPanel(toolId) {
     const tool = toolsInventory.find(t => t.id === toolId);
     if (!tool) {
         alert('Tool not found!');
         return;
     }
-    
+
     const currentName = tool.name || `${tool.type} #${tool.id}`;
     const newName = prompt('Enter a new name for this tool:', currentName);
-    
+
     if (newName === null) return; // Cancelled
-    
+
     const trimmedName = newName.trim();
     if (trimmedName === '') {
         // Clear custom name, revert to default
