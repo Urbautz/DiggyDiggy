@@ -2217,15 +2217,19 @@ function initWorker() {
                     if (researchStateChanged) {
                         // Full redraw when state changes (new research, queue changes, etc.)
                         populateResearch();
-                    } else if (activeResearch) {
-                        // Lightweight progress update when only progress changes
-                        updateResearchProgress();
+                    } else {
+                        // Lightweight updates without full redraw
+                        if (activeResearch) {
+                            updateResearchProgress();
+                        }
+                        // Update button states only when they actually change
+                        updateResearchButtons();
                     }
                 }
 
-                // Update functions list when research state changes (e.g., forge unlocked)
+                // Update forge function link when research state changes (e.g., forge unlocked)
                 if (researchStateChanged) {
-                    populateFunctionsList();
+                    updateForgeFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -2606,9 +2610,9 @@ function initializeGame() {
 function populateFunctionsList() {
     const list = document.getElementById('functions-list');
     if (!list) return;
-    
+
     list.innerHTML = '';
-    
+
     // Research function
     const researchLink = document.createElement('a');
     researchLink.href = '#';
@@ -2619,7 +2623,7 @@ function populateFunctionsList() {
         openResearch();
     };
     list.appendChild(researchLink);
-    
+
     // Smelter function
     const smelterLink = document.createElement('a');
     smelterLink.href = '#';
@@ -2630,11 +2634,12 @@ function populateFunctionsList() {
         openSmelter();
     };
     list.appendChild(smelterLink);
-    
+
     // Forge function
     const forgeLink = document.createElement('a');
     forgeLink.href = '#';
     forgeLink.className = 'function-link';
+    forgeLink.id = 'forge-function-link'; // Add ID for easy updates
     forgeLink.innerHTML = '<span class="icon">🔨</span><span>Forge</span>';
     forgeLink.onclick = (e) => {
         e.preventDefault();
@@ -2652,7 +2657,7 @@ function populateFunctionsList() {
     }
 
     list.appendChild(forgeLink);
-    
+
     // Automation function (placeholder for future) - last position
     const automationLink = document.createElement('a');
     automationLink.href = '#';
@@ -2666,6 +2671,32 @@ function populateFunctionsList() {
     automationLink.style.cursor = 'not-allowed';
     automationLink.title = 'Coming soon';
     list.appendChild(automationLink);
+}
+
+// Update forge function link state without rebuilding the entire list
+function updateForgeFunctionLink() {
+    const forgeLink = document.getElementById('forge-function-link');
+    if (!forgeLink) return;
+
+    // Check if forge is unlocked
+    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
+
+    if (isForgeUnlocked) {
+        // Only update if state actually changed
+        if (forgeLink.style.opacity === '0.5') {
+            forgeLink.style.opacity = '1';
+            forgeLink.style.cursor = 'pointer';
+            forgeLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (forgeLink.style.opacity !== '0.5') {
+            forgeLink.style.opacity = '0.5';
+            forgeLink.style.cursor = 'not-allowed';
+            forgeLink.title = 'Requires Forge research';
+        }
+    }
 }
 
 // Switch between Warehouse and Dwarfs tabs in the materials panel
