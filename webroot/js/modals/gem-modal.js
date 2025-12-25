@@ -419,8 +419,12 @@ function populateGemsList() {
                 // Polished badge only
                 statusSection = '<span class="gem-polished-badge">Polished</span>';
             } else if (group.markedForCutting) {
-                // Cutting badge + rough badge
-                statusSection = '<span class="gem-cutting-badge">Cutting...</span><span class="gem-unpolished-badge">Rough</span>';
+                // Find the gem being cut to get its progress
+                const cuttingGem = group.gems.find(g => g.markedForCutting);
+                const progress = cuttingGem && cuttingGem.cuttingProgress ? cuttingGem.cuttingProgress : 0;
+
+                // Cutting badge with progress + rough badge
+                statusSection = `<span class="gem-cutting-progress">Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}</span><span class="gem-unpolished-badge">Rough</span>`;
             } else {
                 // Just rough badge
                 statusSection = '<span class="gem-unpolished-badge">Rough</span>';
@@ -429,13 +433,22 @@ function populateGemsList() {
             const gemItem = document.createElement('div');
             gemItem.className = 'gem-item gem-item-compact';
 
+            // Check if gem cutting is researched
+            const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
+            const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
+
             // Don't show sell buttons for assigned gems
-            const sellButtonsHTML = group.assigned ? '' : `
-                <div class="gem-item-actions">
-                    <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
-                    <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
-                </div>
-            `;
+            // Show cut button for rough gems if gem cutting is researched
+            let sellButtonsHTML = '';
+            if (!group.assigned) {
+                sellButtonsHTML = `
+                    <div class="gem-item-actions">
+                        ${!group.polished && hasGemCutting ? `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>` : ''}
+                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                    </div>
+                `;
+            }
 
             gemItem.innerHTML = `
                 <div class="gem-item-compact-content">
@@ -507,17 +520,13 @@ function populateGemsList() {
  * @param {number} carat - The carat value
  */
 function markGemsForCutting(gemType, carat) {
-    // Mark all rough gems of this type and carat for cutting
-    let markedCount = 0;
-    gems.forEach(gem => {
-        if (gem.type === gemType && gem.carat === carat && !gem.polished && !gem.markedForCutting) {
-            gem.markedForCutting = true;
-            gem.cuttingProgress = 0;
-            markedCount++;
-        }
-    });
+    // Mark only ONE rough gem of this type and carat for cutting
+    const gem = gems.find(g => g.type === gemType && g.carat === carat && !g.polished && !g.markedForCutting);
 
-    if (markedCount > 0) {
+    if (gem) {
+        gem.markedForCutting = true;
+        gem.cuttingProgress = 0;
+
         // Sync to worker
         if (gameWorker) {
             gameWorker.postMessage({

@@ -549,8 +549,31 @@ function populateSmelter() {
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
 
+        // Show gem cutting progress if this is the gem-cutting task
+        if (task.type === 'gem-cutting') {
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+
+            // Find gem being cut and total gems queued
+            const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
+            const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+
+            if (cuttingGem) {
+                const progress = cuttingGem.cuttingProgress || 0;
+                const ticksRequired = task.ticksRequired || 250;
+
+                taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
+                taskRecipe.classList.add('recipe-ready');
+            } else {
+                taskRecipe.textContent = 'No gems queued for cutting';
+                taskRecipe.classList.add('recipe-blocked');
+            }
+
+            taskInfo.appendChild(taskRecipe);
+        }
+
         // Show input/output if applicable (compact, no stock info)
-        if (task.inputs && task.output) {
+        else if (task.inputs && task.output) {
             // Multiple inputs (alloy format)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
