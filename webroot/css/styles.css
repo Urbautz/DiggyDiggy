@@ -2328,6 +2328,14 @@ header, footer {
     cursor: pointer;
 }
 
+/* Dwarf Switcher Container */
+.dwarf-switcher-container {
+    display: flex;
+    gap: 8px;
+    margin-right: auto;
+    align-items: center;
+}
+
 /* Dwarf Switcher */
 .dwarf-switcher {
     padding: 6px;
@@ -2336,7 +2344,26 @@ header, footer {
     border-radius: 3px;
     color: #fff;
     font-size: 12px;
-    margin-right: auto;
+    min-width: 180px;
+    max-width: 180px;
+}
+
+/* Next Skillpoint Button */
+.btn-next-skillpoint {
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.btn-next-skillpoint:hover {
+    background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.4);
 }
 
 /* Stats Grid Section */

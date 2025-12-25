@@ -106,7 +106,13 @@ function populateDwarfSwitcher(currentDwarfName) {
     const switcher = document.getElementById('dwarf-switcher');
     if (!switcher) return;
 
-    switcher.innerHTML = '<option value="">Switch to...</option>';
+    // Clear and add current dwarf as first option
+    switcher.innerHTML = '';
+
+    const currentOption = document.createElement('option');
+    currentOption.value = '';
+    currentOption.textContent = `👷 ${currentDwarfName}`;
+    switcher.appendChild(currentOption);
 
     // Sort dwarfs: those who can level up first, then by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
@@ -141,6 +147,9 @@ function populateDwarfSwitcher(currentDwarfName) {
         }
     });
 
+    // Update "Next" button visibility and handler
+    updateNextSkillpointButton(currentDwarfName);
+
     // Add change event listener
     switcher.onchange = (e) => {
         if (e.target.value) {
@@ -148,8 +157,43 @@ function populateDwarfSwitcher(currentDwarfName) {
             if (selectedDwarf) {
                 openDwarfDetailModal(selectedDwarf);
             }
+            // Reset dropdown to current dwarf
+            e.target.value = '';
         }
     };
+}
+
+/**
+ * Update the "Next dwarf with skill points" button
+ */
+function updateNextSkillpointButton(currentDwarfName) {
+    const nextBtn = document.getElementById('next-skillpoint-dwarf-btn');
+    if (!nextBtn) return;
+
+    // Find next dwarf with unspent skill points (excluding current)
+    const dwarfsWithSkillPoints = dwarfs.filter(d => {
+        if (d.name === currentDwarfName) return false;
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
+        return currentXP >= xpNeeded;
+    });
+
+    if (dwarfsWithSkillPoints.length > 0) {
+        // Sort by name for consistency
+        dwarfsWithSkillPoints.sort((a, b) => a.name.localeCompare(b.name));
+        const nextDwarf = dwarfsWithSkillPoints[0];
+
+        nextBtn.style.display = 'block';
+        nextBtn.title = `Switch to ${nextDwarf.name}`;
+
+        // Update click handler
+        nextBtn.onclick = () => {
+            openDwarfDetailModal(nextDwarf);
+        };
+    } else {
+        nextBtn.style.display = 'none';
+    }
 }
 
 /**
