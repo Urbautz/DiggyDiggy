@@ -301,6 +301,48 @@ function unsetGem(toolId, slotIndex) {
 function openGemsModal() {
     openModal('gems-modal');
     populateGemsList();
+
+    // Set up auto-refresh for gems modal to update cutting progress
+    if (window.gemsModalRefreshInterval) {
+        clearInterval(window.gemsModalRefreshInterval);
+    }
+    window.gemsModalRefreshInterval = setInterval(() => {
+        const modal = document.getElementById('gems-modal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false') {
+            updateGemsCuttingProgress();
+        } else {
+            clearInterval(window.gemsModalRefreshInterval);
+            window.gemsModalRefreshInterval = null;
+        }
+    }, 100); // Update every 100ms for smooth progress updates
+}
+
+/**
+ * Update gem cutting progress in the gems list (efficient update without full repopulate)
+ */
+function updateGemsCuttingProgress() {
+    const gemsList = document.getElementById('gems-list');
+    if (!gemsList) return;
+
+    // Find all gem items that are being cut
+    const cuttingProgressBadges = gemsList.querySelectorAll('.gem-cutting-progress');
+
+    cuttingProgressBadges.forEach(badge => {
+        // Find the parent gem item to get the gem type
+        const gemItem = badge.closest('.gem-item');
+        if (!gemItem) return;
+
+        // Find all gems being cut to update their progress
+        const cuttingGems = gems.filter(g => g.markedForCutting && !g.polished);
+
+        // Get the first cutting gem (we only cut one at a time per type/carat)
+        const cuttingGem = cuttingGems[0];
+
+        if (cuttingGem && cuttingGem.cuttingProgress !== undefined) {
+            const progress = cuttingGem.cuttingProgress || 0;
+            badge.textContent = `Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}`;
+        }
+    });
 }
 
 /**

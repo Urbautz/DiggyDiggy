@@ -398,6 +398,115 @@ function updateSmelterTemperatureDisplay() {
     }
 }
 
+/**
+ * Update dynamic parts of smelter task display (gem cutting progress and active task indicator)
+ */
+function updateSmelterTasksDisplay() {
+    const taskList = document.getElementById('smelter-task-list');
+    if (!taskList) return;
+
+    const activeTaskId = getCurrentActiveTask();
+
+    // Update each task row
+    smelterTasks.forEach((task) => {
+        const taskRow = taskList.querySelector(`[data-task-id="${task.id}"]`);
+        if (!taskRow) return;
+
+        // Update status indicator for active task
+        const statusIndicator = taskRow.querySelector('.smelter-task-status');
+        if (statusIndicator && task.id !== 'do-nothing') {
+            const isUnreachable = taskRow.classList.contains('smelter-task-unreachable');
+            const isLocked = taskRow.classList.contains('smelter-task-locked');
+            const isCurrentlyActive = task.id === activeTaskId;
+
+            // Only update if the active status changed
+            const wasActive = statusIndicator.textContent === '🧍';
+            if (isCurrentlyActive && !wasActive && !isUnreachable && !isLocked) {
+                statusIndicator.textContent = '🧍';
+                statusIndicator.title = 'Currently being worked on';
+            } else if (!isCurrentlyActive && wasActive) {
+                // Task is no longer active, restore appropriate icon
+                const isActionable = taskRow.classList.contains('smelter-task-actionable');
+                if (isActionable) {
+                    statusIndicator.textContent = '✅';
+                    statusIndicator.title = 'Ready - materials available';
+                }
+            }
+        }
+
+        // Update gem cutting progress
+        if (task.type === 'gem-cutting') {
+            const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
+            if (taskRecipe) {
+                const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
+                const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+
+                if (cuttingGem) {
+                    const progress = cuttingGem.cuttingProgress || 0;
+                    const ticksRequired = task.ticksRequired || 250;
+                    taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
+                } else {
+                    taskRecipe.textContent = 'No gems queued for cutting';
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Get the task ID that is currently being worked on (if any)
+ * @returns {string|null} The task ID or null if no task is active
+ */
+function getCurrentActiveTask() {
+    // Check if any dwarf is currently smelting
+    const smeltingDwarf = dwarfs.find(d => d.status === 'smelting');
+    if (!smeltingDwarf) return null;
+
+    // Find the first actionable task in priority order
+    for (const task of smelterTasks) {
+        if (task.id === 'do-nothing') return null;
+
+        // Check if task is unlocked
+        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+        if (!isUnlocked) continue;
+
+        // Check if task has required materials/gems
+        if (task.type === 'gem-cutting') {
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            if (gemToProcess) return task.id;
+        } else if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stockAmount = materialsStock[input.material] || 0;
+                return stockAmount >= input.amount;
+            });
+            if (hasAllInputs) {
+                if (task.minTemp) {
+                    if (smelterTemperature >= task.minTemp) return task.id;
+                } else {
+                    return task.id;
+                }
+            }
+        } else if (task.input && task.input.material) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                if (task.type === 'heating') {
+                    if (task.heatGain === 'dynamic') {
+                        if (smelterTemperature < smelterMagmaMinTemp) return task.id;
+                    } else {
+                        if (smelterHeatingMode) return task.id;
+                    }
+                } else if (task.minTemp) {
+                    if (smelterTemperature >= task.minTemp) return task.id;
+                } else {
+                    return task.id;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
 function populateSmelter() {
     const container = document.getElementById('smelter-content');
     if (!container) return;
@@ -415,8 +524,25 @@ function populateSmelter() {
     taskList.className = 'smelter-task-list';
     taskList.id = 'smelter-task-list';
 
+    // Set up auto-refresh for smelter modal
+    if (window.smelterRefreshInterval) {
+        clearInterval(window.smelterRefreshInterval);
+    }
+    window.smelterRefreshInterval = setInterval(() => {
+        const modal = document.getElementById('smelter-modal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false') {
+            updateSmelterTasksDisplay();
+        } else {
+            clearInterval(window.smelterRefreshInterval);
+            window.smelterRefreshInterval = null;
+        }
+    }, 100); // Update every 100ms for smooth progress updates
+
     // Find if there's a "do-nothing" task and track if we're below it
     const doNothingIndex = smelterTasks.findIndex(t => t.id === 'do-nothing');
+
+    // Get the currently active task
+    const activeTaskId = getCurrentActiveTask();
 
     // Render each task
     smelterTasks.forEach((task, index) => {
@@ -495,6 +621,10 @@ function populateSmelter() {
         // Status indicator
         const statusIndicator = document.createElement('span');
         statusIndicator.className = 'smelter-task-status';
+
+        // Check if this task is currently being worked on
+        const isCurrentlyActive = task.id === activeTaskId;
+
         if (task.id === 'do-nothing') {
             statusIndicator.textContent = '⏸️';
             statusIndicator.title = 'Idle task';
@@ -504,6 +634,9 @@ function populateSmelter() {
         } else if (!isUnlocked) {
             statusIndicator.textContent = '🔒';
             statusIndicator.title = `Locked - requires ${requiredResearchName}`;
+        } else if (isCurrentlyActive) {
+            statusIndicator.textContent = '🧍';
+            statusIndicator.title = 'Currently being worked on';
         } else if (isActionable) {
             statusIndicator.textContent = '✅';
             statusIndicator.title = 'Ready - materials available';
@@ -774,6 +907,17 @@ function setupSmelterDragAndDrop() {
         if (draggedIndex !== newIndex) {
             const movedTask = smelterTasks.splice(draggedIndex, 1)[0];
             smelterTasks.splice(newIndex, 0, movedTask);
+
+            // Sync with worker
+            if (gameWorker && workerInitialized) {
+                gameWorker.postMessage({
+                    type: 'update-state',
+                    data: {
+                        smelterTasks: smelterTasks
+                    }
+                });
+            }
+
             saveGame();
             populateSmelter();
         }
