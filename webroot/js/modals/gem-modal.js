@@ -328,15 +328,24 @@ function updateGemsCuttingProgress() {
     const cuttingProgressBadges = gemsList.querySelectorAll('.gem-cutting-progress');
 
     cuttingProgressBadges.forEach(badge => {
-        // Find the parent gem item to get the gem type
+        // Find the parent gem item to get the gem type and carat
         const gemItem = badge.closest('.gem-item');
         if (!gemItem) return;
 
-        // Find all gems being cut to update their progress
-        const cuttingGems = gems.filter(g => g.markedForCutting && !g.polished);
+        // Get the gem type and carat from the sell button's data attributes
+        const sellBtn = gemItem.querySelector('.gem-sell-one-btn');
+        if (!sellBtn) return;
 
-        // Get the first cutting gem (we only cut one at a time per type/carat)
-        const cuttingGem = cuttingGems[0];
+        const gemType = sellBtn.dataset.type;
+        const carat = parseInt(sellBtn.dataset.carat);
+
+        // Find the specific gem being cut with matching type and carat
+        const cuttingGem = gems.find(g =>
+            g.type === gemType &&
+            g.carat === carat &&
+            g.markedForCutting &&
+            !g.polished
+        );
 
         if (cuttingGem && cuttingGem.cuttingProgress !== undefined) {
             const progress = cuttingGem.cuttingProgress || 0;
@@ -388,6 +397,10 @@ function populateGemsList() {
     // Get gem types sorted alphabetically
     const sortedTypes = Object.keys(gemsByType).sort();
 
+    // Apply better-trading research bonus
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+
     // Create sections for each gem type
     sortedTypes.forEach(type => {
         const gemMaterial = getMaterialById(type);
@@ -396,10 +409,10 @@ function populateGemsList() {
         const gemBaseValue = gemMaterial ? gemMaterial.worth : 0;
         const gemsOfType = gemsByType[type];
 
-        // Calculate total value for this gem type (polished gems worth 50% more)
+        // Calculate total value for this gem type (polished gems worth 50% more, with trade bonus)
         const totalValue = gemsOfType.reduce((sum, gem) => {
             const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-            return sum + (gemBaseValue * gem.carat * valueMultiplier);
+            return sum + (gemBaseValue * gem.carat * valueMultiplier * tradeBonus);
         }, 0);
 
         // Calculate max carat for each status
@@ -429,6 +442,7 @@ function populateGemsList() {
             <span class="gem-type-status-info">${statusInfo}</span>
             <span class="gem-type-count">(${gemsOfType.length})</span>
             <span class="gem-type-value">${formatNumber(totalValue, 'gold')}</span>
+            <button class="gem-sell-all-type-btn" data-type="${type}" title="Sell all ${gemName} gems">💰 Sell All</button>
         `;
 
         // Create container for gem items (initially hidden unless expanded)
@@ -450,7 +464,7 @@ function populateGemsList() {
             }
             gemGroupings[key].gems.push(gem);
             const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-            gemGroupings[key].totalValue += gemBaseValue * gem.carat * valueMultiplier;
+            gemGroupings[key].totalValue += gemBaseValue * gem.carat * valueMultiplier * tradeBonus;
         });
 
         // Sort groups by carat (highest first)
@@ -560,6 +574,15 @@ function populateGemsList() {
             markGemsForCutting(gemType, carat);
         });
     });
+
+    // Add event listeners for sell all type buttons
+    document.querySelectorAll('.gem-sell-all-type-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent collapse toggle
+            const gemType = btn.dataset.type;
+            sellAllGemsOfType(gemType);
+        });
+    });
 }
 
 /**
@@ -627,11 +650,16 @@ function sellGems(gemType, carat, polished, includeLower) {
     // Calculate total value (polished gems worth 50% more)
     const gemMaterial = getMaterialById(gemType);
     const baseValue = gemMaterial ? gemMaterial.worth : 0;
+
+    // Apply better-trading research bonus
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
         const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-        totalValue += baseValue * gem.carat * valueMultiplier;
+        totalValue += baseValue * gem.carat * valueMultiplier * tradeBonus;
     });
 
     // Remove gems from array
@@ -653,6 +681,77 @@ function sellGems(gemType, carat, polished, includeLower) {
         ? `Sold ${gemsToSell.length} ${statusText} ${gemName} (${carat}ct and lower)`
         : `Sold 1 ${statusText} ${gemName} (${carat}ct)`;
 
+    logTransaction('income', totalValue, description);
+
+    // Sync to worker
+    if (gameWorker) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                gems: gems,
+                gold: gold
+            }
+        });
+    }
+
+    // Save game
+    saveGame();
+
+    // Refresh the gems list
+    populateGemsList();
+}
+
+/**
+ * Sell all gems of a specific type (both rough and polished)
+ * @param {string} gemType - The type of gem to sell
+ */
+function sellAllGemsOfType(gemType) {
+    // Find all gems of this type (exclude assigned gems)
+    const gemsToSell = gems.filter(gem => gem.type === gemType && !gem.assignedToTool);
+
+    if (gemsToSell.length === 0) {
+        console.warn('No gems found to sell');
+        return;
+    }
+
+    // Calculate total value (polished gems worth 50% more)
+    const gemMaterial = getMaterialById(gemType);
+    const baseValue = gemMaterial ? gemMaterial.worth : 0;
+
+    // Apply better-trading research bonus
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+
+    let totalValue = 0;
+
+    gemsToSell.forEach(gem => {
+        const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
+        totalValue += baseValue * gem.carat * valueMultiplier * tradeBonus;
+    });
+
+    // Get gem name for display
+    const gemName = gemMaterial ? gemMaterial.name : gemType;
+
+    // Confirm before selling
+    const confirmMsg = `Sell all ${gemsToSell.length} ${gemName} gems for ${formatNumber(totalValue, 'gold')}?`;
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    // Remove gems from array
+    gemsToSell.forEach(gem => {
+        const index = gems.findIndex(g => g.id === gem.id);
+        if (index !== -1) {
+            gems.splice(index, 1);
+        }
+    });
+
+    // Add gold
+    gold += totalValue;
+    updateGoldDisplay();
+
+    // Log transaction
+    const description = `Sold ${gemsToSell.length} ${gemName} gems (all carats and types)`;
     logTransaction('income', totalValue, description);
 
     // Sync to worker

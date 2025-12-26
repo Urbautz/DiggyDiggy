@@ -2573,6 +2573,30 @@ header, footer {
     margin-left: 8px;
 }
 
+.gem-sell-all-type-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(251, 191, 36, 0.2);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    color: #fbbf24;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.gem-sell-all-type-btn:hover {
+    background: rgba(251, 191, 36, 0.3);
+    border-color: rgba(251, 191, 36, 0.6);
+    transform: translateY(-1px);
+}
+
+.gem-sell-all-type-btn:active {
+    transform: translateY(0);
+}
+
 .gem-type-items {
     display: grid;
     gap: 8px;
