@@ -481,10 +481,18 @@ function populateGemsList() {
             const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
             const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
 
-            // Show cut button for rough gems if gem cutting is researched
+            // Show cut button for rough gems if gem cutting is researched, placeholder for polished gems
+            let cutButtonHTML = '';
+            if (!group.polished && hasGemCutting) {
+                cutButtonHTML = `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>`;
+            } else if (hasGemCutting) {
+                // Add placeholder to maintain consistent layout
+                cutButtonHTML = '<span style="display: inline-block; width: 60px;"></span>';
+            }
+
             const sellButtonsHTML = `
                 <div class="gem-item-actions">
-                    ${!group.polished && hasGemCutting ? `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>` : ''}
+                    ${cutButtonHTML}
                     <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
                     <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
                 </div>

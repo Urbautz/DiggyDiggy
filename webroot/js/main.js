@@ -2570,6 +2570,12 @@ function loadGame() {
         // Restore gems array
         if (gameState.gems) {
             gems = gameState.gems;
+            // Migrate old uppercase gem types to lowercase
+            for (const gem of gems) {
+                if (gem.type) {
+                    gem.type = gem.type.toLowerCase();
+                }
+            }
         }
         if (gameState.nextGemId !== undefined) {
             nextGemId = gameState.nextGemId;
@@ -2578,12 +2584,20 @@ function loadGame() {
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;
-            // Migrate old uppercase plating material IDs to lowercase
+            // Migrate old uppercase plating material IDs and gem types to lowercase
             const migratedTools = gameState.toolsInventory.map(tool => {
-                if (tool.plating) {
-                    return { ...tool, plating: tool.plating.toLowerCase() };
+                const migratedTool = { ...tool };
+                if (migratedTool.plating) {
+                    migratedTool.plating = migratedTool.plating.toLowerCase();
                 }
-                return tool;
+                // Migrate gem types to lowercase
+                if (migratedTool.gems && Array.isArray(migratedTool.gems)) {
+                    migratedTool.gems = migratedTool.gems.map(gem => ({
+                        ...gem,
+                        type: gem.type ? gem.type.toLowerCase() : gem.type
+                    }));
+                }
+                return migratedTool;
             });
             toolsInventory.push(...migratedTools);
         }

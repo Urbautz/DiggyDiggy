@@ -2806,6 +2806,7 @@ header, footer {
 
 .gem-cut-btn {
     padding: 4px 10px;
+    width:60px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
