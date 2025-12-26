@@ -418,7 +418,7 @@ const materials = {
     hardness: 350,
     probability: 0,
     worth: 1200,
-    minlevel: 99999,
+    minlevel: 10999,
     color: '#c0c0c0ff',
     weight: 42
   },
