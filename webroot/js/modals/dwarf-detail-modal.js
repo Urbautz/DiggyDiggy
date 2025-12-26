@@ -43,11 +43,51 @@ function getDwarfCurrentActivity(dwarf) {
         }
         return 'Researching';
     } else if (dwarf.status === 'smelting') {
-        // Get the current smelter task
+        // Get the current smelter task - use same logic as worker's findActionableSmelterTask
         if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
             for (const task of smelterTasks) {
-                if (task.enabled && task.canRun) {
-                    return task.name;
+                if (task.id === 'do-nothing') break;
+
+                // Check if task is unlocked (researched)
+                const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+                if (!isUnlocked) continue;
+
+                // For heating tasks, check temperature requirements
+                if (task.type === 'heating') {
+                    if (task.heatGain === 'dynamic') {
+                        if (smelterTemperature >= smelterMagmaMinTemp) continue;
+                    } else {
+                        if (smelterTemperature >= smelterCoalMaxTemp) continue;
+                    }
+                }
+
+                // Check temperature requirements for smelting tasks
+                if (task.minTemp && smelterTemperature < task.minTemp) continue;
+
+                // For gem cutting tasks
+                if (task.type === 'gem-cutting') {
+                    const hasGemsToPolish = gems.some(g => g.markedForCutting && !g.polished);
+                    if (hasGemsToPolish) return task.name;
+                    continue;
+                }
+
+                // Check for single input (legacy format)
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return task.name;
+                    }
+                }
+
+                // Check for multiple inputs (alloy format)
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    const hasAllInputs = task.inputs.every(input => {
+                        const stockAmount = materialsStock[input.material] || 0;
+                        return stockAmount >= input.amount;
+                    });
+                    if (hasAllInputs) {
+                        return task.name;
+                    }
                 }
             }
         }

@@ -98,8 +98,44 @@ function formatNumber(value, type = 'material') {
 function countActionableSmelterTasks() {
     let count = 0;
     for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') continue;
+        if (task.id === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
         if (!isSmelterTaskUnlocked(task)) continue;
+
+        // For heating tasks, check temperature requirements and materials
+        if (task.type === 'heating') {
+            // Check if heating is needed
+            let heatingNeeded = false;
+            if (task.heatGain === 'dynamic') {
+                // Magma: only heat when below min temp
+                heatingNeeded = smelterTemperature < smelterMagmaMinTemp;
+            } else {
+                // Coal: check if we need heating (simplified hysteresis check)
+                // Heat if below min, or if already heating and below max
+                if (smelterTemperature < smelterCoalMinTemp) {
+                    heatingNeeded = true;
+                } else if (smelterTemperature < smelterCoalMaxTemp && smelterHeatingMode) {
+                    heatingNeeded = true;
+                }
+            }
+
+            if (!heatingNeeded) {
+                continue;
+            }
+
+            // Check if materials are available for heating
+            if (task.input && task.input.material && task.input.amount) {
+                const stockAmount = materialsStock[task.input.material] || 0;
+                if (stockAmount >= task.input.amount) {
+                    count++;
+                }
+            }
+            continue;
+        }
+
+        // Check temperature requirements for smelting tasks
+        if (task.minTemp && smelterTemperature < task.minTemp) {
+            continue;
+        }
 
         // Check for gem cutting tasks
         if (task.type === 'gem-cutting') {
@@ -107,18 +143,24 @@ function countActionableSmelterTasks() {
             if (hasGemsToPolish) {
                 count++;
             }
-        } else if (task.inputs && Array.isArray(task.inputs)) {
-            // Multiple inputs (alloy format)
+            continue;
+        }
+
+        // Check for single input (legacy format)
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                count++;
+            }
+        }
+
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stock = materialsStock[input.material] || 0;
                 return stock >= input.amount;
             });
             if (hasAllInputs) {
-                count++;
-            }
-        } else if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
                 count++;
             }
         }
