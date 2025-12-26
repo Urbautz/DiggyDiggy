@@ -13,12 +13,11 @@ const visibleDepth = 10; // show only 10 rows in the UI
 // ============================================================================
 // MATERIAL REGISTRY
 // ============================================================================
-const materials = [
+const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // LOOSE MATERIALS
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'earth',
+  'earth': {
     name: 'Earth',
     type: 'Loose',
     hardness: 10,
@@ -29,8 +28,7 @@ const materials = [
     color: '#6b4b2c',
     weight: 5
   },
-  {
-    id: 'Sand',
+  'Sand': {
     name: 'Sand',
     type: 'Loose',
     hardness: 10,
@@ -41,8 +39,7 @@ const materials = [
     color: '#e0aa46',
     weight: 5
   },
-  {
-    id: 'mud',
+  'mud': {
     name: 'Mud',
     type: 'Loose',
     hardness: 15,
@@ -53,8 +50,7 @@ const materials = [
     color: '#4a2f13ff',
     weight: 5
   },
-  {
-    id: 'clay',
+  'clay': {
     name: 'Clay',
     type: 'Loose',
     hardness: 25,
@@ -65,8 +61,7 @@ const materials = [
     color: '#a57f61',
     weight: 5
   },
-  {
-    id: 'gravel',
+  'gravel': {
     name: 'Gravel',
     type: 'Loose',
     hardness: 30,
@@ -81,8 +76,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // SOFT STONE
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'sandstone',
+  'sandstone': {
     name: 'Sandstone',
     type: 'Stone Soft',
     hardness: 80,
@@ -93,8 +87,7 @@ const materials = [
     color: '#9d4d39ff',
     weight: 15
   },
-  {
-    id: 'limestone',
+  'limestone': {
     name: 'Limestone',
     type: 'Stone Soft',
     hardness: 80,
@@ -105,8 +98,7 @@ const materials = [
     color: '#a8a19fff',
     weight: 15
   },
-  {
-    id: 'Lime',
+  'Lime': {
     name: 'Lime',
     type: 'Processed',
     hardness: 0,
@@ -116,8 +108,7 @@ const materials = [
     color: '#e8f4f0ff',
     weight: 3
   },
-  {
-    id: 'Chalk',
+  'Chalk': {
     name: 'Chalk',
     type: 'Stone Soft',
     hardness: 30,
@@ -128,8 +119,7 @@ const materials = [
     color: '#a6b8adff',
     weight: 12
   },
-  {
-    id: 'ClayStone',
+  'ClayStone': {
     name: 'Clay Stone',
     type: 'Stone Soft',
     hardness: 100,
@@ -144,8 +134,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // MEDIUM STONE
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Marble',
+  'Marble': {
     name: 'Marble',
     type: 'Stone Medium',
     hardness: 250,
@@ -156,8 +145,7 @@ const materials = [
     color: '#7a706eff',
     weight: 25
   },
-  {
-    id: 'Polished Marble',
+  'Polished Marble': {
     name: 'Polished Marble',
     type: 'Processed',
     hardness: 0,
@@ -167,8 +155,7 @@ const materials = [
     color: '#c8c0beff',
     weight: 20
   },
-  {
-    id: 'Slate',
+  'Slate': {
     name: 'Slate',
     type: 'Stone Medium',
     hardness: 800,
@@ -179,8 +166,7 @@ const materials = [
     color: '#483b37ff',
     weight: 25
   },
-  {
-    id: 'Schist',
+  'Schist': {
     name: 'Schist',
     type: 'Stone Medium',
     hardness: 400,
@@ -191,8 +177,7 @@ const materials = [
     color: '#1d354dff',
     weight: 25
   },
-  {
-    id: 'Dolomite',
+  'Dolomite': {
     name: 'Dolomite',
     type: 'Stone Medium',
     hardness: 900,
@@ -207,8 +192,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // HARD STONE
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Granite',
+  'Granite': {
     name: 'Granite',
     type: 'Stone Hard',
     hardness: 1100,
@@ -218,8 +202,7 @@ const materials = [
     color: '#280918ff',
     weight: 35
   },
-  {
-    id: 'Polished Granite',
+  'Polished Granite': {
     name: 'Polished Granite',
     type: 'Processed',
     hardness: 0,
@@ -229,8 +212,7 @@ const materials = [
     color: '#4a1828ff',
     weight: 30
   },
-  {
-    id: 'Basalt',
+  'Basalt': {
     name: 'Basalt',
     type: 'Stone Hard',
     hardness: 1750,
@@ -240,8 +222,7 @@ const materials = [
     color: '#484848ff',
     weight: 35
   },
-  {
-    id: 'Obsidian',
+  'Obsidian': {
     name: 'Obsidian',
     type: 'Stone Hard',
     hardness: 1950,
@@ -251,8 +232,7 @@ const materials = [
     color: '#184f48ff',
     weight: 35
   },
-  {
-    id: 'Quartzite',
+  'Quartzite': {
     name: 'Quartzite',
     type: 'Stone Hard',
     hardness: 2500,
@@ -262,8 +242,7 @@ const materials = [
     color: '#c35858ff',
     weight: 35
   },
-  {
-    id: 'Polished Obsidian',
+  'Polished Obsidian': {
     name: 'Polished Obsidian',
     type: 'Processed',
     hardness: 0,
@@ -277,8 +256,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // SPECIAL MATERIALS
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Coal',
+  'Coal': {
     name: 'Coal',
     type: 'Special',
     hardness: 80,
@@ -288,8 +266,7 @@ const materials = [
     color: '#191919ff',
     weight: 8
   },
-  {
-    id: 'Magma',
+  'Magma': {
     name: 'Magma',
     type: 'Special',
     hardness: 800,
@@ -303,8 +280,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // GEMS
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Ruby',
+  'Ruby': {
     name: 'Ruby',
     type: 'Gem',
     hardness: 300,
@@ -314,8 +290,7 @@ const materials = [
     color: '#9b111eff',
     weight: 1
   },
-  {
-    id: 'Emerald',
+  'Emerald': {
     name: 'Emerald',
     type: 'Gem',
     hardness: 400,
@@ -325,8 +300,7 @@ const materials = [
     color: '#50c878ff',
     weight: 1
   },
-  {
-    id: 'Sapphire',
+  'Sapphire': {
     name: 'Sapphire',
     type: 'Gem',
     hardness: 500,
@@ -336,8 +310,7 @@ const materials = [
     color: '#0f52baff',
     weight: 1
   },
-  {
-    id: 'Diamond',
+  'Diamond': {
     name: 'Diamond',
     type: 'Gem',
     hardness: 600,
@@ -347,8 +320,7 @@ const materials = [
     color: '#b9f2ffff',
     weight: 1
   },
-  {
-    id: 'Amethyst',
+  'Amethyst': {
     name: 'Amethyst',
     type: 'Gem',
     hardness: 900,
@@ -362,8 +334,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // SOFT ORES & INGOTS
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Bronce Ore',
+  'Bronce Ore': {
     name: 'Bronce Ore',
     type: 'Ore Soft',
     hardness: 100,
@@ -373,8 +344,7 @@ const materials = [
     color: '#7e6136ff',
     weight: 30
   },
-  {
-    id: 'Bronce',
+  'Bronce': {
     name: 'Bronce Ingot',
     type: 'Ingot',
     hardness: 100,
@@ -385,8 +355,7 @@ const materials = [
     forge: 'Base',
     weight: 18
   },
-  {
-    id: 'Copper Ore',
+  'Copper Ore': {
     name: 'Copper Ore',
     type: 'Ore Soft',
     hardness: 180,
@@ -396,8 +365,7 @@ const materials = [
     color: '#c75e41ff',
     weight: 30
   },
-  {
-    id: 'Copper',
+  'Copper': {
     name: 'Copper Ingot',
     type: 'Ingot',
     hardness: 175,
@@ -412,8 +380,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // MEDIUM ORES & INGOTS
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Zinc Ore',
+  'Zinc Ore': {
     name: 'Zinc Ore',
     type: 'Ore Medium',
     hardness: 650,
@@ -423,8 +390,7 @@ const materials = [
     color: '#8ec281ff',
     weight: 40
   },
-  {
-    id: 'Zinc',
+  'Zinc': {
     name: 'Zinc Ingot',
     type: 'Ingot',
     hardness: 300,
@@ -435,8 +401,7 @@ const materials = [
     forge: 'Plating',
     weight: 15
   },
-  {
-    id: 'Brass',
+  'Brass': {
     name: 'Brass Ingot',
     type: 'Ingot',
     hardness: 250,
@@ -447,8 +412,7 @@ const materials = [
     forge: 'Base',
     weight: 18
   },
-  {
-    id: 'Silver Ore',
+  'Silver Ore': {
     name: 'Silver Ore',
     type: 'Ore Medium',
     hardness: 350,
@@ -458,8 +422,7 @@ const materials = [
     color: '#c0c0c0ff',
     weight: 42
   },
-  {
-    id: 'Silver',
+  'Silver': {
     name: 'Silver Ingot',
     type: 'Ingot',
     hardness: 35,
@@ -470,8 +433,7 @@ const materials = [
     forge: 'Plating',
     weight: 20
   },
-  {
-    id: 'Gold Ore',
+  'Gold Ore': {
     name: 'Gold Ore',
     type: 'Ore Medium',
     hardness: 400,
@@ -481,8 +443,7 @@ const materials = [
     color: '#d6a80eff',
     weight: 45
   },
-  {
-    id: 'Gold',
+  'Gold': {
     name: 'Gold Ingot',
     type: 'Ingot',
     hardness: 40,
@@ -493,8 +454,7 @@ const materials = [
     forge: 'Plating',
     weight: 22
   },
-  {
-    id: 'Iron Ore',
+  'Iron Ore': {
     name: 'Iron Ore',
     type: 'Ore Medium',
     hardness: 500,
@@ -504,8 +464,7 @@ const materials = [
     color: '#572012ff',
     weight: 48
   },
-  {
-    id: 'Pig Iron',
+  'Pig Iron': {
     name: 'Pig Iron Ingot',
     type: 'Ore Medium',
     hardness: 10,
@@ -515,8 +474,7 @@ const materials = [
     color: '#4a4a4aff',
     weight: 40
   },
-  {
-    id: 'Iron',
+  'Iron': {
     name: 'Iron Ingot',
     type: 'Ingot',
     hardness: 325,
@@ -527,8 +485,7 @@ const materials = [
     forge: 'Base',
     weight: 25
   },
-  {
-    id: 'Steel',
+  'Steel': {
     name: 'Steel',
     type: 'Ingot',
     hardness: 400,
@@ -539,8 +496,7 @@ const materials = [
     forge: 'Base',
     weight: 25
   },
-  {
-    id: 'Hardened Steel',
+  'Hardened Steel': {
     name: 'Hardened Steel',
     type: 'Ingot',
     hardness: 450,
@@ -551,8 +507,7 @@ const materials = [
     forge: 'Base',
     weight: 25
   },
-  {
-    id: 'Dwarf Steel',
+  'Dwarf Steel': {
     name: 'Dwarf Steel',
     type: 'Ingot',
     hardness: 500,
@@ -567,8 +522,7 @@ const materials = [
   // ──────────────────────────────────────────────────────────────────────────
   // HARD ORES
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'Platinum Ore',
+  'Platinum Ore': {
     name: 'Platinum Ore',
     type: 'Ore Hard',
     hardness: 4000,
@@ -578,8 +532,7 @@ const materials = [
     color: '#c75e41ff',
     weight: 50
   },
-  {
-    id: 'Titanium Ore',
+  'Titanium Ore': {
     name: 'Titanium Ore',
     type: 'Ore Hard',
     hardness: 6000,
@@ -589,8 +542,7 @@ const materials = [
     color: '#57375dff',
     weight: 50
   },
-  {
-    id: 'Adamantine Ore',
+  'Adamantine Ore': {
     name: 'Adamantine Ore',
     type: 'Ore Hard',
     hardness: 10000,
@@ -600,7 +552,7 @@ const materials = [
     color: '#8eb95eff',
     weight: 50
   }
-];
+};
 
 
 // Tools
@@ -783,7 +735,7 @@ let currentHourTimestamp = null;
 // Global stockpile for collected materials (dwarfs must deliver to drop-off to increase these)
 const materialsStock = {};
 // Initialize stock counts for all known materials
-for (const m of materials) materialsStock[m.id] = 0;
+for (const id in materials) materialsStock[id] = 0;
 
 // Gems array - separate from materials, each gem is a unique object with ID
 let gems = [];

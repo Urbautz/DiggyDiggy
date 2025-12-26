@@ -368,9 +368,12 @@ function populateGemsList() {
         return;
     }
 
-    // Group gems by type
+    // Group gems by type (exclude gems that are assigned to tools)
     const gemsByType = {};
     gems.forEach(gem => {
+        // Skip gems that are assigned to tools
+        if (gem.assignedToTool) return;
+
         if (!gemsByType[gem.type]) {
             gemsByType[gem.type] = [];
         }
@@ -435,13 +438,12 @@ function populateGemsList() {
         // Group gems by carat and status for compact display
         const gemGroupings = {};
         gemsOfType.forEach(gem => {
-            const key = `${gem.carat}_${gem.polished}_${gem.markedForCutting}_${gem.assignedToTool ? 'assigned' : 'free'}`;
+            const key = `${gem.carat}_${gem.polished}_${gem.markedForCutting}`;
             if (!gemGroupings[key]) {
                 gemGroupings[key] = {
                     carat: gem.carat,
                     polished: gem.polished,
                     markedForCutting: gem.markedForCutting,
-                    assigned: !!gem.assignedToTool,
                     gems: [],
                     totalValue: 0
                 };
@@ -479,18 +481,14 @@ function populateGemsList() {
             const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
             const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
 
-            // Don't show sell buttons for assigned gems
             // Show cut button for rough gems if gem cutting is researched
-            let sellButtonsHTML = '';
-            if (!group.assigned) {
-                sellButtonsHTML = `
-                    <div class="gem-item-actions">
-                        ${!group.polished && hasGemCutting ? `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>` : ''}
-                        <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
-                        <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
-                    </div>
-                `;
-            }
+            const sellButtonsHTML = `
+                <div class="gem-item-actions">
+                    ${!group.polished && hasGemCutting ? `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>` : ''}
+                    <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
+                    <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
+                </div>
+            `;
 
             gemItem.innerHTML = `
                 <div class="gem-item-compact-content">

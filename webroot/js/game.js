@@ -26,36 +26,37 @@ function generateGrid() {
     for (let r = 0; r < gridDepth; r++) {
         const row = [];
         for (let c = 0; c < gridWidth; c++) {
-            let mat;
-            
+            let matId;
+
             // Check left tile
             if (c > 0 && Math.random() < GRID_CLUSTERING_HORIZONTAL_CHANCE) {
                 const leftCell = row[c - 1];
                 if (leftCell && leftCell.materialId) {
-                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    const leftMat = materials[leftCell.materialId];
                     if (leftMat) {
-                        mat = leftMat;
+                        matId = leftCell.materialId;
                     }
                 }
             }
-            
+
             // Check above tile (if not air/empty)
-            if (!mat && r > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
+            if (!matId && r > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
                 const aboveCell = grid[r - 1][c];
                 if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
-                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    const aboveMat = materials[aboveCell.materialId];
                     if (aboveMat) {
-                        mat = aboveMat;
+                        matId = aboveCell.materialId;
                     }
                 }
             }
-            
+
             // If no clustering, use random based on depth
-            if (!mat) {
-                mat = randomMaterial(r + (startX || 0));
+            if (!matId) {
+                matId = randomMaterial(r + (startX || 0));
             }
-            
-            row.push({ materialId: mat.id, hardness: mat.hardness });
+
+            const mat = materials[matId];
+            row.push({ materialId: matId, hardness: mat.hardness });
         }
         grid.push(row);
     }

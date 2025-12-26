@@ -1074,7 +1074,7 @@ function populateToolsInPanel() {
         // Plating info (before enchant button)
         if (tool.plating && platingEffects[tool.plating]) {
             const platingEffect = platingEffects[tool.plating];
-            const platingMaterial = materials.find(m => m.id === tool.plating);
+            const platingMaterial = materials[tool.plating];
             const platingColor = platingMaterial ? platingMaterial.color : '#888888';
 
             const platingInfo = document.createElement('span');
@@ -1810,7 +1810,10 @@ function initMaterialsPanel() {
     
     // Sort materials by worth (high to low) for consistent display order
     // Filter out gems - they have their own panel
-    const sortedMaterials = [...materials].filter(m => m.type !== 'Gem').sort((a, b) => b.worth - a.worth);
+    const sortedMaterials = Object.entries(materials)
+        .filter(([id, m]) => m.type !== 'Gem')
+        .map(([id, m]) => ({ id, ...m }))
+        .sort((a, b) => b.worth - a.worth);
 
     // Create a row for each material (hidden by default)
     for (const m of sortedMaterials) {
@@ -1923,7 +1926,7 @@ function updateMaterialsPanel() {
     const rows = list.querySelectorAll('.warehouse-row');
     for (const row of rows) {
         const id = row.dataset.materialId;
-        const m = materials.find(mat => mat.id === id);
+        const m = materials[id];
         if (!m) continue;
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
@@ -2648,8 +2651,8 @@ window.activateCheat = function activateCheat() {
     
     // Give 5 of each material
     let materialsAdded = 0;
-    for (const material of materials) {
-        materialsStock[material.id] = (materialsStock[material.id] || 0) + 5;
+    for (const id in materials) {
+        materialsStock[id] = (materialsStock[id] || 0) + 5;
         materialsAdded++;
     }
     console.log(`Added 5 of each material (${materialsAdded} materials)`);

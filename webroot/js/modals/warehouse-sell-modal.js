@@ -41,8 +41,7 @@ function openWarehouseSellModal() {
     const heatingMaterials = [];
     const allMaterials = [];
 
-    for (const m of materials) {
-        const id = m.id;
+    for (const [id, m] of Object.entries(materials)) {
         const count = materialsStock[id] || 0;
         if (count > 0) {
             const value = count * m.worth * tradeBonus;
@@ -156,8 +155,7 @@ function executeBulkSell(action) {
     let totalItems = 0;
     const soldMaterials = [];
 
-    for (const m of materials) {
-        const id = m.id;
+    for (const [id, m] of Object.entries(materials)) {
         const count = materialsStock[id] || 0;
         if (count <= 0) continue;
 
@@ -230,8 +228,8 @@ function sellAllMaterials() {
     // First calculate totals for confirmation
     let previewGold = 0;
     let previewItems = 0;
-    for (const m of materials) {
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+    for (const [id, m] of Object.entries(materials)) {
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
             previewGold += count * m.worth * tradeBonus;
             previewItems += count;
@@ -248,8 +246,7 @@ function sellAllMaterials() {
     let totalGold = 0;
     let totalItems = 0;
 
-    for (const m of materials) {
-        const id = m.id;
+    for (const [id, m] of Object.entries(materials)) {
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
             const goldForThisMaterial = count * m.worth * tradeBonus;
@@ -304,12 +301,12 @@ function sellNotCraftableMaterials() {
     // First calculate totals for confirmation
     let previewGold = 0;
     let previewItems = 0;
-    for (const m of materials) {
+    for (const [id, m] of Object.entries(materials)) {
         // Skip materials that are used as smelter inputs or forge inputs (ingots)
-        if (smelterInputMaterials.has(m.id)) continue;
+        if (smelterInputMaterials.has(id)) continue;
         if (m.type === 'Ingot') continue;
 
-        const count = (typeof materialsStock !== 'undefined' && materialsStock[m.id] != null) ? materialsStock[m.id] : 0;
+        const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
             previewGold += count * m.worth * tradeBonus;
             previewItems += count;
@@ -326,8 +323,7 @@ function sellNotCraftableMaterials() {
     let totalGold = 0;
     let totalItems = 0;
 
-    for (const m of materials) {
-        const id = m.id;
+    for (const [id, m] of Object.entries(materials)) {
         // Skip materials that are used as smelter inputs or forge inputs (ingots)
         if (smelterInputMaterials.has(id)) continue;
         if (m.type === 'Ingot') continue;

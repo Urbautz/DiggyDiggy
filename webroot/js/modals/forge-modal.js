@@ -91,7 +91,12 @@ function createForgeInterface(container) {
     // Populate ingot dropdown with hardness and stock info
     const materialSelect = step1.querySelector('#base-material');
     // Filter materials that can be used as forge base materials
-    const ingots = materials.filter(m => m.forge === 'Base');
+    const ingots = [];
+    for (const [id, mat] of Object.entries(materials)) {
+        if (mat.forge === 'Base') {
+            ingots.push({ id, ...mat });
+        }
+    }
     for (const ingot of ingots) {
         const stockAmount = materialsStock[ingot.id] || 0;
         const option = document.createElement('option');
@@ -151,7 +156,12 @@ function createForgeInterface(container) {
 
     // Populate plating dropdown with available plating materials
     const platingSelect = step5.querySelector('#plating-material');
-    const platingMaterials = materials.filter(m => m.forge === 'Plating');
+    const platingMaterials = [];
+    for (const [id, mat] of Object.entries(materials)) {
+        if (mat.forge === 'Plating') {
+            platingMaterials.push({ id, ...mat });
+        }
+    }
     for (const plating of platingMaterials) {
         const stockAmount = materialsStock[plating.id] || 0;
         const option = document.createElement('option');
@@ -410,7 +420,7 @@ function updateForgeState() {
         const baseQuality = FORGE_BASE_QUALITY;
         let materialHardness = 0;
         if (forgeState.baseMaterial) {
-            const material = materials.find(m => m.id === forgeState.baseMaterial);
+            const material = materials[forgeState.baseMaterial];
             materialHardness = material ? material.hardness : 0;
         }
         const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
@@ -530,7 +540,7 @@ async function startForging() {
         }
 
         // Calculate quality components
-        const material = materials.find(m => m.id === forgeState.baseMaterial);
+        const material = materials[forgeState.baseMaterial];
         const materialHardness = material ? material.hardness : 0;
         const baseQuality = FORGE_BASE_QUALITY;
         const hammeringBonus = forgeState.hammeringCount * FORGE_HAMMERING_BONUS_PER_ITERATION;
@@ -620,7 +630,7 @@ async function startForging() {
             await sleep(1800);
 
             // Get plating material name
-            const platingMat = materials.find(m => m.id === forgeState.platingMaterial);
+            const platingMat = materials[forgeState.platingMaterial];
             const platingName = platingMat ? platingMat.name : forgeState.platingMaterial;
 
             // Show plating success
@@ -685,7 +695,7 @@ async function startForging() {
     // Show result
     if (success) {
         // Create new tool with material name in type
-        const material = materials.find(m => m.id === forgeState.baseMaterial);
+        const material = materials[forgeState.baseMaterial];
         const materialName = material ? material.name.replace(' Ingot', '') : 'Unknown';
         const newToolId = Math.max(...toolsInventory.map(t => t.id), 0) + 1;
         const newTool = {

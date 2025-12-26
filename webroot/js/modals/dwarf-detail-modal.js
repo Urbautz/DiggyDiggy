@@ -397,7 +397,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         // Add plating display if tool has plating
         if (currentTool.plating && platingEffects[currentTool.plating]) {
             const platingEffect = platingEffects[currentTool.plating];
-            const platingMaterial = materials.find(m => m.id === currentTool.plating);
+            const platingMaterial = materials[currentTool.plating];
             const platingColor = platingMaterial ? platingMaterial.color : '#888888';
 
             const platingSpan = document.createElement('span');

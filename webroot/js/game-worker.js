@@ -117,7 +117,7 @@ function isReservedForDig(x, y) {
  */
 function handleBlockDestruction(cell, dwarf, x, y) {
     const matId = cell.materialId;
-    const mat = materials.find(m => m.id === matId);
+    const mat = materials[matId];
 
     // Check if this stone contains a gem BEFORE collecting it
     // Apply Silver plating gem probability multiplier
@@ -133,7 +133,7 @@ function handleBlockDestruction(cell, dwarf, x, y) {
         const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
 
         // Get gem material to use its hardness
-        const gemMat = materials.find(m => m.id === gemType);
+        const gemMat = materials[gemType];
         const gemHardness = gemMat ? gemMat.hardness : 1;
 
         // Create gem object with unique ID
@@ -376,36 +376,37 @@ function checkAndShiftTopRows() {
         // Calculate the depth level for the new row at the bottom
         const newRowDepth = startX + grid.length + 1;
         for (let c = 0; c < gridWidth; c++) {
-            let mat;
-            
+            let matId;
+
             // Check left tile
             if (c > 0 && Math.random() < GRID_CLUSTERING_HORIZONTAL_CHANCE) {
                 const leftCell = newRow[c - 1];
                 if (leftCell && leftCell.materialId) {
-                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    const leftMat = materials[leftCell.materialId];
                     if (leftMat) {
-                        mat = leftMat;
+                        matId = leftCell.materialId;
                     }
                 }
             }
-            
+
             // Check above tile
-            if (!mat && grid.length > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
+            if (!matId && grid.length > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
                 const aboveCell = grid[grid.length - 1][c];
                 if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
-                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    const aboveMat = materials[aboveCell.materialId];
                     if (aboveMat) {
-                        mat = aboveMat;
+                        matId = aboveCell.materialId;
                     }
                 }
             }
-            
+
             // If no clustering, use random based on depth
-            if (!mat) {
-                mat = randomMaterial(newRowDepth);
+            if (!matId) {
+                matId = randomMaterial(newRowDepth);
             }
-            
-            newRow.push({ materialId: mat.id, hardness: mat.hardness });
+
+            const mat = materials[matId];
+            newRow.push({ materialId: matId, hardness: mat.hardness });
         }
         grid.push(newRow);
 
@@ -461,7 +462,7 @@ function attemptCollapse(x, y) {
         if (src.hardness > 0) {
             for (const d of dwarfs) {
                 if (d.x === ux && d.y === scanY) {
-                    const mat = materials.find(m => m.id === src.materialId);
+                    const mat = materials[src.materialId];
                     if (mat && typeof mat.hardness === 'number') {
                         const xpGain = Math.ceil(Math.sqrt(mat.hardness));
                         d.xp = (d.xp || 0) + xpGain;
@@ -992,7 +993,7 @@ function actForDwarf(dwarf) {
 
                 for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
                     // Check if this is a gem material - gems should stay in gems array, not materialsStock
-                    const material = materials.find(m => m.id === mat);
+                    const material = materials[mat];
                     if (material && material.type === 'Gem') {
                         // Skip gems - they're already in the gems array
                         continue;
@@ -1211,7 +1212,7 @@ function actForDwarf(dwarf) {
             
             // Check for expertise one-hit on critical
             if (isCrit) {
-                const mat = materials.find(m => m.id === curCell.materialId);
+                const mat = materials[curCell.materialId];
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
@@ -1331,7 +1332,7 @@ function actForDwarf(dwarf) {
             
             // Check for expertise one-hit on critical
             if (isCrit) {
-                const mat = materials.find(m => m.id === curCellDig.materialId);
+                const mat = materials[curCellDig.materialId];
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
