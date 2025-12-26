@@ -385,6 +385,19 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
                 toolBadges.appendChild(gemSpan);
             });
         }
+
+        // Add plating display if tool has plating
+        if (currentTool.plating && platingEffects[currentTool.plating]) {
+            const platingEffect = platingEffects[currentTool.plating];
+            const platingMaterial = materials.find(m => m.id === currentTool.plating);
+            const platingColor = platingMaterial ? platingMaterial.color : '#888888';
+
+            const platingSpan = document.createElement('span');
+            platingSpan.style.cssText = `margin-right: 6px; padding: 2px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 10px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); cursor: help;`;
+            platingSpan.textContent = platingEffect.name;
+            platingSpan.title = platingEffect.description;
+            toolBadges.appendChild(platingSpan);
+        }
     }
 
     // Populate tool selector (only on initial open, not on refresh)
