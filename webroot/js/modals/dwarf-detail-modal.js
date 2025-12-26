@@ -302,8 +302,16 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const diamondBonusPercent = baseDigPowerPoints > 0
         ? ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100)
         : 0;
+    // Calculate total Diamond carats for tooltip
+    let totalDiamondCarat = 0;
+    if (currentTool && currentTool.gems && currentTool.gems.length > 0) {
+        totalDiamondCarat = currentTool.gems
+            .filter(gem => gem.type === 'Diamond')
+            .reduce((sum, gem) => sum + gem.carat, 0);
+    }
+    const diamondTooltip = totalDiamondCarat > 0 ? `title="${totalDiamondCarat}ct Diamond in tool"` : '';
     const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
-        ? `<div style="color: #66ccff; margin-left: 10px;">💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
+        ? `<div style="color: #66ccff; margin-left: 10px; cursor: help;" ${diamondTooltip}>💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
         : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
@@ -481,10 +489,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Calculate Ruby energy prevention chance for display
     let rubyEnergyChance = 0;
+    let totalRubyCarat = 0;
     if (dwarf.toolId) {
         const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
         if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
-            const totalRubyCarat = toolInstance.gems
+            totalRubyCarat = toolInstance.gems
                 .filter(gem => gem.type === 'Ruby')
                 .reduce((sum, gem) => sum + gem.carat, 0);
             if (totalRubyCarat > 0) {
@@ -494,15 +503,34 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Calculate gem bonuses for display
+    // Get total carats for each gem type
+    let totalDiamondCaratForStats = 0;
+    let totalSapphireCarat = 0;
+    let totalAmethystCarat = 0;
+    if (dwarf.toolId) {
+        const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
+            totalDiamondCaratForStats = toolInstance.gems
+                .filter(gem => gem.type === 'Diamond')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            totalSapphireCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Sapphire')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            totalAmethystCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Amethyst')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+        }
+    }
+
     const baseDigPower = dwarf.digPower || 0;
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const diamondDigPowerPercent = (modifiedDigPower > baseDigPower && baseDigPower > 0)
         ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100)
         : 0;
-    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
+    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond ${totalDiamondCaratForStats}ct)` : '';
     const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
 
-    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby ${totalRubyCarat}ct: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
 
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
@@ -510,11 +538,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const sapphireBonusPercent = (modifiedStrength > baseStrength && baseStrength > 0)
         ? ((modifiedStrength - baseStrength) / baseStrength * 100)
         : 0;
-    const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const sapphireBonus = modifiedStrength > baseStrength ? ` (+${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire ${totalSapphireCarat}ct)` : '';
     const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
     const amethystReduction = getAmethystHardnessReduction(dwarf);
-    const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
+    const amethystBonus = amethystReduction > 0 ? ` (-${(amethystReduction*100).toFixed(0)}% hardness from 💎Amethyst ${totalAmethystCarat}ct)` : '';
     const wisdomDesc = `Research success probability and Smelting Speed\n${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
