@@ -561,3 +561,27 @@ function getZincPlatingEnergyReduction(dwarf) {
 
     return 0;
 }
+
+/**
+ * Get the gem spawn probability multiplier from Silver plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Gem probability multiplier (default 1.0)
+ */
+function getSilverPlatingGemMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Silver plating
+    if (toolInstance.plating === 'Silver') {
+        // Silver plating increases gem probability by 1.4x (as defined in defs.js platingEffects)
+        const gemMultiplier = 1.40;
+        console.log(`[Silver Plating] ${dwarf.name}'s tool has Silver plating - gem probability multiplied by ${gemMultiplier}x`);
+        return gemMultiplier;
+    }
+
+    return 1.0;
+}

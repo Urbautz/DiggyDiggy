@@ -628,9 +628,9 @@ const platingEffects = {
     },
     'Silver': {
         name: 'Silver Plating',
-        description: '+20% gem probability',
+        description: '+40% gem probability',
         effect: 'gemProbability',
-        value: 0.20
+        value: 1.40
     },
     'Gold': {
         name: 'Gold Plating',

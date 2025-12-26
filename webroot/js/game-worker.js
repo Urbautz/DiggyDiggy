@@ -120,7 +120,10 @@ function handleBlockDestruction(cell, dwarf, x, y) {
     const mat = materials.find(m => m.id === matId);
 
     // Check if this stone contains a gem BEFORE collecting it
-    if (mat && mat.type && mat.type.startsWith('Stone') && !cell.gemId && Math.random() < GEM_SPAWN_CHANCE) {
+    // Apply Silver plating gem probability multiplier
+    const silverMultiplier = getSilverPlatingGemMultiplier(dwarf);
+    const effectiveGemChance = GEM_SPAWN_CHANCE * silverMultiplier;
+    if (mat && mat.type && mat.type.startsWith('Stone') && !cell.gemId && Math.random() < effectiveGemChance) {
         const gemType = selectRandomGem();
         if (!gemType) return; // No gems available
 
