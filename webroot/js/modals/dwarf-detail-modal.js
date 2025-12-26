@@ -23,6 +23,40 @@ function getLocationName(x, y) {
 }
 
 /**
+ * Helper function to get what the dwarf is currently working on
+ */
+function getDwarfCurrentActivity(dwarf) {
+    if (dwarf.status === 'digging') {
+        // Get the material at the dwarf's current position
+        if (grid && grid[dwarf.y] && grid[dwarf.y][dwarf.x]) {
+            const cell = grid[dwarf.y][dwarf.x];
+            if (cell.materialId) {
+                const material = getMaterialById(cell.materialId);
+                return material ? material.name : cell.materialId;
+            }
+        }
+        return 'Digging';
+    } else if (dwarf.status === 'researching') {
+        // Get the active research
+        if (typeof activeResearch !== 'undefined' && activeResearch && activeResearch.name) {
+            return activeResearch.name;
+        }
+        return 'Researching';
+    } else if (dwarf.status === 'smelting') {
+        // Get the current smelter task
+        if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
+            for (const task of smelterTasks) {
+                if (task.enabled && task.canRun) {
+                    return task.name;
+                }
+            }
+        }
+        return 'Smelting';
+    }
+    return null;
+}
+
+/**
  * Opens the dwarfs panel view
  */
 function openDwarfs() {
@@ -620,9 +654,19 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
     // Update location information with friendly names
     document.getElementById('dwarf-position').textContent = getLocationName(dwarf.x || 0, dwarf.y || 0);
-    document.getElementById('dwarf-move-target').textContent = dwarf.moveTarget
-        ? getLocationName(dwarf.moveTarget.x, dwarf.moveTarget.y)
-        : '→ None';
+
+    // Update target with current activity
+    const moveTargetElement = document.getElementById('dwarf-move-target');
+    if (dwarf.moveTarget) {
+        moveTargetElement.textContent = getLocationName(dwarf.moveTarget.x, dwarf.moveTarget.y);
+    } else {
+        const activity = getDwarfCurrentActivity(dwarf);
+        if (activity) {
+            moveTargetElement.innerHTML = `<span style="font-size: 1vw;">${activity.substr(0,12)}</span>`;
+        } else {
+            moveTargetElement.textContent = '→ None';
+        }
+    }
 
     // Update bucket header and contents
     document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
