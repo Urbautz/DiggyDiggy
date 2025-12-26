@@ -662,12 +662,8 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_RESEARCH - zincReduction);
-                dwarf.energy = Math.max(0, dwarf.energy - energyCost);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_RESEARCH);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -877,12 +873,8 @@ function actForDwarf(dwarf) {
                     gold = Math.max(0, gold - wage);
                     pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
-                    // Check Ruby gem effect before consuming energy
-                    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                        const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                        const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_SMELT - zincReduction);
-                        dwarf.energy = Math.max(0, dwarf.energy - energyCost);
-                    }
+                    // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+                    applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
                     dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
 
                     return;
@@ -953,12 +945,8 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_SMELT - zincReduction);
-                dwarf.energy = Math.max(0, dwarf.energy - energyCost);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
@@ -1191,12 +1179,8 @@ function actForDwarf(dwarf) {
             dwarf.status = 'digging';
             const prev = curCell.hardness;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_DIG - zincReduction);
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed
@@ -1273,12 +1257,8 @@ function actForDwarf(dwarf) {
             dwarf.x = nextX;
             dwarf.y = nextY;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_MOVE - zincReduction);
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
@@ -1311,12 +1291,8 @@ function actForDwarf(dwarf) {
             }
             const prev = curCellDig.hardness;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                const zincReduction = getZincPlatingEnergyReduction(dwarf);
-                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_DIG - zincReduction);
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed (see above)
@@ -1541,11 +1517,8 @@ function actForDwarf(dwarf) {
         }
     }
     target.hardness = Math.max(0, target.hardness - power);
-    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-      const zincReduction = getZincPlatingEnergyReduction(dwarf);
-      const energyCost = Math.max(1, 5 - zincReduction);
-      dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
-    }
+    // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+    applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
     

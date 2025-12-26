@@ -617,3 +617,23 @@ function getGoldPlatingCritMultiplier(dwarf) {
 
     return 1.0;
 }
+
+// ============================================================================
+// ENERGY CONSUMPTION UTILITIES
+// ============================================================================
+
+/**
+ * Apply energy consumption to a dwarf, accounting for Ruby gem prevention and Zinc plating reduction
+ * This centralizes the energy consumption logic to avoid duplication across different actions
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {number} baseCost - Base energy cost for the action (from constants.js)
+ */
+function applyEnergyConsumption(dwarf, baseCost) {
+    // Check Ruby gem effect - may completely prevent energy consumption
+    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+        // Apply Zinc plating reduction
+        const zincReduction = getZincPlatingEnergyReduction(dwarf);
+        const energyCost = Math.max(1, baseCost - zincReduction);
+        dwarf.energy = Math.max(0, dwarf.energy - energyCost);
+    }
+}
