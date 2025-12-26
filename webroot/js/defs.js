@@ -28,7 +28,7 @@ const materials = {
     color: '#6b4b2c',
     weight: 5
   },
-  'Sand': {
+  'sand': {
     name: 'Sand',
     type: 'Loose',
     hardness: 10,
@@ -98,7 +98,7 @@ const materials = {
     color: '#a8a19fff',
     weight: 15
   },
-  'Lime': {
+  'lime': {
     name: 'Lime',
     type: 'Processed',
     hardness: 0,
@@ -108,7 +108,7 @@ const materials = {
     color: '#e8f4f0ff',
     weight: 3
   },
-  'Chalk': {
+  'chalk': {
     name: 'Chalk',
     type: 'Stone Soft',
     hardness: 30,
@@ -119,7 +119,7 @@ const materials = {
     color: '#a6b8adff',
     weight: 12
   },
-  'ClayStone': {
+  'claystone': {
     name: 'Clay Stone',
     type: 'Stone Soft',
     hardness: 100,
@@ -134,7 +134,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // MEDIUM STONE
   // ──────────────────────────────────────────────────────────────────────────
-  'Marble': {
+  'marble': {
     name: 'Marble',
     type: 'Stone Medium',
     hardness: 250,
@@ -145,7 +145,7 @@ const materials = {
     color: '#7a706eff',
     weight: 25
   },
-  'Polished Marble': {
+  'polished marble': {
     name: 'Polished Marble',
     type: 'Processed',
     hardness: 0,
@@ -155,7 +155,7 @@ const materials = {
     color: '#c8c0beff',
     weight: 20
   },
-  'Slate': {
+  'slate': {
     name: 'Slate',
     type: 'Stone Medium',
     hardness: 800,
@@ -166,7 +166,7 @@ const materials = {
     color: '#483b37ff',
     weight: 25
   },
-  'Schist': {
+  'schist': {
     name: 'Schist',
     type: 'Stone Medium',
     hardness: 400,
@@ -177,7 +177,7 @@ const materials = {
     color: '#1d354dff',
     weight: 25
   },
-  'Dolomite': {
+  'dolomite': {
     name: 'Dolomite',
     type: 'Stone Medium',
     hardness: 900,
@@ -192,7 +192,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // HARD STONE
   // ──────────────────────────────────────────────────────────────────────────
-  'Granite': {
+  'granite': {
     name: 'Granite',
     type: 'Stone Hard',
     hardness: 1100,
@@ -202,7 +202,7 @@ const materials = {
     color: '#280918ff',
     weight: 35
   },
-  'Polished Granite': {
+  'polished granite': {
     name: 'Polished Granite',
     type: 'Processed',
     hardness: 0,
@@ -212,7 +212,7 @@ const materials = {
     color: '#4a1828ff',
     weight: 30
   },
-  'Basalt': {
+  'basalt': {
     name: 'Basalt',
     type: 'Stone Hard',
     hardness: 1750,
@@ -222,7 +222,7 @@ const materials = {
     color: '#484848ff',
     weight: 35
   },
-  'Obsidian': {
+  'obsidian': {
     name: 'Obsidian',
     type: 'Stone Hard',
     hardness: 1950,
@@ -232,7 +232,7 @@ const materials = {
     color: '#184f48ff',
     weight: 35
   },
-  'Quartzite': {
+  'quartzite': {
     name: 'Quartzite',
     type: 'Stone Hard',
     hardness: 2500,
@@ -242,7 +242,7 @@ const materials = {
     color: '#c35858ff',
     weight: 35
   },
-  'Polished Obsidian': {
+  'polished obsidian': {
     name: 'Polished Obsidian',
     type: 'Processed',
     hardness: 0,
@@ -256,7 +256,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // SPECIAL MATERIALS
   // ──────────────────────────────────────────────────────────────────────────
-  'Coal': {
+  'coal': {
     name: 'Coal',
     type: 'Special',
     hardness: 80,
@@ -266,7 +266,7 @@ const materials = {
     color: '#191919ff',
     weight: 8
   },
-  'Magma': {
+  'magma': {
     name: 'Magma',
     type: 'Special',
     hardness: 800,
@@ -280,7 +280,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // GEMS
   // ──────────────────────────────────────────────────────────────────────────
-  'Ruby': {
+  'ruby': {
     name: 'Ruby',
     type: 'Gem',
     hardness: 300,
@@ -290,7 +290,7 @@ const materials = {
     color: '#9b111eff',
     weight: 1
   },
-  'Emerald': {
+  'emerald': {
     name: 'Emerald',
     type: 'Gem',
     hardness: 400,
@@ -300,7 +300,7 @@ const materials = {
     color: '#50c878ff',
     weight: 1
   },
-  'Sapphire': {
+  'sapphire': {
     name: 'Sapphire',
     type: 'Gem',
     hardness: 500,
@@ -310,7 +310,7 @@ const materials = {
     color: '#0f52baff',
     weight: 1
   },
-  'Diamond': {
+  'diamond': {
     name: 'Diamond',
     type: 'Gem',
     hardness: 600,
@@ -320,7 +320,7 @@ const materials = {
     color: '#b9f2ffff',
     weight: 1
   },
-  'Amethyst': {
+  'amethyst': {
     name: 'Amethyst',
     type: 'Gem',
     hardness: 900,
@@ -334,7 +334,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // SOFT ORES & INGOTS
   // ──────────────────────────────────────────────────────────────────────────
-  'Bronce Ore': {
+  'bronce ore': {
     name: 'Bronce Ore',
     type: 'Ore Soft',
     hardness: 100,
@@ -344,7 +344,7 @@ const materials = {
     color: '#7e6136ff',
     weight: 30
   },
-  'Bronce': {
+  'bronce': {
     name: 'Bronce Ingot',
     type: 'Ingot',
     hardness: 100,
@@ -355,7 +355,7 @@ const materials = {
     forge: 'Base',
     weight: 18
   },
-  'Copper Ore': {
+  'copper ore': {
     name: 'Copper Ore',
     type: 'Ore Soft',
     hardness: 180,
@@ -365,7 +365,7 @@ const materials = {
     color: '#c75e41ff',
     weight: 30
   },
-  'Copper': {
+  'copper': {
     name: 'Copper Ingot',
     type: 'Ingot',
     hardness: 175,
@@ -380,7 +380,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // MEDIUM ORES & INGOTS
   // ──────────────────────────────────────────────────────────────────────────
-  'Zinc Ore': {
+  'zinc ore': {
     name: 'Zinc Ore',
     type: 'Ore Medium',
     hardness: 650,
@@ -390,7 +390,7 @@ const materials = {
     color: '#8ec281ff',
     weight: 40
   },
-  'Zinc': {
+  'zinc': {
     name: 'Zinc Ingot',
     type: 'Ingot',
     hardness: 300,
@@ -401,7 +401,7 @@ const materials = {
     forge: 'Plating',
     weight: 15
   },
-  'Brass': {
+  'brass': {
     name: 'Brass Ingot',
     type: 'Ingot',
     hardness: 250,
@@ -412,7 +412,7 @@ const materials = {
     forge: 'Base',
     weight: 18
   },
-  'Silver Ore': {
+  'silver ore': {
     name: 'Silver Ore',
     type: 'Ore Medium',
     hardness: 350,
@@ -422,7 +422,7 @@ const materials = {
     color: '#c0c0c0ff',
     weight: 42
   },
-  'Silver': {
+  'silver': {
     name: 'Silver Ingot',
     type: 'Ingot',
     hardness: 35,
@@ -433,7 +433,7 @@ const materials = {
     forge: 'Plating',
     weight: 20
   },
-  'Gold Ore': {
+  'gold ore': {
     name: 'Gold Ore',
     type: 'Ore Medium',
     hardness: 400,
@@ -443,7 +443,7 @@ const materials = {
     color: '#d6a80eff',
     weight: 45
   },
-  'Gold': {
+  'gold': {
     name: 'Gold Ingot',
     type: 'Ingot',
     hardness: 40,
@@ -454,7 +454,7 @@ const materials = {
     forge: 'Plating',
     weight: 22
   },
-  'Iron Ore': {
+  'iron ore': {
     name: 'Iron Ore',
     type: 'Ore Medium',
     hardness: 500,
@@ -464,7 +464,7 @@ const materials = {
     color: '#572012ff',
     weight: 48
   },
-  'Pig Iron': {
+  'pig iron': {
     name: 'Pig Iron Ingot',
     type: 'Ore Medium',
     hardness: 10,
@@ -474,7 +474,7 @@ const materials = {
     color: '#4a4a4aff',
     weight: 40
   },
-  'Iron': {
+  'iron': {
     name: 'Iron Ingot',
     type: 'Ingot',
     hardness: 325,
@@ -485,7 +485,7 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
-  'Steel': {
+  'steel': {
     name: 'Steel',
     type: 'Ingot',
     hardness: 400,
@@ -496,7 +496,7 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
-  'Hardened Steel': {
+  'hardened steel': {
     name: 'Hardened Steel',
     type: 'Ingot',
     hardness: 450,
@@ -507,7 +507,7 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
-  'Dwarf Steel': {
+  'dwarf steel': {
     name: 'Dwarf Steel',
     type: 'Ingot',
     hardness: 500,
@@ -522,7 +522,7 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // HARD ORES
   // ──────────────────────────────────────────────────────────────────────────
-  'Platinum Ore': {
+  'platinum ore': {
     name: 'Platinum Ore',
     type: 'Ore Hard',
     hardness: 4000,
@@ -532,7 +532,7 @@ const materials = {
     color: '#c75e41ff',
     weight: 50
   },
-  'Titanium Ore': {
+  'titanium ore': {
     name: 'Titanium Ore',
     type: 'Ore Hard',
     hardness: 6000,
@@ -542,7 +542,7 @@ const materials = {
     color: '#57375dff',
     weight: 50
   },
-  'Adamantine Ore': {
+  'adamantine ore': {
     name: 'Adamantine Ore',
     type: 'Ore Hard',
     hardness: 10000,
@@ -572,19 +572,19 @@ const toolsInventory = [
 
 // Plating effects - define what each plating material does when applied to tools
 const platingEffects = {
-    'Zinc': {
+    'zinc': {
         name: 'Zinc Plating',
         description: 'Digging consumes 2 less energy',
         effect: 'energyReduction',
         value: 2
     },
-    'Silver': {
+    'silver': {
         name: 'Silver Plating',
         description: '+40% gem probability',
         effect: 'gemProbability',
         value: 1.40
     },
-    'Gold': {
+    'gold': {
         name: 'Gold Plating',
         description: '+10% higher critical strike chance',
         effect: 'criticalStrike',
@@ -595,30 +595,30 @@ const platingEffects = {
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
-    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
-    { id: 'heat-magma-furnace', name: 'Heat up furnace (Magma)', description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.', input: { material: 'Magma', amount: 1 }, output: null, type: 'heating', heatGain: 'dynamic', requires: 'magma-furnace' },
+    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).', input: { material: 'coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'heat-magma-furnace', name: 'Heat up furnace (Magma)', description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.', input: { material: 'magma', amount: 1 }, output: null, type: 'heating', heatGain: 'dynamic', requires: 'magma-furnace' },
     { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: GEM_CUTTING_TICKS_REQUIRED, requires: 'gem-cutting' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
-    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
-    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
-    { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'Marble', amount: 1 }, output: { material: 'Polished Marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'sand', amount: 5 }, requires: 'grinding-machine' },
+    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'lime', amount: 3 }, requires: 'grinding-machine' },
+    { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'marble', amount: 1 }, output: { material: 'polished marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'granite', amount: 1 }, output: { material: 'polished granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'obsidian', amount: 1 }, output: { material: 'polished obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     
-    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore.', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
-    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore.', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
-    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore.', input: { material: 'Zinc Ore', amount: 1 }, output: { material: 'Zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
+    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore.', input: { material: 'bronce ore', amount: 1 }, output: { material: 'bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
+    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore.', input: { material: 'copper ore', amount: 1 }, output: { material: 'copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
+    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore.', input: { material: 'zinc ore', amount: 1 }, output: { material: 'zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
 
-    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy.', inputs: [{ material: 'Bronce', amount: 2 }, { material: 'Copper', amount: 1 }], output: { material: 'Brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
+    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy.', inputs: [{ material: 'bronce', amount: 2 }, { material: 'copper', amount: 1 }], output: { material: 'brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
     
-    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
-    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
-    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
-    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'Steel', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1950, requires: 'furnace' },
-    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'Hardened Steel', amount: 5 }, output: { material: 'Dwarf Steel', amount: 1 }, minTemp: 2400, requires: 'furnace' },
+    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'iron ore', amount: 1 }, output: { material: 'pig iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
+    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'pig iron', amount: 1 }, output: { material: 'iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
+    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'iron', amount: 5 }, output: { material: 'steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
+    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'steel', amount: 5 }, output: { material: 'hardened steel', amount: 1 }, minTemp: 1950, requires: 'furnace' },
+    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'hardened steel', amount: 5 }, output: { material: 'dwarf steel', amount: 1 }, minTemp: 2400, requires: 'furnace' },
     
-    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
-    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore.', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
+    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'silver ore', amount: 1 }, output: { material: 'silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
+    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore.', input: { material: 'gold ore', amount: 1 }, output: { material: 'gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
   ];
 
 // Smelter temperature system

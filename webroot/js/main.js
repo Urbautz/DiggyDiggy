@@ -2512,28 +2512,43 @@ function loadGame() {
         
         // Restore game state
         grid = gameState.grid || [];
+
+        // Migrate old uppercase material IDs in grid to lowercase
+        for (let row of grid) {
+            if (row && Array.isArray(row)) {
+                for (let cell of row) {
+                    if (cell && cell.materialId) {
+                        cell.materialId = cell.materialId.toLowerCase();
+                    }
+                }
+            }
+        }
+
         dwarfs = gameState.dwarfs || [];
 
-        // Sanitize dwarf buckets - fix any corrupted gem data
+        // Sanitize dwarf buckets - fix any corrupted gem data and migrate material IDs to lowercase
         for (const dwarf of dwarfs) {
             if (dwarf.bucket) {
                 const sanitizedBucket = {};
                 for (const [key, value] of Object.entries(dwarf.bucket)) {
+                    // Migrate material ID key to lowercase
+                    const lowercaseKey = key.toLowerCase();
+
                     // If value is an object (corrupted gem data), convert to 1
                     // If value is a number, keep it
                     // If value is a string like "[object Object]11", extract the number or default to 1
                     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        sanitizedBucket[key] = 1;
+                        sanitizedBucket[lowercaseKey] = 1;
                     } else if (typeof value === 'string') {
                         // Try to extract number from corrupted string like "[object Object]11"
                         const match = value.match(/\d+$/);
-                        sanitizedBucket[key] = match ? parseInt(match[0]) : 1;
+                        sanitizedBucket[lowercaseKey] = match ? parseInt(match[0]) : 1;
                     } else if (Array.isArray(value)) {
-                        sanitizedBucket[key] = value.length;
+                        sanitizedBucket[lowercaseKey] = value.length;
                     } else if (typeof value === 'number') {
-                        sanitizedBucket[key] = value;
+                        sanitizedBucket[lowercaseKey] = value;
                     } else {
-                        sanitizedBucket[key] = 1;
+                        sanitizedBucket[lowercaseKey] = 1;
                     }
                 }
                 dwarf.bucket = sanitizedBucket;
@@ -2546,7 +2561,9 @@ function loadGame() {
         // Restore materials stock
         if (gameState.materialsStock) {
             for (const key in gameState.materialsStock) {
-                materialsStock[key] = gameState.materialsStock[key];
+                // Migrate old uppercase material IDs to lowercase
+                const lowercaseKey = key.toLowerCase();
+                materialsStock[lowercaseKey] = gameState.materialsStock[key];
             }
         }
 
@@ -2561,7 +2578,14 @@ function loadGame() {
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;
-            toolsInventory.push(...gameState.toolsInventory);
+            // Migrate old uppercase plating material IDs to lowercase
+            const migratedTools = gameState.toolsInventory.map(tool => {
+                if (tool.plating) {
+                    return { ...tool, plating: tool.plating.toLowerCase() };
+                }
+                return tool;
+            });
+            toolsInventory.push(...migratedTools);
         }
         
         // Restore research tree - merge saved progress with current definitions
