@@ -1184,13 +1184,9 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed
-            
+
             // Check for critical hit
-            const materialScience = researchtree.find(r => r.id === 'material-science');
-            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
-            // Apply Gold plating critical strike multiplier
-            critChance *= getGoldPlatingCritMultiplier(dwarf);
+            const critChance = calculateFinalCritChance(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -1296,16 +1292,12 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed (see above)
-            
+
             // Check for critical hit
-            const materialScience = researchtree.find(r => r.id === 'material-science');
-            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
-            // Apply Gold plating critical strike multiplier
-            critChance *= getGoldPlatingCritMultiplier(dwarf);
+            const critChance = calculateFinalCritChance(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
-            
+
             // Check for expertise one-hit on critical
             if (isCrit) {
                 const mat = materials[curCellDig.materialId];
@@ -1521,16 +1513,12 @@ function actForDwarf(dwarf) {
     applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-    
-    // Check for critical hit (5% base + 5% per research level)
-    const materialScience = researchtree.find(r => r.id === 'material-science');
-    const baseCritChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
-    let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
-    // Apply Gold plating critical strike multiplier
-    critChance *= getGoldPlatingCritMultiplier(dwarf);
+
+    // Check for critical hit
+    const critChance = calculateFinalCritChance(dwarf);
     const isCrit = Math.random() < critChance;
-    const finalPower = isCrit ? power * 2 : power;
-    
+    const finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
+
     target.hardness = Math.max(0, target.hardness - finalPower);
     
     // Record critical hit for animation

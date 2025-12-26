@@ -637,3 +637,34 @@ function applyEnergyConsumption(dwarf, baseCost) {
         dwarf.energy = Math.max(0, dwarf.energy - energyCost);
     }
 }
+
+// ============================================================================
+// CRITICAL HIT UTILITIES
+// ============================================================================
+
+/**
+ * Calculate the final critical hit chance for a dwarf, accounting for all modifiers
+ * This centralizes critical hit calculation to avoid duplication across different actions
+ *
+ * Calculation order:
+ * 1. Base chance from constants (CRITICAL_HIT_BASE_CHANCE = 2%)
+ * 2. Material Science research bonus (+5% per level)
+ * 3. Emerald gem modifier (multiplicative bonus based on carat)
+ * 4. Gold plating modifier (+10% multiplicative bonus)
+ *
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Final critical hit chance as a decimal (0-1)
+ */
+function calculateFinalCritChance(dwarf) {
+    // Get material science research level
+    const materialScience = researchtree.find(r => r.id === 'material-science');
+    const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+
+    // Apply Emerald gem modifier
+    let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+
+    // Apply Gold plating multiplier
+    critChance *= getGoldPlatingCritMultiplier(dwarf);
+
+    return critChance;
+}
