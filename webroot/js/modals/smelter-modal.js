@@ -607,8 +607,23 @@ function populateSmelter() {
                 taskRow.classList.add('smelter-task-unreachable');
             } else if (!isUnlocked) {
                 taskRow.classList.add('smelter-task-locked');
+            } else if (isActionable) {
+                taskRow.classList.add('smelter-task-actionable');
             } else {
-                taskRow.classList.add(isActionable ? 'smelter-task-actionable' : 'smelter-task-blocked');
+                // Determine if blocked by temperature or materials
+                const hasMaterials = hasMaterialsForTask(task, materialsStock);
+                let tempClass = null;
+
+                // Check for temperature-related states
+                if (task.type === 'heating' && task.heatGain !== 'dynamic' && hasMaterials && !smelterHeatingMode) {
+                    // Coal heating: temperature is adequate (use yellow - temp OK)
+                    tempClass = 'smelter-task-temp-ok';
+                } else if (task.minTemp && smelterTemperature < task.minTemp) {
+                    // Smelting task: temperature too low (use yellow - temp low)
+                    tempClass = 'smelter-task-temp-low';
+                }
+
+                taskRow.classList.add(tempClass || 'smelter-task-blocked');
             }
         }
 
@@ -650,11 +665,11 @@ function populateSmelter() {
                 statusIndicator.textContent = '🌡️';
                 statusIndicator.title = `Temperature too low - need ${task.minTemp}°, current ${Math.round(smelterTemperature)}°`;
             } else if (task.type === 'gem-cutting') {
-                statusIndicator.textContent = '❌';
+                statusIndicator.textContent = '💤';
                 statusIndicator.title = `Blocked - no gems marked for cutting`;
             } else if (task.inputs && Array.isArray(task.inputs)) {
                 // Multiple inputs - show all missing materials
-                statusIndicator.textContent = '❌';
+                statusIndicator.textContent = '💤';
                 const missingMaterials = task.inputs.filter(input => {
                     const stock = materialsStock[input.material] || 0;
                     return stock < input.amount;
@@ -664,10 +679,10 @@ function populateSmelter() {
                 }).join(', ');
                 statusIndicator.title = `Blocked - need ${missingMaterials}`;
             } else if (task.input && task.input.amount) {
-                statusIndicator.textContent = '❌';
+                statusIndicator.textContent = '💤';
                 statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
             } else {
-                statusIndicator.textContent = '❌';
+                statusIndicator.textContent = '💤';
                 statusIndicator.title = `Blocked`;
             }
         }
