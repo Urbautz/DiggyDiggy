@@ -130,7 +130,7 @@ function shouldRubyPreventEnergyConsumption(dwarf) {
 
     // Sum up all Ruby carat values
     const totalRubyCarat = toolInstance.gems
-        .filter(gem => gem.type == 'Ruby')
+        .filter(gem => gem.type == 'ruby')
         .reduce((sum, gem) => sum + gem.carat, 0);
 
     if (totalRubyCarat <= 0) {
@@ -186,7 +186,7 @@ function getEmeraldModifiedCritChance(dwarf, baseCritChance) {
     }
     // Sum up all Emerald carat values
     const totalEmeraldCarat = toolInstance.gems
-        .filter(gem => gem.type == 'Emerald')
+        .filter(gem => gem.type == 'emerald')
         .reduce((sum, gem) => sum + gem.carat, 0);
     if (totalEmeraldCarat <= 0) {
         return baseCritChance;
@@ -230,7 +230,7 @@ function getSapphireModifiedStrength(dwarf, baseStrength) {
 
     // Sum up all Sapphire carat values
     const totalSapphireCarat = toolInstance.gems
-        .filter(gem => gem.type === 'Sapphire')
+        .filter(gem => gem.type === 'sapphire')
         .reduce((sum, gem) => sum + gem.carat, 0);
 
     if (totalSapphireCarat <= 0) return baseStrength;
@@ -281,7 +281,7 @@ function getDiamondModifiedDigPower(dwarf, basePower) {
 
     // Sum up all Diamond carat values
     const totalDiamondCarat = toolInstance.gems
-        .filter(gem => gem.type === 'Diamond')
+        .filter(gem => gem.type === 'diamond')
         .reduce((sum, gem) => sum + gem.carat, 0);
 
     if (totalDiamondCarat <= 0) return basePower;
@@ -331,7 +331,7 @@ function getAmethystHardnessReduction(dwarf) {
 
     // Sum up all Amethyst carat values
     const totalAmethystCarat = toolInstance.gems
-        .filter(gem => gem.type === 'Amethyst')
+        .filter(gem => gem.type === 'amethyst')
         .reduce((sum, gem) => sum + gem.carat, 0);
 
     if (totalAmethystCarat <= 0) return 0;

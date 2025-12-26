@@ -380,7 +380,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     let totalDiamondCarat = 0;
     if (currentTool && currentTool.gems && currentTool.gems.length > 0) {
         totalDiamondCarat = currentTool.gems
-            .filter(gem => gem.type === 'Diamond')
+            .filter(gem => gem.type === 'diamond')
             .reduce((sum, gem) => sum + gem.carat, 0);
     }
     const diamondTooltip = totalDiamondCarat > 0 ? `title="${totalDiamondCarat}ct Diamond in tool"` : '';
@@ -568,7 +568,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
         if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
             totalRubyCarat = toolInstance.gems
-                .filter(gem => gem.type === 'Ruby')
+                .filter(gem => gem.type === 'ruby')
                 .reduce((sum, gem) => sum + gem.carat, 0);
             if (totalRubyCarat > 0) {
                 rubyEnergyChance = calculateRubyEnergyPreventionChance(totalRubyCarat);
@@ -585,13 +585,13 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
         if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
             totalDiamondCaratForStats = toolInstance.gems
-                .filter(gem => gem.type === 'Diamond')
+                .filter(gem => gem.type === 'diamond')
                 .reduce((sum, gem) => sum + gem.carat, 0);
             totalSapphireCarat = toolInstance.gems
-                .filter(gem => gem.type === 'Sapphire')
+                .filter(gem => gem.type === 'sapphire')
                 .reduce((sum, gem) => sum + gem.carat, 0);
             totalAmethystCarat = toolInstance.gems
-                .filter(gem => gem.type === 'Amethyst')
+                .filter(gem => gem.type === 'amethyst')
                 .reduce((sum, gem) => sum + gem.carat, 0);
         }
     }
