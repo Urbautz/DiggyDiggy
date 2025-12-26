@@ -637,6 +637,8 @@ let researchtree = [
       description: 'Prices are improved by 3% per level' },
     { id: 'price-negotiations', name: 'Price Negotiations', cost: 3000, goldCost: 500, level: 0, maxlevel: 1, hardness: 50, requires: [{'trading':10}],
       min_depth: 5000, description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.' },
+    { id: 'small-time-investments', name: 'Small Time Investments', cost: 5000, goldCost: 1000, level: 0, maxlevel: 1, hardness: 100, requires: [{'price-negotiations':1}],
+      min_depth: 8000, description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.' },
     { id: 'buckets', name: 'Bigger Buckets', cost: 500, goldCost: 500, level: 0, maxlevel:10, hardness: 50,
       description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15, hardness: 60,

@@ -2459,6 +2459,96 @@ header, footer {
     overflow-y: auto;
 }
 
+/* Investments Tab Styles */
+.investments-locked {
+    text-align: center;
+    padding: 20px;
+    color: #9fbfe0;
+}
+
+.investments-locked h3 {
+    color: #ffd700;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.investments-header {
+    color: #ffd700;
+    margin-bottom: 12px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.investments-balance-card {
+    background: #2d3f52;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #4a5f7a;
+}
+
+.investments-balance-label {
+    color: #9fbfe0;
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+
+.investments-balance-value {
+    color: #ffd700;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.investments-interest-card {
+    background: #1a2a3a;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border: 1px solid #3a4a57;
+}
+
+.investments-interest-header {
+    color: #4ade80;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+.investments-interest-total {
+    color: #4ade80;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 4px;
+}
+
+.investments-breakdown-header {
+    color: #9fbfe0;
+    font-size: 11px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #3a4a57;
+    padding-bottom: 3px;
+}
+
+.investments-tier {
+    margin-bottom: 4px;
+    padding: 4px;
+    background: #0f1f2f;
+    border-radius: 3px;
+}
+
+.investments-tier-label {
+    color: #9fbfe0;
+    font-size: 14px;
+}
+
+.investments-tier-value {
+    color: #4ade80;
+    font-weight: bold;
+    font-size: 14x;
+}
+
 /* Settings Cheat Section */
 .settings-cheat-section {
     display: none;

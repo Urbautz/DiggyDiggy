@@ -6,7 +6,7 @@
 // ============================================================================
 
 // Game version
-const gameversion = '0.14.0';
+const gameversion = '0.20.0';
 
 // ============================================================================
 // DWARF CONSTANTS
@@ -60,6 +60,12 @@ const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
 const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
 const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
 const RESEARCH_PRICE_NEGOTIATIONS_BONUS = 0.01; // 1% sell price bonus per wisdom level of highest wisdom dwarf
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_RATE = 0.000125; // 0.1% interest rate for gold below 1000
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT = 100; // Gold limit for tier 1 interest
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE = 0.00000135; // 0.025% interest rate for gold below 100k
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT = 10100; // Gold limit for tier 2 interest
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE = 0.0000000875; // 0% interest rate for gold below 10M
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT = 110100; // Gold limit for tier 3 interest
 const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level

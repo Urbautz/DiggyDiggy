@@ -1547,7 +1547,41 @@ function tick() {
             const coolingRate = SMELTER_COOLING_RATE * (1 - coolingReduction);
             smelterTemperature = Math.max(SMELTER_BASE_TEMPERATURE, smelterTemperature * (1 - coolingRate));
         }
-        
+
+        // Apply interest from Small Time Investments research
+        const smallTimeInvestments = researchtree.find(r => r.id === 'small-time-investments');
+        if (smallTimeInvestments && (smallTimeInvestments.level || 0) > 0 && gold > 0) {
+            let totalInterest = 0;
+
+            // Apply cumulative tiered interest rates
+            // Tier 1: First 1000 gold gets the highest rate
+            const tier1Amount = Math.min(gold, RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT);
+            totalInterest += tier1Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_RATE;
+
+            // Tier 2: Gold between 1000 and 100k gets the second rate
+            if (gold > RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT) {
+                const tier2Amount = Math.min(gold - RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT,
+                                             RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT - RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT);
+                totalInterest += tier2Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE;
+            }
+
+            // Tier 3: Gold between 100k and 10M gets the third rate
+            if (gold > RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT) {
+                const tier3Amount = Math.min(gold - RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT,
+                                             RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT - RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT);
+                totalInterest += tier3Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE;
+            }
+
+            if (totalInterest > 0) {
+                gold += totalInterest;
+                pendingTransactions.push({
+                    type: 'income',
+                    amount: totalInterest,
+                    description: 'Interest from investments'
+                });
+            }
+        }
+
         for (const d of dwarfs) {
             actForDwarf(d);
         }
