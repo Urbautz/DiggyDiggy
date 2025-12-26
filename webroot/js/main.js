@@ -1162,11 +1162,12 @@ function populateToolsInPanel() {
 
         if (hasGems) {
             // Show gem info instead of button
-            const gemInfo = document.createElement('span');
-            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            const gemInfo = document.createElement('button');
+            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 10px; ';
             gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
             gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
             gemInfo.style.cursor = 'pointer';
+            gemInfo.className = 'btn-secondary btn-tiny';
             gemInfo.onclick = () => openGemModal(tool.id);
             actions.appendChild(gemInfo);
         } else {
