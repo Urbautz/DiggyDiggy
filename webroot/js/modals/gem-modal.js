@@ -401,6 +401,12 @@ function populateGemsList() {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // Create sections for each gem type
     sortedTypes.forEach(type => {
         const gemMaterial = getMaterialById(type);
@@ -412,7 +418,7 @@ function populateGemsList() {
         // Calculate total value for this gem type (polished gems worth 50% more, with trade bonus)
         const totalValue = gemsOfType.reduce((sum, gem) => {
             const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-            return sum + (gemBaseValue * gem.carat * valueMultiplier * tradeBonus);
+            return sum + (gemBaseValue * gem.carat * valueMultiplier * totalTradeBonus);
         }, 0);
 
         // Calculate max carat for each status
@@ -464,7 +470,7 @@ function populateGemsList() {
             }
             gemGroupings[key].gems.push(gem);
             const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-            gemGroupings[key].totalValue += gemBaseValue * gem.carat * valueMultiplier * tradeBonus;
+            gemGroupings[key].totalValue += gemBaseValue * gem.carat * valueMultiplier * totalTradeBonus;
         });
 
         // Sort groups by carat (highest first)
@@ -655,11 +661,17 @@ function sellGems(gemType, carat, polished, includeLower) {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
         const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-        totalValue += baseValue * gem.carat * valueMultiplier * tradeBonus;
+        totalValue += baseValue * gem.carat * valueMultiplier * totalTradeBonus;
     });
 
     // Remove gems from array
@@ -722,11 +734,17 @@ function sellAllGemsOfType(gemType) {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     let totalValue = 0;
 
     gemsToSell.forEach(gem => {
         const valueMultiplier = gem.polished ? GEM_CUTTING_VALUE_MULTIPLIER : 1;
-        totalValue += baseValue * gem.carat * valueMultiplier * tradeBonus;
+        totalValue += baseValue * gem.carat * valueMultiplier * totalTradeBonus;
     });
 
     // Get gem name for display

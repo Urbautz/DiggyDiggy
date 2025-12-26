@@ -377,6 +377,15 @@ function getResearchLevel(researchId) {
 }
 
 /**
+ * Get the highest wisdom level among all dwarfs
+ * @returns {number} Highest wisdom level (0 if no dwarfs)
+ */
+function getHighestDwarfWisdom() {
+    if (!dwarfs || dwarfs.length === 0) return 0;
+    return Math.max(...dwarfs.map(d => d.wisdom || 0));
+}
+
+/**
  * Calculate the cost for a research at a specific level
  * @param {number} baseCost - Base cost of the research
  * @param {number} targetLevel - Target level to calculate cost for

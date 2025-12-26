@@ -1949,6 +1949,12 @@ function updateMaterialsPanel() {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
     for (const task of smelterTasks) {
@@ -1973,7 +1979,7 @@ function updateMaterialsPanel() {
         if (!m) continue;
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
-        const actualWorth = m.worth * tradeBonus;
+        const actualWorth = m.worth * totalTradeBonus;
 
         if (count > 0) {
             hasAnyMaterials = true;
@@ -1989,7 +1995,7 @@ function updateMaterialsPanel() {
             
             const worthSpan = row.querySelector('.wh-col-price');
             worthSpan.textContent = formatNumber(actualWorth, 'gold');
-            worthSpan.title = tradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
+            worthSpan.title = totalTradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(totalTradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
 
             row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
             row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
