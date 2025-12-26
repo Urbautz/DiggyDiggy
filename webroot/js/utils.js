@@ -585,3 +585,27 @@ function getSilverPlatingGemMultiplier(dwarf) {
 
     return 1.0;
 }
+
+/**
+ * Get the critical strike chance multiplier from Gold plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Critical strike multiplier (default 1.0)
+ */
+function getGoldPlatingCritMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Gold plating
+    if (toolInstance.plating === 'Gold') {
+        // Gold plating increases critical strike chance by 1.1x (as defined in defs.js platingEffects)
+        const critMultiplier = 1.10;
+        console.log(`[Gold Plating] ${dwarf.name}'s tool has Gold plating - critical strike chance multiplied by ${critMultiplier}x`);
+        return critMultiplier;
+    }
+
+    return 1.0;
+}

@@ -636,7 +636,7 @@ const platingEffects = {
         name: 'Gold Plating',
         description: '+10% higher critical strike chance',
         effect: 'criticalStrike',
-        value: 0.10
+        value: 1.10
     }
 };
 

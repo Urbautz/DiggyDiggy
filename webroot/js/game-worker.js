@@ -1203,7 +1203,9 @@ function actForDwarf(dwarf) {
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
             const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            // Apply Gold plating critical strike multiplier
+            critChance *= getGoldPlatingCritMultiplier(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -1321,7 +1323,9 @@ function actForDwarf(dwarf) {
             // Check for critical hit
             const materialScience = researchtree.find(r => r.id === 'material-science');
             const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            // Apply Gold plating critical strike multiplier
+            critChance *= getGoldPlatingCritMultiplier(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -1547,7 +1551,9 @@ function actForDwarf(dwarf) {
     // Check for critical hit (5% base + 5% per research level)
     const materialScience = researchtree.find(r => r.id === 'material-science');
     const baseCritChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
-    const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+    let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+    // Apply Gold plating critical strike multiplier
+    critChance *= getGoldPlatingCritMultiplier(dwarf);
     const isCrit = Math.random() < critChance;
     const finalPower = isCrit ? power * 2 : power;
     
