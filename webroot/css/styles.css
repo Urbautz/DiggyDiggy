@@ -1317,7 +1317,6 @@ header, footer {
     border-radius: 4px;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.2s;
 }
 
 .btn-research:hover:not(.disabled):not(:disabled) {
@@ -1488,20 +1487,51 @@ header, footer {
     background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
 }
 
-/* Blocked task row styling */
+/* Blocked task row styling (not enough materials) */
 .smelter-task-blocked {
-    border-color: rgba(244, 67, 54, 0.2);
-    background: linear-gradient(135deg, rgba(244, 67, 54, 0.05), rgba(244, 67, 54, 0.02));
-    opacity: 0.85;
+    border-color: rgba(158, 158, 158, 0.2);
+    background: linear-gradient(135deg, rgba(158, 158, 158, 0.08), rgba(158, 158, 158, 0.03));
+    opacity: 0.75;
 }
 
 .smelter-task-blocked:hover {
-    opacity: 1;
-    border-color: rgba(244, 67, 54, 0.3);
+    opacity: 0.9;
+    border-color: rgba(158, 158, 158, 0.3);
 }
 
 .smelter-task-blocked .smelter-task-name {
-    color: #e0e0e0;
+    color: #bdbdbd;
+}
+
+/* Temperature-related task row styling */
+.smelter-task-temp-ok {
+    border-color: rgba(255, 193, 7, 0.3);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 193, 7, 0.03));
+    opacity: 0.85;
+}
+
+.smelter-task-temp-ok:hover {
+    opacity: 1;
+    border-color: rgba(255, 193, 7, 0.4);
+}
+
+.smelter-task-temp-ok .smelter-task-name {
+    color: #dbbe60;
+}
+
+.smelter-task-temp-low {
+    border-color: rgba(255, 193, 7, 0.3);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 193, 7, 0.03));
+    opacity: 0.85;
+}
+
+.smelter-task-temp-low:hover {
+    opacity: 1;
+    border-color: rgba(255, 193, 7, 0.4);
+}
+
+.smelter-task-temp-low .smelter-task-name {
+    color: #ffd54f;
 }
 
 /* Recipe status colors */
@@ -1520,20 +1550,20 @@ header, footer {
     color: #9e9e9e;
 }
 
-/* Locked task row styling */
+/* Locked task row styling (not researched) */
 .smelter-task-locked {
-    border-color: rgba(158, 158, 158, 0.2);
-    background: linear-gradient(135deg, rgba(158, 158, 158, 0.08), rgba(158, 158, 158, 0.03));
+    border-color: rgba(244, 67, 54, 0.3);
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.08), rgba(244, 67, 54, 0.03));
     opacity: 0.7;
 }
 
 .smelter-task-locked:hover {
     opacity: 0.85;
-    border-color: rgba(158, 158, 158, 0.3);
+    border-color: rgba(244, 67, 54, 0.4);
 }
 
 .smelter-task-locked .smelter-task-name {
-    color: #aaa;
+    color: #ef5350;
 }
 
 /* Unreachable task row styling (below "do-nothing") */
@@ -2135,7 +2165,7 @@ header, footer {
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid #444;
     border-radius: 8px;
-    height: 116px;
+    height: 186px;
     overflow-y: auto;
 }
 
@@ -2329,6 +2359,14 @@ header, footer {
     cursor: pointer;
 }
 
+/* Dwarf Switcher Container */
+.dwarf-switcher-container {
+    display: flex;
+    gap: 8px;
+    margin-right: auto;
+    align-items: center;
+}
+
 /* Dwarf Switcher */
 .dwarf-switcher {
     padding: 6px;
@@ -2337,7 +2375,26 @@ header, footer {
     border-radius: 3px;
     color: #fff;
     font-size: 12px;
-    margin-right: auto;
+    min-width: 180px;
+    max-width: 180px;
+}
+
+/* Next Skillpoint Button */
+.btn-next-skillpoint {
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.btn-next-skillpoint:hover {
+    background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.4);
 }
 
 /* Stats Grid Section */

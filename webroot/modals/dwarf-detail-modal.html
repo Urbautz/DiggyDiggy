@@ -28,6 +28,14 @@
                             <div class="dwarf-stat-label">Status</div>
                             <div id="dwarf-status" class="dwarf-stat-value">💼 idle</div>
                         </div>
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">Location</div>
+                            <div id="dwarf-position" class="dwarf-stat-value">📍 Mining</div>
+                        </div>
+                        <div class="dwarf-stat-box">
+                            <div class="dwarf-stat-label">Target</div>
+                            <div id="dwarf-move-target" class="dwarf-stat-value">→ None</div>
+                        </div>
                     </div>
                     <!-- Right: Bucket contents -->
                     <div class="dwarf-bucket-container">
@@ -92,9 +100,12 @@
             </div>
         </div>
         <footer class="modal-footer">
-            <select id="dwarf-switcher" class="dwarf-switcher">
-                <option value="">Switch to...</option>
-            </select>
+            <div class="dwarf-switcher-container">
+                <select id="dwarf-switcher" class="dwarf-switcher">
+                    <option value="">Switch to...</option>
+                </select>
+                <button id="next-skillpoint-dwarf-btn" class="btn-next-skillpoint" style="display: none;">⭐ Next</button>
+            </div>
             <button class="btn-secondary" data-action="close-modal">Close</button>
         </footer>
     </div>

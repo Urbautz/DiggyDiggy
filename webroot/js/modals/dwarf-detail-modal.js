@@ -4,6 +4,99 @@
  */
 
 /**
+ * Helper function to convert coordinates to location name
+ */
+function getLocationName(x, y) {
+    if (typeof house === 'object' && house !== null && x === house.x && y === house.y) {
+        return '🏠 House';
+    }
+    if (typeof dropOff === 'object' && dropOff !== null && x === dropOff.x && y === dropOff.y) {
+        return '📦 Warehouse';
+    }
+    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
+        return '🔬 Research Lab';
+    }
+    if (typeof smelter === 'object' && smelter !== null && x === smelter.x && y === smelter.y) {
+        return '🔥 Smelter';
+    }
+    return '📍 (' + x + ' | ' + y + ')';
+}
+
+/**
+ * Helper function to get what the dwarf is currently working on
+ */
+function getDwarfCurrentActivity(dwarf) {
+    if (dwarf.status === 'digging') {
+        // Get the material at the dwarf's current position
+        if (grid && grid[dwarf.y] && grid[dwarf.y][dwarf.x]) {
+            const cell = grid[dwarf.y][dwarf.x];
+            if (cell.materialId) {
+                const material = getMaterialById(cell.materialId);
+                return material ? material.name : cell.materialId;
+            }
+        }
+        return 'Digging';
+    } else if (dwarf.status === 'researching') {
+        // Get the active research
+        if (typeof activeResearch !== 'undefined' && activeResearch && activeResearch.name) {
+            return activeResearch.name;
+        }
+        return 'Researching';
+    } else if (dwarf.status === 'smelting') {
+        // Get the current smelter task - use same logic as worker's findActionableSmelterTask
+        if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
+            for (const task of smelterTasks) {
+                if (task.id === 'do-nothing') break;
+
+                // Check if task is unlocked (researched)
+                const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+                if (!isUnlocked) continue;
+
+                // For heating tasks, check temperature requirements
+                if (task.type === 'heating') {
+                    if (task.heatGain === 'dynamic') {
+                        if (smelterTemperature >= smelterMagmaMinTemp) continue;
+                    } else {
+                        if (smelterTemperature >= smelterCoalMaxTemp) continue;
+                    }
+                }
+
+                // Check temperature requirements for smelting tasks
+                if (task.minTemp && smelterTemperature < task.minTemp) continue;
+
+                // For gem cutting tasks
+                if (task.type === 'gem-cutting') {
+                    const hasGemsToPolish = gems.some(g => g.markedForCutting && !g.polished);
+                    if (hasGemsToPolish) return task.name;
+                    continue;
+                }
+
+                // Check for single input (legacy format)
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return task.name;
+                    }
+                }
+
+                // Check for multiple inputs (alloy format)
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    const hasAllInputs = task.inputs.every(input => {
+                        const stockAmount = materialsStock[input.material] || 0;
+                        return stockAmount >= input.amount;
+                    });
+                    if (hasAllInputs) {
+                        return task.name;
+                    }
+                }
+            }
+        }
+        return 'Smelting';
+    }
+    return null;
+}
+
+/**
  * Opens the dwarfs panel view
  */
 function openDwarfs() {
@@ -87,7 +180,13 @@ function populateDwarfSwitcher(currentDwarfName) {
     const switcher = document.getElementById('dwarf-switcher');
     if (!switcher) return;
 
-    switcher.innerHTML = '<option value="">Switch to...</option>';
+    // Clear and add current dwarf as first option
+    switcher.innerHTML = '';
+
+    const currentOption = document.createElement('option');
+    currentOption.value = '';
+    currentOption.textContent = `👷 ${currentDwarfName}`;
+    switcher.appendChild(currentOption);
 
     // Sort dwarfs: those who can level up first, then by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
@@ -122,6 +221,9 @@ function populateDwarfSwitcher(currentDwarfName) {
         }
     });
 
+    // Update "Next" button visibility and handler
+    updateNextSkillpointButton(currentDwarfName);
+
     // Add change event listener
     switcher.onchange = (e) => {
         if (e.target.value) {
@@ -129,8 +231,43 @@ function populateDwarfSwitcher(currentDwarfName) {
             if (selectedDwarf) {
                 openDwarfDetailModal(selectedDwarf);
             }
+            // Reset dropdown to current dwarf
+            e.target.value = '';
         }
     };
+}
+
+/**
+ * Update the "Next dwarf with skill points" button
+ */
+function updateNextSkillpointButton(currentDwarfName) {
+    const nextBtn = document.getElementById('next-skillpoint-dwarf-btn');
+    if (!nextBtn) return;
+
+    // Find next dwarf with unspent skill points (excluding current)
+    const dwarfsWithSkillPoints = dwarfs.filter(d => {
+        if (d.name === currentDwarfName) return false;
+        const currentXP = d.xp || 0;
+        const currentLevel = d.level || 1;
+        const xpNeeded = getDwarfXpForLevel(currentLevel);
+        return currentXP >= xpNeeded;
+    });
+
+    if (dwarfsWithSkillPoints.length > 0) {
+        // Sort by name for consistency
+        dwarfsWithSkillPoints.sort((a, b) => a.name.localeCompare(b.name));
+        const nextDwarf = dwarfsWithSkillPoints[0];
+
+        nextBtn.style.display = 'block';
+        nextBtn.title = `Switch to ${nextDwarf.name}`;
+
+        // Update click handler
+        nextBtn.onclick = () => {
+            openDwarfDetailModal(nextDwarf);
+        };
+    } else {
+        nextBtn.style.display = 'none';
+    }
 }
 
 /**
@@ -239,8 +376,16 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const diamondBonusPercent = baseDigPowerPoints > 0
         ? ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100)
         : 0;
+    // Calculate total Diamond carats for tooltip
+    let totalDiamondCarat = 0;
+    if (currentTool && currentTool.gems && currentTool.gems.length > 0) {
+        totalDiamondCarat = currentTool.gems
+            .filter(gem => gem.type === 'Diamond')
+            .reduce((sum, gem) => sum + gem.carat, 0);
+    }
+    const diamondTooltip = totalDiamondCarat > 0 ? `title="${totalDiamondCarat}ct Diamond in tool"` : '';
     const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
-        ? `<div style="color: #66ccff; margin-left: 10px;">💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
+        ? `<div style="color: #66ccff; margin-left: 10px; cursor: help;" ${diamondTooltip}>💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
         : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
@@ -321,6 +466,19 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
                 gemSpan.title = `${carats} carat ${type}`;
                 toolBadges.appendChild(gemSpan);
             });
+        }
+
+        // Add plating display if tool has plating
+        if (currentTool.plating && platingEffects[currentTool.plating]) {
+            const platingEffect = platingEffects[currentTool.plating];
+            const platingMaterial = materials[currentTool.plating];
+            const platingColor = platingMaterial ? platingMaterial.color : '#888888';
+
+            const platingSpan = document.createElement('span');
+            platingSpan.style.cssText = `margin-right: 6px; padding: 2px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 10px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); cursor: help;`;
+            platingSpan.textContent = platingEffect.name;
+            platingSpan.title = platingEffect.description;
+            toolBadges.appendChild(platingSpan);
         }
     }
 
@@ -405,10 +563,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Calculate Ruby energy prevention chance for display
     let rubyEnergyChance = 0;
+    let totalRubyCarat = 0;
     if (dwarf.toolId) {
         const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
         if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
-            const totalRubyCarat = toolInstance.gems
+            totalRubyCarat = toolInstance.gems
                 .filter(gem => gem.type === 'Ruby')
                 .reduce((sum, gem) => sum + gem.carat, 0);
             if (totalRubyCarat > 0) {
@@ -418,15 +577,34 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
 
     // Calculate gem bonuses for display
+    // Get total carats for each gem type
+    let totalDiamondCaratForStats = 0;
+    let totalSapphireCarat = 0;
+    let totalAmethystCarat = 0;
+    if (dwarf.toolId) {
+        const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+        if (toolInstance && toolInstance.gems && toolInstance.gems.length > 0) {
+            totalDiamondCaratForStats = toolInstance.gems
+                .filter(gem => gem.type === 'Diamond')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            totalSapphireCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Sapphire')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+            totalAmethystCarat = toolInstance.gems
+                .filter(gem => gem.type === 'Amethyst')
+                .reduce((sum, gem) => sum + gem.carat, 0);
+        }
+    }
+
     const baseDigPower = dwarf.digPower || 0;
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const diamondDigPowerPercent = (modifiedDigPower > baseDigPower && baseDigPower > 0)
         ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100)
         : 0;
-    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond)` : '';
+    const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond ${totalDiamondCaratForStats}ct)` : '';
     const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
 
-    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby ${totalRubyCarat}ct: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
 
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
@@ -434,11 +612,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const sapphireBonusPercent = (modifiedStrength > baseStrength && baseStrength > 0)
         ? ((modifiedStrength - baseStrength) / baseStrength * 100)
         : 0;
-    const sapphireBonus = modifiedStrength > baseStrength ? ` +${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire)` : '';
+    const sapphireBonus = modifiedStrength > baseStrength ? ` (+${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire ${totalSapphireCarat}ct)` : '';
     const strengthDesc = `+5kg per strength point${sapphireBonus}`;
 
     const amethystReduction = getAmethystHardnessReduction(dwarf);
-    const amethystBonus = amethystReduction > 0 ? ` (-${amethystReduction.toFixed(2)} hardness from 💎Amethyst)` : '';
+    const amethystBonus = amethystReduction > 0 ? ` (-${(amethystReduction*100).toFixed(0)}% hardness from 💎Amethyst ${totalAmethystCarat}ct)` : '';
     const wisdomDesc = `Research success probability and Smelting Speed\n${amethystBonus}`;
 
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
@@ -513,6 +691,22 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
     document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
+
+    // Update location information with friendly names
+    document.getElementById('dwarf-position').textContent = getLocationName(dwarf.x || 0, dwarf.y || 0);
+
+    // Update target with current activity
+    const moveTargetElement = document.getElementById('dwarf-move-target');
+    if (dwarf.moveTarget) {
+        moveTargetElement.textContent = getLocationName(dwarf.moveTarget.x, dwarf.moveTarget.y);
+    } else {
+        const activity = getDwarfCurrentActivity(dwarf);
+        if (activity) {
+            moveTargetElement.innerHTML = `<span style="font-size: 1vw;">${activity.substr(0,12)}</span>`;
+        } else {
+            moveTargetElement.textContent = '→ None';
+        }
+    }
 
     // Update bucket header and contents
     document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;

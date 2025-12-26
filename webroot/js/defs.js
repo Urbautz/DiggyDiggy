@@ -10,71 +10,549 @@ const gridWidth = 10;
 const gridDepth = 11; // full data depth
 const visibleDepth = 10; // show only 10 rows in the UI
 
-// Material registry — easy to extend later
-const materials = [
-  { id: 'earth', name: 'Earth', type:'Loose',   hardness: 10, probability: 300, worth: 0.5,               minlevel: 0, maxlevel: 999, color: '#6b4b2c', weight: 5 },
-  { id: 'Sand',  name: 'Sand', type:'Loose',    hardness: 10, probability: 200, worth: 0.7,               minlevel: 0, maxlevel: 100, color: '#e0aa46', weight: 5 },
-  { id: 'mud',   name: 'Mud', type:'Loose',     hardness: 15, probability: 100, worth: 0,                 minlevel: 0, maxlevel: 999, color: '#4a2f13ff', weight: 5 },
-  { id: 'clay',  name: 'Clay', type:'Loose',    hardness: 25, probability: 100, worth: 1.4,               minlevel: 75, maxlevel: 1999, color: '#a57f61', weight: 5 },
-  { id: 'gravel',name: 'Gravel',  type:'Loose', hardness: 30, probability: 200, worth: 0.9,               minlevel: 150, maxlevel: 2999, color: '#534f4fff', weight: 5 },
+// ============================================================================
+// MATERIAL REGISTRY
+// ============================================================================
+const materials = {
+  // ──────────────────────────────────────────────────────────────────────────
+  // LOOSE MATERIALS
+  // ──────────────────────────────────────────────────────────────────────────
+  'earth': {
+    name: 'Earth',
+    type: 'Loose',
+    hardness: 10,
+    probability: 300,
+    worth: 0.5,
+    minlevel: 0,
+    maxlevel: 999,
+    color: '#6b4b2c',
+    weight: 5
+  },
+  'sand': {
+    name: 'Sand',
+    type: 'Loose',
+    hardness: 10,
+    probability: 200,
+    worth: 0.7,
+    minlevel: 0,
+    maxlevel: 100,
+    color: '#e0aa46',
+    weight: 5
+  },
+  'mud': {
+    name: 'Mud',
+    type: 'Loose',
+    hardness: 15,
+    probability: 100,
+    worth: 0,
+    minlevel: 0,
+    maxlevel: 999,
+    color: '#4a2f13ff',
+    weight: 5
+  },
+  'clay': {
+    name: 'Clay',
+    type: 'Loose',
+    hardness: 25,
+    probability: 100,
+    worth: 1.4,
+    minlevel: 75,
+    maxlevel: 1999,
+    color: '#a57f61',
+    weight: 5
+  },
+  'gravel': {
+    name: 'Gravel',
+    type: 'Loose',
+    hardness: 30,
+    probability: 200,
+    worth: 0.9,
+    minlevel: 150,
+    maxlevel: 2999,
+    color: '#534f4fff',
+    weight: 5
+  },
 
-  { id: 'sandstone', name: 'Sandstone',  type:'Stone Soft', hardness: 80, probability: 400, worth: 3.0,   minlevel: 500, maxlevel: 9999, color: '#9d4d39ff', weight: 15 },
-  { id: 'limestone', name: 'Limestone' ,type:'Stone Soft',  hardness: 80, probability: 200, worth: 2.5,   minlevel: 1200, maxlevel: 9999, color: '#a8a19fff', weight: 15 },
-  { id: 'Lime', name: 'Lime', type:'Processed',             hardness: 0, probability: 0, worth: 8.0,      minlevel: 99999, color: '#e8f4f0ff', weight: 3 },
-  { id: 'Chalk',     name: 'Chalk', type:'Stone Soft',      hardness: 30, probability: 100, worth: 2.0,   minlevel: 2000, maxlevel: 9999, color: '#a6b8adff', weight: 12 },
-  { id: 'ClayStone', name: 'Clay Stone',type:'Stone Soft',  hardness: 100, probability: 300, worth: 2.0, minlevel: 3000, maxlevel: 15999, color: '#53412fff', weight: 15 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // SOFT STONE
+  // ──────────────────────────────────────────────────────────────────────────
+  'sandstone': {
+    name: 'Sandstone',
+    type: 'Stone Soft',
+    hardness: 80,
+    probability: 400,
+    worth: 3.0,
+    minlevel: 500,
+    maxlevel: 9999,
+    color: '#9d4d39ff',
+    weight: 15
+  },
+  'limestone': {
+    name: 'Limestone',
+    type: 'Stone Soft',
+    hardness: 80,
+    probability: 200,
+    worth: 2.5,
+    minlevel: 1200,
+    maxlevel: 9999,
+    color: '#a8a19fff',
+    weight: 15
+  },
+  'lime': {
+    name: 'Lime',
+    type: 'Processed',
+    hardness: 0,
+    probability: 0,
+    worth: 8.0,
+    minlevel: 99999,
+    color: '#e8f4f0ff',
+    weight: 3
+  },
+  'chalk': {
+    name: 'Chalk',
+    type: 'Stone Soft',
+    hardness: 30,
+    probability: 100,
+    worth: 2.0,
+    minlevel: 2000,
+    maxlevel: 9999,
+    color: '#a6b8adff',
+    weight: 12
+  },
+  'claystone': {
+    name: 'Clay Stone',
+    type: 'Stone Soft',
+    hardness: 100,
+    probability: 300,
+    worth: 2.0,
+    minlevel: 3000,
+    maxlevel: 15999,
+    color: '#53412fff',
+    weight: 15
+  },
 
-  { id: 'Marble', name: 'Marble', type:'Stone Medium',      hardness: 250, probability: 200, worth: 10,   minlevel: 4000, maxlevel: 29999, color: '#7a706eff', weight: 25 },
-  { id: 'Polished Marble', name: 'Polished Marble', type:'Processed', hardness: 0, probability: 0, worth: 40,  minlevel: 99999, color: '#c8c0beff', weight: 20 },
-  { id: 'Slate', name: 'Slate', type: 'Stone Medium',       hardness: 800, probability: 400, worth: 5,   minlevel: 5000, maxlevel: 99999, color: '#483b37ff', weight: 25 },
-  { id: 'Schist', name: 'Schist', type: 'Stone Medium',     hardness: 400, probability: 200, worth: 5,   minlevel: 5000, maxlevel: 199999, color: '#1d354dff', weight: 25 },
-  { id: 'Dolomite', name: 'Dolomite', type: 'Stone Medium', hardness: 900, probability: 200, worth: 12,   minlevel: 5000, maxlevel: 99999, color: '#956f88ff', weight: 25 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // MEDIUM STONE
+  // ──────────────────────────────────────────────────────────────────────────
+  'marble': {
+    name: 'Marble',
+    type: 'Stone Medium',
+    hardness: 250,
+    probability: 200,
+    worth: 10,
+    minlevel: 4000,
+    maxlevel: 29999,
+    color: '#7a706eff',
+    weight: 25
+  },
+  'polished marble': {
+    name: 'Polished Marble',
+    type: 'Processed',
+    hardness: 0,
+    probability: 0,
+    worth: 40,
+    minlevel: 99999,
+    color: '#c8c0beff',
+    weight: 20
+  },
+  'slate': {
+    name: 'Slate',
+    type: 'Stone Medium',
+    hardness: 800,
+    probability: 400,
+    worth: 5,
+    minlevel: 5000,
+    maxlevel: 99999,
+    color: '#483b37ff',
+    weight: 25
+  },
+  'schist': {
+    name: 'Schist',
+    type: 'Stone Medium',
+    hardness: 400,
+    probability: 200,
+    worth: 5,
+    minlevel: 5000,
+    maxlevel: 199999,
+    color: '#1d354dff',
+    weight: 25
+  },
+  'dolomite': {
+    name: 'Dolomite',
+    type: 'Stone Medium',
+    hardness: 900,
+    probability: 200,
+    worth: 12,
+    minlevel: 5000,
+    maxlevel: 99999,
+    color: '#956f88ff',
+    weight: 25
+  },
 
-  { id: 'Granite', name: 'Granite', type:'Stone Hard',      hardness: 1100, probability: 400, worth: 12,   minlevel: 18000,  color: '#280918ff', weight: 35 },
-  { id: 'Polished Granite', name: 'Polished Granite', type:'Processed', hardness: 0, probability: 0, worth: 50, minlevel: 99999, color: '#4a1828ff', weight: 30 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // HARD STONE
+  // ──────────────────────────────────────────────────────────────────────────
+  'granite': {
+    name: 'Granite',
+    type: 'Stone Hard',
+    hardness: 1100,
+    probability: 400,
+    worth: 12,
+    minlevel: 18000,
+    color: '#280918ff',
+    weight: 35
+  },
+  'polished granite': {
+    name: 'Polished Granite',
+    type: 'Processed',
+    hardness: 0,
+    probability: 0,
+    worth: 50,
+    minlevel: 99999,
+    color: '#4a1828ff',
+    weight: 30
+  },
+  'basalt': {
+    name: 'Basalt',
+    type: 'Stone Hard',
+    hardness: 1750,
+    probability: 400,
+    worth: 17,
+    minlevel: 95000,
+    color: '#484848ff',
+    weight: 35
+  },
+  'obsidian': {
+    name: 'Obsidian',
+    type: 'Stone Hard',
+    hardness: 1950,
+    probability: 200,
+    worth: 25,
+    minlevel: 195000,
+    color: '#184f48ff',
+    weight: 35
+  },
+  'quartzite': {
+    name: 'Quartzite',
+    type: 'Stone Hard',
+    hardness: 2500,
+    probability: 200,
+    worth: 31,
+    minlevel: 135000,
+    color: '#c35858ff',
+    weight: 35
+  },
+  'polished obsidian': {
+    name: 'Polished Obsidian',
+    type: 'Processed',
+    hardness: 0,
+    probability: 0,
+    worth: 100,
+    minlevel: 99999,
+    color: '#2a6f68ff',
+    weight: 30
+  },
 
-  { id: 'Basalt', name: 'Basalt', type: 'Stone Hard',       hardness: 1750, probability: 400, worth: 17,    minlevel: 95000, color: '#484848ff', weight: 35 },
-  { id: 'Obsidian', name: 'Obsidian', type: 'Stone Hard',   hardness: 1950, probability: 200, worth: 25,   minlevel: 195000, color: '#184f48ff', weight: 35 },
-  { id: 'Quartzite', name: 'Quartzite', type: 'Stone Hard', hardness: 2500, probability: 200, worth: 31,  minlevel: 135000, color: '#c35858ff', weight: 35 },
-  { id: 'Polished Obsidian', name: 'Polished Obsidian', type:'Processed', hardness: 0, probability: 0, worth: 100, minlevel: 99999, color: '#2a6f68ff', weight: 30 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // SPECIAL MATERIALS
+  // ──────────────────────────────────────────────────────────────────────────
+  'coal': {
+    name: 'Coal',
+    type: 'Special',
+    hardness: 80,
+    probability: 80,
+    worth: 10.5,
+    minlevel: 500,
+    color: '#191919ff',
+    weight: 8
+  },
+  'magma': {
+    name: 'Magma',
+    type: 'Special',
+    hardness: 800,
+    probability: 50,
+    worth: 0,
+    minlevel: 8000,
+    color: '#fa6509ff',
+    weight: 10
+  },
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // GEMS
+  // ──────────────────────────────────────────────────────────────────────────
+  'ruby': {
+    name: 'Ruby',
+    type: 'Gem',
+    hardness: 300,
+    probability: 0,
+    worth: 50,
+    minlevel: 1000,
+    color: '#9b111eff',
+    weight: 1
+  },
+  'emerald': {
+    name: 'Emerald',
+    type: 'Gem',
+    hardness: 400,
+    probability: 0,
+    worth: 50,
+    minlevel: 1000,
+    color: '#50c878ff',
+    weight: 1
+  },
+  'sapphire': {
+    name: 'Sapphire',
+    type: 'Gem',
+    hardness: 500,
+    probability: 0,
+    worth: 50,
+    minlevel: 1000,
+    color: '#0f52baff',
+    weight: 1
+  },
+  'diamond': {
+    name: 'Diamond',
+    type: 'Gem',
+    hardness: 600,
+    probability: 0,
+    worth: 75,
+    minlevel: 1000,
+    color: '#b9f2ffff',
+    weight: 1
+  },
+  'amethyst': {
+    name: 'Amethyst',
+    type: 'Gem',
+    hardness: 900,
+    probability: 0,
+    worth: 90,
+    minlevel: 1000,
+    color: '#9966ccff',
+    weight: 1
+  },
 
-  { id: 'Coal', name: 'Coal',type:'Special',                hardness: 80, probability: 80, worth: 10.5,   minlevel: 500, color: '#191919ff', weight: 8 },
-  { id: 'Magma', name: 'Magma',type:'Special',              hardness: 800, probability: 50, worth: 0,    minlevel: 8000, color: '#fa6509ff', weight: 10 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // SOFT ORES & INGOTS
+  // ──────────────────────────────────────────────────────────────────────────
+  'bronce ore': {
+    name: 'Bronce Ore',
+    type: 'Ore Soft',
+    hardness: 100,
+    probability: 75,
+    worth: 18,
+    minlevel: 2000,
+    color: '#7e6136ff',
+    weight: 30
+  },
+  'bronce': {
+    name: 'Bronce Ingot',
+    type: 'Ingot',
+    hardness: 100,
+    probability: 0,
+    worth: 75,
+    minlevel: 99999,
+    color: '#cd7f32ff',
+    forge: 'Base',
+    weight: 18
+  },
+  'copper ore': {
+    name: 'Copper Ore',
+    type: 'Ore Soft',
+    hardness: 180,
+    probability: 50,
+    worth: 50,
+    minlevel: 6000,
+    color: '#c75e41ff',
+    weight: 30
+  },
+  'copper': {
+    name: 'Copper Ingot',
+    type: 'Ingot',
+    hardness: 175,
+    probability: 0,
+    worth: 200,
+    minlevel: 99999,
+    color: '#962c0cff',
+    forge: 'Base',
+    weight: 18
+  },
 
-  { id: 'Ruby', name: 'Ruby', type:'Gem',                   hardness: 300, probability: 0, worth: 50,    minlevel: 1000, color: '#9b111eff', weight: 1 },
-  { id: 'Emerald', name: 'Emerald', type:'Gem',             hardness: 400, probability: 0, worth: 50,    minlevel: 1000, color: '#50c878ff', weight: 1 },
-  { id: 'Sapphire', name: 'Sapphire', type:'Gem',           hardness: 500, probability: 0, worth: 50,    minlevel: 1000, color: '#0f52baff', weight: 1 },
-  { id: 'Diamond', name: 'Diamond', type:'Gem',             hardness: 600, probability: 0, worth: 75,   minlevel: 1000, color: '#b9f2ffff', weight: 1 },
-  { id: 'Amethyst', name: 'Amethyst', type:'Gem',           hardness: 900, probability: 0, worth: 90,    minlevel: 1000, color: '#9966ccff', weight: 1 },
+  // ──────────────────────────────────────────────────────────────────────────
+  // MEDIUM ORES & INGOTS
+  // ──────────────────────────────────────────────────────────────────────────
+  'zinc ore': {
+    name: 'Zinc Ore',
+    type: 'Ore Medium',
+    hardness: 650,
+    probability: 25,
+    worth: 200,
+    minlevel: 15000,
+    color: '#8ec281ff',
+    weight: 40
+  },
+  'zinc': {
+    name: 'Zinc Ingot',
+    type: 'Ingot',
+    hardness: 300,
+    probability: 0,
+    worth: 350,
+    minlevel: 99999,
+    color: '#3e6b4eff',
+    forge: 'Plating',
+    weight: 15
+  },
+  'brass': {
+    name: 'Brass Ingot',
+    type: 'Ingot',
+    hardness: 250,
+    probability: 0,
+    worth: 750,
+    minlevel: 99999,
+    color: '#fbd86eff',
+    forge: 'Base',
+    weight: 18
+  },
+  'silver ore': {
+    name: 'Silver Ore',
+    type: 'Ore Medium',
+    hardness: 350,
+    probability: 0,
+    worth: 1200,
+    minlevel: 99999,
+    color: '#c0c0c0ff',
+    weight: 42
+  },
+  'silver': {
+    name: 'Silver Ingot',
+    type: 'Ingot',
+    hardness: 35,
+    probability: 0,
+    worth: 2600,
+    minlevel: 99999,
+    color: '#c0c0c0ff',
+    forge: 'Plating',
+    weight: 20
+  },
+  'gold ore': {
+    name: 'Gold Ore',
+    type: 'Ore Medium',
+    hardness: 400,
+    probability: 15,
+    worth: 3000,
+    minlevel: 15000,
+    color: '#d6a80eff',
+    weight: 45
+  },
+  'gold': {
+    name: 'Gold Ingot',
+    type: 'Ingot',
+    hardness: 40,
+    probability: 0,
+    worth: 5500,
+    minlevel: 99999,
+    color: '#ffd700ff',
+    forge: 'Plating',
+    weight: 22
+  },
+  'iron ore': {
+    name: 'Iron Ore',
+    type: 'Ore Medium',
+    hardness: 500,
+    probability: 50,
+    worth: 400,
+    minlevel: 30000,
+    color: '#572012ff',
+    weight: 48
+  },
+  'pig iron': {
+    name: 'Pig Iron Ingot',
+    type: 'Ore Medium',
+    hardness: 10,
+    probability: 0,
+    worth: 500,
+    minlevel: 99999,
+    color: '#4a4a4aff',
+    weight: 40
+  },
+  'iron': {
+    name: 'Iron Ingot',
+    type: 'Ingot',
+    hardness: 325,
+    probability: 0,
+    worth: 600,
+    minlevel: 99999,
+    color: '#4a4a4aff',
+    forge: 'Base',
+    weight: 25
+  },
+  'steel': {
+    name: 'Steel',
+    type: 'Ingot',
+    hardness: 400,
+    probability: 0,
+    worth: 700,
+    minlevel: 99999,
+    color: '#3f3939ff',
+    forge: 'Base',
+    weight: 25
+  },
+  'hardened steel': {
+    name: 'Hardened Steel',
+    type: 'Ingot',
+    hardness: 450,
+    probability: 0,
+    worth: 720,
+    minlevel: 99999,
+    color: '#2d2121ff',
+    forge: 'Base',
+    weight: 25
+  },
+  'dwarf steel': {
+    name: 'Dwarf Steel',
+    type: 'Ingot',
+    hardness: 500,
+    probability: 0,
+    worth: 800,
+    minlevel: 99999,
+    color: '#2d2121ff',
+    forge: 'Base',
+    weight: 25
+  },
 
-  { id: 'Bronce Ore', name: 'Bronce Ore', type:'Ore Soft',  hardness: 100, probability: 75, worth: 18,    minlevel: 2000, color: '#7e6136ff', weight: 30 },
-  { id: 'Bronce', name: 'Bronce Ingot', type:'Ingot',       hardness: 100, probability: 0, worth: 75,     minlevel: 99999, color: '#cd7f32ff', forge: 'Base', weight: 18 },
-  { id: 'Copper Ore', name: 'Copper Ore',type:'Ore Soft',   hardness: 180, probability: 50, worth: 50,    minlevel: 6000, color: '#c75e41ff', weight: 30 },
-  { id: 'Copper', name: 'Copper Ingot', type:'Ingot',       hardness: 175, probability: 0, worth: 200,    minlevel: 99999, color: '#962c0cff', forge: 'Base', weight: 18 },
-  { id: 'Zinc Ore', name: 'Zinc Ore',type:'Ore Medium',     hardness: 650, probability: 25, worth: 200,   minlevel: 15000, color: '#8ec281ff', weight: 40 },
-  { id: 'Zinc', name: 'Zinc Ingot', type:'Ingot',           hardness: 300, probability: 0, worth: 350,    minlevel: 99999, color: '#a8b5c0ff', forge: 'Plating', weight: 15 },
-  { id: 'Brass', name: 'Brass Ingot', type:'Ingot',         hardness: 250, probability: 0, worth: 750,    minlevel: 99999, color: '#fbd86eff', forge: 'Base', weight: 18 },
-
-  { id: 'Silver Ore', name: 'Silver Ore', type:'Ore Medium',      hardness: 350, probability: 0, worth: 1200,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 42 },
-  { id: 'Silver', name: 'Silver Ingot', type:'Ingot',         hardness: 35, probability: 0, worth: 2600,     minlevel: 99999, color: '#c0c0c0ff', forge: 'Plating', weight: 20 },
-
-  { id: 'Gold Ore', name: 'Gold Ore', type:'Ore Medium',      hardness: 400, probability: 15, worth: 3000,  minlevel: 15000, color: '#d6a80eff', weight: 45 },
-  { id: 'Gold', name: 'Gold Ingot', type:'Ingot',             hardness: 40, probability: 0, worth: 5500,    minlevel: 99999, color: '#ffd700ff', forge: 'Plating', weight: 22 },
-
-  { id: 'Iron Ore', name: 'Iron Ore', type:'Ore Medium',      hardness: 500, probability: 50, worth: 400,    minlevel: 30000, color: '#572012ff', weight: 48 },
-  { id: 'Pig Iron', name: 'Pig Iron Ingot', type:'Ore Medium',hardness: 10, probability: 0, worth: 500,    minlevel: 99999,  color: '#4a4a4aff', weight: 40 },
-  { id: 'Iron', name: 'Iron Ingot', type:'Ingot',             hardness: 325, probability: 0, worth: 600,    minlevel: 99999, color: '#4a4a4aff', forge: 'Base', weight: 25 },
-  { id: 'Steel', name: 'Steel', type:'Ingot',                 hardness: 400, probability: 0, worth: 700,    minlevel: 99999, color: '#3f3939ff', forge: 'Base', weight: 25 },
-  { id: 'Hardened Steel', name: 'Hardened Steel', type:'Ingot', hardness: 450, probability: 0, worth: 720,    minlevel: 99999, color: '#2d2121ff', forge: 'Base', weight: 25 },
-  { id: 'Dwarf Steel', name: 'Dwarf Steel', type:'Ingot',     hardness: 500, probability: 0, worth: 800,    minlevel: 99999, color: '#2d2121ff', forge: 'Base', weight: 25 },
-
-  { id: 'Platinum Ore', name: 'Platinum Ore', type:'Ore Hard',    hardness: 4000, probability: 15, worth: 2500, minlevel: 75000, color: '#c75e41ff', weight: 50 },
-  { id: 'Titanium Ore', name: 'Titanium Ore', type:'Ore Hard',    hardness: 6000, probability: 15, worth: 3000, minlevel: 100000, color: '#57375dff', weight: 50 },
-  { id: 'Adamantine Ore', name: 'Adamantine Ore', type:'Ore Hard', hardness: 10000, probability: 15, worth: 7000, minlevel: 250000, color: '#8eb95eff', weight: 50 }
-
-
-];
+  // ──────────────────────────────────────────────────────────────────────────
+  // HARD ORES
+  // ──────────────────────────────────────────────────────────────────────────
+  'platinum ore': {
+    name: 'Platinum Ore',
+    type: 'Ore Hard',
+    hardness: 4000,
+    probability: 15,
+    worth: 2500,
+    minlevel: 75000,
+    color: '#c75e41ff',
+    weight: 50
+  },
+  'titanium ore': {
+    name: 'Titanium Ore',
+    type: 'Ore Hard',
+    hardness: 6000,
+    probability: 15,
+    worth: 3000,
+    minlevel: 100000,
+    color: '#57375dff',
+    weight: 50
+  },
+  'adamantine ore': {
+    name: 'Adamantine Ore',
+    type: 'Ore Hard',
+    hardness: 10000,
+    probability: 15,
+    worth: 7000,
+    minlevel: 250000,
+    color: '#8eb95eff',
+    weight: 50
+  }
+};
 
 
 // Tools
@@ -92,33 +570,55 @@ const toolsInventory = [
     { id: 6, type: 'Stone', power: 100 }
 ];
 
+// Plating effects - define what each plating material does when applied to tools
+const platingEffects = {
+    'zinc': {
+        name: 'Zinc Plating',
+        description: 'Digging consumes 2 less energy',
+        effect: 'energyReduction',
+        value: 2
+    },
+    'silver': {
+        name: 'Silver Plating',
+        description: '+40% gem probability',
+        effect: 'gemProbability',
+        value: 1.40
+    },
+    'gold': {
+        name: 'Gold Plating',
+        description: '+10% higher critical strike chance',
+        effect: 'criticalStrike',
+        value: 1.10
+    }
+};
+
 // Smelter tasks - ordered list of tasks the smelter will attempt to perform
 let smelterTasks = [
     { id: 'do-nothing', name: 'Do Nothing', description: 'The smelter sits idle.', input: null, output: null, type: 'none' },
-    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).', input: { material: 'Coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
-    { id: 'heat-magma-furnace', name: 'Heat up furnace (Magma)', description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.', input: { material: 'Magma', amount: 1 }, output: null, type: 'heating', heatGain: 'dynamic', requires: 'magma-furnace' },
-    { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: 250, requires: 'gem-cutting' },
+    { id: 'heat-furnace', name: 'Heat up furnace (Coal)', description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).', input: { material: 'coal', amount: 0.1 }, output: null, type: 'heating', heatGain: 100, requires: 'furnace' },
+    { id: 'heat-magma-furnace', name: 'Heat up furnace (Magma)', description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.', input: { material: 'magma', amount: 1 }, output: null, type: 'heating', heatGain: 'dynamic', requires: 'magma-furnace' },
+    { id: 'cut-polish-gem', name: 'Cut and Polish Gem', description: 'Cut and polish a gem (takes 250 ticks, increases value by 50%).', input: null, output: null, type: 'gem-cutting', ticksRequired: GEM_CUTTING_TICKS_REQUIRED, requires: 'gem-cutting' },
     { id: 'dry-mud', name: 'Dry Mud', description: 'Dry mud into clay.', input: { material: 'mud', amount: 2 }, output: { material: 'clay', amount: 1 } },
-    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'Sand', amount: 5 }, requires: 'grinding-machine' },
-    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'Lime', amount: 3 }, requires: 'grinding-machine' },
-    { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'Marble', amount: 1 }, output: { material: 'Polished Marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'Granite', amount: 1 }, output: { material: 'Polished Granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
-    { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'Obsidian', amount: 1 }, output: { material: 'Polished Obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'grind-sandstone', name: 'Grind Sandstone', description: 'Grind sandstone into sand.', input: { material: 'sandstone', amount: 1 }, output: { material: 'sand', amount: 5 }, requires: 'grinding-machine' },
+    { id: 'grind-limestone', name: 'Grind Limestone', description: 'Grind limestone into lime.', input: { material: 'limestone', amount: 1 }, output: { material: 'lime', amount: 3 }, requires: 'grinding-machine' },
+    { id: 'polish-marble', name: 'Polish Marble', description: 'Polish marble (50% break chance).', input: { material: 'marble', amount: 1 }, output: { material: 'polished marble', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-granite', name: 'Polish Granite', description: 'Polish granite (50% break chance).', input: { material: 'granite', amount: 1 }, output: { material: 'polished granite', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
+    { id: 'polish-obsidian', name: 'Polish Obsidian', description: 'Polish obsidian (50% break chance).', input: { material: 'obsidian', amount: 1 }, output: { material: 'polished obsidian', amount: 1 }, breakChance: 0.5, requires: 'stone-polishing' },
     
-    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore.', input: { material: 'Bronce Ore', amount: 1 }, output: { material: 'Bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
-    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore.', input: { material: 'Copper Ore', amount: 1 }, output: { material: 'Copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
-    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore.', input: { material: 'Zinc Ore', amount: 1 }, output: { material: 'Zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
+    { id: 'smelt-bronce', name: 'Smelt Bronce', description: 'Smelt bronce ore.', input: { material: 'bronce ore', amount: 1 }, output: { material: 'bronce', amount: 1 }, minTemp: 950, requires: 'furnace' },
+    { id: 'smelt-copper', name: 'Smelt Copper', description: 'Smelt copper ore.', input: { material: 'copper ore', amount: 1 }, output: { material: 'copper', amount: 1 }, minTemp: 1085, requires: 'furnace' },
+    { id: 'smelt-zinc', name: 'Smelt Zinc', description: 'Smelt zinc ore.', input: { material: 'zinc ore', amount: 1 }, output: { material: 'zinc', amount: 1 }, minTemp: 420, requires: 'furnace' },
 
-    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy.', inputs: [{ material: 'Bronce', amount: 2 }, { material: 'Copper', amount: 1 }], output: { material: 'Brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
+    { id: 'smelt-brass', name: 'Smelt Brass', description: 'Create brass alloy.', inputs: [{ material: 'bronce', amount: 2 }, { material: 'copper', amount: 1 }], output: { material: 'brass', amount: 1 }, minTemp: 950, requires: 'alloys' },
     
-    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'Iron Ore', amount: 1 }, output: { material: 'Pig Iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
-    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'Pig Iron', amount: 1 }, output: { material: 'Iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
-    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'Iron', amount: 5 }, output: { material: 'Steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
-    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'Steel', amount: 5 }, output: { material: 'Hardened Steel', amount: 1 }, minTemp: 1950, requires: 'furnace' },
-    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'Hardened Steel', amount: 5 }, output: { material: 'Dwarf Steel', amount: 1 }, minTemp: 2400, requires: 'furnace' },
+    { id: 'smelt-pig-iron', name: 'Smelt Pig Iron', description: 'Smelt iron ore into pig iron.', input: { material: 'iron ore', amount: 1 }, output: { material: 'pig iron', amount: 1 }, minTemp: 1200, requires: 'furnace' },
+    { id: 'smelt-iron', name: 'Smelt Iron', description: 'Smelt pig iron into iron.', input: { material: 'pig iron', amount: 1 }, output: { material: 'iron', amount: 1 }, minTemp: 1100, requires: 'furnace' },   
+    { id: 'smelt-steel', name: 'Smelt Steel', description: 'Smelt Steel.', input: { material: 'iron', amount: 5 }, output: { material: 'steel', amount: 1 }, minTemp: 1350, requires: 'furnace' },
+    { id: 'smelt-steel-hardened', name: 'Smelt Hardened Steel', description: 'Smelt hardened steel.', input: { material: 'steel', amount: 5 }, output: { material: 'hardened steel', amount: 1 }, minTemp: 1950, requires: 'furnace' },
+    { id: 'smelt-steel-dwarf', name: 'Smelt Dwarfen Steel', description: 'Smelt dwarfen steel.', input: { material: 'hardened steel', amount: 5 }, output: { material: 'dwarf steel', amount: 1 }, minTemp: 2400, requires: 'furnace' },
     
-    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'Silver Ore', amount: 1 }, output: { material: 'Silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
-    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore.', input: { material: 'Gold Ore', amount: 1 }, output: { material: 'Gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
+    { id: 'smelt-silver', name: 'Smelt Silver', description: 'Smelt silver ore.', input: { material: 'silver ore', amount: 1 }, output: { material: 'silver', amount: 1 }, minTemp: 962, requires: 'furnace' },
+    { id: 'smelt-gold', name: 'Smelt Gold', description: 'Smelt gold ore.', input: { material: 'gold ore', amount: 1 }, output: { material: 'gold', amount: 1 }, minTemp: 1064, requires: 'furnace' },
   ];
 
 // Smelter temperature system
@@ -175,7 +675,7 @@ let researchQueue = []; // Queue for up to 5 researches
     
 let grid = [];
 let startX = 0;
-let gold = 10;
+let gold = 50;
 
 let dwarfs = [
     { name: "Diggingston", 
@@ -206,17 +706,17 @@ let dwarfs = [
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100 },
-    { name: "Nevertired McPickaxemaster", 
+    { name: "NevertiredMcPickaxemer", 
      toolId: 5, 
      level: 1, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100 },
-    { name: "SuperDigger", 
+    { name: "SmartDigger", 
      toolId: 6, 
      level: 1, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
+     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100 },
@@ -235,7 +735,7 @@ let currentHourTimestamp = null;
 // Global stockpile for collected materials (dwarfs must deliver to drop-off to increase these)
 const materialsStock = {};
 // Initialize stock counts for all known materials
-for (const m of materials) materialsStock[m.id] = 0;
+for (const id in materials) materialsStock[id] = 0;
 
 // Gems array - separate from materials, each gem is a unique object with ID
 let gems = [];

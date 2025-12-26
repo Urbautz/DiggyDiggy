@@ -30,7 +30,7 @@ const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
 function getDwarfXpForLevel(level) {
     // Formula: 50 * level^1.6 (rounded)
     // This creates exponential growth matching the target progression
-    return Math.round(50 * Math.pow(level, 1.6));
+    return Math.round(50 * Math.pow(level, 1.4));
 }
 const DWARF_STRIKE_BASE_CHANCE = 0.3; // 30% chance to continue without pay
 const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
@@ -84,6 +84,7 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 
 const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
 const GEM_CUTTING_VALUE_MULTIPLIER = 1.5; // 50% value increase when gems are cut and polished
+const GEM_CUTTING_TICKS_REQUIRED = 50; // Ticks required to cut and polish a gem
 
 // ============================================================================
 // GEM EFFECT CONSTANTS - RUBY

@@ -301,6 +301,48 @@ function unsetGem(toolId, slotIndex) {
 function openGemsModal() {
     openModal('gems-modal');
     populateGemsList();
+
+    // Set up auto-refresh for gems modal to update cutting progress
+    if (window.gemsModalRefreshInterval) {
+        clearInterval(window.gemsModalRefreshInterval);
+    }
+    window.gemsModalRefreshInterval = setInterval(() => {
+        const modal = document.getElementById('gems-modal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false') {
+            updateGemsCuttingProgress();
+        } else {
+            clearInterval(window.gemsModalRefreshInterval);
+            window.gemsModalRefreshInterval = null;
+        }
+    }, 100); // Update every 100ms for smooth progress updates
+}
+
+/**
+ * Update gem cutting progress in the gems list (efficient update without full repopulate)
+ */
+function updateGemsCuttingProgress() {
+    const gemsList = document.getElementById('gems-list');
+    if (!gemsList) return;
+
+    // Find all gem items that are being cut
+    const cuttingProgressBadges = gemsList.querySelectorAll('.gem-cutting-progress');
+
+    cuttingProgressBadges.forEach(badge => {
+        // Find the parent gem item to get the gem type
+        const gemItem = badge.closest('.gem-item');
+        if (!gemItem) return;
+
+        // Find all gems being cut to update their progress
+        const cuttingGems = gems.filter(g => g.markedForCutting && !g.polished);
+
+        // Get the first cutting gem (we only cut one at a time per type/carat)
+        const cuttingGem = cuttingGems[0];
+
+        if (cuttingGem && cuttingGem.cuttingProgress !== undefined) {
+            const progress = cuttingGem.cuttingProgress || 0;
+            badge.textContent = `Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}`;
+        }
+    });
 }
 
 /**
@@ -326,9 +368,12 @@ function populateGemsList() {
         return;
     }
 
-    // Group gems by type
+    // Group gems by type (exclude gems that are assigned to tools)
     const gemsByType = {};
     gems.forEach(gem => {
+        // Skip gems that are assigned to tools
+        if (gem.assignedToTool) return;
+
         if (!gemsByType[gem.type]) {
             gemsByType[gem.type] = [];
         }
@@ -393,13 +438,12 @@ function populateGemsList() {
         // Group gems by carat and status for compact display
         const gemGroupings = {};
         gemsOfType.forEach(gem => {
-            const key = `${gem.carat}_${gem.polished}_${gem.markedForCutting}_${gem.assignedToTool ? 'assigned' : 'free'}`;
+            const key = `${gem.carat}_${gem.polished}_${gem.markedForCutting}`;
             if (!gemGroupings[key]) {
                 gemGroupings[key] = {
                     carat: gem.carat,
                     polished: gem.polished,
                     markedForCutting: gem.markedForCutting,
-                    assigned: !!gem.assignedToTool,
                     gems: [],
                     totalValue: 0
                 };
@@ -419,8 +463,12 @@ function populateGemsList() {
                 // Polished badge only
                 statusSection = '<span class="gem-polished-badge">Polished</span>';
             } else if (group.markedForCutting) {
-                // Cutting badge + rough badge
-                statusSection = '<span class="gem-cutting-badge">Cutting...</span><span class="gem-unpolished-badge">Rough</span>';
+                // Find the gem being cut to get its progress
+                const cuttingGem = group.gems.find(g => g.markedForCutting);
+                const progress = cuttingGem && cuttingGem.cuttingProgress ? cuttingGem.cuttingProgress : 0;
+
+                // Cutting badge with progress + rough badge
+                statusSection = `<span class="gem-cutting-progress">Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}</span><span class="gem-unpolished-badge">Rough</span>`;
             } else {
                 // Just rough badge
                 statusSection = '<span class="gem-unpolished-badge">Rough</span>';
@@ -429,9 +477,14 @@ function populateGemsList() {
             const gemItem = document.createElement('div');
             gemItem.className = 'gem-item gem-item-compact';
 
-            // Don't show sell buttons for assigned gems
-            const sellButtonsHTML = group.assigned ? '' : `
+            // Check if gem cutting is researched
+            const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
+            const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
+
+            // Show cut button for rough gems if gem cutting is researched
+            const sellButtonsHTML = `
                 <div class="gem-item-actions">
+                    ${!group.polished && hasGemCutting ? `<button class="gem-cut-btn" data-type="${type}" data-carat="${group.carat}">Cut</button>` : ''}
                     <button class="gem-sell-one-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell 1</button>
                     <button class="gem-sell-lower-btn" data-type="${type}" data-carat="${group.carat}" data-polished="${group.polished}">Sell incl. lower carat</button>
                 </div>
@@ -443,7 +496,7 @@ function populateGemsList() {
                     <div class="gem-item-status-column">
                         ${statusSection}
                     </div>
-                    <span class="gem-item-count">×${group.count}</span>
+                    <span class="gem-item-count">×${group.gems.length}</span>
                     <span class="gem-item-value">💰 ${formatNumber(group.totalValue, 'gold')}</span>
                     ${sellButtonsHTML}
                 </div>
@@ -507,17 +560,13 @@ function populateGemsList() {
  * @param {number} carat - The carat value
  */
 function markGemsForCutting(gemType, carat) {
-    // Mark all rough gems of this type and carat for cutting
-    let markedCount = 0;
-    gems.forEach(gem => {
-        if (gem.type === gemType && gem.carat === carat && !gem.polished && !gem.markedForCutting) {
-            gem.markedForCutting = true;
-            gem.cuttingProgress = 0;
-            markedCount++;
-        }
-    });
+    // Mark only ONE rough gem of this type and carat for cutting
+    const gem = gems.find(g => g.type === gemType && g.carat === carat && !g.polished && !g.markedForCutting);
 
-    if (markedCount > 0) {
+    if (gem) {
+        gem.markedForCutting = true;
+        gem.cuttingProgress = 0;
+
         // Sync to worker
         if (gameWorker) {
             gameWorker.postMessage({

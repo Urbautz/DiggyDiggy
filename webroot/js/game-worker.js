@@ -117,10 +117,13 @@ function isReservedForDig(x, y) {
  */
 function handleBlockDestruction(cell, dwarf, x, y) {
     const matId = cell.materialId;
-    const mat = materials.find(m => m.id === matId);
+    const mat = materials[matId];
 
     // Check if this stone contains a gem BEFORE collecting it
-    if (mat && mat.type && mat.type.startsWith('Stone') && !cell.gemId && Math.random() < GEM_SPAWN_CHANCE) {
+    // Apply Silver plating gem probability multiplier
+    const silverMultiplier = getSilverPlatingGemMultiplier(dwarf);
+    const effectiveGemChance = GEM_SPAWN_CHANCE * silverMultiplier;
+    if (mat && mat.type && mat.type.startsWith('Stone') && !cell.gemId && Math.random() < effectiveGemChance) {
         const gemType = selectRandomGem();
         if (!gemType) return; // No gems available
 
@@ -130,7 +133,7 @@ function handleBlockDestruction(cell, dwarf, x, y) {
         const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
 
         // Get gem material to use its hardness
-        const gemMat = materials.find(m => m.id === gemType);
+        const gemMat = materials[gemType];
         const gemHardness = gemMat ? gemMat.hardness : 1;
 
         // Create gem object with unique ID
@@ -373,36 +376,37 @@ function checkAndShiftTopRows() {
         // Calculate the depth level for the new row at the bottom
         const newRowDepth = startX + grid.length + 1;
         for (let c = 0; c < gridWidth; c++) {
-            let mat;
-            
+            let matId;
+
             // Check left tile
             if (c > 0 && Math.random() < GRID_CLUSTERING_HORIZONTAL_CHANCE) {
                 const leftCell = newRow[c - 1];
                 if (leftCell && leftCell.materialId) {
-                    const leftMat = materials.find(m => m.id === leftCell.materialId);
+                    const leftMat = materials[leftCell.materialId];
                     if (leftMat) {
-                        mat = leftMat;
+                        matId = leftCell.materialId;
                     }
                 }
             }
-            
+
             // Check above tile
-            if (!mat && grid.length > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
+            if (!matId && grid.length > 0 && Math.random() < GRID_CLUSTERING_VERTICAL_CHANCE) {
                 const aboveCell = grid[grid.length - 1][c];
                 if (aboveCell && aboveCell.materialId && aboveCell.hardness > 0) {
-                    const aboveMat = materials.find(m => m.id === aboveCell.materialId);
+                    const aboveMat = materials[aboveCell.materialId];
                     if (aboveMat) {
-                        mat = aboveMat;
+                        matId = aboveCell.materialId;
                     }
                 }
             }
-            
+
             // If no clustering, use random based on depth
-            if (!mat) {
-                mat = randomMaterial(newRowDepth);
+            if (!matId) {
+                matId = randomMaterial(newRowDepth);
             }
-            
-            newRow.push({ materialId: mat.id, hardness: mat.hardness });
+
+            const mat = materials[matId];
+            newRow.push({ materialId: matId, hardness: mat.hardness });
         }
         grid.push(newRow);
 
@@ -458,7 +462,7 @@ function attemptCollapse(x, y) {
         if (src.hardness > 0) {
             for (const d of dwarfs) {
                 if (d.x === ux && d.y === scanY) {
-                    const mat = materials.find(m => m.id === src.materialId);
+                    const mat = materials[src.materialId];
                     if (mat && typeof mat.hardness === 'number') {
                         const xpGain = Math.ceil(Math.sqrt(mat.hardness));
                         d.xp = (d.xp || 0) + xpGain;
@@ -488,6 +492,17 @@ function actForDwarf(dwarf) {
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
     if (!('moveTarget' in dwarf)) dwarf.moveTarget = null;
 
+    // Track current reservations for debugging
+    const digReservations = [];
+    for (const [key, val] of reservedDigBy.entries()) {
+        if (val === dwarf.name) digReservations.push(key);
+    }
+    dwarf.reservations = {
+        dig: digReservations,
+        research: researchReservedBy === dwarf.name,
+        smelter: smelterReservedBy === dwarf.name
+    };
+
     // Check for stuck dwarf - only track when actively moving or digging
     const shouldTrackStuck = (dwarf.status === 'moving' || dwarf.status === 'digging' || dwarf.status === 'idle');
     const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
@@ -505,7 +520,19 @@ function actForDwarf(dwarf) {
                 tracked.ticks++;
                 if (tracked.ticks >= STUCK_DETECTION_TICKS) {
                     // Stuck! Teleport to house and reset
+                    // Gather debug information about reservations
+                    const digReservations = [];
+                    for (const [key, val] of reservedDigBy.entries()) {
+                        if (val === dwarf.name) digReservations.push(key);
+                    }
+                    const hasResearch = researchReservedBy === dwarf.name;
+                    const hasSmelter = smelterReservedBy === dwarf.name;
+
                     console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    console.log(`  Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
+                    console.log(`  Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
+                    console.log(`  Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
+
                     dwarf.x = house.x;
                     dwarf.y = house.y;
                     dwarf.status = 'idle';
@@ -635,10 +662,8 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_RESEARCH);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_RESEARCH);
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -848,10 +873,8 @@ function actForDwarf(dwarf) {
                     gold = Math.max(0, gold - wage);
                     pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
-                    // Check Ruby gem effect before consuming energy
-                    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                        dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
-                    }
+                    // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+                    applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
                     dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
 
                     return;
@@ -922,10 +945,8 @@ function actForDwarf(dwarf) {
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
@@ -960,7 +981,7 @@ function actForDwarf(dwarf) {
 
                 for (const [mat, cnt] of Object.entries(dwarf.bucket)) {
                     // Check if this is a gem material - gems should stay in gems array, not materialsStock
-                    const material = materials.find(m => m.id === mat);
+                    const material = materials[mat];
                     if (material && material.type === 'Gem') {
                         // Skip gems - they're already in the gems array
                         continue;
@@ -1158,24 +1179,20 @@ function actForDwarf(dwarf) {
             dwarf.status = 'digging';
             const prev = curCell.hardness;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed
-            
+
             // Check for critical hit
-            const materialScience = researchtree.find(r => r.id === 'material-science');
-            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            const critChance = calculateFinalCritChance(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
             // Check for expertise one-hit on critical
             if (isCrit) {
-                const mat = materials.find(m => m.id === curCell.materialId);
+                const mat = materials[curCell.materialId];
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
@@ -1236,10 +1253,8 @@ function actForDwarf(dwarf) {
             dwarf.x = nextX;
             dwarf.y = nextY;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_MOVE);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
@@ -1272,24 +1287,20 @@ function actForDwarf(dwarf) {
             }
             const prev = curCellDig.hardness;
 
-            // Check Ruby gem effect before consuming energy
-            if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
-            }
+            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
             // XP is now only awarded when a material is destroyed (see above)
-            
+
             // Check for critical hit
-            const materialScience = researchtree.find(r => r.id === 'material-science');
-            const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
-            const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+            const critChance = calculateFinalCritChance(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
-            
+
             // Check for expertise one-hit on critical
             if (isCrit) {
-                const mat = materials.find(m => m.id === curCellDig.materialId);
+                const mat = materials[curCellDig.materialId];
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
@@ -1498,19 +1509,16 @@ function actForDwarf(dwarf) {
         }
     }
     target.hardness = Math.max(0, target.hardness - power);
-    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-      dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
-    }
+    // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
+    applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_DIG);
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
-    
-    // Check for critical hit (5% base + 5% per research level)
-    const materialScience = researchtree.find(r => r.id === 'material-science');
-    const baseCritChance = 0.05 + ((materialScience ? materialScience.level : 0) * 0.05);
-    const critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+
+    // Check for critical hit
+    const critChance = calculateFinalCritChance(dwarf);
     const isCrit = Math.random() < critChance;
-    const finalPower = isCrit ? power * 2 : power;
-    
+    const finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
+
     target.hardness = Math.max(0, target.hardness - finalPower);
     
     // Record critical hit for animation

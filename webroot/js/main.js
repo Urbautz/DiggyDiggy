@@ -98,8 +98,44 @@ function formatNumber(value, type = 'material') {
 function countActionableSmelterTasks() {
     let count = 0;
     for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') continue;
+        if (task.id === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
         if (!isSmelterTaskUnlocked(task)) continue;
+
+        // For heating tasks, check temperature requirements and materials
+        if (task.type === 'heating') {
+            // Check if heating is needed
+            let heatingNeeded = false;
+            if (task.heatGain === 'dynamic') {
+                // Magma: only heat when below min temp
+                heatingNeeded = smelterTemperature < smelterMagmaMinTemp;
+            } else {
+                // Coal: check if we need heating (simplified hysteresis check)
+                // Heat if below min, or if already heating and below max
+                if (smelterTemperature < smelterCoalMinTemp) {
+                    heatingNeeded = true;
+                } else if (smelterTemperature < smelterCoalMaxTemp && smelterHeatingMode) {
+                    heatingNeeded = true;
+                }
+            }
+
+            if (!heatingNeeded) {
+                continue;
+            }
+
+            // Check if materials are available for heating
+            if (task.input && task.input.material && task.input.amount) {
+                const stockAmount = materialsStock[task.input.material] || 0;
+                if (stockAmount >= task.input.amount) {
+                    count++;
+                }
+            }
+            continue;
+        }
+
+        // Check temperature requirements for smelting tasks
+        if (task.minTemp && smelterTemperature < task.minTemp) {
+            continue;
+        }
 
         // Check for gem cutting tasks
         if (task.type === 'gem-cutting') {
@@ -107,18 +143,24 @@ function countActionableSmelterTasks() {
             if (hasGemsToPolish) {
                 count++;
             }
-        } else if (task.inputs && Array.isArray(task.inputs)) {
-            // Multiple inputs (alloy format)
+            continue;
+        }
+
+        // Check for single input (legacy format)
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                count++;
+            }
+        }
+
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stock = materialsStock[input.material] || 0;
                 return stock >= input.amount;
             });
             if (hasAllInputs) {
-                count++;
-            }
-        } else if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
                 count++;
             }
         }
@@ -1033,21 +1075,34 @@ function populateToolsInPanel() {
         const header = document.createElement('div');
         header.className = 'tool-card-header';
         const displayName = tool.name || `${tool.type} #${tool.id}`;
-        header.innerHTML = `
-            <span class="tool-name">${displayName}</span>
-            <span class="tool-power">⚒️ ${toolPower}</span>
-        `;
-        
-        const actions = document.createElement('div');
-        actions.className = 'tool-card-actions';
-        
-        // Rename button
+
+        // Tool name span (will be replaced with input when editing)
+        const toolNameSpan = document.createElement('span');
+        toolNameSpan.className = 'tool-name';
+        toolNameSpan.id = `tool-name-${tool.id}`;
+        toolNameSpan.textContent = displayName;
+
+                // Rename button next to name
         const renameBtn = document.createElement('button');
         renameBtn.className = 'btn-secondary btn-tiny';
+        renameBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 11px; vertical-align: left;';
         renameBtn.textContent = '✏️';
         renameBtn.title = 'Rename tool';
-        renameBtn.onclick = () => renameToolFromPanel(tool.id);
-        actions.appendChild(renameBtn);
+        renameBtn.onclick = () => startInlineRename(tool.id);
+        toolNameSpan.appendChild(renameBtn);
+
+
+        header.appendChild(toolNameSpan);
+
+
+        // Tool power
+        const toolPowerSpan = document.createElement('span');
+        toolPowerSpan.className = 'tool-power';
+        toolPowerSpan.textContent = `⚒️ ${toolPower}`;
+        header.appendChild(toolPowerSpan);
+
+        const actions = document.createElement('div');
+        actions.className = 'tool-card-actions';
         
         // Dropdown for assigning (shows current assignment or allows selection)
         const select = document.createElement('select');
@@ -1057,7 +1112,20 @@ function populateToolsInPanel() {
             dwarfs.map(d => `<option value="${d.name}"${d.name === (assignedDwarf?.name || '') ? ' selected' : ''}>${d.name}</option>`).join('');
         select.onchange = () => assignToolFromPanel(tool.id, toolPower);
         actions.appendChild(select);
-        
+
+        // Plating info (before enchant button)
+        if (tool.plating && platingEffects[tool.plating]) {
+            const platingEffect = platingEffects[tool.plating];
+            const platingMaterial = materials[tool.plating];
+            const platingColor = platingMaterial ? platingMaterial.color : '#888888';
+
+            const platingInfo = document.createElement('span');
+            platingInfo.style.cssText = `padding: 4px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 11px; white-space: nowrap; text-shadow: 0 2px 3px rgba(0,0,0,0.5); cursor: help; line-height: 1;`;
+            platingInfo.textContent = platingEffect.name;
+            platingInfo.title = platingEffect.description;
+            actions.appendChild(platingInfo);
+        }
+
         // Enchant button
         const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
         const enchantLevel = enchantResearch ? enchantResearch.level : 0;
@@ -1086,7 +1154,7 @@ function populateToolsInPanel() {
             }
             actions.appendChild(enchantBtn);
         }
-        
+
         // Gems button
         const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
         const gemSettingLevel = gemSettingResearch ? gemSettingResearch.level : 0;
@@ -1217,18 +1285,89 @@ function assignToolFromPanel(toolId, newToolPower) {
 }
 
 // Rename tool from tools panel
+// Start inline rename of a tool
+function startInlineRename(toolId) {
+    const tool = toolsInventory.find(t => t.id === toolId);
+    if (!tool) return;
+
+    const nameSpan = document.getElementById(`tool-name-${toolId}`);
+    if (!nameSpan) return;
+
+    const currentName = tool.name || `${tool.type} #${tool.id}`;
+
+    // Create input field
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.maxLength = 20;
+    input.style.cssText = 'padding: 2px 4px; font-size: 12px; width: 150px; border: 1px solid #555; border-radius: 3px; background-color: #2a2a2a; color: #fff;';
+    input.className = 'tool-name-input';
+
+    let isSaving = false;
+
+    // Function to save the name
+    const saveName = () => {
+        if (isSaving) return; // Prevent double-saving
+        isSaving = true;
+
+        const trimmedName = input.value.trim();
+        if (trimmedName === '') {
+            // Clear custom name, revert to default
+            delete tool.name;
+        } else {
+            tool.name = trimmedName.substring(0, 20); // Enforce max length
+        }
+
+        // Sync with worker and save
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { toolsInventory: toolsInventory }
+            });
+        }
+        saveGame();
+
+        // Refresh the tools panel to show the new name
+        populateToolsPanel();
+    };
+
+    // Handle Enter key
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            input.blur(); // This will trigger saveName via blur event
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            isSaving = true; // Prevent blur from saving
+            // Cancel editing, restore original
+            populateToolsPanel();
+        }
+    });
+
+    // Handle blur (losing focus)
+    input.addEventListener('blur', () => {
+        saveName();
+    });
+
+    // Replace the span with the input
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+}
+
 function renameToolFromPanel(toolId) {
     const tool = toolsInventory.find(t => t.id === toolId);
     if (!tool) {
         alert('Tool not found!');
         return;
     }
-    
+
     const currentName = tool.name || `${tool.type} #${tool.id}`;
     const newName = prompt('Enter a new name for this tool:', currentName);
-    
+
     if (newName === null) return; // Cancelled
-    
+
     const trimmedName = newName.trim();
     if (trimmedName === '') {
         // Clear custom name, revert to default
@@ -1713,7 +1852,10 @@ function initMaterialsPanel() {
     
     // Sort materials by worth (high to low) for consistent display order
     // Filter out gems - they have their own panel
-    const sortedMaterials = [...materials].filter(m => m.type !== 'Gem').sort((a, b) => b.worth - a.worth);
+    const sortedMaterials = Object.entries(materials)
+        .filter(([id, m]) => m.type !== 'Gem')
+        .map(([id, m]) => ({ id, ...m }))
+        .sort((a, b) => b.worth - a.worth);
 
     // Create a row for each material (hidden by default)
     for (const m of sortedMaterials) {
@@ -1826,7 +1968,7 @@ function updateMaterialsPanel() {
     const rows = list.querySelectorAll('.warehouse-row');
     for (const row of rows) {
         const id = row.dataset.materialId;
-        const m = materials.find(mat => mat.id === id);
+        const m = materials[id];
         if (!m) continue;
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
@@ -2217,12 +2359,21 @@ function initWorker() {
                     if (researchStateChanged) {
                         // Full redraw when state changes (new research, queue changes, etc.)
                         populateResearch();
-                    } else if (activeResearch) {
-                        // Lightweight progress update when only progress changes
-                        updateResearchProgress();
+                    } else {
+                        // Lightweight updates without full redraw
+                        if (activeResearch) {
+                            updateResearchProgress();
+                        }
+                        // Update button states only when they actually change
+                        updateResearchButtons();
                     }
                 }
-                
+
+                // Update forge function link when research state changes (e.g., forge unlocked)
+                if (researchStateChanged) {
+                    updateForgeFunctionLink();
+                }
+
                 // Autosave after each tick
                 saveGame();
                 break;
@@ -2361,28 +2512,43 @@ function loadGame() {
         
         // Restore game state
         grid = gameState.grid || [];
+
+        // Migrate old uppercase material IDs in grid to lowercase
+        for (let row of grid) {
+            if (row && Array.isArray(row)) {
+                for (let cell of row) {
+                    if (cell && cell.materialId) {
+                        cell.materialId = cell.materialId.toLowerCase();
+                    }
+                }
+            }
+        }
+
         dwarfs = gameState.dwarfs || [];
 
-        // Sanitize dwarf buckets - fix any corrupted gem data
+        // Sanitize dwarf buckets - fix any corrupted gem data and migrate material IDs to lowercase
         for (const dwarf of dwarfs) {
             if (dwarf.bucket) {
                 const sanitizedBucket = {};
                 for (const [key, value] of Object.entries(dwarf.bucket)) {
+                    // Migrate material ID key to lowercase
+                    const lowercaseKey = key.toLowerCase();
+
                     // If value is an object (corrupted gem data), convert to 1
                     // If value is a number, keep it
                     // If value is a string like "[object Object]11", extract the number or default to 1
                     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        sanitizedBucket[key] = 1;
+                        sanitizedBucket[lowercaseKey] = 1;
                     } else if (typeof value === 'string') {
                         // Try to extract number from corrupted string like "[object Object]11"
                         const match = value.match(/\d+$/);
-                        sanitizedBucket[key] = match ? parseInt(match[0]) : 1;
+                        sanitizedBucket[lowercaseKey] = match ? parseInt(match[0]) : 1;
                     } else if (Array.isArray(value)) {
-                        sanitizedBucket[key] = value.length;
+                        sanitizedBucket[lowercaseKey] = value.length;
                     } else if (typeof value === 'number') {
-                        sanitizedBucket[key] = value;
+                        sanitizedBucket[lowercaseKey] = value;
                     } else {
-                        sanitizedBucket[key] = 1;
+                        sanitizedBucket[lowercaseKey] = 1;
                     }
                 }
                 dwarf.bucket = sanitizedBucket;
@@ -2395,7 +2561,9 @@ function loadGame() {
         // Restore materials stock
         if (gameState.materialsStock) {
             for (const key in gameState.materialsStock) {
-                materialsStock[key] = gameState.materialsStock[key];
+                // Migrate old uppercase material IDs to lowercase
+                const lowercaseKey = key.toLowerCase();
+                materialsStock[lowercaseKey] = gameState.materialsStock[key];
             }
         }
 
@@ -2410,7 +2578,14 @@ function loadGame() {
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;
-            toolsInventory.push(...gameState.toolsInventory);
+            // Migrate old uppercase plating material IDs to lowercase
+            const migratedTools = gameState.toolsInventory.map(tool => {
+                if (tool.plating) {
+                    return { ...tool, plating: tool.plating.toLowerCase() };
+                }
+                return tool;
+            });
+            toolsInventory.push(...migratedTools);
         }
         
         // Restore research tree - merge saved progress with current definitions
@@ -2542,8 +2717,8 @@ window.activateCheat = function activateCheat() {
     
     // Give 5 of each material
     let materialsAdded = 0;
-    for (const material of materials) {
-        materialsStock[material.id] = (materialsStock[material.id] || 0) + 5;
+    for (const id in materials) {
+        materialsStock[id] = (materialsStock[id] || 0) + 5;
         materialsAdded++;
     }
     console.log(`Added 5 of each material (${materialsAdded} materials)`);
@@ -2601,9 +2776,9 @@ function initializeGame() {
 function populateFunctionsList() {
     const list = document.getElementById('functions-list');
     if (!list) return;
-    
+
     list.innerHTML = '';
-    
+
     // Research function
     const researchLink = document.createElement('a');
     researchLink.href = '#';
@@ -2614,7 +2789,7 @@ function populateFunctionsList() {
         openResearch();
     };
     list.appendChild(researchLink);
-    
+
     // Smelter function
     const smelterLink = document.createElement('a');
     smelterLink.href = '#';
@@ -2625,18 +2800,30 @@ function populateFunctionsList() {
         openSmelter();
     };
     list.appendChild(smelterLink);
-    
+
     // Forge function
     const forgeLink = document.createElement('a');
     forgeLink.href = '#';
     forgeLink.className = 'function-link';
+    forgeLink.id = 'forge-function-link'; // Add ID for easy updates
     forgeLink.innerHTML = '<span class="icon">🔨</span><span>Forge</span>';
     forgeLink.onclick = (e) => {
         e.preventDefault();
         openForge();
     };
+
+    // Check if forge is unlocked
+    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
+
+    if (!isForgeUnlocked) {
+        forgeLink.style.opacity = '0.5';
+        forgeLink.style.cursor = 'not-allowed';
+        forgeLink.title = 'Requires Forge research';
+    }
+
     list.appendChild(forgeLink);
-    
+
     // Automation function (placeholder for future) - last position
     const automationLink = document.createElement('a');
     automationLink.href = '#';
@@ -2650,6 +2837,32 @@ function populateFunctionsList() {
     automationLink.style.cursor = 'not-allowed';
     automationLink.title = 'Coming soon';
     list.appendChild(automationLink);
+}
+
+// Update forge function link state without rebuilding the entire list
+function updateForgeFunctionLink() {
+    const forgeLink = document.getElementById('forge-function-link');
+    if (!forgeLink) return;
+
+    // Check if forge is unlocked
+    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
+
+    if (isForgeUnlocked) {
+        // Only update if state actually changed
+        if (forgeLink.style.opacity === '0.5') {
+            forgeLink.style.opacity = '1';
+            forgeLink.style.cursor = 'pointer';
+            forgeLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (forgeLink.style.opacity !== '0.5') {
+            forgeLink.style.opacity = '0.5';
+            forgeLink.style.cursor = 'not-allowed';
+            forgeLink.title = 'Requires Forge research';
+        }
+    }
 }
 
 // Switch between Warehouse and Dwarfs tabs in the materials panel

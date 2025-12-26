@@ -15,25 +15,28 @@
  * @returns {Object|null} Material object or null if not found
  */
 function getMaterialById(id) {
-    return materials.find(m => m.id === id) || null;
+    return materials[id] || null;
 }
 
 /**
  * Select a random material appropriate for the given depth level
  * @param {number} depthLevel - The depth level to select material for
- * @returns {Object|null} Selected material object
+ * @returns {string|null} Selected material ID
  */
 function randomMaterial(depthLevel) {
     // Filter materials available at this depth
-    const available = materials.filter(mat => {
+    const available = [];
+    for (const [id, mat] of Object.entries(materials)) {
         const min = mat.minlevel || 0;
         const max = mat.maxlevel || Infinity;
-        return depthLevel >= min && depthLevel <= max && mat.probability > 0;
-    });
+        if (depthLevel >= min && depthLevel <= max && mat.probability > 0) {
+            available.push({ id, ...mat });
+        }
+    }
 
     if (available.length === 0) {
         // Fallback to earth if nothing else is available
-        return materials.find(m => m.id === 'earth') || null;
+        return 'earth';
     }
 
     // Calculate total probability weight
@@ -44,18 +47,18 @@ function randomMaterial(depthLevel) {
 
     if (totalProb === 0) {
         // If all have zero probability, pick randomly
-        return available[Math.floor(Math.random() * available.length)];
+        return available[Math.floor(Math.random() * available.length)].id;
     }
 
     // Pick a weighted random material
     let rand = Math.random() * totalProb;
     for (const mat of available) {
         rand -= (mat.probability || 0);
-        if (rand <= 0) return mat;
+        if (rand <= 0) return mat.id;
     }
 
     // Fallback to last material in list
-    return available[available.length - 1];
+    return available[available.length - 1].id;
 }
 
 /**
@@ -76,9 +79,14 @@ function extractMaterialBaseName(name) {
  * @returns {string|null} Gem material ID or null if no gems available
  */
 function selectRandomGem() {
-    const gemMaterials = materials.filter(m => m.type === 'Gem');
+    const gemMaterials = [];
+    for (const [id, mat] of Object.entries(materials)) {
+        if (mat.type === 'Gem') {
+            gemMaterials.push(id);
+        }
+    }
     if (gemMaterials.length === 0) return null;
-    return gemMaterials[Math.floor(Math.random() * gemMaterials.length)].id;
+    return gemMaterials[Math.floor(Math.random() * gemMaterials.length)];
 }
 
 /**
@@ -424,7 +432,7 @@ function calculateBucketWeight(bucket) {
 
     let totalWeight = 0;
     for (const [materialId, count] of Object.entries(bucket)) {
-        const material = materials.find(m => m.id === materialId);
+        const material = materials[materialId];
         if (material && material.weight) {
             totalWeight += material.weight * count;
         }
@@ -532,4 +540,131 @@ function hasMaterialsForTask(task, materialsStock) {
 
     // No input requirements (e.g., gem cutting, do nothing)
     return true;
+}
+
+// ============================================================================
+// PLATING EFFECT UTILITIES
+// ============================================================================
+
+/**
+ * Get the energy cost reduction from Zinc plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Energy cost reduction amount (default 0)
+ */
+function getZincPlatingEnergyReduction(dwarf) {
+    if (!dwarf.toolId) return 0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 0;
+    }
+
+    // Check if the tool has Zinc plating
+    if (toolInstance.plating === 'Zinc') {
+        // Zinc plating reduces energy consumption by 2 (as defined in defs.js platingEffects)
+        const energyReduction = 2;
+        console.log(`[Zinc Plating] ${dwarf.name}'s tool has Zinc plating - reducing energy cost by ${energyReduction}`);
+        return energyReduction;
+    }
+
+    return 0;
+}
+
+/**
+ * Get the gem spawn probability multiplier from Silver plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Gem probability multiplier (default 1.0)
+ */
+function getSilverPlatingGemMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Silver plating
+    if (toolInstance.plating === 'Silver') {
+        // Silver plating increases gem probability by 1.4x (as defined in defs.js platingEffects)
+        const gemMultiplier = 1.40;
+        console.log(`[Silver Plating] ${dwarf.name}'s tool has Silver plating - gem probability multiplied by ${gemMultiplier}x`);
+        return gemMultiplier;
+    }
+
+    return 1.0;
+}
+
+/**
+ * Get the critical strike chance multiplier from Gold plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Critical strike multiplier (default 1.0)
+ */
+function getGoldPlatingCritMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Gold plating
+    if (toolInstance.plating === 'Gold') {
+        // Gold plating increases critical strike chance by 1.1x (as defined in defs.js platingEffects)
+        const critMultiplier = 1.10;
+        console.log(`[Gold Plating] ${dwarf.name}'s tool has Gold plating - critical strike chance multiplied by ${critMultiplier}x`);
+        return critMultiplier;
+    }
+
+    return 1.0;
+}
+
+// ============================================================================
+// ENERGY CONSUMPTION UTILITIES
+// ============================================================================
+
+/**
+ * Apply energy consumption to a dwarf, accounting for Ruby gem prevention and Zinc plating reduction
+ * This centralizes the energy consumption logic to avoid duplication across different actions
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {number} baseCost - Base energy cost for the action (from constants.js)
+ */
+function applyEnergyConsumption(dwarf, baseCost) {
+    // Check Ruby gem effect - may completely prevent energy consumption
+    if (!shouldRubyPreventEnergyConsumption(dwarf)) {
+        // Apply Zinc plating reduction
+        const zincReduction = getZincPlatingEnergyReduction(dwarf);
+        const energyCost = Math.max(1, baseCost - zincReduction);
+        dwarf.energy = Math.max(0, dwarf.energy - energyCost);
+    }
+}
+
+// ============================================================================
+// CRITICAL HIT UTILITIES
+// ============================================================================
+
+/**
+ * Calculate the final critical hit chance for a dwarf, accounting for all modifiers
+ * This centralizes critical hit calculation to avoid duplication across different actions
+ *
+ * Calculation order:
+ * 1. Base chance from constants (CRITICAL_HIT_BASE_CHANCE = 2%)
+ * 2. Material Science research bonus (+5% per level)
+ * 3. Emerald gem modifier (multiplicative bonus based on carat)
+ * 4. Gold plating modifier (+10% multiplicative bonus)
+ *
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Final critical hit chance as a decimal (0-1)
+ */
+function calculateFinalCritChance(dwarf) {
+    // Get material science research level
+    const materialScience = researchtree.find(r => r.id === 'material-science');
+    const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
+
+    // Apply Emerald gem modifier
+    let critChance = getEmeraldModifiedCritChance(dwarf, baseCritChance);
+
+    // Apply Gold plating multiplier
+    critChance *= getGoldPlatingCritMultiplier(dwarf);
+
+    return critChance;
 }

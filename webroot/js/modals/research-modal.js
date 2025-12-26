@@ -81,6 +81,95 @@ function updateResearchProgress() {
 }
 
 /**
+ * Updates only the research button states without redrawing the entire table
+ * This prevents buttons from becoming unclickable during frequent updates
+ * Only updates DOM when button state actually changes
+ */
+function updateResearchButtons() {
+    const researchTable = document.querySelector('.research-table tbody');
+    if (!researchTable) return false;
+
+    // Process each research row
+    const rows = researchTable.querySelectorAll('tr');
+    rows.forEach((row) => {
+        const actionTd = row.querySelector('td:last-child');
+        if (!actionTd) return;
+
+        const researchBtn = actionTd.querySelector('.btn-research');
+        if (!researchBtn) return; // Skip rows with warnings instead of buttons
+
+        const researchId = researchBtn.dataset.researchId;
+        if (!researchId) return; // Skip already disabled buttons
+
+        const researchItem = researchtree.find(r => r.id === researchId);
+        if (!researchItem) return;
+
+        // Calculate current state
+        const currentLevel = researchItem.level || 0;
+        const targetLevel = currentLevel + 1;
+        const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+
+        const isActive = activeResearch && activeResearch.id === researchItem.id;
+        const isInQueue = researchQueue.some(r => r.id === researchItem.id);
+        const requirementsMet = checkResearchRequirements(researchItem);
+        const hasEnoughGold = gold >= actualGoldCost;
+
+        // Determine what the button state should be
+        let newClassName, newText, newDisabled, newTitle;
+
+        if (isActive) {
+            newClassName = 'btn-research active';
+            newText = 'Active';
+            newDisabled = true;
+            newTitle = '';
+        } else if (isInQueue) {
+            newClassName = 'btn-research active';
+            newText = 'Queued';
+            newDisabled = true;
+            const queuePos = researchQueue.findIndex(r => r.id === researchItem.id) + 1;
+            newTitle = `In queue (position ${queuePos})`;
+        } else if (!requirementsMet.met) {
+            newClassName = 'btn-research disabled';
+            newText = 'Locked';
+            newDisabled = true;
+            newTitle = requirementsMet.reason;
+        } else if (!hasEnoughGold) {
+            newClassName = 'btn-research disabled';
+            newText = activeResearch ? 'Queue' : 'Research';
+            newDisabled = true;
+            newTitle = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
+        } else if (activeResearch) {
+            newClassName = 'btn-research';
+            newText = researchQueue.length >= 5 ? 'Queue Full' : 'Queue';
+            newDisabled = researchQueue.length >= 5;
+            newTitle = researchQueue.length >= 5 ? 'Research queue is full (max 5)' : `Add to queue (${researchQueue.length}/5 slots used)`;
+            if (newDisabled) {
+                newClassName = 'btn-research disabled';
+            }
+        } else {
+            newClassName = 'btn-research';
+            newText = 'Research';
+            newDisabled = false;
+            newTitle = '';
+        }
+
+        // Only update DOM if state actually changed
+        if (researchBtn.className !== newClassName) {
+            researchBtn.className = newClassName;
+        }
+        if (researchBtn.textContent !== newText) {
+            researchBtn.textContent = newText;
+        }
+        if (researchBtn.disabled !== newDisabled) {
+            researchBtn.disabled = newDisabled;
+        }
+        if (researchBtn.title !== newTitle) {
+            researchBtn.title = newTitle;
+        }
+    });
+}
+
+/**
  * Populates the research modal with research tree, active research, and queue
  */
 function populateResearch() {
