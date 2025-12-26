@@ -660,7 +660,9 @@ function actForDwarf(dwarf) {
 
             // Check Ruby gem effect before consuming energy
             if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_RESEARCH);
+                const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_RESEARCH - zincReduction);
+                dwarf.energy = Math.max(0, dwarf.energy - energyCost);
             }
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
@@ -873,7 +875,9 @@ function actForDwarf(dwarf) {
 
                     // Check Ruby gem effect before consuming energy
                     if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                        dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+                        const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                        const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_SMELT - zincReduction);
+                        dwarf.energy = Math.max(0, dwarf.energy - energyCost);
                     }
                     dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
 
@@ -947,7 +951,9 @@ function actForDwarf(dwarf) {
 
             // Check Ruby gem effect before consuming energy
             if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, dwarf.energy - DWARF_ENERGY_COST_PER_SMELT);
+                const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_SMELT - zincReduction);
+                dwarf.energy = Math.max(0, dwarf.energy - energyCost);
             }
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
@@ -1183,7 +1189,9 @@ function actForDwarf(dwarf) {
 
             // Check Ruby gem effect before consuming energy
             if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+                const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_DIG - zincReduction);
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
             }
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
@@ -1261,7 +1269,9 @@ function actForDwarf(dwarf) {
 
             // Check Ruby gem effect before consuming energy
             if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_MOVE);
+                const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_MOVE - zincReduction);
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
             }
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
@@ -1297,7 +1307,9 @@ function actForDwarf(dwarf) {
 
             // Check Ruby gem effect before consuming energy
             if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - DWARF_ENERGY_COST_PER_DIG);
+                const zincReduction = getZincPlatingEnergyReduction(dwarf);
+                const energyCost = Math.max(1, DWARF_ENERGY_COST_PER_DIG - zincReduction);
+                dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
             }
             gold = Math.max(0, gold - wage); // Deduct payment for digging
             pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
@@ -1522,7 +1534,9 @@ function actForDwarf(dwarf) {
     }
     target.hardness = Math.max(0, target.hardness - power);
     if (!shouldRubyPreventEnergyConsumption(dwarf)) {
-      dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - 5);
+      const zincReduction = getZincPlatingEnergyReduction(dwarf);
+      const energyCost = Math.max(1, 5 - zincReduction);
+      dwarf.energy = Math.max(0, (typeof dwarf.energy === 'number' ? dwarf.energy : 1000) - energyCost);
     }
     gold = Math.max(0, gold - wage); // Deduct payment for digging
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });

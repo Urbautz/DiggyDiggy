@@ -533,3 +533,31 @@ function hasMaterialsForTask(task, materialsStock) {
     // No input requirements (e.g., gem cutting, do nothing)
     return true;
 }
+
+// ============================================================================
+// PLATING EFFECT UTILITIES
+// ============================================================================
+
+/**
+ * Get the energy cost reduction from Zinc plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Energy cost reduction amount (default 0)
+ */
+function getZincPlatingEnergyReduction(dwarf) {
+    if (!dwarf.toolId) return 0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 0;
+    }
+
+    // Check if the tool has Zinc plating
+    if (toolInstance.plating === 'Zinc') {
+        // Zinc plating reduces energy consumption by 2 (as defined in defs.js platingEffects)
+        const energyReduction = 2;
+        console.log(`[Zinc Plating] ${dwarf.name}'s tool has Zinc plating - reducing energy cost by ${energyReduction}`);
+        return energyReduction;
+    }
+
+    return 0;
+}
