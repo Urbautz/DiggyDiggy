@@ -77,6 +77,7 @@ function openWarehouseSellModal() {
             if (!craftableMaterials.has(id)
                 && !smelterInputMaterials.has(id)
                 && !materialType.startsWith('Gem')
+                && !materialType.startsWith('Ingot')
                 && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
@@ -188,7 +189,8 @@ function executeBulkSell(action) {
             case 'sell-non-craftables':
                 shouldSell = !craftableMaterials.has(id)
                     && !smelterInputMaterials.has(id)
-                    && !materialType.startsWith('Gem');
+                    && !materialType.startsWith('Gem')
+                    && !materialType.startsWith('Ingot');
                 break;
             case 'sell-ingots':
                 shouldSell = materialType.startsWith('Ingot');
@@ -329,8 +331,10 @@ function sellNotCraftableMaterials() {
     for (const [id, m] of Object.entries(materials)) {
         // Skip materials that are used as smelter inputs or forge inputs (ingots)
         if (smelterInputMaterials.has(id)) continue;
-        if (m.type === 'Ingot') continue;
-
+        if (m.type == 'Ingot') {
+            console.log(`Skipping ingot material ${m.name} from not-craftable sell preview`);
+            continue;
+        }
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
             previewGold += count * m.worth * totalTradeBonus;
