@@ -164,6 +164,9 @@ function openDwarfDetailModal(dwarf) {
     const modalHeader = modal.querySelector('.modal-header h2');
     modalHeader.textContent = `👷 ${dwarf.name}`;
 
+    // Initialize task priority drop zones (only needs to be done once)
+    initializeTaskPriorityDropZones();
+
     // Populate the template with dwarf data
     populateDwarfDetailTemplate(dwarf);
 
@@ -268,6 +271,243 @@ function updateNextSkillpointButton(currentDwarfName) {
         };
     } else {
         nextBtn.style.display = 'none';
+    }
+}
+
+/**
+ * Task definitions for drag-and-drop UI
+ */
+const TASK_DEFINITIONS = {
+    'digging': { icon: '⛏️', name: 'Digging' },
+    'research': { icon: '🔬', name: 'Research' },
+    'smelting': { icon: '🔥', name: 'Smelter' }
+};
+
+/**
+ * Populate task priority lists with drag-and-drop functionality
+ */
+function populateTaskPriorityLists(dwarf) {
+    const priorityList = document.getElementById('task-priority-list');
+    const blacklistList = document.getElementById('task-blacklist-list');
+
+    if (!priorityList || !blacklistList) return;
+
+    // Clear existing content
+    priorityList.innerHTML = '';
+    blacklistList.innerHTML = '';
+
+    // Ensure dwarf has task arrays
+    if (!dwarf.taskPriority) dwarf.taskPriority = ['digging', 'research', 'smelting'];
+    if (!dwarf.taskBlacklist) dwarf.taskBlacklist = [];
+
+    // Populate priority list
+    dwarf.taskPriority.forEach((taskId, index) => {
+        const taskDef = TASK_DEFINITIONS[taskId];
+        if (!taskDef) return;
+
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'priority');
+        priorityList.appendChild(item);
+    });
+
+    // Populate blacklist
+    dwarf.taskBlacklist.forEach(taskId => {
+        const taskDef = TASK_DEFINITIONS[taskId];
+        if (!taskDef) return;
+
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'blacklist');
+        blacklistList.appendChild(item);
+    });
+}
+
+/**
+ * Create a draggable task priority item
+ */
+function createTaskPriorityItem(taskId, taskDef, dwarfName, listType) {
+    const item = document.createElement('div');
+    item.className = 'task-priority-item';
+    item.draggable = true;
+    item.dataset.taskId = taskId;
+    item.dataset.dwarfName = dwarfName;
+    item.dataset.listType = listType;
+
+    item.innerHTML = `
+        <span class="task-priority-item-icon">${taskDef.icon}</span>
+        <span class="task-priority-item-name">${taskDef.name}</span>
+        <span class="task-priority-item-handle">⋮⋮</span>
+    `;
+
+    // Add drag event listeners
+    item.addEventListener('dragstart', handleTaskDragStart);
+    item.addEventListener('dragend', handleTaskDragEnd);
+    item.addEventListener('dragover', handleTaskDragOver);
+    item.addEventListener('drop', handleTaskDrop);
+    item.addEventListener('dragleave', handleTaskDragLeave);
+
+    return item;
+}
+
+/**
+ * Drag and drop event handlers
+ */
+let draggedTask = null;
+
+function handleTaskDragStart(e) {
+    draggedTask = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleTaskDragEnd(e) {
+    this.classList.remove('dragging');
+
+    // Remove drag-over class from all items
+    document.querySelectorAll('.task-priority-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+}
+
+function handleTaskDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Add visual indicator
+    if (this !== draggedTask) {
+        this.classList.add('drag-over');
+    }
+
+    return false;
+}
+
+function handleTaskDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleTaskDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+
+    this.classList.remove('drag-over');
+
+    if (draggedTask !== this) {
+        const dwarfName = this.dataset.dwarfName;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (!dwarf) return;
+
+        const draggedTaskId = draggedTask.dataset.taskId;
+        const draggedFromList = draggedTask.dataset.listType;
+        const droppedOnList = this.parentElement.id === 'task-priority-list' ? 'priority' : 'blacklist';
+
+        // Remove from both lists first to prevent duplicates
+        let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
+        if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+
+        let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
+        if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+
+        // Add to destination list
+        if (droppedOnList === 'priority') {
+            const targetTaskId = this.dataset.taskId;
+            const targetIndex = dwarf.taskPriority.indexOf(targetTaskId);
+            dwarf.taskPriority.splice(targetIndex, 0, draggedTaskId);
+        } else {
+            // Only add if not already in blacklist
+            if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
+                dwarf.taskBlacklist.push(draggedTaskId);
+            }
+        }
+
+        // Save and refresh
+        saveTaskPriorityChanges(dwarf);
+        populateTaskPriorityLists(dwarf);
+    }
+
+    return false;
+}
+
+/**
+ * Add drop zones for empty lists
+ */
+function initializeTaskPriorityDropZones() {
+    const priorityList = document.getElementById('task-priority-list');
+    const blacklistList = document.getElementById('task-blacklist-list');
+
+    [priorityList, blacklistList].forEach(list => {
+        list.addEventListener('dragover', function(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        });
+
+        list.addEventListener('drop', function(e) {
+            if (e.stopPropagation) e.stopPropagation();
+
+            if (!draggedTask) return false;
+
+            const dwarfName = draggedTask.dataset.dwarfName;
+            const dwarf = dwarfs.find(d => d.name === dwarfName);
+            if (!dwarf) return false;
+
+            const draggedTaskId = draggedTask.dataset.taskId;
+            const draggedFromList = draggedTask.dataset.listType;
+            const droppedOnList = this.id === 'task-priority-list' ? 'priority' : 'blacklist';
+
+            // Remove from both lists first to prevent duplicates
+            let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
+            if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+
+            let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
+            if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+
+            // Add to destination list only if not already present
+            if (droppedOnList === 'priority') {
+                if (!dwarf.taskPriority.includes(draggedTaskId)) {
+                    dwarf.taskPriority.push(draggedTaskId);
+                }
+            } else {
+                if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
+                    dwarf.taskBlacklist.push(draggedTaskId);
+                }
+            }
+
+            // Save and refresh
+            saveTaskPriorityChanges(dwarf);
+            populateTaskPriorityLists(dwarf);
+
+            return false;
+        });
+    });
+}
+
+/**
+ * Save task priority changes to game state
+ */
+function saveTaskPriorityChanges(dwarf) {
+    // Find the actual dwarf in the main array
+    const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
+    if (actualDwarf) {
+        actualDwarf.taskPriority = [...dwarf.taskPriority];
+        actualDwarf.taskBlacklist = [...dwarf.taskBlacklist];
+
+        // Sync with worker
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { dwarfs }
+            });
+        }
+
+        // Save game
+        saveGame();
+
+        console.log(`Task priorities updated for ${dwarf.name}:`, {
+            priority: dwarf.taskPriority,
+            blacklist: dwarf.taskBlacklist
+        });
     }
 }
 
@@ -636,6 +876,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     resetBtn.dataset.dwarfName = dwarf.name;
     const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
     document.getElementById('dwarf-reset-cost').textContent = resetCost;
+
+    // Populate task priority lists
+    populateTaskPriorityLists(dwarf);
 }
 
 /**

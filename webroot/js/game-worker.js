@@ -1278,23 +1278,28 @@ function actForDwarf(dwarf) {
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
-    // Idle dwarf - check for special tasks (research or smelting)
-    // Use a single random check, then evenly distribute between available tasks
+    // Idle dwarf - check for tasks based on priority
     if (dwarf.status === 'idle' && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
-        const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf);
-        const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
-        
-        // Check for special task
-        if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
-            let chooseResearch = false;
-            if (canResearch && canSmelt) {
-                // Both available - split evenly
-                chooseResearch = Math.random() < TASK_RESEARCH_SPLIT;
-            } else {
-                chooseResearch = canResearch;
+        // Get dwarf's task priority list (default if not set)
+        const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting'];
+        const taskBlacklist = dwarf.taskBlacklist || [];
+
+        // Check if each task is available
+        const taskAvailability = {
+            'research': activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
+            'smelting': smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null,
+            'digging': true // Digging is always available
+        };
+
+        // Find the highest priority task that is available and not blacklisted
+        for (const taskId of taskPriority) {
+            // Skip if blacklisted or not available
+            if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
+                continue;
             }
-            
-            if (chooseResearch) {
+
+            // Task is available! Execute it
+            if (taskId === 'research') {
                 // Check if already at research location
                 if (dwarf.x !== research.x || dwarf.y !== research.y) {
                     if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
@@ -1303,7 +1308,7 @@ function actForDwarf(dwarf) {
                         return;
                     }
                 }
-            } else if (canSmelt) {
+            } else if (taskId === 'smelting') {
                 // Check if already at smelter location
                 if (dwarf.x !== smelter.x || dwarf.y !== smelter.y) {
                     if (!dwarf.moveTarget || dwarf.moveTarget.x !== smelter.x || dwarf.moveTarget.y !== smelter.y) {
@@ -1312,6 +1317,9 @@ function actForDwarf(dwarf) {
                         return;
                     }
                 }
+            } else if (taskId === 'digging') {
+                // Continue to digging logic below
+                break;
             }
         }
     }

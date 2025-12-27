@@ -2577,6 +2577,14 @@ function loadGame() {
                 }
                 dwarf.bucket = sanitizedBucket;
             }
+
+            // Migration: Add task priority system if not present
+            if (!dwarf.taskPriority) {
+                dwarf.taskPriority = ['digging', 'research', 'smelting'];
+            }
+            if (!dwarf.taskBlacklist) {
+                dwarf.taskBlacklist = [];
+            }
         }
 
         startX = gameState.startX || 0;

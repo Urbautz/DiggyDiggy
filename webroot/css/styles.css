@@ -3193,3 +3193,108 @@ header, footer {
     background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), transparent);
     margin: 8px 0;
 }
+
+/* ============================================================================
+   TASK PRIORITY SYSTEM
+   ============================================================================ */
+
+.dwarf-task-priority-container {
+    margin: 12px 0 8px 0;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid #444;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.task-priority-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.task-priority-box {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 6px;
+    min-height: 90px;
+}
+
+.task-priority-box-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: #93c5fd;
+    margin-bottom: 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(147, 197, 253, 0.15);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.task-priority-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 60px;
+}
+
+.task-priority-item {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 3px;
+    padding: 5px 8px;
+    color: #e0f2fe;
+    font-size: 12px;
+    cursor: move;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.task-priority-item:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+}
+
+.task-priority-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.task-priority-item.drag-over {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+}
+
+.task-priority-item-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.task-priority-item-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.task-priority-item-handle {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: grab;
+    line-height: 1;
+}
+
+.task-blacklist .task-priority-item {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.task-blacklist .task-priority-item:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
