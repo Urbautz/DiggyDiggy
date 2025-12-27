@@ -195,12 +195,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     // Sort dwarfs: those who can level up first, then by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
-        const aLevel = a.level || 1;
+        const aLevel = getDwarfLevel(a);
         const aNeeded = getDwarfXpForLevel(aLevel);
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
-        const bLevel = b.level || 1;
+        const bLevel = getDwarfLevel(b);
         const bNeeded = getDwarfXpForLevel(bLevel);
         const bCanLevelUp = bXP >= bNeeded;
 
@@ -213,7 +213,7 @@ function populateDwarfSwitcher(currentDwarfName) {
     sortedDwarfs.forEach(d => {
         if (d.name !== currentDwarfName) {
             const currentXP = d.xp || 0;
-            const currentLevel = d.level || 1;
+            const currentLevel = getDwarfLevel(d);
             const xpNeeded = getDwarfXpForLevel(currentLevel);
             const canLevelUp = currentXP >= xpNeeded;
             const levelUpIndicator = canLevelUp ? ' ⭐' : '';
@@ -252,7 +252,7 @@ function updateNextSkillpointButton(currentDwarfName) {
     const dwarfsWithSkillPoints = dwarfs.filter(d => {
         if (d.name === currentDwarfName) return false;
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         return currentXP >= xpNeeded;
     });
@@ -516,7 +516,7 @@ function saveTaskPriorityChanges(dwarf) {
  */
 function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
@@ -874,7 +874,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     // Set reset button dataset and cost
     const resetBtn = document.getElementById('dwarf-reset-btn');
     resetBtn.dataset.dwarfName = dwarf.name;
-    const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
+    const resetCost = (getDwarfLevel(dwarf)) * DWARF_RESET_COST_PER_LEVEL;
     document.getElementById('dwarf-reset-cost').textContent = resetCost;
 
     // Populate task priority lists
@@ -904,7 +904,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
     // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
     const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
@@ -1066,7 +1066,7 @@ function applyLevelUp(dwarf, upgradeType) {
  * Reset dwarf skill points
  */
 function resetDwarfPoints(dwarf) {
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
 
     // Check if can afford
@@ -1273,7 +1273,7 @@ document.addEventListener('click', (ev) => {
     const dwarf = dwarfs.find(d => d.name === dwarfName);
     if (!dwarf) return;
 
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
 
     // Confirm before resetting
