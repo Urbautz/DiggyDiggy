@@ -15,6 +15,41 @@ function addTableRow(table, headerText, contentText) {
     table.appendChild(tr);
 }
 
+// Helper function to calculate how many times a task can be performed
+function calculateTaskAvailableRuns(task) {
+    if (task.type === 'gem-cutting') {
+        return gems.filter(g => g.markedForCutting && !g.polished).length;
+    }
+
+    if (task.type === 'heating' || !task.output) {
+        // Heating tasks - check input material
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            return Math.floor(stockAmount / task.input.amount);
+        }
+        return 0;
+    }
+
+    // For tasks with multiple inputs (alloys)
+    if (task.inputs && Array.isArray(task.inputs)) {
+        let minRuns = Infinity;
+        for (const input of task.inputs) {
+            const stockAmount = materialsStock[input.material] || 0;
+            const possibleRuns = Math.floor(stockAmount / input.amount);
+            minRuns = Math.min(minRuns, possibleRuns);
+        }
+        return minRuns === Infinity ? 0 : minRuns;
+    }
+
+    // For tasks with single input
+    if (task.input && task.input.material && task.input.amount) {
+        const stockAmount = materialsStock[task.input.material] || 0;
+        return Math.floor(stockAmount / task.input.amount);
+    }
+
+    return 0;
+}
+
 // Helper function to create threshold control row
 function createThresholdRow(label, spanId, currentValue, adjustFunctionName) {
     const tr = document.createElement('tr');
@@ -90,7 +125,12 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             // Gem cutting task
             addTableRow(materialsTable, 'Input', 'Any gem marked for cutting');
             addTableRow(materialsTable, 'Output', 'Polished gem (+50% value)');
-            addTableRow(materialsTable, 'Time', `${task.ticksRequired || 0} ticks`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
+            }
         } else if (task.inputs && Array.isArray(task.inputs)) {
             // Multiple inputs (alloy format)
             task.inputs.forEach(input => {
@@ -118,6 +158,12 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
             addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
+            }
         } else if (task.input && task.output) {
             // Single input
             const inputMat = getMaterialById(task.input.material);
@@ -143,6 +189,12 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             materialsTable.appendChild(inputTr);
 
             addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
+            }
         } else if (task.input && task.type === 'heating') {
             // Heating task
             const inputMat = getMaterialById(task.input.material);
@@ -167,6 +219,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             materialsTable.appendChild(inputTr);
 
             addTableRow(materialsTable, 'Effect', heatInfo);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
         }
 
         if (task.breakChance) {
@@ -338,7 +393,7 @@ function updateSmelterTemperatureDisplay() {
         }
 
         // Update task actionability based on temperature
-        const task = smelterTasks.find(t => t.id === taskId);
+        const task = smelterTasksData[taskId];
         if (task) {
             const stockAmount = materialsStock[task.input.material] || 0;
             const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
@@ -408,16 +463,16 @@ function updateSmelterTasksDisplay() {
     const activeTaskId = getCurrentActiveTask();
 
     // Update each task row
-    smelterTasks.forEach((task) => {
-        const taskRow = taskList.querySelector(`[data-task-id="${task.id}"]`);
+    smelterTasks.forEach((taskId) => {
+        const taskRow = taskList.querySelector(`[data-task-id="${taskId}"]`);
         if (!taskRow) return;
 
         // Update status indicator for active task
         const statusIndicator = taskRow.querySelector('.smelter-task-status');
-        if (statusIndicator && task.id !== 'do-nothing') {
+        if (statusIndicator && taskId !== 'do-nothing') {
             const isUnreachable = taskRow.classList.contains('smelter-task-unreachable');
             const isLocked = taskRow.classList.contains('smelter-task-locked');
-            const isCurrentlyActive = task.id === activeTaskId;
+            const isCurrentlyActive = taskId === activeTaskId;
 
             // Only update if the active status changed
             const wasActive = statusIndicator.textContent === '🧍';
@@ -434,19 +489,35 @@ function updateSmelterTasksDisplay() {
             }
         }
 
-        // Update gem cutting progress
-        if (task.type === 'gem-cutting') {
+        // Update progress for tasks being worked on
+        const task = smelterTasksData[taskId];
+        if (task && task.ticksRequired) {
             const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
             if (taskRecipe) {
-                const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
-                const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+                // Find if any dwarf is currently working on this task
+                const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
 
-                if (cuttingGem) {
-                    const progress = cuttingGem.cuttingProgress || 0;
-                    const ticksRequired = task.ticksRequired || 250;
-                    taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
-                } else {
-                    taskRecipe.textContent = 'No gems queued for cutting';
+                if (workingDwarf && task.progress !== undefined) {
+                    // Show progress for task being worked on (progress is now stored on the task, not the dwarf)
+                    const progress = task.progress || 0;
+                    const ticksRequired = task.ticksRequired;
+                    const percentage = Math.round((progress / ticksRequired) * 100);
+
+                    // Calculate available runs after current task
+                    const availableRuns = calculateTaskAvailableRuns(task);
+                    const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
+
+                    taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
+                    taskRecipe.classList.remove('recipe-blocked');
+                    taskRecipe.classList.add('recipe-ready');
+                } else if (task.type === 'gem-cutting') {
+                    // Special case for gem cutting - show queued gems
+                    const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+                    if (totalQueuedGems > 0) {
+                        taskRecipe.textContent = `${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued`;
+                    } else {
+                        taskRecipe.textContent = 'No gems queued for cutting';
+                    }
                 }
             }
         }
@@ -463,8 +534,9 @@ function getCurrentActiveTask() {
     if (!smeltingDwarf) return null;
 
     // Find the first actionable task in priority order
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') return null;
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') return null;
+        const task = smelterTasksData[taskId];
 
         // Check if task is unlocked
         const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
@@ -473,7 +545,7 @@ function getCurrentActiveTask() {
         // Check if task has required materials/gems
         if (task.type === 'gem-cutting') {
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) return task.id;
+            if (gemToProcess) return taskId;
         } else if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
@@ -481,9 +553,9 @@ function getCurrentActiveTask() {
             });
             if (hasAllInputs) {
                 if (task.minTemp) {
-                    if (smelterTemperature >= task.minTemp) return task.id;
+                    if (smelterTemperature >= task.minTemp) return taskId;
                 } else {
-                    return task.id;
+                    return taskId;
                 }
             }
         } else if (task.input && task.input.material) {
@@ -491,14 +563,14 @@ function getCurrentActiveTask() {
             if (stockAmount >= task.input.amount) {
                 if (task.type === 'heating') {
                     if (task.heatGain === 'dynamic') {
-                        if (smelterTemperature < smelterMagmaMinTemp) return task.id;
+                        if (smelterTemperature < smelterMagmaMinTemp) return taskId;
                     } else {
-                        if (smelterHeatingMode) return task.id;
+                        if (smelterHeatingMode) return taskId;
                     }
                 } else if (task.minTemp) {
-                    if (smelterTemperature >= task.minTemp) return task.id;
+                    if (smelterTemperature >= task.minTemp) return taskId;
                 } else {
-                    return task.id;
+                    return taskId;
                 }
             }
         }
@@ -539,21 +611,22 @@ function populateSmelter() {
     }, 100); // Update every 100ms for smooth progress updates
 
     // Find if there's a "do-nothing" task and track if we're below it
-    const doNothingIndex = smelterTasks.findIndex(t => t.id === 'do-nothing');
+    const doNothingIndex = smelterTasks.findIndex(id => id === 'do-nothing');
 
     // Get the currently active task
     const activeTaskId = getCurrentActiveTask();
 
     // Render each task
-    smelterTasks.forEach((task, index) => {
+    smelterTasks.forEach((taskId, index) => {
+        const task = smelterTasksData[taskId];
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
-        taskRow.dataset.taskId = task.id;
+        taskRow.dataset.taskId = taskId;
         taskRow.dataset.taskIndex = index;
         taskRow.draggable = true;
 
         // Check if this task is unreachable (below "do-nothing")
-        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
+        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && taskId !== 'do-nothing';
 
         // Check if this task requires research
         let isUnlocked = true;
@@ -569,7 +642,7 @@ function populateSmelter() {
         // Check if this task is actionable (has enough materials)
         let isActionable = false;
         let stockAmount = 0;
-        if (task.id === 'do-nothing') {
+        if (taskId === 'do-nothing') {
             isActionable = true; // "Do nothing" is always "actionable"
         } else if (task.type === 'gem-cutting' && isUnlocked) {
             // For gem cutting tasks, check if there are any gems marked for cutting
@@ -602,7 +675,7 @@ function populateSmelter() {
         }
 
         // Add actionable/blocked/locked class
-        if (task.id !== 'do-nothing') {
+        if (taskId !== 'do-nothing') {
             if (isUnreachable) {
                 taskRow.classList.add('smelter-task-unreachable');
             } else if (!isUnlocked) {
@@ -638,9 +711,9 @@ function populateSmelter() {
         statusIndicator.className = 'smelter-task-status';
 
         // Check if this task is currently being worked on
-        const isCurrentlyActive = task.id === activeTaskId;
+        const isCurrentlyActive = taskId === activeTaskId;
 
-        if (task.id === 'do-nothing') {
+        if (taskId === 'do-nothing') {
             statusIndicator.textContent = '⏸️';
             statusIndicator.title = 'Idle task';
         } else if (isUnreachable) {
@@ -697,20 +770,35 @@ function populateSmelter() {
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
 
-        // Show gem cutting progress if this is the gem-cutting task
-        if (task.type === 'gem-cutting') {
+        // Check if any dwarf is working on this task and show progress
+        const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
+
+        if (workingDwarf && task.progress !== undefined && task.ticksRequired) {
+            // Show progress for active task (progress is now stored on the task, not the dwarf)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
 
-            // Find gem being cut and total gems queued
-            const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
+            const progress = task.progress || 0;
+            const ticksRequired = task.ticksRequired;
+            const percentage = Math.round((progress / ticksRequired) * 100);
+
+            // Calculate available runs after current task
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
+
+            taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
+            taskRecipe.classList.add('recipe-ready');
+            taskInfo.appendChild(taskRecipe);
+        }
+        // Show gem cutting queue if this is gem cutting and not being worked on
+        else if (task.type === 'gem-cutting') {
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+
             const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
 
-            if (cuttingGem) {
-                const progress = cuttingGem.cuttingProgress || 0;
-                const ticksRequired = task.ticksRequired || 250;
-
-                taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
+            if (totalQueuedGems > 0) {
+                taskRecipe.textContent = `${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued`;
                 taskRecipe.classList.add('recipe-ready');
             } else {
                 taskRecipe.textContent = 'No gems queued for cutting';
@@ -720,7 +808,7 @@ function populateSmelter() {
             taskInfo.appendChild(taskRecipe);
         }
 
-        // Show input/output if applicable (compact, no stock info)
+        // Show input/output if applicable (with available runs)
         else if (task.inputs && task.output) {
             // Multiple inputs (alloy format)
             const taskRecipe = document.createElement('span');
@@ -733,7 +821,11 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}`;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
+            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -749,7 +841,11 @@ function populateSmelter() {
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}`;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -757,11 +853,15 @@ function populateSmelter() {
             }
             taskInfo.appendChild(taskRecipe);
         } else if (task.input && task.type === 'heating') {
-            // Show heating task info with temperature display (compact, no stock info)
+            // Show heating task info with temperature display (with available runs)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
             // Calculate display info for heating tasks
             let heatingDisplay = '';
             if (task.heatGain === 'dynamic') {
@@ -769,10 +869,10 @@ function populateSmelter() {
                 const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
                 const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                 const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)`;
+                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)${runsText}`;
             } else {
                 // Coal: show heat gain and max 2000°
-                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)`;
+                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)${runsText}`;
             }
             taskRecipe.textContent = heatingDisplay;
             if (!isUnlocked) {

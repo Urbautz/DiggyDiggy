@@ -6,7 +6,7 @@
 // ============================================================================
 
 // Game version
-const gameversion = '0.14.0';
+const gameversion = '0.20.0';
 
 // ============================================================================
 // DWARF CONSTANTS
@@ -59,6 +59,13 @@ const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01; // 1% wage increase reduction
 const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
 const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
 const RESEARCH_TRADING_BONUS = 0.03; // 3% better sell prices per level
+const RESEARCH_PRICE_NEGOTIATIONS_BONUS = 0.01; // 1% sell price bonus per wisdom level of highest wisdom dwarf
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_RATE = 0.000125; // 0.1% interest rate for gold below 1000
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT = 100; // Gold limit for tier 1 interest
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE = 0.00000135; // 0.025% interest rate for gold below 100k
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT = 10100; // Gold limit for tier 2 interest
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE = 0.0000000875; // 0% interest rate for gold below 10M
+const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT = 110100; // Gold limit for tier 3 interest
 const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level
@@ -83,8 +90,9 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 // ============================================================================
 
 const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
-const GEM_CUTTING_VALUE_MULTIPLIER = 1.5; // 50% value increase when gems are cut and polished
+const GEM_CUTTING_VALUE_MULTIPLIER = 1.8; // 80% value increase when gems are cut and polished
 const GEM_CUTTING_TICKS_REQUIRED = 50; // Ticks required to cut and polish a gem
+const GEM_CARAT_DEPTH_DIVISOR = 2500; // Depth divisor for calculating maximum gem carat
 
 // ============================================================================
 // GEM EFFECT CONSTANTS - RUBY
@@ -138,7 +146,25 @@ const AMETHYST_RESEARCH_MAX_CARAT = 10000; // Maximum carat value for formula sc
 const SMELTER_BASE_TEMPERATURE = 25; // Starting and minimum temperature
 const SMELTER_MAX_TEMPERATURE_LIMIT = 1500; // Absolute maximum temperature
 const SMELTER_COOLING_RATE = 0.0005; // 0.05% cooling per tick
-const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
+const SMELTER_POLISH_BREAK_CHANCE = 0.05; // 5% base break chance when polishing
+
+// Smelter task time requirements (in ticks)
+const SMELTER_HEATING_TICKS_REQUIRED = 1; // Time to heat furnace
+const SMELTER_BASIC_PROCESSING_TICKS_REQUIRED = 2; // Time for basic processing (drying mud)
+const SMELTER_GRINDING_TICKS_REQUIRED = 5; // Time for grinding operations
+const SMELTER_POLISHING_TICKS_REQUIRED = 10; // Time for stone polishing
+const SMELTER_SOFT_METAL_TICKS_REQUIRED = 10; // Time for soft metal smelting (bronce, copper, zinc)
+const SMELTER_ALLOY_TICKS_REQUIRED = 12; // Time for alloy creation
+const SMELTER_IRON_TICKS_REQUIRED = 15; // Time for pig iron smelting
+const SMELTER_STEEL_TICKS_REQUIRED = 20; // Time for iron and steel smelting
+const SMELTER_HARDENED_STEEL_TICKS_REQUIRED = 22; // Time for hardened steel smelting
+const SMELTER_DWARF_STEEL_TICKS_REQUIRED = 28; // Time for dwarfen steel smelting
+const SMELTER_PRECIOUS_METAL_TICKS_REQUIRED = 30; // Time for precious metal smelting (silver, gold)
+
+// Smelter difficulty system (wisdom-based reruns like research)
+const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point
+const SMELTER_MIN_SUCCESS_CHANCE = 0.25; // Minimum 25% success chance per attempt
+const SMELTER_HARDNESS_DIVISOR = 8; // Divide material hardness by this to get smelting difficulty
 
 // ============================================================================
 // TASK PRIORITY CONSTANTS

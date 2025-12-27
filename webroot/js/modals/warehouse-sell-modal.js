@@ -9,10 +9,17 @@
 function openWarehouseSellModal() {
     const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // Calculate values for each category
     const smelterInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -44,7 +51,7 @@ function openWarehouseSellModal() {
     for (const [id, m] of Object.entries(materials)) {
         const count = materialsStock[id] || 0;
         if (count > 0) {
-            const value = count * m.worth * tradeBonus;
+            const value = count * m.worth * totalTradeBonus;
             allValue += value;
 
             const materialType = m.type || '';
@@ -71,6 +78,7 @@ function openWarehouseSellModal() {
             if (!craftableMaterials.has(id)
                 && !smelterInputMaterials.has(id)
                 && !materialType.startsWith('Gem')
+                && !materialType.startsWith('Ingot')
                 && value > 0) {
                 nonCraftablesValue += value;
                 nonCraftablesMaterials.push({ name: m.name, count });
@@ -141,9 +149,17 @@ function openWarehouseSellModal() {
  */
 function executeBulkSell(action) {
     const tradeBonus = 1 + getResearchLevel('trading') * RESEARCH_TRADING_BONUS;
+
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     const smelterInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -175,7 +191,8 @@ function executeBulkSell(action) {
             case 'sell-non-craftables':
                 shouldSell = !craftableMaterials.has(id)
                     && !smelterInputMaterials.has(id)
-                    && !materialType.startsWith('Gem');
+                    && !materialType.startsWith('Gem')
+                    && !materialType.startsWith('Ingot');
                 break;
             case 'sell-ingots':
                 shouldSell = materialType.startsWith('Ingot');
@@ -189,7 +206,7 @@ function executeBulkSell(action) {
         }
 
         if (shouldSell) {
-            const value = count * m.worth * tradeBonus;
+            const value = count * m.worth * totalTradeBonus;
             totalGold += value;
             totalItems += count;
             soldMaterials.push(`${count}x ${m.name}`);
@@ -225,13 +242,19 @@ function sellAllMaterials() {
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // First calculate totals for confirmation
     let previewGold = 0;
     let previewItems = 0;
     for (const [id, m] of Object.entries(materials)) {
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
-            previewGold += count * m.worth * tradeBonus;
+            previewGold += count * m.worth * totalTradeBonus;
             previewItems += count;
         }
     }
@@ -249,7 +272,7 @@ function sellAllMaterials() {
     for (const [id, m] of Object.entries(materials)) {
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
-            const goldForThisMaterial = count * m.worth * tradeBonus;
+            const goldForThisMaterial = count * m.worth * totalTradeBonus;
             totalGold += goldForThisMaterial;
             totalItems += count;
 
@@ -285,7 +308,8 @@ function sellAllMaterials() {
 function sellNotCraftableMaterials() {
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -298,17 +322,25 @@ function sellNotCraftableMaterials() {
     const betterTrading = researchtree.find(r => r.id === 'trading');
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // First calculate totals for confirmation
     let previewGold = 0;
     let previewItems = 0;
     for (const [id, m] of Object.entries(materials)) {
         // Skip materials that are used as smelter inputs or forge inputs (ingots)
         if (smelterInputMaterials.has(id)) continue;
-        if (m.type === 'Ingot') continue;
-
+        if (m.type == 'Ingot') {
+            console.log(`Skipping ingot material ${m.name} from not-craftable sell preview`);
+            continue;
+        }
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
-            previewGold += count * m.worth * tradeBonus;
+            previewGold += count * m.worth * totalTradeBonus;
             previewItems += count;
         }
     }
@@ -330,7 +362,7 @@ function sellNotCraftableMaterials() {
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
         if (count > 0) {
-            const goldForThisMaterial = count * m.worth * tradeBonus;
+            const goldForThisMaterial = count * m.worth * totalTradeBonus;
             totalGold += goldForThisMaterial;
             totalItems += count;
 

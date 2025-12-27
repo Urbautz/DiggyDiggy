@@ -19,7 +19,13 @@ function openSellModal(materialId) {
     // Calculate trade bonus
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
-    const unitPrice = material.worth * tradeBonus;
+
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+    const unitPrice = material.worth * totalTradeBonus;
 
     // Update modal title
     const title = document.getElementById('sell-modal-title');
@@ -33,7 +39,7 @@ function openSellModal(materialId) {
     if (unitPriceEl) unitPriceEl.textContent = formatNumber(unitPrice, 'gold');
 
     const tradeBonusEl = document.getElementById('sell-trade-bonus');
-    if (tradeBonusEl) tradeBonusEl.textContent = `+${Math.round((tradeBonus - 1) * 100)}%`;
+    if (tradeBonusEl) tradeBonusEl.textContent = `+${Math.round((totalTradeBonus - 1) * 100)}%`;
 
     // Setup slider
     const slider = document.getElementById('sell-amount-slider');
@@ -113,8 +119,14 @@ function sellMaterial(materialId, amount) {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // Calculate earnings with trade bonus
-    const earnings = material.worth * amount * tradeBonus;
+    const earnings = material.worth * amount * totalTradeBonus;
 
     // Update stock and gold
     materialsStock[materialId] -= amount;

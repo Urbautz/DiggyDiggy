@@ -36,17 +36,20 @@ function switchFinancesTab(tab) {
     // Update tab button styles
     const summaryTab = document.getElementById('finances-tab-summary');
     const recentTab = document.getElementById('finances-tab-recent');
+    const investmentsTab = document.getElementById('finances-tab-investments');
 
+    // Reset all tabs to inactive
+    summaryTab.className = 'finances-tab';
+    recentTab.className = 'finances-tab';
+    investmentsTab.className = 'finances-tab';
+
+    // Activate the selected tab
     if (tab === 'summary') {
         summaryTab.className = 'finances-tab active';
-        summaryTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        recentTab.className = 'finances-tab';
-        recentTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
-    } else {
+    } else if (tab === 'recent') {
         recentTab.className = 'finances-tab active';
-        recentTab.style.cssText = 'flex: 1; padding: 10px; background: #4a5f7a; border: none; color: #fff; cursor: pointer; border-bottom: 3px solid #ffd700; font-weight: bold;';
-        summaryTab.className = 'finances-tab';
-        summaryTab.style.cssText = 'flex: 1; padding: 10px; background: #2a3f5a; border: none; color: #9fbfe0; cursor: pointer; border-bottom: 3px solid transparent;';
+    } else if (tab === 'investments') {
+        investmentsTab.className = 'finances-tab active';
     }
 
     // Populate content based on selected tab
@@ -128,8 +131,10 @@ function populateTransactions() {
 
     if (tab === 'summary') {
         populateSummaryTab(container);
-    } else {
+    } else if (tab === 'recent') {
         populateRecentTab(container);
+    } else if (tab === 'investments') {
+        populateInvestmentsTab(container);
     }
 }
 
@@ -441,4 +446,130 @@ function populateRecentTab(container) {
 
     table.appendChild(tbody);
     container.appendChild(table);
+}
+
+function populateInvestmentsTab(container) {
+    // Check if Small Time Investments research is unlocked
+    const smallTimeInvestments = researchtree.find(r => r.id === 'small-time-investments');
+    const isUnlocked = smallTimeInvestments && (smallTimeInvestments.level || 0) > 0;
+
+    if (!isUnlocked) {
+        const lockedDiv = document.createElement('div');
+        lockedDiv.className = 'investments-locked';
+        lockedDiv.innerHTML = '<h3>📊 Investments</h3><p>Research "Small Time Investments" to unlock passive interest income.</p>';
+        container.appendChild(lockedDiv);
+        return;
+    }
+
+    // Calculate current interest rate per tick
+    let totalInterest = 0;
+    let tier1Interest = 0;
+    let tier2Interest = 0;
+    let tier3Interest = 0;
+
+    if (gold > 0) {
+        // Tier 1: First portion gets the highest rate
+        const tier1Amount = Math.min(gold, RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT);
+        tier1Interest = tier1Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_RATE;
+        totalInterest += tier1Interest;
+
+        // Tier 2: Middle portion gets the second rate
+        if (gold > RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT) {
+            const tier2Amount = Math.min(gold - RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT,
+                                         RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT - RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT);
+            tier2Interest = tier2Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE;
+            totalInterest += tier2Interest;
+        }
+
+        // Tier 3: Largest portion gets the third rate
+        if (gold > RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT) {
+            const tier3Amount = Math.min(gold - RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT,
+                                         RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT - RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT);
+            tier3Interest = tier3Amount * RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE;
+            totalInterest += tier3Interest;
+        }
+    }
+
+    // Create investments overview
+    const header = document.createElement('h3');
+    header.className = 'investments-header';
+    header.textContent = '📊 Investment Portfolio';
+    container.appendChild(header);
+
+    // Interest rate card
+    const interestCard = document.createElement('div');
+    interestCard.className = 'investments-interest-card';
+
+    const interestHeader = document.createElement('div');
+    interestHeader.className = 'investments-interest-header';
+    interestHeader.textContent = 'Small time investments';
+
+    const totalInterestValue = document.createElement('div');
+    totalInterestValue.className = 'investments-interest-total';
+    totalInterestValue.textContent = '+' + formatNumber(totalInterest, 'gold');
+
+    interestCard.appendChild(interestHeader);
+    interestCard.appendChild(totalInterestValue);
+
+    // Tier breakdown
+    const breakdownHeader = document.createElement('div');
+    breakdownHeader.className = 'investments-breakdown-header';
+    breakdownHeader.textContent = 'Tier Breakdown (lower interest the more money you have):';
+    interestCard.appendChild(breakdownHeader);
+
+    // Tier 1
+    if (tier1Interest > 0 || gold < RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT) {
+        const tier1Div = document.createElement('div');
+        tier1Div.className = 'investments-tier';
+
+        const tier1Label = document.createElement('div');
+        tier1Label.className = 'investments-tier-label';
+        tier1Label.textContent = `Tier 1 (up to  ${formatNumber(RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT, 'gold')}: ${(RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_RATE * 100).toFixed(4)}%)`;
+
+        const tier1Value = document.createElement('div');
+        tier1Value.className = 'investments-tier-value';
+        tier1Value.textContent = '+' + formatNumber(tier1Interest, 'gold');
+
+        tier1Div.appendChild(tier1Label);
+        tier1Div.appendChild(tier1Value);
+        interestCard.appendChild(tier1Div);
+    }
+
+    // Tier 2
+    if (tier2Interest > 0 || (gold >= RESEARCH_SMALL_TIME_INVESTMENTS_TIER1_LIMIT && gold < RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT)) {
+        const tier2Div = document.createElement('div');
+        tier2Div.className = 'investments-tier';
+
+        const tier2Label = document.createElement('div');
+        tier2Label.className = 'investments-tier-label';
+        tier2Label.textContent = `Tier 2 (up to ${formatNumber(RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT, 'gold')}) ${(RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE * 100).toFixed(6)}%)`;
+
+        const tier2Value = document.createElement('div');
+        tier2Value.className = 'investments-tier-value';
+        tier2Value.textContent = '+' + formatNumber(tier2Interest, 'gold');
+
+        tier2Div.appendChild(tier2Label);
+        tier2Div.appendChild(tier2Value);
+        interestCard.appendChild(tier2Div);
+    }
+
+    // Tier 3
+    if (tier3Interest > 0 || gold >= RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT) {
+        const tier3Div = document.createElement('div');
+        tier3Div.className = 'investments-tier';
+
+        const tier3Label = document.createElement('div');
+        tier3Label.className = 'investments-tier-label';
+        tier3Label.textContent = `Tier 3 (up to ${formatNumber(RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT, 'gold')}: ${(RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE * 100).toFixed(8)}%)`;
+
+        const tier3Value = document.createElement('div');
+        tier3Value.className = 'investments-tier-value';
+        tier3Value.textContent = '+' + formatNumber(tier3Interest, 'gold');
+
+        tier3Div.appendChild(tier3Label);
+        tier3Div.appendChild(tier3Value);
+        interestCard.appendChild(tier3Div);
+    }
+
+    container.appendChild(interestCard);
 }

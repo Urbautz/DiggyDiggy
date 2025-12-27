@@ -97,8 +97,9 @@ function formatNumber(value, type = 'material') {
 // Count how many smelter tasks are currently actionable
 function countActionableSmelterTasks() {
     let count = 0;
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+        const task = smelterTasksData[taskId];
         if (!isSmelterTaskUnlocked(task)) continue;
 
         // For heating tasks, check temperature requirements and materials
@@ -170,7 +171,7 @@ function countActionableSmelterTasks() {
 
 // Check if the smelter's top task is "do nothing"
 function isSmelterPaused() {
-    return smelterTasks.length > 0 && smelterTasks[0].id === 'do-nothing';
+    return smelterTasks.length > 0 && smelterTasks[0] === 'do-nothing';
 }
 
 function getToolByType(toolType) {
@@ -1162,11 +1163,12 @@ function populateToolsInPanel() {
 
         if (hasGems) {
             // Show gem info instead of button
-            const gemInfo = document.createElement('span');
-            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            const gemInfo = document.createElement('button');
+            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 10px; ';
             gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
             gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
             gemInfo.style.cursor = 'pointer';
+            gemInfo.className = 'btn-secondary btn-tiny';
             gemInfo.onclick = () => openGemModal(tool.id);
             actions.appendChild(gemInfo);
         } else {
@@ -1948,6 +1950,12 @@ function updateMaterialsPanel() {
     const betterTrading = getResearchLevel('trading');
     const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
 
+    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
     for (const task of smelterTasks) {
@@ -1972,7 +1980,7 @@ function updateMaterialsPanel() {
         if (!m) continue;
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
-        const actualWorth = m.worth * tradeBonus;
+        const actualWorth = m.worth * totalTradeBonus;
 
         if (count > 0) {
             hasAnyMaterials = true;
@@ -1988,7 +1996,7 @@ function updateMaterialsPanel() {
             
             const worthSpan = row.querySelector('.wh-col-price');
             worthSpan.textContent = formatNumber(actualWorth, 'gold');
-            worthSpan.title = tradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(tradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
+            worthSpan.title = totalTradeBonus > 1 ? `Base: ${formatNumber(m.worth, 'gold')} gold (${formatNumber(totalTradeBonus, 'material')}x bonus)` : `${formatNumber(m.worth, 'gold')} gold each`;
 
             row.querySelector('.wh-col-count').textContent = formatNumber(count, 'material');
             row.querySelector('.wh-col-total').textContent = formatNumber(count * actualWorth, 'gold');
@@ -2017,16 +2025,21 @@ function updateMaterialsPanel() {
     let gemsBtn = document.getElementById('gems-header-btn');
 
     if (header) {
-        // Create or update Gems button (always visible, on the left)
-        if (!gemsBtn) {
-            gemsBtn = document.createElement('button');
-            gemsBtn.id = 'gems-header-btn';
-            gemsBtn.className = 'btn-gems';
-            gemsBtn.textContent = '💎 Gems';
-            gemsBtn.title = 'Manage gems (coming soon)';
-            gemsBtn.onclick = openGemsModal;
-            // Insert at the beginning
-            header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
+        // Create or update Gems button (only visible when player has gems)
+        const hasGems = gems && gems.length > 0;
+        if (hasGems) {
+            if (!gemsBtn) {
+                gemsBtn = document.createElement('button');
+                gemsBtn.id = 'gems-header-btn';
+                gemsBtn.className = 'btn-gems';
+                gemsBtn.textContent = '💎 Gems';
+                gemsBtn.title = 'Manage gems (coming soon)';
+                gemsBtn.onclick = openGemsModal;
+                // Insert at the beginning
+                header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
+            }
+        } else if (gemsBtn) {
+            gemsBtn.remove();
         }
 
         // Create or update Warehouse Sell button (on the right)
@@ -2318,7 +2331,17 @@ function initWorker() {
                 if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
                 if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
-                
+
+                // Update smelter tasks data from worker (includes progress)
+                if (data.smelterTasksData !== undefined) {
+                    // Merge progress from worker into main thread's task data
+                    for (const taskId in data.smelterTasksData) {
+                        if (smelterTasksData[taskId]) {
+                            smelterTasksData[taskId].progress = data.smelterTasksData[taskId].progress;
+                        }
+                    }
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2412,6 +2435,7 @@ function initWorker() {
             research,
             smelter,
             smelterTasks,
+            smelterTasksData,
             dropGridStartX,
             gold,
             toolsInventory,
@@ -2641,16 +2665,18 @@ function loadGame() {
         
         // Restore smelter tasks order
         if (gameState.smelterTasks && Array.isArray(gameState.smelterTasks)) {
-            // Reorder smelterTasks based on saved order
-            const savedOrder = gameState.smelterTasks.map(t => t.id);
-            smelterTasks.sort((a, b) => {
-                const indexA = savedOrder.indexOf(a.id);
-                const indexB = savedOrder.indexOf(b.id);
-                // Tasks not in saved order go to the end
-                if (indexA === -1) return 1;
-                if (indexB === -1) return -1;
-                return indexA - indexB;
-            });
+            // Check if saved data is old format (array of objects) or new format (array of IDs)
+            if (gameState.smelterTasks.length > 0) {
+                if (typeof gameState.smelterTasks[0] === 'object' && gameState.smelterTasks[0].id) {
+                    // Old format: extract IDs and filter out any that don't exist in smelterTasksData
+                    smelterTasks = gameState.smelterTasks
+                        .map(t => t.id)
+                        .filter(id => smelterTasksData[id]);
+                } else {
+                    // New format: use directly, but filter out any that don't exist in smelterTasksData
+                    smelterTasks = gameState.smelterTasks.filter(id => smelterTasksData[id]);
+                }
+            }
         }
         
         // Restore smelter temperature state

@@ -45,8 +45,9 @@ function getDwarfCurrentActivity(dwarf) {
     } else if (dwarf.status === 'smelting') {
         // Get the current smelter task - use same logic as worker's findActionableSmelterTask
         if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
-            for (const task of smelterTasks) {
-                if (task.id === 'do-nothing') break;
+            for (const taskId of smelterTasks) {
+                if (taskId === 'do-nothing') break;
+                const task = smelterTasksData[taskId];
 
                 // Check if task is unlocked (researched)
                 const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;

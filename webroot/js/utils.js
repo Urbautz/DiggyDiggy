@@ -81,7 +81,7 @@ function extractMaterialBaseName(name) {
 function selectRandomGem() {
     const gemMaterials = [];
     for (const [id, mat] of Object.entries(materials)) {
-        if (mat.type === 'Gem') {
+        if (mat.type === 'Gem' && mat.minlevel <= startX) {
             gemMaterials.push(id);
         }
     }
@@ -377,6 +377,15 @@ function getResearchLevel(researchId) {
 }
 
 /**
+ * Get the highest wisdom level among all dwarfs
+ * @returns {number} Highest wisdom level (0 if no dwarfs)
+ */
+function getHighestDwarfWisdom() {
+    if (!dwarfs || dwarfs.length === 0) return 0;
+    return Math.max(...dwarfs.map(d => d.wisdom || 0));
+}
+
+/**
  * Calculate the cost for a research at a specific level
  * @param {number} baseCost - Base cost of the research
  * @param {number} targetLevel - Target level to calculate cost for
@@ -504,7 +513,8 @@ function checkCanAffordWageOrStrike(dwarf, currentGold) {
  * @returns {Object|null} Gem cutting task or null if not found
  */
 function getGemCuttingTask() {
-    return smelterTasks.find(t => t.type === 'gem-cutting') || null;
+    const taskId = smelterTasks.find(id => smelterTasksData[id].type === 'gem-cutting');
+    return taskId ? smelterTasksData[taskId] : null;
 }
 
 /**
