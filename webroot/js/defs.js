@@ -148,7 +148,7 @@ const materials = {
   'polished marble': {
     name: 'Polished Marble',
     type: 'Processed',
-    hardness: 0,
+    hardness: 250,
     probability: 0,
     worth: 40,
     minlevel: 99999,
@@ -205,7 +205,7 @@ const materials = {
   'polished granite': {
     name: 'Polished Granite',
     type: 'Processed',
-    hardness: 0,
+    hardness: 250,
     probability: 0,
     worth: 50,
     minlevel: 99999,
@@ -245,7 +245,7 @@ const materials = {
   'polished obsidian': {
     name: 'Polished Obsidian',
     type: 'Processed',
-    hardness: 0,
+    hardness: 250,
     probability: 0,
     worth: 100,
     minlevel: 99999,
@@ -269,7 +269,7 @@ const materials = {
   'magma': {
     name: 'Magma',
     type: 'Special',
-    hardness: 800,
+    hardness: 100,
     probability: 50,
     worth: 0,
     minlevel: 8000,
@@ -619,7 +619,8 @@ const smelterTasksData = {
     type: 'heating',
     heatGain: 100,
     ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 1
   },
   'heat-magma-furnace': {
     name: 'Heat up furnace (Magma)',
@@ -629,7 +630,8 @@ const smelterTasksData = {
     type: 'heating',
     heatGain: 'dynamic',
     ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'magma-furnace'
+    requires: 'magma-furnace',
+    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -642,7 +644,8 @@ const smelterTasksData = {
     output: null,
     type: 'gem-cutting',
     ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
-    requires: 'gem-cutting'
+    requires: 'gem-cutting',
+    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -653,7 +656,8 @@ const smelterTasksData = {
     description: 'Dry mud into clay.',
     input: { material: 'mud', amount: 2 },
     output: { material: 'clay', amount: 1 },
-    ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED
+    ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
+    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -665,7 +669,8 @@ const smelterTasksData = {
     input: { material: 'sandstone', amount: 1 },
     output: { material: 'sand', amount: 5 },
     ticksRequired: SMELTER_GRINDING_TICKS_REQUIRED,
-    requires: 'grinding-machine'
+    requires: 'grinding-machine',
+    hardness: 5
   },
   'grind-limestone': {
     name: 'Grind Limestone',
@@ -673,7 +678,8 @@ const smelterTasksData = {
     input: { material: 'limestone', amount: 1 },
     output: { material: 'lime', amount: 3 },
     ticksRequired: SMELTER_GRINDING_TICKS_REQUIRED,
-    requires: 'grinding-machine'
+    requires: 'grinding-machine',
+    hardness: 5
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -686,7 +692,8 @@ const smelterTasksData = {
     output: { material: 'polished marble', amount: 1 },
     breakChance: 0.5,
     ticksRequired: SMELTER_POLISHING_TICKS_REQUIRED,
-    requires: 'stone-polishing'
+    requires: 'stone-polishing',
+    hardness: 10
   },
   'polish-granite': {
     name: 'Polish Granite',
@@ -695,7 +702,8 @@ const smelterTasksData = {
     output: { material: 'polished granite', amount: 1 },
     breakChance: 0.5,
     ticksRequired: SMELTER_POLISHING_TICKS_REQUIRED,
-    requires: 'stone-polishing'
+    requires: 'stone-polishing',
+    hardness: 12
   },
   'polish-obsidian': {
     name: 'Polish Obsidian',
@@ -704,7 +712,8 @@ const smelterTasksData = {
     output: { material: 'polished obsidian', amount: 1 },
     breakChance: 0.5,
     ticksRequired: SMELTER_POLISHING_TICKS_REQUIRED,
-    requires: 'stone-polishing'
+    requires: 'stone-polishing',
+    hardness: 15
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -717,7 +726,8 @@ const smelterTasksData = {
     output: { material: 'bronce', amount: 1 },
     minTemp: 950,
     ticksRequired: SMELTER_SOFT_METAL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 18
   },
   'smelt-copper': {
     name: 'Smelt Copper',
@@ -726,7 +736,8 @@ const smelterTasksData = {
     output: { material: 'copper', amount: 1 },
     minTemp: 1085,
     ticksRequired: SMELTER_SOFT_METAL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 20
   },
   'smelt-zinc': {
     name: 'Smelt Zinc',
@@ -735,7 +746,8 @@ const smelterTasksData = {
     output: { material: 'zinc', amount: 1 },
     minTemp: 420,
     ticksRequired: SMELTER_SOFT_METAL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 15
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -751,7 +763,8 @@ const smelterTasksData = {
     output: { material: 'brass', amount: 1 },
     minTemp: 950,
     ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
-    requires: 'alloys'
+    requires: 'alloys',
+    hardness: 25
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -762,18 +775,20 @@ const smelterTasksData = {
     description: 'Smelt iron ore into pig iron.',
     input: { material: 'iron ore', amount: 1 },
     output: { material: 'pig iron', amount: 1 },
-    minTemp: 1200,
+    minTemp: 1100,
     ticksRequired: SMELTER_IRON_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 30
   },
   'smelt-iron': {
     name: 'Smelt Iron',
     description: 'Smelt pig iron into iron.',
     input: { material: 'pig iron', amount: 1 },
     output: { material: 'iron', amount: 1 },
-    minTemp: 1100,
+    minTemp: 1200,
     ticksRequired: SMELTER_STEEL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 35
   },
   'smelt-steel': {
     name: 'Smelt Steel',
@@ -782,7 +797,8 @@ const smelterTasksData = {
     output: { material: 'steel', amount: 1 },
     minTemp: 1350,
     ticksRequired: SMELTER_STEEL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 45
   },
   'smelt-steel-hardened': {
     name: 'Smelt Hardened Steel',
@@ -791,7 +807,8 @@ const smelterTasksData = {
     output: { material: 'hardened steel', amount: 1 },
     minTemp: 1950,
     ticksRequired: SMELTER_HARDENED_STEEL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 60
   },
   'smelt-steel-dwarf': {
     name: 'Smelt Dwarfen Steel',
@@ -800,7 +817,8 @@ const smelterTasksData = {
     output: { material: 'dwarf steel', amount: 1 },
     minTemp: 2400,
     ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 80
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -813,7 +831,8 @@ const smelterTasksData = {
     output: { material: 'silver', amount: 1 },
     minTemp: 962,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 40
   },
   'smelt-gold': {
     name: 'Smelt Gold',
@@ -822,7 +841,8 @@ const smelterTasksData = {
     output: { material: 'gold', amount: 1 },
     minTemp: 1064,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
-    requires: 'furnace'
+    requires: 'furnace',
+    hardness: 50
   }
 };
 

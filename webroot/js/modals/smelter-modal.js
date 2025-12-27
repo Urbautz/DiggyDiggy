@@ -128,6 +128,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             if (task.ticksRequired) {
                 addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
             }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
+            }
         } else if (task.inputs && Array.isArray(task.inputs)) {
             // Multiple inputs (alloy format)
             task.inputs.forEach(input => {
@@ -158,6 +161,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             if (task.ticksRequired) {
                 addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
             }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
+            }
         } else if (task.input && task.output) {
             // Single input
             const inputMat = getMaterialById(task.input.material);
@@ -185,6 +191,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
             if (task.ticksRequired) {
                 addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
+            if (task.hardness !== undefined) {
+                addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
             }
         } else if (task.input && task.type === 'heating') {
             // Heating task
@@ -488,9 +497,9 @@ function updateSmelterTasksDisplay() {
                 // Find if any dwarf is currently working on this task
                 const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
 
-                if (workingDwarf && workingDwarf.currentSmelterProgress !== undefined) {
-                    // Show progress for task being worked on
-                    const progress = workingDwarf.currentSmelterProgress || 0;
+                if (workingDwarf && task.progress !== undefined) {
+                    // Show progress for task being worked on (progress is now stored on the task, not the dwarf)
+                    const progress = task.progress || 0;
                     const ticksRequired = task.ticksRequired;
                     const percentage = Math.round((progress / ticksRequired) * 100);
 
@@ -764,12 +773,12 @@ function populateSmelter() {
         // Check if any dwarf is working on this task and show progress
         const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
 
-        if (workingDwarf && workingDwarf.currentSmelterProgress !== undefined && task.ticksRequired) {
-            // Show progress for active task
+        if (workingDwarf && task.progress !== undefined && task.ticksRequired) {
+            // Show progress for active task (progress is now stored on the task, not the dwarf)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
 
-            const progress = workingDwarf.currentSmelterProgress || 0;
+            const progress = task.progress || 0;
             const ticksRequired = task.ticksRequired;
             const percentage = Math.round((progress / ticksRequired) * 100);
 

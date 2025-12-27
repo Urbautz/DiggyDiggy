@@ -2331,7 +2331,17 @@ function initWorker() {
                 if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
                 if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
-                
+
+                // Update smelter tasks data from worker (includes progress)
+                if (data.smelterTasksData !== undefined) {
+                    // Merge progress from worker into main thread's task data
+                    for (const taskId in data.smelterTasksData) {
+                        if (smelterTasksData[taskId]) {
+                            smelterTasksData[taskId].progress = data.smelterTasksData[taskId].progress;
+                        }
+                    }
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 

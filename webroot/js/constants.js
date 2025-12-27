@@ -146,7 +146,7 @@ const AMETHYST_RESEARCH_MAX_CARAT = 10000; // Maximum carat value for formula sc
 const SMELTER_BASE_TEMPERATURE = 25; // Starting and minimum temperature
 const SMELTER_MAX_TEMPERATURE_LIMIT = 1500; // Absolute maximum temperature
 const SMELTER_COOLING_RATE = 0.0005; // 0.05% cooling per tick
-const SMELTER_POLISH_BREAK_CHANCE = 0.5; // 50% base break chance when polishing
+const SMELTER_POLISH_BREAK_CHANCE = 0.05; // 5% base break chance when polishing
 
 // Smelter task time requirements (in ticks)
 const SMELTER_HEATING_TICKS_REQUIRED = 1; // Time to heat furnace
@@ -163,7 +163,8 @@ const SMELTER_PRECIOUS_METAL_TICKS_REQUIRED = 30; // Time for precious metal sme
 
 // Smelter difficulty system (wisdom-based reruns like research)
 const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point
-const SMELTER_MIN_SUCCESS_CHANCE = 0.05; // Minimum 5% success chance per attempt
+const SMELTER_MIN_SUCCESS_CHANCE = 0.25; // Minimum 25% success chance per attempt
+const SMELTER_HARDNESS_DIVISOR = 8; // Divide material hardness by this to get smelting difficulty
 
 // ============================================================================
 // TASK PRIORITY CONSTANTS

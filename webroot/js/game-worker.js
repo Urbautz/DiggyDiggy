@@ -824,8 +824,13 @@ function actForDwarf(dwarf) {
         if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
             // Check if dwarf has enough energy
             if (dwarf.energy < DWARF_ENERGY_COST_PER_SMELT) {
+                // Reset task progress when dwarf stops due to low energy
+                if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
+                    smelterTasksData[dwarf.currentSmelterTask].progress = 0;
+                }
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
+                dwarf.currentSmelterTask = null;
                 return;
             }
             
@@ -845,10 +850,13 @@ function actForDwarf(dwarf) {
             const taskResult = findActionableSmelterTask();
             if (!taskResult) {
                 // No work available, release smelter and become idle
+                // Reset task progress when dwarf stops due to no work
+                if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
+                    smelterTasksData[dwarf.currentSmelterTask].progress = 0;
+                }
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
                 dwarf.currentSmelterTask = null;
-                dwarf.currentSmelterProgress = 0;
                 return;
             }
 
@@ -861,7 +869,6 @@ function actForDwarf(dwarf) {
                 if (!dwarf.currentSmelterTask || dwarf.currentSmelterTask !== taskId) {
                     // Starting a new task or switching tasks
                     dwarf.currentSmelterTask = taskId;
-                    dwarf.currentSmelterProgress = 0;
 
                     // For gem cutting, also initialize gem progress
                     if (task.type === 'gem-cutting') {
@@ -872,19 +879,77 @@ function actForDwarf(dwarf) {
                     }
                 }
 
-                // Increment progress
-                dwarf.currentSmelterProgress++;
+                // Always ensure progress is initialized (not just when starting new task)
+                // This handles cases where task.progress might be NaN or undefined
+                if (task.progress === undefined || isNaN(task.progress)) {
+                    task.progress = 0;
+                }
+
+                // Implement wisdom-based difficulty system for output tasks (similar to research)
+                let totalProgressGained = 0;
+
+                // For tasks with output, use hardness-based difficulty
+                if (task.output && task.output.material && task.hardness !== undefined) {
+                    // Use the task's hardness property instead of the material's hardness
+                    const hardness = task.hardness;
+
+                    // Calculate how many runs the dwarf gets based on wisdom
+                    let currentWisdom = dwarf.wisdom || 0;
+                    let runNumber = 1;
+
+                    while (true) {
+                        // Calculate success chance: (wisdom * SMELTER_WISDOM_PROBABILITY_BONUS) vs hardness
+                        // Higher hardness materials are harder to smelt successfully
+                        const smeltingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
+                        const roll = Math.random() * hardness;
+
+                        // Use minimum success chance if smelting power is too low
+                        const minChanceRoll = Math.random();
+                        const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
+                        const normalSuccess = roll <= smeltingPower;
+                        const success = normalSuccess || minChanceSuccess;
+
+                        if (!success) {
+                            // Failed this run, stop
+                            break;
+                        }
+
+                        // Success! Gain 1 progress
+                        totalProgressGained++;
+
+                        // Halve wisdom for next run (rounded down), but only if actual wisdom > 0
+                        if ((dwarf.wisdom || 0) > 0) {
+                            currentWisdom = Math.floor(currentWisdom / 2);
+                        } else {
+                            // Dwarf has 0 wisdom, only gets 1 roll with minimum chance
+                            break;
+                        }
+
+                        // Safety check: prevent infinite loops
+                        if (runNumber > 20) break;
+                        runNumber++;
+                    }
+                } else {
+                    // For tasks without output (heating, gem cutting), just increment by 1
+                    totalProgressGained = 1;
+                }
+
+                // Apply progress to the task (not the dwarf)
+                task.progress += totalProgressGained;
 
                 // For gem cutting, sync progress with gem object
                 if (task.type === 'gem-cutting') {
                     const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
                     if (gemToProcess) {
-                        gemToProcess.cuttingProgress = dwarf.currentSmelterProgress;
+                        gemToProcess.cuttingProgress = task.progress;
                     }
                 }
 
-                // Check if task is complete
-                if (dwarf.currentSmelterProgress >= task.ticksRequired) {
+                // Check if task is complete (cap progress at ticksRequired for display purposes)
+                if (task.progress >= task.ticksRequired) {
+                    // Cap progress at ticksRequired to avoid display issues
+                    task.progress = task.ticksRequired;
+
                     // Task complete! Process the result
 
                     // Handle gem cutting completion
@@ -941,16 +1006,29 @@ function actForDwarf(dwarf) {
                         materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
                     }
 
-                    // Reset progress for next task
+                    // Reset progress on the task and clear dwarf's current task
+                    task.progress = 0;
                     dwarf.currentSmelterTask = null;
-                    dwarf.currentSmelterProgress = 0;
+
+                    // Task completed! Check if there's more work immediately
+                    // This allows the dwarf to continue to the next task without waiting a tick
+                    const nextTaskResult = findActionableSmelterTask();
+                    if (!nextTaskResult) {
+                        // No more work available, release smelter and become idle
+                        if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                        dwarf.status = 'idle';
+                    }
+                    // If there is more work, the dwarf will pick it up on the next tick
                 }
 
                 // Pay the dwarf, consume energy and award XP for each tick
                 gold = Math.max(0, gold - wage);
                 pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
                 applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
-                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
+
+                // Award XP with wisdom multiplier (like research)
+                const wisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
+                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (wisdomMultiplier > 0 ? wisdomMultiplier : 1);
 
                 return;
             }
@@ -1027,8 +1105,13 @@ function actForDwarf(dwarf) {
             return;
         } else {
             // Not at smelter location, release reservation and become idle
+            // Reset task progress when dwarf stops
+            if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
+                smelterTasksData[dwarf.currentSmelterTask].progress = 0;
+            }
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
             dwarf.status = 'idle';
+            dwarf.currentSmelterTask = null;
         }
     }
 
@@ -1709,6 +1792,7 @@ function tick() {
                 smelterCoalMaxTemp,
                 smelterMagmaMinTemp,
                 smelterHeatingMode,
+                smelterTasksData,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
