@@ -338,7 +338,7 @@ function updateSmelterTemperatureDisplay() {
         }
 
         // Update task actionability based on temperature
-        const task = smelterTasks.find(t => t.id === taskId);
+        const task = smelterTasksData[taskId];
         if (task) {
             const stockAmount = materialsStock[task.input.material] || 0;
             const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
@@ -408,16 +408,16 @@ function updateSmelterTasksDisplay() {
     const activeTaskId = getCurrentActiveTask();
 
     // Update each task row
-    smelterTasks.forEach((task) => {
-        const taskRow = taskList.querySelector(`[data-task-id="${task.id}"]`);
+    smelterTasks.forEach((taskId) => {
+        const taskRow = taskList.querySelector(`[data-task-id="${taskId}"]`);
         if (!taskRow) return;
 
         // Update status indicator for active task
         const statusIndicator = taskRow.querySelector('.smelter-task-status');
-        if (statusIndicator && task.id !== 'do-nothing') {
+        if (statusIndicator && taskId !== 'do-nothing') {
             const isUnreachable = taskRow.classList.contains('smelter-task-unreachable');
             const isLocked = taskRow.classList.contains('smelter-task-locked');
-            const isCurrentlyActive = task.id === activeTaskId;
+            const isCurrentlyActive = taskId === activeTaskId;
 
             // Only update if the active status changed
             const wasActive = statusIndicator.textContent === '🧍';
@@ -435,7 +435,8 @@ function updateSmelterTasksDisplay() {
         }
 
         // Update gem cutting progress
-        if (task.type === 'gem-cutting') {
+        const task = smelterTasksData[taskId];
+        if (task && task.type === 'gem-cutting') {
             const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
             if (taskRecipe) {
                 const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
@@ -463,8 +464,9 @@ function getCurrentActiveTask() {
     if (!smeltingDwarf) return null;
 
     // Find the first actionable task in priority order
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') return null;
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') return null;
+        const task = smelterTasksData[taskId];
 
         // Check if task is unlocked
         const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
@@ -473,7 +475,7 @@ function getCurrentActiveTask() {
         // Check if task has required materials/gems
         if (task.type === 'gem-cutting') {
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) return task.id;
+            if (gemToProcess) return taskId;
         } else if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
@@ -481,9 +483,9 @@ function getCurrentActiveTask() {
             });
             if (hasAllInputs) {
                 if (task.minTemp) {
-                    if (smelterTemperature >= task.minTemp) return task.id;
+                    if (smelterTemperature >= task.minTemp) return taskId;
                 } else {
-                    return task.id;
+                    return taskId;
                 }
             }
         } else if (task.input && task.input.material) {
@@ -491,14 +493,14 @@ function getCurrentActiveTask() {
             if (stockAmount >= task.input.amount) {
                 if (task.type === 'heating') {
                     if (task.heatGain === 'dynamic') {
-                        if (smelterTemperature < smelterMagmaMinTemp) return task.id;
+                        if (smelterTemperature < smelterMagmaMinTemp) return taskId;
                     } else {
-                        if (smelterHeatingMode) return task.id;
+                        if (smelterHeatingMode) return taskId;
                     }
                 } else if (task.minTemp) {
-                    if (smelterTemperature >= task.minTemp) return task.id;
+                    if (smelterTemperature >= task.minTemp) return taskId;
                 } else {
-                    return task.id;
+                    return taskId;
                 }
             }
         }
@@ -539,21 +541,22 @@ function populateSmelter() {
     }, 100); // Update every 100ms for smooth progress updates
 
     // Find if there's a "do-nothing" task and track if we're below it
-    const doNothingIndex = smelterTasks.findIndex(t => t.id === 'do-nothing');
+    const doNothingIndex = smelterTasks.findIndex(id => id === 'do-nothing');
 
     // Get the currently active task
     const activeTaskId = getCurrentActiveTask();
 
     // Render each task
-    smelterTasks.forEach((task, index) => {
+    smelterTasks.forEach((taskId, index) => {
+        const task = smelterTasksData[taskId];
         const taskRow = document.createElement('div');
         taskRow.className = 'smelter-task-row';
-        taskRow.dataset.taskId = task.id;
+        taskRow.dataset.taskId = taskId;
         taskRow.dataset.taskIndex = index;
         taskRow.draggable = true;
 
         // Check if this task is unreachable (below "do-nothing")
-        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && task.id !== 'do-nothing';
+        const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && taskId !== 'do-nothing';
 
         // Check if this task requires research
         let isUnlocked = true;
@@ -569,7 +572,7 @@ function populateSmelter() {
         // Check if this task is actionable (has enough materials)
         let isActionable = false;
         let stockAmount = 0;
-        if (task.id === 'do-nothing') {
+        if (taskId === 'do-nothing') {
             isActionable = true; // "Do nothing" is always "actionable"
         } else if (task.type === 'gem-cutting' && isUnlocked) {
             // For gem cutting tasks, check if there are any gems marked for cutting
@@ -602,7 +605,7 @@ function populateSmelter() {
         }
 
         // Add actionable/blocked/locked class
-        if (task.id !== 'do-nothing') {
+        if (taskId !== 'do-nothing') {
             if (isUnreachable) {
                 taskRow.classList.add('smelter-task-unreachable');
             } else if (!isUnlocked) {
@@ -638,9 +641,9 @@ function populateSmelter() {
         statusIndicator.className = 'smelter-task-status';
 
         // Check if this task is currently being worked on
-        const isCurrentlyActive = task.id === activeTaskId;
+        const isCurrentlyActive = taskId === activeTaskId;
 
-        if (task.id === 'do-nothing') {
+        if (taskId === 'do-nothing') {
             statusIndicator.textContent = '⏸️';
             statusIndicator.title = 'Idle task';
         } else if (isUnreachable) {

@@ -97,8 +97,9 @@ function formatNumber(value, type = 'material') {
 // Count how many smelter tasks are currently actionable
 function countActionableSmelterTasks() {
     let count = 0;
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+        const task = smelterTasksData[taskId];
         if (!isSmelterTaskUnlocked(task)) continue;
 
         // For heating tasks, check temperature requirements and materials
@@ -170,7 +171,7 @@ function countActionableSmelterTasks() {
 
 // Check if the smelter's top task is "do nothing"
 function isSmelterPaused() {
-    return smelterTasks.length > 0 && smelterTasks[0].id === 'do-nothing';
+    return smelterTasks.length > 0 && smelterTasks[0] === 'do-nothing';
 }
 
 function getToolByType(toolType) {
@@ -2424,6 +2425,7 @@ function initWorker() {
             research,
             smelter,
             smelterTasks,
+            smelterTasksData,
             dropGridStartX,
             gold,
             toolsInventory,
@@ -2653,16 +2655,18 @@ function loadGame() {
         
         // Restore smelter tasks order
         if (gameState.smelterTasks && Array.isArray(gameState.smelterTasks)) {
-            // Reorder smelterTasks based on saved order
-            const savedOrder = gameState.smelterTasks.map(t => t.id);
-            smelterTasks.sort((a, b) => {
-                const indexA = savedOrder.indexOf(a.id);
-                const indexB = savedOrder.indexOf(b.id);
-                // Tasks not in saved order go to the end
-                if (indexA === -1) return 1;
-                if (indexB === -1) return -1;
-                return indexA - indexB;
-            });
+            // Check if saved data is old format (array of objects) or new format (array of IDs)
+            if (gameState.smelterTasks.length > 0) {
+                if (typeof gameState.smelterTasks[0] === 'object' && gameState.smelterTasks[0].id) {
+                    // Old format: extract IDs and filter out any that don't exist in smelterTasksData
+                    smelterTasks = gameState.smelterTasks
+                        .map(t => t.id)
+                        .filter(id => smelterTasksData[id]);
+                } else {
+                    // New format: use directly, but filter out any that don't exist in smelterTasksData
+                    smelterTasks = gameState.smelterTasks.filter(id => smelterTasksData[id]);
+                }
+            }
         }
         
         // Restore smelter temperature state

@@ -24,6 +24,7 @@ let house = null;
 let research = null;
 let smelter = null;
 let smelterTasks = [];
+let smelterTasksData = {};
 let dropGridStartX = 10;
 let gold = 1000;
 let toolsInventory = [];
@@ -191,13 +192,14 @@ function handleBlockDestruction(cell, dwarf, x, y) {
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
     if (!smelterTasks || smelterTasks.length === 0) return false;
-    
+
     // Check each task in priority order
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') {
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') {
             // If "do nothing" is encountered, stop checking
             return false;
         }
+        const task = smelterTasksData[taskId];
         // Check if task is unlocked
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
@@ -233,16 +235,17 @@ function smelterHasWork() {
 // Find the first actionable smelter task
 function findActionableSmelterTask() {
     if (!smelterTasks || smelterTasks.length === 0) return null;
-    
-    for (const task of smelterTasks) {
-        if (task.id === 'do-nothing') {
+
+    for (const taskId of smelterTasks) {
+        if (taskId === 'do-nothing') {
             return null; // Stop at "do nothing"
         }
+        const task = smelterTasksData[taskId];
         // Check if task is unlocked
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
         }
-        
+
         // For heating tasks, use hysteresis: start heating when below min, stop when above max
         if (task.type === 'heating') {
             // For magma (dynamic), only activate when below min temp
@@ -266,7 +269,7 @@ function findActionableSmelterTask() {
                 }
             }
         }
-        
+
         // For smelting tasks with temperature requirements, check if furnace is hot enough
         if (task.minTemp && smelterTemperature < task.minTemp) {
             continue; // Skip tasks that require higher temperature
@@ -1675,6 +1678,9 @@ self.addEventListener('message', (e) => {
             smelter = data.smelter;
             if (data.smelterTasks) {
                 smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
+            }
+            if (data.smelterTasksData) {
+                smelterTasksData = JSON.parse(JSON.stringify(data.smelterTasksData));
             }
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;

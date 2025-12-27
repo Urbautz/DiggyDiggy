@@ -18,7 +18,8 @@ function openWarehouseSellModal() {
     // Calculate values for each category
     const smelterInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -157,7 +158,8 @@ function executeBulkSell(action) {
 
     const smelterInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -306,7 +308,8 @@ function sellAllMaterials() {
 function sellNotCraftableMaterials() {
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }

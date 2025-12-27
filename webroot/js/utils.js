@@ -513,7 +513,8 @@ function checkCanAffordWageOrStrike(dwarf, currentGold) {
  * @returns {Object|null} Gem cutting task or null if not found
  */
 function getGemCuttingTask() {
-    return smelterTasks.find(t => t.type === 'gem-cutting') || null;
+    const taskId = smelterTasks.find(id => smelterTasksData[id].type === 'gem-cutting');
+    return taskId ? smelterTasksData[taskId] : null;
 }
 
 /**
