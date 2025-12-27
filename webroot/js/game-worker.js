@@ -129,8 +129,8 @@ function handleBlockDestruction(cell, dwarf, x, y) {
 
         // Calculate carat: 1 + random whole number based on depth
         const depth = (y + startX) || 0;
-        const maxCarat = Math.floor(depth / 500);
-        const carat = 1 + Math.floor(Math.random() * (maxCarat + 1));
+        const maxCarat = Math.floor(depth / GEM_CARAT_DEPTH_DIVISOR);
+        const carat = 1 + Math.floor(Math.random() * (maxCarat ));
 
         // Get gem material to use its hardness
         const gemMat = materials[gemType];

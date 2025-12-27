@@ -81,7 +81,7 @@ function extractMaterialBaseName(name) {
 function selectRandomGem() {
     const gemMaterials = [];
     for (const [id, mat] of Object.entries(materials)) {
-        if (mat.type === 'Gem') {
+        if (mat.type === 'Gem' && mat.minlevel <= startX) {
             gemMaterials.push(id);
         }
     }

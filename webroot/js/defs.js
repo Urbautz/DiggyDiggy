@@ -286,7 +286,7 @@ const materials = {
     hardness: 300,
     probability: 0,
     worth: 50,
-    minlevel: 1000,
+    minlevel: 5000,
     color: '#9b111eff',
     weight: 1
   },
@@ -296,7 +296,7 @@ const materials = {
     hardness: 400,
     probability: 0,
     worth: 50,
-    minlevel: 1000,
+    minlevel: 5000,
     color: '#50c878ff',
     weight: 1
   },
@@ -306,7 +306,7 @@ const materials = {
     hardness: 500,
     probability: 0,
     worth: 50,
-    minlevel: 1000,
+    minlevel: 5000,
     color: '#0f52baff',
     weight: 1
   },
@@ -316,7 +316,7 @@ const materials = {
     hardness: 600,
     probability: 0,
     worth: 75,
-    minlevel: 1000,
+    minlevel: 5000,
     color: '#b9f2ffff',
     weight: 1
   },
@@ -326,7 +326,7 @@ const materials = {
     hardness: 900,
     probability: 0,
     worth: 90,
-    minlevel: 1000,
+    minlevel: 5000,
     color: '#9966ccff',
     weight: 1
   },

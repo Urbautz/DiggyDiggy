@@ -2024,16 +2024,21 @@ function updateMaterialsPanel() {
     let gemsBtn = document.getElementById('gems-header-btn');
 
     if (header) {
-        // Create or update Gems button (always visible, on the left)
-        if (!gemsBtn) {
-            gemsBtn = document.createElement('button');
-            gemsBtn.id = 'gems-header-btn';
-            gemsBtn.className = 'btn-gems';
-            gemsBtn.textContent = '💎 Gems';
-            gemsBtn.title = 'Manage gems (coming soon)';
-            gemsBtn.onclick = openGemsModal;
-            // Insert at the beginning
-            header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
+        // Create or update Gems button (only visible when player has gems)
+        const hasGems = gems && gems.length > 0;
+        if (hasGems) {
+            if (!gemsBtn) {
+                gemsBtn = document.createElement('button');
+                gemsBtn.id = 'gems-header-btn';
+                gemsBtn.className = 'btn-gems';
+                gemsBtn.textContent = '💎 Gems';
+                gemsBtn.title = 'Manage gems (coming soon)';
+                gemsBtn.onclick = openGemsModal;
+                // Insert at the beginning
+                header.querySelector('.tab-buttons').insertAdjacentElement('afterend', gemsBtn);
+            }
+        } else if (gemsBtn) {
+            gemsBtn.remove();
         }
 
         // Create or update Warehouse Sell button (on the right)
