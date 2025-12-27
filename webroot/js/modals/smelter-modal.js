@@ -15,6 +15,41 @@ function addTableRow(table, headerText, contentText) {
     table.appendChild(tr);
 }
 
+// Helper function to calculate how many times a task can be performed
+function calculateTaskAvailableRuns(task) {
+    if (task.type === 'gem-cutting') {
+        return gems.filter(g => g.markedForCutting && !g.polished).length;
+    }
+
+    if (task.type === 'heating' || !task.output) {
+        // Heating tasks - check input material
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            return Math.floor(stockAmount / task.input.amount);
+        }
+        return 0;
+    }
+
+    // For tasks with multiple inputs (alloys)
+    if (task.inputs && Array.isArray(task.inputs)) {
+        let minRuns = Infinity;
+        for (const input of task.inputs) {
+            const stockAmount = materialsStock[input.material] || 0;
+            const possibleRuns = Math.floor(stockAmount / input.amount);
+            minRuns = Math.min(minRuns, possibleRuns);
+        }
+        return minRuns === Infinity ? 0 : minRuns;
+    }
+
+    // For tasks with single input
+    if (task.input && task.input.material && task.input.amount) {
+        const stockAmount = materialsStock[task.input.material] || 0;
+        return Math.floor(stockAmount / task.input.amount);
+    }
+
+    return 0;
+}
+
 // Helper function to create threshold control row
 function createThresholdRow(label, spanId, currentValue, adjustFunctionName) {
     const tr = document.createElement('tr');
@@ -90,7 +125,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             // Gem cutting task
             addTableRow(materialsTable, 'Input', 'Any gem marked for cutting');
             addTableRow(materialsTable, 'Output', 'Polished gem (+50% value)');
-            addTableRow(materialsTable, 'Time', `${task.ticksRequired || 0} ticks`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
         } else if (task.inputs && Array.isArray(task.inputs)) {
             // Multiple inputs (alloy format)
             task.inputs.forEach(input => {
@@ -118,6 +155,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
             addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
         } else if (task.input && task.output) {
             // Single input
             const inputMat = getMaterialById(task.input.material);
@@ -143,6 +183,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             materialsTable.appendChild(inputTr);
 
             addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
         } else if (task.input && task.type === 'heating') {
             // Heating task
             const inputMat = getMaterialById(task.input.material);
@@ -167,6 +210,9 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             materialsTable.appendChild(inputTr);
 
             addTableRow(materialsTable, 'Effect', heatInfo);
+            if (task.ticksRequired) {
+                addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
+            }
         }
 
         if (task.breakChance) {
@@ -434,20 +480,35 @@ function updateSmelterTasksDisplay() {
             }
         }
 
-        // Update gem cutting progress
+        // Update progress for tasks being worked on
         const task = smelterTasksData[taskId];
-        if (task && task.type === 'gem-cutting') {
+        if (task && task.ticksRequired) {
             const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
             if (taskRecipe) {
-                const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
-                const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+                // Find if any dwarf is currently working on this task
+                const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
 
-                if (cuttingGem) {
-                    const progress = cuttingGem.cuttingProgress || 0;
-                    const ticksRequired = task.ticksRequired || 250;
-                    taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
-                } else {
-                    taskRecipe.textContent = 'No gems queued for cutting';
+                if (workingDwarf && workingDwarf.currentSmelterProgress !== undefined) {
+                    // Show progress for task being worked on
+                    const progress = workingDwarf.currentSmelterProgress || 0;
+                    const ticksRequired = task.ticksRequired;
+                    const percentage = Math.round((progress / ticksRequired) * 100);
+
+                    // Calculate available runs after current task
+                    const availableRuns = calculateTaskAvailableRuns(task);
+                    const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
+
+                    taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
+                    taskRecipe.classList.remove('recipe-blocked');
+                    taskRecipe.classList.add('recipe-ready');
+                } else if (task.type === 'gem-cutting') {
+                    // Special case for gem cutting - show queued gems
+                    const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
+                    if (totalQueuedGems > 0) {
+                        taskRecipe.textContent = `${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued`;
+                    } else {
+                        taskRecipe.textContent = 'No gems queued for cutting';
+                    }
                 }
             }
         }
@@ -700,20 +761,35 @@ function populateSmelter() {
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
 
-        // Show gem cutting progress if this is the gem-cutting task
-        if (task.type === 'gem-cutting') {
+        // Check if any dwarf is working on this task and show progress
+        const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
+
+        if (workingDwarf && workingDwarf.currentSmelterProgress !== undefined && task.ticksRequired) {
+            // Show progress for active task
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
 
-            // Find gem being cut and total gems queued
-            const cuttingGem = gems.find(g => g.markedForCutting && !g.polished);
+            const progress = workingDwarf.currentSmelterProgress || 0;
+            const ticksRequired = task.ticksRequired;
+            const percentage = Math.round((progress / ticksRequired) * 100);
+
+            // Calculate available runs after current task
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
+
+            taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
+            taskRecipe.classList.add('recipe-ready');
+            taskInfo.appendChild(taskRecipe);
+        }
+        // Show gem cutting queue if this is gem cutting and not being worked on
+        else if (task.type === 'gem-cutting') {
+            const taskRecipe = document.createElement('span');
+            taskRecipe.className = 'smelter-task-recipe';
+
             const totalQueuedGems = gems.filter(g => g.markedForCutting && !g.polished).length;
 
-            if (cuttingGem) {
-                const progress = cuttingGem.cuttingProgress || 0;
-                const ticksRequired = task.ticksRequired || 250;
-
-                taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued)`;
+            if (totalQueuedGems > 0) {
+                taskRecipe.textContent = `${totalQueuedGems} gem${totalQueuedGems > 1 ? 's' : ''} queued`;
                 taskRecipe.classList.add('recipe-ready');
             } else {
                 taskRecipe.textContent = 'No gems queued for cutting';
@@ -723,7 +799,7 @@ function populateSmelter() {
             taskInfo.appendChild(taskRecipe);
         }
 
-        // Show input/output if applicable (compact, no stock info)
+        // Show input/output if applicable (with available runs)
         else if (task.inputs && task.output) {
             // Multiple inputs (alloy format)
             const taskRecipe = document.createElement('span');
@@ -736,7 +812,11 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}`;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
+            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -752,7 +832,11 @@ function populateSmelter() {
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}`;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
+            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -760,11 +844,15 @@ function populateSmelter() {
             }
             taskInfo.appendChild(taskRecipe);
         } else if (task.input && task.type === 'heating') {
-            // Show heating task info with temperature display (compact, no stock info)
+            // Show heating task info with temperature display (with available runs)
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
+
+            const availableRuns = calculateTaskAvailableRuns(task);
+            const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
+
             // Calculate display info for heating tasks
             let heatingDisplay = '';
             if (task.heatGain === 'dynamic') {
@@ -772,10 +860,10 @@ function populateSmelter() {
                 const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
                 const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                 const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)`;
+                heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)${runsText}`;
             } else {
                 // Coal: show heat gain and max 2000°
-                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)`;
+                heatingDisplay = `${task.input.amount}x ${inputName} → +${task.heatGain}° Heat (max 2000°)${runsText}`;
             }
             taskRecipe.textContent = heatingDisplay;
             if (!isUnlocked) {

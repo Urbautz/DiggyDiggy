@@ -279,7 +279,7 @@ function findActionableSmelterTask() {
         if (task.type === 'gem-cutting') {
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
             if (gemToProcess) {
-                return task;
+                return { task: task, taskId: taskId };
             }
             continue; // No gems available, try next task
         }
@@ -288,7 +288,7 @@ function findActionableSmelterTask() {
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
-                return task;
+                return { task: task, taskId: taskId };
             }
         }
         // Check for multiple inputs (alloy format)
@@ -298,7 +298,7 @@ function findActionableSmelterTask() {
                 return stockAmount >= input.amount;
             });
             if (hasAllInputs) {
-                return task;
+                return { task: task, taskId: taskId };
             }
         }
     }
@@ -842,49 +842,120 @@ function actForDwarf(dwarf) {
             }
             
             // Find an actionable task from the priority list
-            const task = findActionableSmelterTask();
-            if (!task) {
+            const taskResult = findActionableSmelterTask();
+            if (!taskResult) {
                 // No work available, release smelter and become idle
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
+                dwarf.currentSmelterTask = null;
+                dwarf.currentSmelterProgress = 0;
                 return;
             }
-            
-            // Handle gem cutting task
-            if (task.type === 'gem-cutting') {
-                // Find a gem marked for cutting
-                const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-                if (gemToProcess) {
-                    // Initialize cutting progress if not already set
-                    if (!gemToProcess.cuttingProgress) {
-                        gemToProcess.cuttingProgress = 0;
+
+            const task = taskResult.task;
+            const taskId = taskResult.taskId;
+
+            // Check if this is a task that requires time (has ticksRequired property)
+            if (task.ticksRequired && task.ticksRequired > 0) {
+                // Initialize or validate task tracking
+                if (!dwarf.currentSmelterTask || dwarf.currentSmelterTask !== taskId) {
+                    // Starting a new task or switching tasks
+                    dwarf.currentSmelterTask = taskId;
+                    dwarf.currentSmelterProgress = 0;
+
+                    // For gem cutting, also initialize gem progress
+                    if (task.type === 'gem-cutting') {
+                        const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                        if (gemToProcess && !gemToProcess.cuttingProgress) {
+                            gemToProcess.cuttingProgress = 0;
+                        }
                     }
-
-                    // Increment cutting progress
-                    gemToProcess.cuttingProgress++;
-
-                    // Check if cutting is complete
-                    if (gemToProcess.cuttingProgress >= task.ticksRequired) {
-                        // Mark gem as polished and increase value by 50%
-                        gemToProcess.polished = true;
-                        gemToProcess.markedForCutting = false;
-                        gemToProcess.cuttingProgress = 0;
-                        //console.log(`Dwarf ${dwarf.name} finished cutting gem ${gemToProcess.id}`);
-                    }
-
-                    // Pay the dwarf, consume energy and award XP (wage already calculated above)
-                    gold = Math.max(0, gold - wage);
-                    pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-
-                    // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-                    applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
-                    dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
-
-                    return;
                 }
+
+                // Increment progress
+                dwarf.currentSmelterProgress++;
+
+                // For gem cutting, sync progress with gem object
+                if (task.type === 'gem-cutting') {
+                    const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                    if (gemToProcess) {
+                        gemToProcess.cuttingProgress = dwarf.currentSmelterProgress;
+                    }
+                }
+
+                // Check if task is complete
+                if (dwarf.currentSmelterProgress >= task.ticksRequired) {
+                    // Task complete! Process the result
+
+                    // Handle gem cutting completion
+                    if (task.type === 'gem-cutting') {
+                        const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                        if (gemToProcess) {
+                            gemToProcess.polished = true;
+                            gemToProcess.markedForCutting = false;
+                            gemToProcess.cuttingProgress = 0;
+                        }
+                    }
+                    // Handle heating task completion
+                    else if (task.type === 'heating' && task.heatGain) {
+                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                        const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+                        if (task.heatGain === 'dynamic') {
+                            smelterTemperature = maxTemp;
+                        } else {
+                            const coalMaxTemp = 2000;
+                            smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
+                        }
+                    }
+                    // Handle regular smelting/processing with output
+                    else if (task.output) {
+                        const outputMaterial = task.output.material;
+                        const outputAmount = task.output.amount;
+
+                        // Check for break chance (for polishing tasks)
+                        let success = true;
+                        if (task.breakChance && task.breakChance > 0) {
+                            const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+                            const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+                            const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
+                            const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+                            success = Math.random() >= actualBreakChance;
+                        }
+
+                        // Produce output materials only if successful
+                        if (success) {
+                            materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+                        }
+                    }
+
+                    // Consume input materials after task completion
+                    if (task.inputs && Array.isArray(task.inputs)) {
+                        task.inputs.forEach(input => {
+                            materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                        });
+                    } else if (task.input && task.input.material && task.input.amount) {
+                        const inputMaterial = task.input.material;
+                        const inputAmount = task.input.amount;
+                        materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+                    }
+
+                    // Reset progress for next task
+                    dwarf.currentSmelterTask = null;
+                    dwarf.currentSmelterProgress = 0;
+                }
+
+                // Pay the dwarf, consume energy and award XP for each tick
+                gold = Math.max(0, gold - wage);
+                pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
+                applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
+                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
+
+                return;
             }
 
-            // Perform the smelting action
+            // Perform the smelting action (instant tasks without ticksRequired)
             // Consume input materials - support both single input and multiple inputs (for alloys)
             if (task.inputs && Array.isArray(task.inputs)) {
                 // Multiple inputs (alloy format)
