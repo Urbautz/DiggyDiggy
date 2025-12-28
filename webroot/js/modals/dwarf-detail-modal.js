@@ -164,6 +164,9 @@ function openDwarfDetailModal(dwarf) {
     const modalHeader = modal.querySelector('.modal-header h2');
     modalHeader.textContent = `👷 ${dwarf.name}`;
 
+    // Initialize task priority drop zones (only needs to be done once)
+    initializeTaskPriorityDropZones();
+
     // Populate the template with dwarf data
     populateDwarfDetailTemplate(dwarf);
 
@@ -192,12 +195,12 @@ function populateDwarfSwitcher(currentDwarfName) {
     // Sort dwarfs: those who can level up first, then by name
     const sortedDwarfs = [...dwarfs].sort((a, b) => {
         const aXP = a.xp || 0;
-        const aLevel = a.level || 1;
+        const aLevel = getDwarfLevel(a);
         const aNeeded = getDwarfXpForLevel(aLevel);
         const aCanLevelUp = aXP >= aNeeded;
 
         const bXP = b.xp || 0;
-        const bLevel = b.level || 1;
+        const bLevel = getDwarfLevel(b);
         const bNeeded = getDwarfXpForLevel(bLevel);
         const bCanLevelUp = bXP >= bNeeded;
 
@@ -210,7 +213,7 @@ function populateDwarfSwitcher(currentDwarfName) {
     sortedDwarfs.forEach(d => {
         if (d.name !== currentDwarfName) {
             const currentXP = d.xp || 0;
-            const currentLevel = d.level || 1;
+            const currentLevel = getDwarfLevel(d);
             const xpNeeded = getDwarfXpForLevel(currentLevel);
             const canLevelUp = currentXP >= xpNeeded;
             const levelUpIndicator = canLevelUp ? ' ⭐' : '';
@@ -249,7 +252,7 @@ function updateNextSkillpointButton(currentDwarfName) {
     const dwarfsWithSkillPoints = dwarfs.filter(d => {
         if (d.name === currentDwarfName) return false;
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         return currentXP >= xpNeeded;
     });
@@ -272,11 +275,248 @@ function updateNextSkillpointButton(currentDwarfName) {
 }
 
 /**
+ * Task definitions for drag-and-drop UI
+ */
+const TASK_DEFINITIONS = {
+    'digging': { icon: '⛏️', name: 'Digging' },
+    'research': { icon: '🔬', name: 'Research' },
+    'smelting': { icon: '🔥', name: 'Smelter' }
+};
+
+/**
+ * Populate task priority lists with drag-and-drop functionality
+ */
+function populateTaskPriorityLists(dwarf) {
+    const priorityList = document.getElementById('task-priority-list');
+    const blacklistList = document.getElementById('task-blacklist-list');
+
+    if (!priorityList || !blacklistList) return;
+
+    // Clear existing content
+    priorityList.innerHTML = '';
+    blacklistList.innerHTML = '';
+
+    // Ensure dwarf has task arrays
+    if (!dwarf.taskPriority) dwarf.taskPriority = ['digging', 'research', 'smelting'];
+    if (!dwarf.taskBlacklist) dwarf.taskBlacklist = [];
+
+    // Populate priority list
+    dwarf.taskPriority.forEach((taskId, index) => {
+        const taskDef = TASK_DEFINITIONS[taskId];
+        if (!taskDef) return;
+
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'priority');
+        priorityList.appendChild(item);
+    });
+
+    // Populate blacklist
+    dwarf.taskBlacklist.forEach(taskId => {
+        const taskDef = TASK_DEFINITIONS[taskId];
+        if (!taskDef) return;
+
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'blacklist');
+        blacklistList.appendChild(item);
+    });
+}
+
+/**
+ * Create a draggable task priority item
+ */
+function createTaskPriorityItem(taskId, taskDef, dwarfName, listType) {
+    const item = document.createElement('div');
+    item.className = 'task-priority-item';
+    item.draggable = true;
+    item.dataset.taskId = taskId;
+    item.dataset.dwarfName = dwarfName;
+    item.dataset.listType = listType;
+
+    item.innerHTML = `
+        <span class="task-priority-item-icon">${taskDef.icon}</span>
+        <span class="task-priority-item-name">${taskDef.name}</span>
+        <span class="task-priority-item-handle">⋮⋮</span>
+    `;
+
+    // Add drag event listeners
+    item.addEventListener('dragstart', handleTaskDragStart);
+    item.addEventListener('dragend', handleTaskDragEnd);
+    item.addEventListener('dragover', handleTaskDragOver);
+    item.addEventListener('drop', handleTaskDrop);
+    item.addEventListener('dragleave', handleTaskDragLeave);
+
+    return item;
+}
+
+/**
+ * Drag and drop event handlers
+ */
+let draggedTask = null;
+
+function handleTaskDragStart(e) {
+    draggedTask = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleTaskDragEnd(e) {
+    this.classList.remove('dragging');
+
+    // Remove drag-over class from all items
+    document.querySelectorAll('.task-priority-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+}
+
+function handleTaskDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Add visual indicator
+    if (this !== draggedTask) {
+        this.classList.add('drag-over');
+    }
+
+    return false;
+}
+
+function handleTaskDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleTaskDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+
+    this.classList.remove('drag-over');
+
+    if (draggedTask !== this) {
+        const dwarfName = this.dataset.dwarfName;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (!dwarf) return;
+
+        const draggedTaskId = draggedTask.dataset.taskId;
+        const draggedFromList = draggedTask.dataset.listType;
+        const droppedOnList = this.parentElement.id === 'task-priority-list' ? 'priority' : 'blacklist';
+
+        // Remove from both lists first to prevent duplicates
+        let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
+        if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+
+        let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
+        if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+
+        // Add to destination list
+        if (droppedOnList === 'priority') {
+            const targetTaskId = this.dataset.taskId;
+            const targetIndex = dwarf.taskPriority.indexOf(targetTaskId);
+            dwarf.taskPriority.splice(targetIndex, 0, draggedTaskId);
+        } else {
+            // Only add if not already in blacklist
+            if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
+                dwarf.taskBlacklist.push(draggedTaskId);
+            }
+        }
+
+        // Save and refresh
+        saveTaskPriorityChanges(dwarf);
+        populateTaskPriorityLists(dwarf);
+    }
+
+    return false;
+}
+
+/**
+ * Add drop zones for empty lists
+ */
+function initializeTaskPriorityDropZones() {
+    const priorityList = document.getElementById('task-priority-list');
+    const blacklistList = document.getElementById('task-blacklist-list');
+
+    [priorityList, blacklistList].forEach(list => {
+        list.addEventListener('dragover', function(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        });
+
+        list.addEventListener('drop', function(e) {
+            if (e.stopPropagation) e.stopPropagation();
+
+            if (!draggedTask) return false;
+
+            const dwarfName = draggedTask.dataset.dwarfName;
+            const dwarf = dwarfs.find(d => d.name === dwarfName);
+            if (!dwarf) return false;
+
+            const draggedTaskId = draggedTask.dataset.taskId;
+            const draggedFromList = draggedTask.dataset.listType;
+            const droppedOnList = this.id === 'task-priority-list' ? 'priority' : 'blacklist';
+
+            // Remove from both lists first to prevent duplicates
+            let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
+            if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+
+            let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
+            if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+
+            // Add to destination list only if not already present
+            if (droppedOnList === 'priority') {
+                if (!dwarf.taskPriority.includes(draggedTaskId)) {
+                    dwarf.taskPriority.push(draggedTaskId);
+                }
+            } else {
+                if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
+                    dwarf.taskBlacklist.push(draggedTaskId);
+                }
+            }
+
+            // Save and refresh
+            saveTaskPriorityChanges(dwarf);
+            populateTaskPriorityLists(dwarf);
+
+            return false;
+        });
+    });
+}
+
+/**
+ * Save task priority changes to game state
+ */
+function saveTaskPriorityChanges(dwarf) {
+    // Find the actual dwarf in the main array
+    const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
+    if (actualDwarf) {
+        actualDwarf.taskPriority = [...dwarf.taskPriority];
+        actualDwarf.taskBlacklist = [...dwarf.taskBlacklist];
+
+        // Sync with worker
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({
+                type: 'update-state',
+                data: { dwarfs }
+            });
+        }
+
+        // Save game
+        saveGame();
+
+        console.log(`Task priorities updated for ${dwarf.name}:`, {
+            priority: dwarf.taskPriority,
+            blacklist: dwarf.taskBlacklist
+        });
+    }
+}
+
+/**
  * Populate the static template with dwarf data (full population on open)
  */
 function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
@@ -634,8 +874,11 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     // Set reset button dataset and cost
     const resetBtn = document.getElementById('dwarf-reset-btn');
     resetBtn.dataset.dwarfName = dwarf.name;
-    const resetCost = (dwarf.level || 1) * DWARF_RESET_COST_PER_LEVEL;
+    const resetCost = (getDwarfLevel(dwarf)) * DWARF_RESET_COST_PER_LEVEL;
     document.getElementById('dwarf-reset-cost').textContent = resetCost;
+
+    // Populate task priority lists
+    populateTaskPriorityLists(dwarf);
 }
 
 /**
@@ -661,7 +904,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
 
     // Only update dynamic data that changes frequently (no tool selector, no stats grid rebuild)
     const currentXP = dwarf.xp || 0;
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const xpNeeded = getDwarfXpForLevel(currentLevel);
 
     // Calculate bucket info (weight-based)
@@ -823,7 +1066,7 @@ function applyLevelUp(dwarf, upgradeType) {
  * Reset dwarf skill points
  */
 function resetDwarfPoints(dwarf) {
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
 
     // Check if can afford
@@ -1030,7 +1273,7 @@ document.addEventListener('click', (ev) => {
     const dwarf = dwarfs.find(d => d.name === dwarfName);
     if (!dwarf) return;
 
-    const currentLevel = dwarf.level || 1;
+    const currentLevel = getDwarfLevel(dwarf);
     const resetCost = currentLevel * DWARF_RESET_COST_PER_LEVEL;
 
     // Confirm before resetting

@@ -6,7 +6,7 @@ function updateDwarfsLevelUpBadge() {
     if (!badge) return;
     const dwarfsCanLevelUp = dwarfs.filter(d => {
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         return currentXP >= xpNeeded;
     });
@@ -1476,7 +1476,7 @@ function populateDwarfsOverview() {
         // XP display with progress to next level
         const xpTd = document.createElement('td');
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         xpTd.textContent = `${formatNumber(currentXP, 'xp')} / ${formatNumber(xpNeeded, 'xp')}`;
 
@@ -1535,7 +1535,7 @@ function updateDwarfsInPanel() {
         }
 
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
 
@@ -1577,7 +1577,7 @@ function updateDwarfsInPanel() {
             const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
             const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
             const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
-            const dwarfLevel = (d.level || 1) - 1;
+            const dwarfLevel = (getDwarfLevel(d)) - 1;
             const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
 
             const baseDwarfPower = 3;
@@ -1601,7 +1601,7 @@ function updateDwarfsInPanel() {
                 }
             }
 
-            const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${d.level || 1}</span>`;
+            const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${getDwarfLevel(d)}</span>`;
             const newHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
 
             if (info.innerHTML !== newHTML) {
@@ -1629,7 +1629,7 @@ function populateDwarfsInPanel() {
         row.id = `dwarf-row-${d.name}`;
 
         const currentXP = d.xp || 0;
-        const currentLevel = d.level || 1;
+        const currentLevel = getDwarfLevel(d);
         const xpNeeded = getDwarfXpForLevel(currentLevel);
         const canLevelUp = currentXP >= xpNeeded;
 
@@ -2577,6 +2577,14 @@ function loadGame() {
                 }
                 dwarf.bucket = sanitizedBucket;
             }
+
+            // Migration: Add task priority system if not present
+            if (!dwarf.taskPriority) {
+                dwarf.taskPriority = ['digging', 'research', 'smelting'];
+            }
+            if (!dwarf.taskBlacklist) {
+                dwarf.taskBlacklist = [];
+            }
         }
 
         startX = gameState.startX || 0;
@@ -2736,7 +2744,7 @@ window.activateCheat = function activateCheat() {
         dwarf.bucket = {}; // Clear bucket
 
         // Give XP for one level
-        const xpForLevel = getDwarfXpForLevel(dwarf.level || 1);
+        const xpForLevel = getDwarfXpForLevel(getDwarfLevel(dwarf));
         dwarf.xp = (dwarf.xp || 0) + xpForLevel;
     }
     

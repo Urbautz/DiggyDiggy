@@ -26,9 +26,12 @@ const DWARF_WAGE_INCREASE_MIN = 0.01; // Minimum wage increase rate (with resear
 const DWARF_XP_PER_ACTION = 1; // XP gained per dig/smelt action
 
 // XP calculation function - uses exponential scaling
-// Target: Level 1: 50xp, Level 5: 300, Level 10: 1000, Level 25: 25000, Level 50: 100000
+// Target: Level 0: 25xp, Level 1: 50xp, Level 2: 132, Level 5: 300, Level 10: 1000, Level 25: 25000, Level 50: 100000
 function getDwarfXpForLevel(level) {
-    // Formula: 50 * level^1.6 (rounded)
+    // Hardcoded level 0 requirement
+    if (level === 0) return 25;
+
+    // Formula: 50 * level^1.4 (rounded) for level 1+
     // This creates exponential growth matching the target progression
     return Math.round(50 * Math.pow(level, 1.4));
 }

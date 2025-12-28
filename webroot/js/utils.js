@@ -6,6 +6,19 @@
 // ============================================================================
 
 // ============================================================================
+// DWARF UTILITIES
+// ============================================================================
+
+/**
+ * Get dwarf level, treating 0 as valid (level 0 is allowed)
+ * @param {Object} dwarf - The dwarf object
+ * @returns {number} The dwarf's level (0 or higher)
+ */
+function getDwarfLevel(dwarf) {
+    return typeof dwarf.level === 'number' ? dwarf.level : 0;
+}
+
+// ============================================================================
 // MATERIAL UTILITIES
 // ============================================================================
 
@@ -464,7 +477,7 @@ function calculateXPFromHardness(hardness) {
  * @returns {number} Wage amount
  */
 function calculateWage(dwarf) {
-    const level = dwarf.level || 1;
+    const level = getDwarfLevel(dwarf);
     const wageOptimization = getResearchLevel('wage-optimization');
 
     // Start with base wage

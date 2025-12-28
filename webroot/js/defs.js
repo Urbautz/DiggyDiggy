@@ -72,16 +72,81 @@ const materials = {
     color: '#534f4fff',
     weight: 5
   },
+  'loose stone': {
+    name: 'Loose Stone',
+    type: 'Loose',
+    hardness: 35,
+    probability: 160,
+    worth: 0.9,
+    minlevel: 850,
+    color: '#d7c8baff',
+    weight: 6
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // SOFT STONE
   // ──────────────────────────────────────────────────────────────────────────
+  'chalk': {
+    name: 'Chalk',
+    type: 'Stone Soft',
+    hardness: 40,
+    probability: 100,
+    worth: 16.0,
+    minlevel: 600,
+    maxlevel: 9999,
+    color: '#a6b8adff',
+    weight: 12
+  },
+  'calcite': {
+    name: 'Calcite',
+    type: 'Stone Soft',
+    hardness: 50,
+    probability: 150,
+    worth: 11.2,
+    minlevel: 800,
+    maxlevel: 14999,
+    color: '#bbb995ff',
+    weight: 13
+  },
+  'aragonite': {
+    name: 'Aragonite',
+    type: 'Stone Soft',
+    hardness: 60,
+    probability: 120,
+    worth: 3.4,
+    minlevel: 1000,
+    maxlevel: 12999,
+    color: '#c75480ff',
+    weight: 13
+  },
+  'gabbro': {
+    name: 'Gabbro',
+    type: 'Stone Soft',
+    hardness: 70,
+    probability: 180,
+    worth: 8.6,
+    minlevel: 500,
+    maxlevel: 17999,
+    color: '#d4a536ff',
+    weight: 14
+  },
+  'pyroxene': {
+    name: 'Pyroxene',
+    type: 'Stone Soft',
+    hardness: 75,
+    probability: 100,
+    worth: 5.7,
+    minlevel: 1800,
+    maxlevel: 12999,
+    color: '#9acd32ff',
+    weight: 14
+  },
   'sandstone': {
     name: 'Sandstone',
     type: 'Stone Soft',
     hardness: 80,
     probability: 400,
-    worth: 3.0,
+    worth: 2.5,
     minlevel: 500,
     maxlevel: 9999,
     color: '#9d4d39ff',
@@ -94,7 +159,7 @@ const materials = {
     probability: 200,
     worth: 2.5,
     minlevel: 1200,
-    maxlevel: 9999,
+    maxlevel: 39999,
     color: '#a8a19fff',
     weight: 15
   },
@@ -104,20 +169,20 @@ const materials = {
     hardness: 0,
     probability: 0,
     worth: 8.0,
-    minlevel: 99999,
+    minlevel: 2400,
     color: '#e8f4f0ff',
     weight: 3
   },
-  'chalk': {
-    name: 'Chalk',
+  'peridotite': {
+    name: 'Peridotite',
     type: 'Stone Soft',
-    hardness: 30,
-    probability: 100,
-    worth: 2.0,
-    minlevel: 2000,
-    maxlevel: 9999,
-    color: '#a6b8adff',
-    weight: 12
+    hardness: 90,
+    probability: 140,
+    worth: 7.8,
+    minlevel: 2500,
+    maxlevel: 13999,
+    color: '#7cbc6bff',
+    weight: 14
   },
   'claystone': {
     name: 'Clay Stone',
@@ -134,12 +199,23 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // MEDIUM STONE
   // ──────────────────────────────────────────────────────────────────────────
+  'andesite': {
+    name: 'Andesite',
+    type: 'Stone Medium',
+    hardness: 200,
+    probability: 150,
+    worth: 8,
+    minlevel: 3500,
+    maxlevel: 25999,
+    color: '#564848ff',
+    weight: 24
+  },
   'marble': {
     name: 'Marble',
     type: 'Stone Medium',
     hardness: 250,
     probability: 200,
-    worth: 10,
+    worth: 29,
     minlevel: 4000,
     maxlevel: 29999,
     color: '#7a706eff',
@@ -150,31 +226,41 @@ const materials = {
     type: 'Processed',
     hardness: 250,
     probability: 0,
-    worth: 40,
+    worth: 140,
     minlevel: 99999,
     color: '#c8c0beff',
     weight: 20
   },
-  'slate': {
-    name: 'Slate',
+  'rhyolite': {
+    name: 'Rhyolite',
     type: 'Stone Medium',
-    hardness: 800,
-    probability: 400,
-    worth: 5,
-    minlevel: 5000,
-    maxlevel: 99999,
-    color: '#483b37ff',
-    weight: 25
+    hardness: 350,
+    probability: 220,
+    worth: 9,
+    minlevel: 4500,
+    maxlevel: 35999,
+    color: '#8b7355ff',
+    weight: 24
   },
   'schist': {
     name: 'Schist',
     type: 'Stone Medium',
     hardness: 400,
     probability: 200,
-    worth: 5,
+    worth: 15,
     minlevel: 5000,
     maxlevel: 199999,
     color: '#1d354dff',
+    weight: 25
+  },
+  'slate': {
+    name: 'Slate',
+    type: 'Stone Medium',
+    hardness: 800,
+    probability: 200,
+    worth: 19,
+    minlevel: 5000,
+    color: '#483b37ff',
     weight: 25
   },
   'dolomite': {
@@ -184,7 +270,6 @@ const materials = {
     probability: 200,
     worth: 12,
     minlevel: 5000,
-    maxlevel: 99999,
     color: '#956f88ff',
     weight: 25
   },
@@ -192,12 +277,22 @@ const materials = {
   // ──────────────────────────────────────────────────────────────────────────
   // HARD STONE
   // ──────────────────────────────────────────────────────────────────────────
+  'gneiss': {
+    name: 'Gneiss',
+    type: 'Stone Hard',
+    hardness: 1050,
+    probability: 100,
+    worth: 22,
+    minlevel: 15000,
+    color: '#c9a875ff',
+    weight: 34
+  },
   'granite': {
     name: 'Granite',
     type: 'Stone Hard',
     hardness: 1100,
     probability: 400,
-    worth: 12,
+    worth: 31,
     minlevel: 18000,
     color: '#280918ff',
     weight: 35
@@ -207,10 +302,40 @@ const materials = {
     type: 'Processed',
     hardness: 250,
     probability: 0,
-    worth: 50,
+    worth: 250,
     minlevel: 99999,
     color: '#4a1828ff',
     weight: 30
+  },
+  'andalusite': {
+    name: 'Andalusite',
+    type: 'Stone Hard',
+    hardness: 1200,
+    probability: 180,
+    worth: 13,
+    minlevel: 25000,
+    color: '#d47846ff',
+    weight: 34
+  },
+  'komatiite': {
+    name: 'Komatiite',
+    type: 'Stone Hard',
+    hardness: 1400,
+    probability: 160,
+    worth: 15,
+    minlevel: 45000,
+    color: '#825135ff',
+    weight: 34
+  },
+  'hornfels': {
+    name: 'Hornfels',
+    type: 'Stone Hard',
+    hardness: 1600,
+    probability: 220,
+    worth: 16,
+    minlevel: 65000,
+    color: '#6b6b6bff',
+    weight: 35
   },
   'basalt': {
     name: 'Basalt',
@@ -222,15 +347,35 @@ const materials = {
     color: '#484848ff',
     weight: 35
   },
+  'sillimanite': {
+    name: 'Sillimanite',
+    type: 'Stone Hard',
+    hardness: 1850,
+    probability: 140,
+    worth: 20,
+    minlevel: 125000,
+    color: '#8b7d5bff',
+    weight: 34
+  },
   'obsidian': {
     name: 'Obsidian',
     type: 'Stone Hard',
     hardness: 1950,
     probability: 200,
-    worth: 25,
+    worth: 45,
     minlevel: 195000,
     color: '#184f48ff',
     weight: 35
+  },
+    'polished obsidian': {
+    name: 'Polished Obsidian',
+    type: 'Processed',
+    hardness: 250,
+    probability: 0,
+    worth: 290,
+    minlevel: 99999,
+    color: '#2a6f68ff',
+    weight: 30
   },
   'quartzite': {
     name: 'Quartzite',
@@ -242,17 +387,6 @@ const materials = {
     color: '#c35858ff',
     weight: 35
   },
-  'polished obsidian': {
-    name: 'Polished Obsidian',
-    type: 'Processed',
-    hardness: 250,
-    probability: 0,
-    worth: 100,
-    minlevel: 99999,
-    color: '#2a6f68ff',
-    weight: 30
-  },
-
   // ──────────────────────────────────────────────────────────────────────────
   // SPECIAL MATERIALS
   // ──────────────────────────────────────────────────────────────────────────
@@ -339,7 +473,7 @@ const materials = {
     type: 'Ore Soft',
     hardness: 100,
     probability: 75,
-    worth: 18,
+    worth: 38,
     minlevel: 2000,
     color: '#7e6136ff',
     weight: 30
@@ -349,7 +483,7 @@ const materials = {
     type: 'Ingot',
     hardness: 100,
     probability: 0,
-    worth: 75,
+    worth: 175,
     minlevel: 99999,
     color: '#cd7f32ff',
     forge: 'Base',
@@ -360,7 +494,7 @@ const materials = {
     type: 'Ore Soft',
     hardness: 180,
     probability: 50,
-    worth: 50,
+    worth: 60,
     minlevel: 6000,
     color: '#c75e41ff',
     weight: 30
@@ -370,7 +504,7 @@ const materials = {
     type: 'Ingot',
     hardness: 175,
     probability: 0,
-    worth: 200,
+    worth: 300,
     minlevel: 99999,
     color: '#962c0cff',
     forge: 'Base',
@@ -395,7 +529,7 @@ const materials = {
     type: 'Ingot',
     hardness: 300,
     probability: 0,
-    worth: 350,
+    worth: 450,
     minlevel: 99999,
     color: '#3e6b4eff',
     forge: 'Plating',
@@ -406,7 +540,7 @@ const materials = {
     type: 'Ingot',
     hardness: 250,
     probability: 0,
-    worth: 750,
+    worth: 950,
     minlevel: 99999,
     color: '#fbd86eff',
     forge: 'Base',
@@ -416,7 +550,7 @@ const materials = {
     name: 'Silver Ore',
     type: 'Ore Medium',
     hardness: 350,
-    probability: 0,
+    probability: 20,
     worth: 1200,
     minlevel: 10999,
     color: '#c0c0c0ff',
@@ -518,6 +652,27 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
+    'nickel ore': {
+    name: 'Nickel Ore',
+    type: 'Ore Medium',
+    hardness: 450,
+    probability: 30,
+    worth: 350,
+    minlevel: 40000,
+    color: '#b2b25cff',
+    weight: 46
+  },
+  'nickel': {
+    name: 'Nickel Ingot',
+    type: 'Ingot',
+    hardness: 300,
+    probability: 0,
+    worth: 550,
+    minlevel: 99999,
+    color: '#979726ff',
+    forge: 'Plating',
+    weight: 23
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // HARD ORES
@@ -528,9 +683,20 @@ const materials = {
     hardness: 4000,
     probability: 15,
     worth: 2500,
-    minlevel: 75000,
+    minlevel: 55000,
     color: '#c75e41ff',
     weight: 50
+  },
+    'platinum': {
+    name: 'Platinum Ingot',
+    type: 'Ingot',
+    hardness: 700,
+    probability: 0,
+    worth: 2800,
+    minlevel: 70000,
+    color: '#2d2121ff',
+    forge: 'Base',
+    weight: 25
   },
   'titanium ore': {
     name: 'Titanium Ore',
@@ -538,8 +704,19 @@ const materials = {
     hardness: 6000,
     probability: 15,
     worth: 3000,
-    minlevel: 100000,
+    minlevel: 90000,
     color: '#57375dff',
+    weight: 50
+  },
+    'titanium': {
+    name: 'Titanium Ingot',
+    type: 'Ingot',
+    hardness: 900,
+    probability: 0,
+    worth: 2800,
+    minlevel: 105000,
+    color: '#2d2121ff',
+    forge: 'Base',
     weight: 50
   },
   'adamantine ore': {
@@ -548,10 +725,21 @@ const materials = {
     hardness: 10000,
     probability: 15,
     worth: 7000,
-    minlevel: 250000,
+    minlevel: 110000,
     color: '#8eb95eff',
     weight: 50
-  }
+  },
+    'adamantine': {
+    name: 'Adamantine Ingot',
+    type: 'Ingot',
+    hardness: 1200,
+    probability: 0,
+    worth: 7500,
+    minlevel: 99999,
+    color: '#2d2121ff',
+    forge: 'Base',
+    weight: 50
+  },
 };
 
 
@@ -658,6 +846,17 @@ const smelterTasksData = {
     output: { material: 'clay', amount: 1 },
     ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
     hardness: 1
+  },
+  'sieve-loose-stone': {
+    name: 'Sieve Loose Stone',
+    description: 'Sieve loose stone into gravel. 2.5% chance to find 0.1 ore from double the current depth.',
+    input: { material: 'loose stone', amount: 1 },
+    output: { material: 'gravel', amount: 5 },
+    bonusChance: 0.08,
+    bonusType: 'deep-ore',
+    bonusAmount: 0.1,
+    ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
+    hardness: 2
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -843,21 +1042,66 @@ const smelterTasksData = {
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
     requires: 'furnace',
     hardness: 50
+  },
+  'smelt-nickel': {
+    name: 'Smelt Nickel',
+    description: 'Smelt nickel ore.',
+    input: { material: 'nickel ore', amount: 1 },
+    output: { material: 'nickel', amount: 1 },
+    minTemp: 1455,
+    ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 55
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // HARD METAL SMELTING
+  // ──────────────────────────────────────────────────────────────────────────
+  'smelt-platinum': {
+    name: 'Smelt Platinum',
+    description: 'Smelt platinum ore.',
+    input: { material: 'platinum ore', amount: 1 },
+    output: { material: 'platinum', amount: 1 },
+    minTemp: 1768,
+    ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 70
+  },
+  'smelt-titanium': {
+    name: 'Smelt Titanium',
+    description: 'Smelt titanium ore.',
+    input: { material: 'titanium ore', amount: 1 },
+    output: { material: 'titanium', amount: 1 },
+    minTemp: 1668,
+    ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 75
+  },
+  'smelt-adamantine': {
+    name: 'Smelt Adamantine',
+    description: 'Smelt adamantine ore.',
+    input: { material: 'adamantine ore', amount: 1 },
+    output: { material: 'adamantine', amount: 1 },
+    minTemp: 2850,
+    ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 100
   }
 };
 
 // Ordered array of smelter task IDs (determines task priority)
 let smelterTasks = [
-    'do-nothing',
-    'heat-furnace',
-    'heat-magma-furnace',
-    'cut-polish-gem',
     'dry-mud',
+    'sieve-loose-stone',
+    'do-nothing',
     'grind-sandstone',
     'grind-limestone',
     'polish-marble',
     'polish-granite',
     'polish-obsidian',
+    'cut-polish-gem',
+    'heat-furnace',
+    'heat-magma-furnace',
     'smelt-bronce',
     'smelt-copper',
     'smelt-zinc',
@@ -868,7 +1112,11 @@ let smelterTasks = [
     'smelt-steel-hardened',
     'smelt-steel-dwarf',
     'smelt-silver',
-    'smelt-gold'
+    'smelt-gold',
+    'smelt-nickel',
+    'smelt-platinum',
+    'smelt-titanium',
+    'smelt-adamantine'
 ];
 
 // Smelter temperature system
@@ -879,21 +1127,21 @@ let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user con
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
 let researchtree = [
-    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, goldCost: 50, level: 0, hardness: 10,
+    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, goldCost: 10, level: 0, hardness: 10,
       description: 'Dwarfs dig 1% harder.' },
-    { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 100, level: 0, hardness: 20,
+    { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 10, level: 0, hardness: 20,
       description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-    { id: 'trading', name: 'Better trading', cost: 100, goldCost: 100, level: 0, hardness: 30,
+    { id: 'trading', name: 'Better trading', cost: 100, goldCost: 10, level: 0, hardness: 30,
       description: 'Prices are improved by 3% per level' },
     { id: 'price-negotiations', name: 'Price Negotiations', cost: 3000, goldCost: 500, level: 0, maxlevel: 1, hardness: 50, requires: [{'trading':10}],
       min_depth: 5000, description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.' },
     { id: 'small-time-investments', name: 'Small Time Investments', cost: 5000, goldCost: 1000, level: 0, maxlevel: 1, hardness: 100, requires: [{'price-negotiations':1}],
       min_depth: 8000, description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.' },
-    { id: 'buckets', name: 'Bigger Buckets', cost: 500, goldCost: 500, level: 0, maxlevel:10, hardness: 50,
+    { id: 'buckets', name: 'Bigger Buckets', cost: 300, goldCost: 200, level: 0, maxlevel:10, hardness: 50,
       description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).' },
     { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15, hardness: 60,
       description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-      { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 2500, goldCost: 2500, level: 0, maxlevel: 30, hardness: 150,
+    { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 600, goldCost: 300, level: 0, maxlevel: 30, hardness: 150,
       min_depth: 250, description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.' },
     { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1, hardness: 70,
       min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
@@ -932,48 +1180,60 @@ let startX = 0;
 let gold = 50;
 
 let dwarfs = [
-    { name: "Diggingston", 
-      toolId: 1, 
-      level: 1, xp: 0,
+    { name: "Diggingston",
+      toolId: 1,
+      level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {}, energy: 100 },
-    { name: "Shovelli", 
-      toolId: 2, 
-      level: 1, xp: 0,
+      bucket: {}, energy: 100,
+      taskPriority: ['digging', 'research', 'smelting'],
+      taskBlacklist: [] },
+    { name: "Shovelli",
+      toolId: 2,
+      level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 0, y: 0,
       status: 'idle', moveTarget: null,
-      bucket: {}, energy: 100 },
-    { name: "Diggmaster", 
-      toolId: 3, 
-      level: 1, xp: 0,
+      bucket: {}, energy: 100,
+      taskPriority: ['digging', 'research', 'smelting'],
+      taskBlacklist: [] },
+    { name: "Diggmaster",
+      toolId: 3,
+      level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100 },
-    { name: "Burrower", 
-     toolId: 4, 
-     level: 1, xp: 0,
+    bucket: {}, energy: 100,
+    taskPriority: ['digging', 'research', 'smelting'],
+    taskBlacklist: [] },
+    { name: "Burrower",
+     toolId: 4,
+     level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100 },
-    { name: "NevertiredMcPickaxemer", 
-     toolId: 5, 
-     level: 1, xp: 0,
+    bucket: {}, energy: 100,
+    taskPriority: ['digging', 'research', 'smelting'],
+    taskBlacklist: [] },
+    { name: "NevertiredMcPickaxemer",
+     toolId: 5,
+     level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100 },
-    { name: "SmartDigger", 
-     toolId: 6, 
-     level: 1, xp: 0,
+    bucket: {}, energy: 100,
+    taskPriority: ['digging', 'research', 'smelting'],
+    taskBlacklist: [] },
+    { name: "SmartDigger",
+     toolId: 6,
+     level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
      x: 0, y: 0,
      status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100 },
+    bucket: {}, energy: 100,
+    taskPriority: ['research', 'smelting', 'digging',],
+    taskBlacklist: [] },
 ]
 
 // Transaction log - keeps detailed transactions from the current hour

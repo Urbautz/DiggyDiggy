@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node --check:*)",
       "Bash(mkdir:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)"
     ]
   }
 }
