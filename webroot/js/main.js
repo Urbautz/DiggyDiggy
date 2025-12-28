@@ -1824,7 +1824,9 @@ function initMaterialsPanel() {
     // Get materials that are used as smelter inputs and outputs
     const smelterInputMaterials = new Set();
     const smelterOutputMaterials = new Set();
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task) continue;
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
@@ -1893,15 +1895,15 @@ function initMaterialsPanel() {
         let iconsText = '';
         const tooltipParts = [];
         if (isInput) {
-            iconsText = '🪨';
+            iconsText += '🪨';
             tooltipParts.push('Used in smelter recipes');
         }
         if (isOutput) {
-            iconsText = '♨️';
+            iconsText += '♨️';
             tooltipParts.push('Produced by smelter');
         }
         if (isForgeInput) {
-            iconsText = '🔩';
+            iconsText += '🔩';
             tooltipParts.push('Used in forge');
         }
         icons.textContent = iconsText;
@@ -1958,7 +1960,9 @@ function updateMaterialsPanel() {
 
     // Get materials that are used as smelter inputs
     const smelterInputMaterials = new Set();
-    for (const task of smelterTasks) {
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task) continue;
         if (task.input && task.input.material) {
             smelterInputMaterials.add(task.input.material);
         }
