@@ -550,7 +550,7 @@ const materials = {
     name: 'Silver Ore',
     type: 'Ore Medium',
     hardness: 350,
-    probability: 0,
+    probability: 20,
     worth: 1200,
     minlevel: 10999,
     color: '#c0c0c0ff',
@@ -652,6 +652,27 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
+    'nickel ore': {
+    name: 'Nickel Ore',
+    type: 'Ore Medium',
+    hardness: 450,
+    probability: 30,
+    worth: 350,
+    minlevel: 40000,
+    color: '#b2b25cff',
+    weight: 46
+  },
+  'nickel': {
+    name: 'Nickel Ingot',
+    type: 'Ingot',
+    hardness: 300,
+    probability: 0,
+    worth: 550,
+    minlevel: 99999,
+    color: '#979726ff',
+    forge: 'Plating',
+    weight: 23
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // HARD ORES
@@ -662,7 +683,7 @@ const materials = {
     hardness: 4000,
     probability: 15,
     worth: 2500,
-    minlevel: 75000,
+    minlevel: 55000,
     color: '#c75e41ff',
     weight: 50
   },
@@ -672,7 +693,7 @@ const materials = {
     hardness: 700,
     probability: 0,
     worth: 2800,
-    minlevel: 99999,
+    minlevel: 70000,
     color: '#2d2121ff',
     forge: 'Base',
     weight: 25
@@ -683,7 +704,7 @@ const materials = {
     hardness: 6000,
     probability: 15,
     worth: 3000,
-    minlevel: 100000,
+    minlevel: 90000,
     color: '#57375dff',
     weight: 50
   },
@@ -693,7 +714,7 @@ const materials = {
     hardness: 900,
     probability: 0,
     worth: 2800,
-    minlevel: 99999,
+    minlevel: 105000,
     color: '#2d2121ff',
     forge: 'Base',
     weight: 50
@@ -704,7 +725,7 @@ const materials = {
     hardness: 10000,
     probability: 15,
     worth: 7000,
-    minlevel: 250000,
+    minlevel: 110000,
     color: '#8eb95eff',
     weight: 50
   },
@@ -1022,6 +1043,16 @@ const smelterTasksData = {
     requires: 'furnace',
     hardness: 50
   },
+  'smelt-nickel': {
+    name: 'Smelt Nickel',
+    description: 'Smelt nickel ore.',
+    input: { material: 'nickel ore', amount: 1 },
+    output: { material: 'nickel', amount: 1 },
+    minTemp: 1455,
+    ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 55
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // HARD METAL SMELTING
@@ -1082,6 +1113,7 @@ let smelterTasks = [
     'smelt-steel-dwarf',
     'smelt-silver',
     'smelt-gold',
+    'smelt-nickel',
     'smelt-platinum',
     'smelt-titanium',
     'smelt-adamantine'
