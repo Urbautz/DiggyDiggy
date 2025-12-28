@@ -305,6 +305,63 @@ function findActionableSmelterTask() {
     return null;
 }
 
+// Handle smelter task output production including break chance and bonus ore
+function handleSmelterTaskOutput(task, dwarf) {
+    const outputMaterial = task.output.material;
+    const outputAmount = task.output.amount;
+
+    // Check for break chance (for polishing tasks)
+    let success = true;
+    if (task.breakChance && task.breakChance > 0) {
+        const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+        const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+        const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
+        const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+        success = Math.random() >= actualBreakChance;
+    }
+
+    // Produce output materials only if successful
+    if (success) {
+        materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+
+        // Check for bonus ore (for sieve-loose-stone task)
+        if (task.bonusChance && task.bonusType === 'deep-ore' && task.bonusAmount) {
+            console.log(`Checking bonus ore: chance=${task.bonusChance}, type=${task.bonusType}, amount=${task.bonusAmount}`);
+            if (Math.random() < task.bonusChance) {
+                // Calculate current depth (deepest dug row)
+                const currentDepth = startX;
+                const targetDepth = currentDepth * 2;
+
+                // Find all ores that would appear at double the current depth
+                const availableOres = [];
+                for (const [materialId, materialData] of Object.entries(materials)) {
+                    // Only consider ore types
+                    if (materialData.type && materialData.type.includes('Ore')) {
+                        const minLevel = materialData.minlevel || 0;
+                        const maxLevel = materialData.maxlevel || Infinity;
+
+                        // Check if this ore appears at the target depth
+                        if (targetDepth >= minLevel && targetDepth <= maxLevel) {
+                            availableOres.push(materialId);
+                        }
+                    }
+                }
+
+                // If we found any ores, randomly select one and add it
+                if (availableOres.length > 0) {
+                    const randomOre = availableOres[Math.floor(Math.random() * availableOres.length)];
+                    materialsStock[randomOre] = (materialsStock[randomOre] || 0) + task.bonusAmount;
+                    console.log(`Dwarf ${dwarf.name} found bonus ${task.bonusAmount}x ${randomOre} while sieving (depth ${currentDepth}, target ${targetDepth})!`);
+                } else {
+                    console.log(`No ores available at target depth ${targetDepth} (current depth: ${currentDepth})`);
+                }
+            } else {
+                console.log(`Bonus roll failed for ${dwarf.name}`);
+            }
+        }
+    }
+}
+
 function getDwarfToolPower(dwarf) {
 
     // Calculate power: (Dwarf Base Power * Level Bonus) * Research Bonus * Tool Power
@@ -976,23 +1033,7 @@ function actForDwarf(dwarf) {
                     }
                     // Handle regular smelting/processing with output
                     else if (task.output) {
-                        const outputMaterial = task.output.material;
-                        const outputAmount = task.output.amount;
-
-                        // Check for break chance (for polishing tasks)
-                        let success = true;
-                        if (task.breakChance && task.breakChance > 0) {
-                            const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
-                            const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
-                            const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
-                            const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
-                            success = Math.random() >= actualBreakChance;
-                        }
-
-                        // Produce output materials only if successful
-                        if (success) {
-                            materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
-                        }
+                        handleSmelterTaskOutput(task, dwarf);
                     }
 
                     // Consume input materials after task completion
@@ -1066,31 +1107,7 @@ function actForDwarf(dwarf) {
                 }
             } else if (task.output) {
                 // Regular smelting task with output
-                const outputMaterial = task.output.material;
-                const outputAmount = task.output.amount;
-                
-                // Check for break chance (for polishing tasks)
-                let success = true;
-                if (task.breakChance && task.breakChance > 0) {
-                    // Get stone polishing research level
-                    const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
-                    const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
-                    
-                    // Calculate actual break chance with research reduction
-                    const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
-                    const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
-                    
-                    // Roll for success
-                    success = Math.random() >= actualBreakChance;
-                }
-                
-                // Produce output materials only if successful (or no break chance)
-                if (success) {
-                    materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
-                    //console.log(`Dwarf ${dwarf.name} successfully smelted ${inputAmount}x ${inputMaterial} into ${outputAmount}x ${outputMaterial}`);
-                } else {
-                    //console.log(`Dwarf ${dwarf.name} broke ${inputAmount}x ${inputMaterial} while trying to polish it!`);
-                }
+                handleSmelterTaskOutput(task, dwarf);
             }
             
             // Pay the dwarf, consume energy and award XP

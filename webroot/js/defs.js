@@ -72,6 +72,16 @@ const materials = {
     color: '#534f4fff',
     weight: 5
   },
+  'loose stone': {
+    name: 'Loose Stone',
+    type: 'Loose',
+    hardness: 35,
+    probability: 160,
+    worth: 0.9,
+    minlevel: 150,
+    color: '#d7c8baff',
+    weight: 6
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // SOFT STONE
@@ -79,7 +89,7 @@ const materials = {
   'chalk': {
     name: 'Chalk',
     type: 'Stone Soft',
-    hardness: 30,
+    hardness: 40,
     probability: 100,
     worth: 16.0,
     minlevel: 600,
@@ -103,7 +113,7 @@ const materials = {
     type: 'Stone Soft',
     hardness: 60,
     probability: 120,
-    worth: 2.4,
+    worth: 3.4,
     minlevel: 1000,
     maxlevel: 12999,
     color: '#c75480ff',
@@ -816,6 +826,17 @@ const smelterTasksData = {
     ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
     hardness: 1
   },
+  'sieve-loose-stone': {
+    name: 'Sieve Loose Stone',
+    description: 'Sieve loose stone into gravel. 2.5% chance to find 0.1 ore from double the current depth.',
+    input: { material: 'loose stone', amount: 1 },
+    output: { material: 'gravel', amount: 5 },
+    bonusChance: 0.08,
+    bonusType: 'deep-ore',
+    bonusAmount: 0.1,
+    ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
+    hardness: 2
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // GRINDING TASKS
@@ -1039,16 +1060,17 @@ const smelterTasksData = {
 
 // Ordered array of smelter task IDs (determines task priority)
 let smelterTasks = [
-    'do-nothing',
-    'heat-furnace',
-    'heat-magma-furnace',
-    'cut-polish-gem',
     'dry-mud',
+    'sieve-loose-stone',
+    'do-nothing',
     'grind-sandstone',
     'grind-limestone',
     'polish-marble',
     'polish-granite',
     'polish-obsidian',
+    'cut-polish-gem',
+    'heat-furnace',
+    'heat-magma-furnace',
     'smelt-bronce',
     'smelt-copper',
     'smelt-zinc',
