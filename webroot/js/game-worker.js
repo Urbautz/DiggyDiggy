@@ -911,8 +911,10 @@ function actForDwarf(dwarf) {
             // });
             // console.log(`  Total: ${totalResearchPoints} research points`);
 
-            const WisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (WisdomMultiplier > 0 ? WisdomMultiplier : 1);
+            // Award XP based on successful attempts (ceiling of square root)
+            const successfulAttempts = Math.max(1, totalResearchPoints); // At least 1 for the attempt
+            const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
+            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * xpMultiplier;
             
             // console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
 
@@ -1166,9 +1168,10 @@ function actForDwarf(dwarf) {
                 pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
                 applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
 
-                // Award XP with wisdom multiplier (like research)
-                const wisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
-                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (wisdomMultiplier > 0 ? wisdomMultiplier : 1);
+                // Award XP based on successful attempts (ceiling of square root)
+                const successfulAttempts = Math.max(1, totalProgressGained); // At least 1 for the attempt
+                const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
+                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * xpMultiplier;
 
                 return;
             }
