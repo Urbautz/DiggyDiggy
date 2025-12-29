@@ -128,24 +128,24 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     };
 
     // Debug logging
-    console.log(`[${dwarf.name}] assignDwarfTask called:`, {
-        priority: taskPriority,
-        blacklist: taskBlacklist,
-        availability: taskAvailability,
-        researchDetails: researchAvailabilityDetails,
-        position: `(${dwarf.x}, ${dwarf.y})`,
-        status: dwarf.status
-    });
+    //console.log(`[${dwarf.name}] assignDwarfTask called:`, {
+    //    priority: taskPriority,
+    //    blacklist: taskBlacklist,
+    //    availability: taskAvailability,
+    //    researchDetails: researchAvailabilityDetails,
+    //    position: `(${dwarf.x}, ${dwarf.y})`,
+    //    status: dwarf.status
+    //});
 
     // Find the highest priority task that is available and not blacklisted
     for (const taskId of taskPriority) {
         // Skip if blacklisted or not available
         if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
-            console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
+            //console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
             continue;
         }
 
-        console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
+        //console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
 
         // Task is available! Execute it
         if (taskId === 'research') {
@@ -155,7 +155,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 if (researchReservedBy === dwarf.name || !researchReservedBy) {
                     researchReservedBy = dwarf.name;
                     dwarf.status = 'researching';
-                    console.log(`[${dwarf.name}] Started researching (already at location)`);
+                    //console.log(`[${dwarf.name}] Started researching (already at location)`);
                     return 'research';
                 }
             } else {
@@ -163,7 +163,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 researchReservedBy = dwarf.name;
                 scheduleMove(dwarf, research.x, research.y);
                 dwarf.status = 'moving';
-                console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
+                //console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
                 return 'research';
             }
         } else if (taskId === 'smelting') {
@@ -173,7 +173,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
                     smelterReservedBy = dwarf.name;
                     dwarf.status = 'smelting';
-                    console.log(`[${dwarf.name}] Started smelting (already at location)`);
+                    //console.log(`[${dwarf.name}] Started smelting (already at location)`);
                     return 'smelting';
                 }
             } else {
@@ -181,7 +181,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 smelterReservedBy = dwarf.name;
                 scheduleMove(dwarf, smelter.x, smelter.y);
                 dwarf.status = 'moving';
-                console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
+                //console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
                 return 'smelting';
             }
         } else if (taskId === 'digging') {
@@ -189,13 +189,13 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
             if (diggingX !== null && diggingY !== null) {
                 scheduleMove(dwarf, diggingX, diggingY);
             }
-            console.log(`[${dwarf.name}] Assigned digging task`);
+            //console.log(`[${dwarf.name}] Assigned digging task`);
             return 'digging';
         }
     }
 
     // No task was assigned
-    console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
+    //console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
     return null;
 }
 
@@ -1343,11 +1343,18 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             return;
         }
         // If 'digging' would be assigned, we continue to the digging logic below
-        // If null was returned, no valid task was available (all blacklisted) - continue to digging as fallback
+        // If null was returned, no valid task was available (all blacklisted) - dwarf should stay idle
+        if (assignedTask === null) {
+            // All tasks blacklisted - do nothing
+            return;
+        }
     }
 
     // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
-    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 && 
+    // Also check that digging is not blacklisted
+    const taskBlacklist = dwarf.taskBlacklist || [];
+    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 &&
+        !taskBlacklist.includes('digging') &&
         !(activeResearch && typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y)) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {

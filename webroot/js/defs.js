@@ -1140,10 +1140,21 @@ const researchData = {
     goldCost: 1000,
     level: 0,
     maxlevel: 1,
-    hardness: 100,
+    hardness: 750,
     requires: [{'price-negotiations': 1}],
     min_depth: 8000,
     description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
+  },
+  'wage-optimization': {
+    name: 'Wage Negotiation',
+    cost: 1000,
+    goldCost: 1000,
+    level: 0,
+    maxlevel: 20,
+    hardness: 70,
+    min_depth: 3000,
+    unlock_requires: 'wage_increase',
+    description: 'Reduces wage increase per dwarf level by 1%.'
   },
   'buckets': {
     name: 'Bigger Buckets',
@@ -1151,7 +1162,7 @@ const researchData = {
     goldCost: 200,
     level: 0,
     maxlevel: 10,
-    hardness: 50,
+    hardness: 30,
     description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).'
   },
   'union-busting': {
@@ -1160,7 +1171,7 @@ const researchData = {
     goldCost: 500,
     level: 0,
     maxlevel: 15,
-    hardness: 60,
+    hardness: 40,
     description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.'
   },
   'tool-enchanting': {
@@ -1169,7 +1180,7 @@ const researchData = {
     goldCost: 300,
     level: 0,
     maxlevel: 30,
-    hardness: 150,
+    hardness: 40,
     min_depth: 250,
     description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.'
   },
@@ -1179,7 +1190,7 @@ const researchData = {
     goldCost: 200,
     level: 0,
     maxlevel: 1,
-    hardness: 70,
+    hardness: 40,
     min_depth: 500,
     description: 'Unlocks the grind task at the Smelter.'
   },
@@ -1189,7 +1200,7 @@ const researchData = {
     goldCost: 500,
     level: 0,
     maxlevel: 5,
-    hardness: 200,
+    hardness: 50,
     requires: [{'grinding-machine': 1}],
     min_depth: 4000,
     description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).'
@@ -1200,7 +1211,7 @@ const researchData = {
     goldCost: 5000,
     level: 0,
     maxlevel: 1,
-    hardness: 300,
+    hardness: 55,
     requires: [{'grinding-machine': 1}],
     min_depth: 2000,
     description: 'Unlocks gem cutting at the smelter.'
@@ -1211,7 +1222,7 @@ const researchData = {
     goldCost: 5000,
     level: 0,
     maxlevel: 3,
-    hardness: 320,
+    hardness: 55,
     requires: [{'gem-cutting': 1}],
     min_depth: 2000,
     description: 'Set up to 3 Gems into the dwarfs tools.'
@@ -1222,7 +1233,7 @@ const researchData = {
     goldCost: 750,
     level: 0,
     maxlevel: 1,
-    hardness: 250,
+    hardness: 60,
     requires: [{'grinding-machine': 1}],
     min_depth: 1000,
     description: 'Unlocks the furnace for smelting of ores.'
@@ -1233,7 +1244,7 @@ const researchData = {
     goldCost: 10000,
     level: 0,
     maxlevel: 5,
-    hardness: 500,
+    hardness: 60,
     requires: [{'furnace': 1}],
     min_depth: 2000,
     description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).'
@@ -1244,7 +1255,7 @@ const researchData = {
     goldCost: 2000,
     level: 0,
     maxlevel: 1,
-    hardness: 350,
+    hardness: 65,
     requires: [{'furnace': 1}],
     min_depth: 1000,
     description: 'Unlocks the forge for crafting and upgrading tools.'
@@ -1255,61 +1266,18 @@ const researchData = {
     goldCost: 8000,
     level: 0,
     maxlevel: 1,
-    hardness: 700,
+    hardness: 70,
     requires: [{'furnace': 1}],
     min_depth: 15000,
     description: 'Unlocks the ability to create alloys in the smelter.'
   },
-  'material-science': {
-    name: 'Material Science',
-    cost: 500,
-    goldCost: 500,
-    level: 0,
-    maxlevel: 5,
-    hardness: 100,
-    min_depth: 1000,
-    description: 'Increases critical hit chance to any stone by 5% per level.'
-  },
-  'wage-optimization': {
-    name: 'Wage Negotiation',
-    cost: 1000,
-    goldCost: 1000,
-    level: 0,
-    maxlevel: 20,
-    hardness: 400,
-    min_depth: 3000,
-    unlock_requires: 'wage_increase',
-    description: 'Reduces wage increase per dwarf level by 1%.'
-  },
-  'expertise-stone': {
-    name: 'Stone Expertise',
-    cost: 3000,
-    goldCost: 3000,
-    level: 0,
-    maxlevel: 15,
-    hardness: 450,
-    requires: [{'material-science': 3}],
-    min_depth: 1000,
-    description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.'
-  },
-  'expertise-ore': {
-    name: 'Ore Expertise',
-    cost: 20000,
-    goldCost: 20000,
-    level: 0,
-    maxlevel: 15,
-    hardness: 800,
-    requires: [{'material-science': 5}, {'expertise-stone': 1}],
-    min_depth: 2000,
-    description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.'
-  },
-  'furnace-temperature': {
+    'furnace-temperature': {
     name: 'Furnace Temperature',
     cost: 5000,
     goldCost: 5000,
     level: 0,
     maxlevel: 15,
-    hardness: 550,
+    hardness: 80,
     requires: [{'forge': 1}],
     min_depth: 6000,
     description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).'
@@ -1320,11 +1288,45 @@ const researchData = {
     goldCost: 50000,
     level: 0,
     maxlevel: 1,
-    hardness: 1000,
+    hardness: 90,
     requires: [{'furnace-insulation': 5}, {'furnace-temperature': 10}],
     min_depth: 8000,
     description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.'
-  }
+  },
+  'material-science': {
+    name: 'Material Science',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 5,
+    hardness: 70,
+    min_depth: 1000,
+    description: 'Increases critical hit chance to any stone by 5% per level.'
+  },
+
+  'expertise-stone': {
+    name: 'Stone Expertise',
+    cost: 3000,
+    goldCost: 3000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 80,
+    requires: [{'material-science': 3}],
+    min_depth: 1000,
+    description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.'
+  },
+  'expertise-ore': {
+    name: 'Ore Expertise',
+    cost: 20000,
+    goldCost: 20000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 85,
+    requires: [{'material-science': 5}, {'expertise-stone': 1}],
+    min_depth: 2000,
+    description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.'
+  },
+
 };
 
 // Ordered array of research IDs (determines display order)
