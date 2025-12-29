@@ -1446,10 +1446,11 @@ const functionsGridY = -1; // One row above the main grid
 const functionsGridWidth = 5;
 
 // Function locations in the 1x5 grid above main grid
-const dropOff = { x: 0, y: functionsGridY };     // First cell (Warehouse)
-const house = { x: 1, y: functionsGridY };        // Second cell (House/Bed)
-const research = { x: 2, y: functionsGridY };     // Third cell (Research)
-const smelter = { x: 3, y: functionsGridY };      // Fourth cell (Smelter)
+// Order: House, Warehouse, Smelter, Research, Automate
+const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
+const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
+const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
+const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
 const automate = { x: 4, y: functionsGridY };     // Fifth cell (Automate - placeholder)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)

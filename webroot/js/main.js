@@ -435,10 +435,10 @@ function updateGridDisplay() {
                 // Show icons for each function cell (no click actions - use sidebar buttons instead)
                 if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
                     cell.classList.add('drop-off');
+                    cell.title = 'Warehouse (drop-off)';
                     const box = document.createElement('span');
                     box.className = 'drop-off-marker warehouse';
                     box.textContent = '🏭';
-                    box.title = 'Warehouse (drop-off)';
                     cell.appendChild(box);
                 }
 
@@ -448,39 +448,47 @@ function updateGridDisplay() {
                     bed.textContent = '🏠';
                     const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
                     if (dwarfsResting.length > 0) {
-                        bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
+                        cell.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
                     } else {
-                        bed.title = 'House (Rest here)';
+                        cell.title = 'House (Rest here)';
                     }
                     cell.appendChild(bed);
                 }
 
                 if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
+                    cell.title = 'Research';
                     const res = document.createElement('span');
                     res.className = 'drop-off-marker';
                     res.textContent = '🔬';
-                    res.title = 'Research';
                     cell.appendChild(res);
                 }
 
                 if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
+                    cell.title = 'Smelter';
                     const sm = document.createElement('span');
                     sm.className = 'drop-off-marker';
                     sm.textContent = '♨️';
-                    sm.title = 'Smelter';
                     cell.appendChild(sm);
                 }
 
                 if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
+                    cell.title = 'Automate (Coming soon)';
                     const auto = document.createElement('span');
                     auto.className = 'drop-off-marker';
                     auto.style.opacity = '0.5';
                     auto.textContent = '🛞';
-                    auto.title = 'Automate (Coming soon)';
                     cell.appendChild(auto);
                 }
 
                 functionsGridRow.appendChild(cell);
+            }
+
+            // Fill the remaining cells with empty skyblue cells to match grid width
+            const remainingCells = gridWidth - functionsGridWidth;
+            for (let i = 0; i < remainingCells; i++) {
+                const emptyCell = document.createElement('td');
+                emptyCell.className = 'cell functions-cell';
+                functionsGridRow.appendChild(emptyCell);
             }
         }
 
@@ -1964,6 +1972,13 @@ function hideCellTooltip() {
 
 function showCellTooltipFromEvent(cell, event) {
     if (!cell || !cellTooltipTitle || !cellTooltipHardness) return;
+
+    // Don't show hardness tooltip for functions grid cells
+    if (cell.classList.contains('functions-cell') || cell.classList.contains('functions-depth-cell')) {
+        hideCellTooltip();
+        return;
+    }
+
     const rowIndex = Number(cell.dataset.row);
     const colIndex = Number(cell.dataset.col);
     if (!Number.isFinite(rowIndex) || !Number.isFinite(colIndex)) {
