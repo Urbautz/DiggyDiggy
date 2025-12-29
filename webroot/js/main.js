@@ -208,7 +208,17 @@ function updateGridDisplay() {
         tbody = document.createElement('tbody');
         table.appendChild(tbody);
     }
+
+    // Preserve the functions grid row when clearing
+    const functionsRow = document.getElementById('functions-grid-row');
+    const savedFunctionsRow = functionsRow ? functionsRow.cloneNode(true) : null;
+
     tbody.innerHTML = '';
+
+    // Re-add the functions grid row if it existed
+    if (savedFunctionsRow) {
+        tbody.appendChild(savedFunctionsRow);
+    }
 
     const now = Date.now();
     for (const [key, expires] of activeCritFlashes) {
@@ -376,18 +386,21 @@ function updateGridDisplay() {
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
         // Update visible stock counts too
 
-        // Render the functions grid (1x5 above main grid)
-        const functionsTable = document.getElementById('functions-grid');
-        if (functionsTable && typeof functionsGridWidth === 'number') {
-            let tb = functionsTable.querySelector('tbody');
-            if (!tb) { tb = document.createElement('tbody'); functionsTable.appendChild(tb); }
-            tb.innerHTML = '';
-            const rowEl = document.createElement('tr');
+        // Render the functions grid row (first row in digging grid table)
+        const functionsGridRow = document.getElementById('functions-grid-row');
+        if (functionsGridRow && typeof functionsGridWidth === 'number') {
+            functionsGridRow.innerHTML = '';
+
+            // Add empty depth-cell
+            const depthCell = document.createElement('td');
+            depthCell.className = 'depth-cell functions-depth-cell';
+            functionsGridRow.appendChild(depthCell);
+
             for (let cc = 0; cc < functionsGridWidth; cc++) {
                 const gx = cc;
                 const gy = functionsGridY;
                 const cell = document.createElement('td');
-                cell.className = 'cell';
+                cell.className = 'cell functions-cell';
                 cell.dataset.row = 0;
                 cell.dataset.col = cc;
 
@@ -419,44 +432,30 @@ function updateGridDisplay() {
                     cell.appendChild(mover);
                 }
 
-                // Show icons for each function cell
+                // Show icons for each function cell (no click actions - use sidebar buttons instead)
                 if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
                     cell.classList.add('drop-off');
-                    cell.dataset.clickAction = 'focus-materials';
                     const box = document.createElement('span');
                     box.className = 'drop-off-marker warehouse';
                     box.textContent = '🏭';
                     box.title = 'Warehouse (drop-off)';
                     cell.appendChild(box);
-                    cell.style.cursor = 'pointer';
                 }
 
                 if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
-                    cell.style.cursor = 'pointer';
-                    cell.dataset.clickAction = 'open-dwarfs';
-                    const iconContainer = document.createElement('span');
-                    iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
                     const bed = document.createElement('span');
-                    bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
+                    bed.className = 'drop-off-marker';
                     bed.textContent = '🏠';
                     const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
                     if (dwarfsResting.length > 0) {
                         bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
-                        const badge = document.createElement('span');
-                        badge.className = 'notification-badge';
-                        badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4a90e2; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                        badge.textContent = dwarfsResting.length;
-                        bed.appendChild(badge);
                     } else {
                         bed.title = 'House (Rest here)';
                     }
-                    iconContainer.appendChild(bed);
-                    cell.appendChild(iconContainer);
+                    cell.appendChild(bed);
                 }
 
                 if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
-                    cell.style.cursor = 'pointer';
-                    cell.dataset.clickAction = 'open-research';
                     const res = document.createElement('span');
                     res.className = 'drop-off-marker';
                     res.textContent = '🔬';
@@ -465,8 +464,6 @@ function updateGridDisplay() {
                 }
 
                 if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
-                    cell.style.cursor = 'pointer';
-                    cell.dataset.clickAction = 'open-smelter';
                     const sm = document.createElement('span');
                     sm.className = 'drop-off-marker';
                     sm.textContent = '♨️';
@@ -475,17 +472,16 @@ function updateGridDisplay() {
                 }
 
                 if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
-                    cell.style.opacity = '0.5';
                     const auto = document.createElement('span');
                     auto.className = 'drop-off-marker';
+                    auto.style.opacity = '0.5';
                     auto.textContent = '🛞';
                     auto.title = 'Automate (Coming soon)';
                     cell.appendChild(auto);
                 }
 
-                rowEl.appendChild(cell);
+                functionsGridRow.appendChild(cell);
             }
-            tb.appendChild(rowEl);
         }
 
         // Don't call updateMaterialsPanel here - it recreates buttons too frequently

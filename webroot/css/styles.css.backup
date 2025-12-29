@@ -50,7 +50,7 @@ main {
 .functions-grid .depth-cell {
     width: 50px;
     min-width: 50px;
-    xbackground: transparent;
+    background: transparent;
     border: none;
 }
 
@@ -333,7 +333,7 @@ main {
     color: #fff;
     text-align: center;
     font-weight: 600;
-    padding: 0 4px;
+    padding: 0;
     border: none;
     vertical-align: middle;
 }
@@ -3335,33 +3335,11 @@ header, footer {
 
 /* Functions grid row styling (first row in digging grid table) */
 .functions-cell {
-    background: skyblue !important;
+    background: rgba(255,255,255,0.02) !important;
 }
 
 .functions-depth-cell {
     background: transparent !important;
-}
-
-/* Center all icons in functions cells - lower z-index so dwarfs appear on top */
-#digging-grid .functions-cell .drop-off-marker {
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 1;
-    font-size: 18px;
-    opacity: 0.95;
-}
-
-#digging-grid .functions-cell .moving-marker,
-#digging-grid .functions-cell .digging-marker {
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 3;
 }
 
 .functions-cell.has-dwarf::before {
@@ -3371,17 +3349,28 @@ header, footer {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2;
+    z-index: 1;
     opacity: 0.75;
     pointer-events: none;
 }
 
-/* Functions grid row needs position: relative for absolute positioning */
-#digging-grid .functions-cell {
+.functions-cell > * {
     position: relative;
-    cursor: default !important;
+    z-index: 1;
 }
 
-#digging-grid .functions-depth-cell {
-    background: transparent !important;
+.functions-cell .drop-off-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    font-size: 18px;
+    opacity: 0.95;
+}
+
+/* Functions grid row needs position: relative for absolute positioning */
+.functions-cell {
+    background: rgba(255,255,255,0.02) !important;
+    position: relative;
 }

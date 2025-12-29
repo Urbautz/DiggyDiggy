@@ -8,7 +8,8 @@
       "Bash(node:*)",
       "Bash(for file in dwarf-detail-modal.js enchant-modal.js forge-modal.js gem-modal.js smelter-modal.js transaction-modal.js warehouse-sell-modal.js)",
       "Bash(do sed -i \"s/researchtree\\\\.find\\(r => r\\\\.id === ''\\\\\\([^'']*\\\\\\)''\\)/researchData[''\\\\1'']/g\" \"$file\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(echo:*)"
     ]
   }
 }
