@@ -7,15 +7,24 @@
             <button class="modal-close" aria-label="Close settings" data-action="close-modal">×</button>
         </header>
         <div class="modal-body">
-            <p>Your game is automatically saved after each action. You can delete your saved progress below.</p>
+            <p>Your game is automatically saved after each action.</p>
+
+            <h3>💾 Save Management</h3>
+            <p style="margin-bottom: 1rem;">Export your save file to back it up, or import a previous save.</p>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="exportSave()">📤 Export Save</button>
+                <button class="btn-primary" onclick="importSave()">📥 Import Save</button>
+                <button class="btn-danger" onclick="deleteSave()">🗑️ Delete Save</button>
+            </div>
+
             <div id="settings-cheat-section" class="settings-cheat-section">
                 <h3 class="settings-cheat-title">🎮 Cheat Mode</h3>
-                <p class="settings-cheat-description">For testing purposes only</p>
+                <p class="settings-cheat-description"><button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Cheat</button></p>
+                            
             </div>
         </div>
         <footer class="modal-footer">
-            <button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Activate Cheat</button>
-            <button id="settings-delete-save" class="btn-danger" onclick="deleteSave()">Delete Save</button>
+
             <button class="btn-secondary" data-action="close-modal">Close</button>
         </footer>
     </div>

@@ -99,6 +99,105 @@ function coordKey(x, y) {
     return `${x},${y}`;
 }
 
+/**
+ * Unified task assignment for dwarfs
+ * Checks task priority and blacklist, then assigns the highest priority available task
+ * @param {Object} dwarf - The dwarf to assign a task to
+ * @param {number|null} diggingX - X coordinate for digging (if returning to digging), or null
+ * @param {number|null} diggingY - Y coordinate for digging (if returning to digging), or null
+ * @returns {string|null} The task assigned ('research', 'smelting', 'digging') or null if none available
+ */
+function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
+    // Get dwarf's task priority list (default if not set)
+    const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting'];
+    const taskBlacklist = dwarf.taskBlacklist || [];
+
+    // Check if each task is available
+    const researchAvailabilityDetails = {
+        activeResearch: !!activeResearch,
+        researchReservedBy: researchReservedBy,
+        researchObjectExists: typeof research === 'object' && research !== null,
+        canAttempt: canDwarfAttemptResearch(dwarf)
+    };
+
+    const taskAvailability = {
+        'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
+        'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
+        'digging': true // Digging is always considered "available" in priority check
+    };
+
+    // Debug logging
+    console.log(`[${dwarf.name}] assignDwarfTask called:`, {
+        priority: taskPriority,
+        blacklist: taskBlacklist,
+        availability: taskAvailability,
+        researchDetails: researchAvailabilityDetails,
+        position: `(${dwarf.x}, ${dwarf.y})`,
+        status: dwarf.status
+    });
+
+    // Find the highest priority task that is available and not blacklisted
+    for (const taskId of taskPriority) {
+        // Skip if blacklisted or not available
+        if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
+            console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
+            continue;
+        }
+
+        console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
+
+        // Task is available! Execute it
+        if (taskId === 'research') {
+            // Check if already at research location
+            if (dwarf.x === research.x && dwarf.y === research.y) {
+                // Already at research - start researching immediately
+                if (researchReservedBy === dwarf.name || !researchReservedBy) {
+                    researchReservedBy = dwarf.name;
+                    dwarf.status = 'researching';
+                    console.log(`[${dwarf.name}] Started researching (already at location)`);
+                    return 'research';
+                }
+            } else {
+                // Not at research - move there
+                researchReservedBy = dwarf.name;
+                scheduleMove(dwarf, research.x, research.y);
+                dwarf.status = 'moving';
+                console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
+                return 'research';
+            }
+        } else if (taskId === 'smelting') {
+            // Check if already at smelter location
+            if (dwarf.x === smelter.x && dwarf.y === smelter.y) {
+                // Already at smelter - start smelting immediately
+                if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
+                    smelterReservedBy = dwarf.name;
+                    dwarf.status = 'smelting';
+                    console.log(`[${dwarf.name}] Started smelting (already at location)`);
+                    return 'smelting';
+                }
+            } else {
+                // Not at smelter - move there
+                smelterReservedBy = dwarf.name;
+                scheduleMove(dwarf, smelter.x, smelter.y);
+                dwarf.status = 'moving';
+                console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
+                return 'smelting';
+            }
+        } else if (taskId === 'digging') {
+            // If digging coordinates provided, move there; otherwise just signal digging task
+            if (diggingX !== null && diggingY !== null) {
+                scheduleMove(dwarf, diggingX, diggingY);
+            }
+            console.log(`[${dwarf.name}] Assigned digging task`);
+            return 'digging';
+        }
+    }
+
+    // No task was assigned
+    console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
+    return null;
+}
+
 function isCellOccupiedByStanding(x, y) {
     return dwarfs.some(d => d.x === x && d.y === y && d.status !== 'moving');
 }
@@ -693,14 +792,7 @@ function actForDwarf(dwarf) {
         // Check if at research location
         if (typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y) {
             // Check if there's an active research
-            if (!activeResearch) {
-                if (researchReservedBy === dwarf.name) researchReservedBy = null;
-                dwarf.status = 'idle';
-                return;
-            }
-            
-            // Check if dwarf has enough energy
-            if (dwarf.energy < DWARF_ENERGY_COST_PER_RESEARCH) {
+if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
@@ -723,7 +815,7 @@ function actForDwarf(dwarf) {
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_RESEARCH);
+            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -797,26 +889,11 @@ function actForDwarf(dwarf) {
             const researchPoints = totalResearchPoints;
             activeResearch.progress += researchPoints;
 
-            // Debug output
-            // console.log(`[RESEARCH] ${dwarf.name} researching ${activeResearch.name} (Lv${currentLevel})`);
-            // console.log(`  Hardness: ${baseHardness} base + ${levelHardnessIncrease} (level scaling) = ${hardnessBeforeGem}`);
-            // if (amethystReduction > 0) {
-            //     console.log(`  💎 Amethyst: -${amethystReduction.toFixed(2)} hardness → ${effectiveHardness.toFixed(2)} effective hardness`);
-            // } else {
-            //     console.log(`  Effective hardness: ${effectiveHardness}`);
-            // }
-            // console.log(`  Dwarf Wisdom: ${dwarf.wisdom || 0} (min 10% chance per roll)`);
-            // debugRuns.forEach(run => {
-            //     const result = run.success ? (run.minChance ? '✓ SUCCESS (min chance!)' : '✓ SUCCESS') : '✗ FAIL';
-            //     console.log(`  Run ${run.run}: wisdom=${run.wisdom} × roll=${run.roll} = ${run.power} vs ${run.hardness} → ${result}`);
-            // });
-            // console.log(`  Total: ${totalResearchPoints} research points`);
-
-            const WisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (WisdomMultiplier > 0 ? WisdomMultiplier : 1);
+            // Award XP based on successful attempts (ceiling of square root)
+            const successfulAttempts = Math.max(1, totalResearchPoints); // At least 1 for the attempt
+            const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
+            dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
             
-            // console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
-
             // Check if research is complete using formula: baseCost * (1.15^(targetLevel-1))
             // Current level is what we have, target level is current + 1
             const targetLevel = currentLevel + 1;
@@ -880,7 +957,7 @@ function actForDwarf(dwarf) {
         // Check if at smelter location
         if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
             // Check if dwarf has enough energy
-            if (dwarf.energy < DWARF_ENERGY_COST_PER_SMELT) {
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // Reset task progress when dwarf stops due to low energy
                 if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
                     smelterTasksData[dwarf.currentSmelterTask].progress = 0;
@@ -1065,11 +1142,12 @@ function actForDwarf(dwarf) {
                 // Pay the dwarf, consume energy and award XP for each tick
                 gold = Math.max(0, gold - wage);
                 pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-                applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
+                applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
 
-                // Award XP with wisdom multiplier (like research)
-                const wisdomMultiplier = Math.ceil(Math.sqrt(dwarf.wisdom || 0));
-                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * (wisdomMultiplier > 0 ? wisdomMultiplier : 1);
+                // Award XP based on successful attempts (ceiling of square root)
+                const successfulAttempts = Math.max(1, totalProgressGained); // At least 1 for the attempt
+                const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
+                dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
 
                 return;
             }
@@ -1115,7 +1193,7 @@ function actForDwarf(dwarf) {
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
+            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
@@ -1196,36 +1274,9 @@ function actForDwarf(dwarf) {
                                 scheduleMove(dwarf, house.x, house.y);
                                 //console.log(`Dwarf ${dwarf.name} low energy after unload -> heading to house at (${house.x},${house.y})`);
                             } else {
-                                // Determine available special tasks
-                                const canResearch = activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf);
-                                const canSmelt = smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null;
-
-                                // Check for special task
-                                if ((canResearch || canSmelt) && Math.random() < TASK_RESEARCH_CHANCE) {
-                                    if (canResearch && canSmelt) {
-                                        // Both available - split evenly
-                                        if (Math.random() < TASK_RESEARCH_SPLIT) {
-                                            researchReservedBy = dwarf.name;
-                                            scheduleMove(dwarf, research.x, research.y);
-                                            dwarf.status = 'moving';
-                                        } else {
-                                            smelterReservedBy = dwarf.name;
-                                            scheduleMove(dwarf, smelter.x, smelter.y);
-                                            dwarf.status = 'moving';
-                                        }
-                                    } else if (canResearch) {
-                                        researchReservedBy = dwarf.name;
-                                        scheduleMove(dwarf, research.x, research.y);
-                                        dwarf.status = 'moving';
-                                    } else {
-                                        smelterReservedBy = dwarf.name;
-                                        scheduleMove(dwarf, smelter.x, smelter.y);
-                                        dwarf.status = 'moving';
-                                    }
-                                } else {
-                                    scheduleMove(dwarf, chosen, rowIdx);
-                                    //console.log(`Dwarf ${dwarf.name} returning from drop-off to (${chosen},${rowIdx})`);
-                                }
+                                // Use unified task assignment function
+                                assignDwarfTask(dwarf, chosen, rowIdx);
+                                //console.log(`Dwarf ${dwarf.name} returning from drop-off with task assignment`);
                             }
                         }
                     }
@@ -1265,80 +1316,35 @@ function actForDwarf(dwarf) {
     const power = getDwarfToolPower(dwarf);
 
     const row = grid[rowIndex];
-    
-    // Check if dwarf is at research location BEFORE accessing grid cells (research is outside main grid)
-    if (dwarf.status === 'idle' && typeof research === 'object' && research !== null &&
-        dwarf.x === research.x && dwarf.y === research.y && activeResearch && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH && canDwarfAttemptResearch(dwarf)) {
-        // Only start researching if this dwarf has reserved it or it's not reserved
-        if (researchReservedBy === dwarf.name || !researchReservedBy) {
-            researchReservedBy = dwarf.name;
-            dwarf.status = 'researching';
-            //console.log(`Dwarf ${dwarf.name} started researching at (${dwarf.x},${dwarf.y})`);
-            return;
-        }
+
+    // Check if dwarf is at research/smelter location BEFORE accessing grid cells (they are outside main grid)
+    // If so, use unified task assignment to respect priorities
+    const atResearch = typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y;
+    const atSmelter = typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y;
+
+    if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+        // Dwarf at special location - use unified task assignment
+        assignDwarfTask(dwarf, null, null);
+        // Task was assigned (or all tasks blacklisted) - return either way
+        return;
     }
-    
-    // Check if dwarf is at smelter location BEFORE accessing grid cells (smelter is outside main grid)
-    if (dwarf.status === 'idle' && typeof smelter === 'object' && smelter !== null && 
-        dwarf.x === smelter.x && dwarf.y === smelter.y && smelterHasWork() && dwarf.energy >= DWARF_ENERGY_COST_PER_SMELT) {
-        // Only start smelting if this dwarf has reserved it or it's not reserved
-        if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
-            smelterReservedBy = dwarf.name;
-            dwarf.status = 'smelting';
-            //console.log(`Dwarf ${dwarf.name} started smelting at (${dwarf.x},${dwarf.y})`);
-            return;
-        }
-    }
-    
+
     const curCell = row[originalX];
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
     // Idle dwarf - check for tasks based on priority
-    if (dwarf.status === 'idle' && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
-        // Get dwarf's task priority list (default if not set)
-        const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting'];
-        const taskBlacklist = dwarf.taskBlacklist || [];
+    if (dwarf.status === 'idle' && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+        // Use unified task assignment (pass null for digging coords to allow continuing to digging logic below)
+        const assignedTask = assignDwarfTask(dwarf, null, null);
 
-        // Check if each task is available
-        const taskAvailability = {
-            'research': activeResearch && !researchReservedBy && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
-            'smelting': smelterHasWork() && !smelterReservedBy && typeof smelter === 'object' && smelter !== null,
-            'digging': true // Digging is always available
-        };
-
-        // Find the highest priority task that is available and not blacklisted
-        for (const taskId of taskPriority) {
-            // Skip if blacklisted or not available
-            if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
-                continue;
-            }
-
-            // Task is available! Execute it
-            if (taskId === 'research') {
-                // Check if already at research location
-                if (dwarf.x !== research.x || dwarf.y !== research.y) {
-                    if (!dwarf.moveTarget || dwarf.moveTarget.x !== research.x || dwarf.moveTarget.y !== research.y) {
-                        researchReservedBy = dwarf.name;
-                        scheduleMove(dwarf, research.x, research.y);
-                        return;
-                    }
-                }
-            } else if (taskId === 'smelting') {
-                // Check if already at smelter location
-                if (dwarf.x !== smelter.x || dwarf.y !== smelter.y) {
-                    if (!dwarf.moveTarget || dwarf.moveTarget.x !== smelter.x || dwarf.moveTarget.y !== smelter.y) {
-                        smelterReservedBy = dwarf.name;
-                        scheduleMove(dwarf, smelter.x, smelter.y);
-                        return;
-                    }
-                }
-            } else if (taskId === 'digging') {
-                // Continue to digging logic below
-                break;
-            }
+        // If research or smelting was assigned, dwarf is moving to that task - return early
+        if (assignedTask === 'research' || assignedTask === 'smelting') {
+            return;
         }
+        // If 'digging' would be assigned, we continue to the digging logic below
+        // If null was returned, no valid task was available (all blacklisted) - continue to digging as fallback
     }
 
     // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
