@@ -792,14 +792,7 @@ function actForDwarf(dwarf) {
         // Check if at research location
         if (typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y) {
             // Check if there's an active research
-            if (!activeResearch) {
-                if (researchReservedBy === dwarf.name) researchReservedBy = null;
-                dwarf.status = 'idle';
-                return;
-            }
-            
-            // Check if dwarf has enough energy
-            if (dwarf.energy < DWARF_ENERGY_COST_PER_RESEARCH) {
+if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
@@ -822,7 +815,7 @@ function actForDwarf(dwarf) {
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_RESEARCH);
+            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -896,28 +889,11 @@ function actForDwarf(dwarf) {
             const researchPoints = totalResearchPoints;
             activeResearch.progress += researchPoints;
 
-            // Debug output
-            // console.log(`[RESEARCH] ${dwarf.name} researching ${activeResearch.name} (Lv${currentLevel})`);
-            // console.log(`  Hardness: ${baseHardness} base + ${levelHardnessIncrease} (level scaling) = ${hardnessBeforeGem}`);
-            // if (amethystReduction > 0) {
-            //     console.log(`  💎 Amethyst: -${amethystReduction.toFixed(2)} hardness → ${effectiveHardness.toFixed(2)} effective hardness`);
-            // } else {
-            //     console.log(`  Effective hardness: ${effectiveHardness}`);
-            // }
-            // console.log(`  Dwarf Wisdom: ${dwarf.wisdom || 0} (min 10% chance per roll)`);
-            // debugRuns.forEach(run => {
-            //     const result = run.success ? (run.minChance ? '✓ SUCCESS (min chance!)' : '✓ SUCCESS') : '✗ FAIL';
-            //     console.log(`  Run ${run.run}: wisdom=${run.wisdom} × roll=${run.roll} = ${run.power} vs ${run.hardness} → ${result}`);
-            // });
-            // console.log(`  Total: ${totalResearchPoints} research points`);
-
             // Award XP based on successful attempts (ceiling of square root)
             const successfulAttempts = Math.max(1, totalResearchPoints); // At least 1 for the attempt
             const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * xpMultiplier;
+            dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
             
-            // console.log(`Dwarf ${dwarf.name} generated ${researchPoints} research points (wisdom: ${dwarf.wisdom || 0})`);
-
             // Check if research is complete using formula: baseCost * (1.15^(targetLevel-1))
             // Current level is what we have, target level is current + 1
             const targetLevel = currentLevel + 1;
@@ -981,7 +957,7 @@ function actForDwarf(dwarf) {
         // Check if at smelter location
         if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
             // Check if dwarf has enough energy
-            if (dwarf.energy < DWARF_ENERGY_COST_PER_SMELT) {
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // Reset task progress when dwarf stops due to low energy
                 if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
                     smelterTasksData[dwarf.currentSmelterTask].progress = 0;
@@ -1166,12 +1142,12 @@ function actForDwarf(dwarf) {
                 // Pay the dwarf, consume energy and award XP for each tick
                 gold = Math.max(0, gold - wage);
                 pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-                applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
+                applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
 
                 // Award XP based on successful attempts (ceiling of square root)
                 const successfulAttempts = Math.max(1, totalProgressGained); // At least 1 for the attempt
                 const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
-                dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION * xpMultiplier;
+                dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
 
                 return;
             }
@@ -1217,7 +1193,7 @@ function actForDwarf(dwarf) {
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_SMELT);
+            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
             dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
             
             //console.log(`Dwarf ${dwarf.name} performed smelting task`);
@@ -1346,7 +1322,7 @@ function actForDwarf(dwarf) {
     const atResearch = typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y;
     const atSmelter = typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y;
 
-    if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
+    if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Dwarf at special location - use unified task assignment
         assignDwarfTask(dwarf, null, null);
         // Task was assigned (or all tasks blacklisted) - return either way
@@ -1359,7 +1335,7 @@ function actForDwarf(dwarf) {
     let skipHorizontalScan = false;
 
     // Idle dwarf - check for tasks based on priority
-    if (dwarf.status === 'idle' && dwarf.energy >= DWARF_ENERGY_COST_PER_RESEARCH) {
+    if (dwarf.status === 'idle' && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Use unified task assignment (pass null for digging coords to allow continuing to digging logic below)
         const assignedTask = assignDwarfTask(dwarf, null, null);
 

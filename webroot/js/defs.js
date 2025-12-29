@@ -14,9 +14,7 @@ const visibleDepth = 10; // show only 10 rows in the UI
 // MATERIAL REGISTRY
 // ============================================================================
 const materials = {
-  // ──────────────────────────────────────────────────────────────────────────
-  // LOOSE MATERIALS
-  // ──────────────────────────────────────────────────────────────────────────
+  // This list has been automatically reordered by minlevel.
   'earth': {
     name: 'Earth',
     type: 'Loose',
@@ -35,7 +33,7 @@ const materials = {
     probability: 200,
     worth: 0.7,
     minlevel: 0,
-    maxlevel: 100,
+    maxlevel: 300,
     color: '#e0aa46',
     weight: 5
   },
@@ -46,7 +44,7 @@ const materials = {
     probability: 100,
     worth: 0,
     minlevel: 0,
-    maxlevel: 999,
+    maxlevel: 1999,
     color: '#4a2f13ff',
     weight: 5
   },
@@ -57,7 +55,7 @@ const materials = {
     probability: 100,
     worth: 1.4,
     minlevel: 75,
-    maxlevel: 1999,
+    maxlevel: 2999,
     color: '#a57f61',
     weight: 5
   },
@@ -68,24 +66,42 @@ const materials = {
     probability: 200,
     worth: 0.9,
     minlevel: 150,
-    maxlevel: 2999,
+    maxlevel: 3999,
     color: '#534f4fff',
     weight: 5
   },
-  'loose stone': {
-    name: 'Loose Stone',
-    type: 'Loose',
-    hardness: 35,
-    probability: 160,
-    worth: 0.9,
-    minlevel: 1850,
-    color: '#d7c8baff',
-    weight: 6
+  'gabbro': {
+    name: 'Gabbro',
+    type: 'Stone Soft',
+    hardness: 40,
+    probability: 180,
+    worth: 8.6,
+    minlevel: 500,
+    maxlevel: 17999,
+    color: '#d4a536ff',
+    weight: 14
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // SOFT STONE
-  // ──────────────────────────────────────────────────────────────────────────
+  'sandstone': {
+    name: 'Sandstone',
+    type: 'Stone Soft',
+    hardness: 50,
+    probability: 400,
+    worth: 2.5,
+    minlevel: 500,
+    maxlevel: 9999,
+    color: '#9d4d39ff',
+    weight: 15
+  },
+  'coal': {
+    name: 'Coal',
+    type: 'Special',
+    hardness: 80,
+    probability: 80,
+    worth: 10.5,
+    minlevel: 500,
+    color: '#191919ff',
+    weight: 8
+  },
   'chalk': {
     name: 'Chalk',
     type: 'Stone Soft',
@@ -111,7 +127,7 @@ const materials = {
   'aragonite': {
     name: 'Aragonite',
     type: 'Stone Soft',
-    hardness: 60,
+    hardness: 55,
     probability: 120,
     worth: 3.4,
     minlevel: 1000,
@@ -119,43 +135,20 @@ const materials = {
     color: '#c75480ff',
     weight: 13
   },
-  'gabbro': {
-    name: 'Gabbro',
-    type: 'Stone Soft',
-    hardness: 70,
-    probability: 180,
-    worth: 8.6,
-    minlevel: 500,
-    maxlevel: 17999,
-    color: '#d4a536ff',
-    weight: 14
-  },
-  'pyroxene': {
-    name: 'Pyroxene',
-    type: 'Stone Soft',
-    hardness: 75,
-    probability: 100,
-    worth: 5.7,
-    minlevel: 1800,
-    maxlevel: 12999,
-    color: '#9acd32ff',
-    weight: 14
-  },
-  'sandstone': {
-    name: 'Sandstone',
-    type: 'Stone Soft',
-    hardness: 80,
-    probability: 400,
-    worth: 2.5,
-    minlevel: 500,
-    maxlevel: 9999,
-    color: '#9d4d39ff',
-    weight: 15
+    'bronce ore': {
+    name: 'Bronce Ore',
+    type: 'Ore Soft',
+    hardness: 100,
+    probability: 75,
+    worth: 38,
+    minlevel: 1000,
+    color: '#7e6136ff',
+    weight: 30
   },
   'limestone': {
     name: 'Limestone',
     type: 'Stone Soft',
-    hardness: 80,
+    hardness: 60,
     probability: 200,
     worth: 2.5,
     minlevel: 1200,
@@ -163,20 +156,42 @@ const materials = {
     color: '#a8a19fff',
     weight: 15
   },
-  'lime': {
+    'lime': {
     name: 'Lime',
     type: 'Processed',
     hardness: 0,
     probability: 0,
     worth: 8.0,
-    minlevel: 2400,
+    minlevel: 1200,
     color: '#e8f4f0ff',
     weight: 3
   },
+  'pyroxene': {
+    name: 'Pyroxene',
+    type: 'Stone Soft',
+    hardness: 65,
+    probability: 100,
+    worth: 5.7,
+    minlevel: 1800,
+    maxlevel: 12999,
+    color: '#9acd32ff',
+    weight: 14
+  },
+  'loose stone': {
+    name: 'Loose Stone',
+    type: 'Loose',
+    hardness: 35,
+    probability: 100,
+    worth: 0.9,
+    minlevel: 1850,
+    color: '#d7c8baff',
+    weight: 6
+  },
+
   'peridotite': {
     name: 'Peridotite',
     type: 'Stone Soft',
-    hardness: 90,
+    hardness: 75,
     probability: 140,
     worth: 7.8,
     minlevel: 2500,
@@ -187,7 +202,7 @@ const materials = {
   'claystone': {
     name: 'Clay Stone',
     type: 'Stone Soft',
-    hardness: 100,
+    hardness: 80,
     probability: 300,
     worth: 2.0,
     minlevel: 3000,
@@ -195,14 +210,10 @@ const materials = {
     color: '#53412fff',
     weight: 15
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // MEDIUM STONE
-  // ──────────────────────────────────────────────────────────────────────────
   'andesite': {
     name: 'Andesite',
     type: 'Stone Medium',
-    hardness: 200,
+    hardness: 100,
     probability: 150,
     worth: 8,
     minlevel: 3500,
@@ -213,7 +224,7 @@ const materials = {
   'marble': {
     name: 'Marble',
     type: 'Stone Medium',
-    hardness: 250,
+    hardness: 150,
     probability: 200,
     worth: 29,
     minlevel: 4000,
@@ -221,20 +232,10 @@ const materials = {
     color: '#7a706eff',
     weight: 25
   },
-  'polished marble': {
-    name: 'Polished Marble',
-    type: 'Processed',
-    hardness: 250,
-    probability: 0,
-    worth: 140,
-    minlevel: 99999,
-    color: '#c8c0beff',
-    weight: 20
-  },
   'rhyolite': {
     name: 'Rhyolite',
     type: 'Stone Medium',
-    hardness: 350,
+    hardness: 150,
     probability: 220,
     worth: 9,
     minlevel: 4500,
@@ -245,7 +246,7 @@ const materials = {
   'schist': {
     name: 'Schist',
     type: 'Stone Medium',
-    hardness: 400,
+    hardness: 175,
     probability: 200,
     worth: 15,
     minlevel: 5000,
@@ -256,7 +257,7 @@ const materials = {
   'slate': {
     name: 'Slate',
     type: 'Stone Medium',
-    hardness: 800,
+    hardness: 225,
     probability: 200,
     worth: 19,
     minlevel: 5000,
@@ -266,139 +267,22 @@ const materials = {
   'dolomite': {
     name: 'Dolomite',
     type: 'Stone Medium',
-    hardness: 900,
+    hardness: 425,
     probability: 200,
     worth: 12,
     minlevel: 5000,
     color: '#956f88ff',
     weight: 25
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // HARD STONE
-  // ──────────────────────────────────────────────────────────────────────────
-  'gneiss': {
-    name: 'Gneiss',
-    type: 'Stone Hard',
-    hardness: 1050,
-    probability: 100,
-    worth: 22,
-    minlevel: 15000,
-    color: '#c9a875ff',
-    weight: 34
-  },
-  'granite': {
-    name: 'Granite',
-    type: 'Stone Hard',
-    hardness: 1100,
-    probability: 400,
-    worth: 31,
-    minlevel: 18000,
-    color: '#280918ff',
-    weight: 35
-  },
-  'polished granite': {
-    name: 'Polished Granite',
-    type: 'Processed',
-    hardness: 250,
-    probability: 0,
-    worth: 250,
-    minlevel: 99999,
-    color: '#4a1828ff',
+  'copper ore': {
+    name: 'Copper Ore',
+    type: 'Ore Soft',
+    hardness: 1800,
+    probability: 50,
+    worth: 60,
+    minlevel: 6000,
+    color: '#c75e41ff',
     weight: 30
-  },
-  'andalusite': {
-    name: 'Andalusite',
-    type: 'Stone Hard',
-    hardness: 1200,
-    probability: 180,
-    worth: 13,
-    minlevel: 25000,
-    color: '#d47846ff',
-    weight: 34
-  },
-  'komatiite': {
-    name: 'Komatiite',
-    type: 'Stone Hard',
-    hardness: 1400,
-    probability: 160,
-    worth: 15,
-    minlevel: 45000,
-    color: '#825135ff',
-    weight: 34
-  },
-  'hornfels': {
-    name: 'Hornfels',
-    type: 'Stone Hard',
-    hardness: 1600,
-    probability: 220,
-    worth: 16,
-    minlevel: 65000,
-    color: '#6b6b6bff',
-    weight: 35
-  },
-  'basalt': {
-    name: 'Basalt',
-    type: 'Stone Hard',
-    hardness: 1750,
-    probability: 400,
-    worth: 17,
-    minlevel: 95000,
-    color: '#484848ff',
-    weight: 35
-  },
-  'sillimanite': {
-    name: 'Sillimanite',
-    type: 'Stone Hard',
-    hardness: 1850,
-    probability: 140,
-    worth: 20,
-    minlevel: 125000,
-    color: '#8b7d5bff',
-    weight: 34
-  },
-  'obsidian': {
-    name: 'Obsidian',
-    type: 'Stone Hard',
-    hardness: 1950,
-    probability: 200,
-    worth: 45,
-    minlevel: 195000,
-    color: '#184f48ff',
-    weight: 35
-  },
-    'polished obsidian': {
-    name: 'Polished Obsidian',
-    type: 'Processed',
-    hardness: 250,
-    probability: 0,
-    worth: 290,
-    minlevel: 99999,
-    color: '#2a6f68ff',
-    weight: 30
-  },
-  'quartzite': {
-    name: 'Quartzite',
-    type: 'Stone Hard',
-    hardness: 2500,
-    probability: 200,
-    worth: 31,
-    minlevel: 135000,
-    color: '#c35858ff',
-    weight: 35
-  },
-  // ──────────────────────────────────────────────────────────────────────────
-  // SPECIAL MATERIALS
-  // ──────────────────────────────────────────────────────────────────────────
-  'coal': {
-    name: 'Coal',
-    type: 'Special',
-    hardness: 80,
-    probability: 80,
-    worth: 10.5,
-    minlevel: 500,
-    color: '#191919ff',
-    weight: 8
   },
   'magma': {
     name: 'Magma',
@@ -410,72 +294,204 @@ const materials = {
     color: '#fa6509ff',
     weight: 10
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // GEMS
-  // ──────────────────────────────────────────────────────────────────────────
-  'ruby': {
-    name: 'Ruby',
-    type: 'Gem',
-    hardness: 300,
-    probability: 0,
-    worth: 50,
-    minlevel: 5000,
-    color: '#9b111eff',
-    weight: 1
+  'silver ore': {
+    name: 'Silver Ore',
+    type: 'Ore Medium',
+    hardness: 2100,
+    probability: 20,
+    worth: 1200,
+    minlevel: 10999,
+    color: '#c0c0c0ff',
+    weight: 42
   },
-  'emerald': {
-    name: 'Emerald',
-    type: 'Gem',
+  'gneiss': {
+    name: 'Gneiss',
+    type: 'Stone Hard',
+    hardness: 1050,
+    probability: 100,
+    worth: 22,
+    minlevel: 15000,
+    color: '#c9a875ff',
+    weight: 34
+  },
+  'zinc ore': {
+    name: 'Zinc Ore',
+    type: 'Ore Medium',
+    hardness: 650,
+    probability: 25,
+    worth: 200,
+    minlevel: 15000,
+    color: '#8ec281ff',
+    weight: 40
+  },
+  'gold ore': {
+    name: 'Gold Ore',
+    type: 'Ore Medium',
     hardness: 400,
-    probability: 0,
-    worth: 50,
-    minlevel: 5000,
-    color: '#50c878ff',
-    weight: 1
+    probability: 15,
+    worth: 3000,
+    minlevel: 15000,
+    color: '#d6a80eff',
+    weight: 45
   },
-  'sapphire': {
-    name: 'Sapphire',
-    type: 'Gem',
+  'granite': {
+    name: 'Granite',
+    type: 'Stone Hard',
+    hardness: 1100,
+    probability: 400,
+    worth: 31,
+    minlevel: 18000,
+    color: '#280918ff',
+    weight: 35
+  },
+  'andalusite': {
+    name: 'Andalusite',
+    type: 'Stone Hard',
+    hardness: 1200,
+    probability: 180,
+    worth: 13,
+    minlevel: 25000,
+    color: '#d47846ff',
+    weight: 34
+  },
+  'iron ore': {
+    name: 'Iron Ore',
+    type: 'Ore Medium',
     hardness: 500,
-    probability: 0,
-    worth: 50,
-    minlevel: 5000,
-    color: '#0f52baff',
-    weight: 1
+    probability: 50,
+    worth: 400,
+    minlevel: 30000,
+    color: '#572012ff',
+    weight: 48
   },
-  'diamond': {
-    name: 'Diamond',
-    type: 'Gem',
-    hardness: 600,
-    probability: 0,
-    worth: 75,
-    minlevel: 5000,
-    color: '#b9f2ffff',
-    weight: 1
+  'nickel ore': {
+    name: 'Nickel Ore',
+    type: 'Ore Medium',
+    hardness: 450,
+    probability: 30,
+    worth: 350,
+    minlevel: 40000,
+    color: '#b2b25cff',
+    weight: 46
   },
-  'amethyst': {
-    name: 'Amethyst',
-    type: 'Gem',
-    hardness: 900,
-    probability: 0,
-    worth: 90,
-    minlevel: 5000,
-    color: '#9966ccff',
-    weight: 1
+  'komatiite': {
+    name: 'Komatiite',
+    type: 'Stone Hard',
+    hardness: 2400,
+    probability: 160,
+    worth: 15,
+    minlevel: 45000,
+    color: '#825135ff',
+    weight: 34
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // SOFT ORES & INGOTS
-  // ──────────────────────────────────────────────────────────────────────────
-  'bronce ore': {
-    name: 'Bronce Ore',
-    type: 'Ore Soft',
-    hardness: 100,
-    probability: 75,
-    worth: 38,
-    minlevel: 2000,
-    color: '#7e6136ff',
+  'platinum ore': {
+    name: 'Platinum Ore',
+    type: 'Ore Hard',
+    hardness: 4000,
+    probability: 15,
+    worth: 2500,
+    minlevel: 55000,
+    color: '#c75e41ff',
+    weight: 50
+  },
+  'hornfels': {
+    name: 'Hornfels',
+    type: 'Stone Hard',
+    hardness: 3600,
+    probability: 220,
+    worth: 16,
+    minlevel: 65000,
+    color: '#6b6b6bff',
+    weight: 35
+  },
+  'titanium ore': {
+    name: 'Titanium Ore',
+    type: 'Ore Hard',
+    hardness: 6000,
+    probability: 15,
+    worth: 3000,
+    minlevel: 90000,
+    color: '#57375dff',
+    weight: 50
+  },
+  'basalt': {
+    name: 'Basalt',
+    type: 'Stone Hard',
+    hardness: 4750,
+    probability: 400,
+    worth: 17,
+    minlevel: 95000,
+    color: '#484848ff',
+    weight: 35
+  },
+  'adamantine ore': {
+    name: 'Adamantine Ore',
+    type: 'Ore Hard',
+    hardness: 10000,
+    probability: 15,
+    worth: 7000,
+    minlevel: 110000,
+    color: '#8eb95eff',
+    weight: 50
+  },
+  'sillimanite': {
+    name: 'Sillimanite',
+    type: 'Stone Hard',
+    hardness: 7850,
+    probability: 140,
+    worth: 20,
+    minlevel: 125000,
+    color: '#8b7d5bff',
+    weight: 34
+  },
+  'quartzite': {
+    name: 'Quartzite',
+    type: 'Stone Hard',
+    hardness: 8500,
+    probability: 200,
+    worth: 31,
+    minlevel: 135000,
+    color: '#c35858ff',
+    weight: 35
+  },
+  'obsidian': {
+    name: 'Obsidian',
+    type: 'Stone Hard',
+    hardness: 9999,
+    probability: 200,
+    worth: 45,
+    minlevel: 195000,
+    color: '#184f48ff',
+    weight: 35
+  },
+  'polished marble': {
+    name: 'Polished Marble',
+    type: 'Processed',
+    hardness: 250,
+    probability: 0,
+    worth: 140,
+    minlevel: 99999,
+    color: '#c8c0beff',
+    weight: 20
+  },
+  'polished granite': {
+    name: 'Polished Granite',
+    type: 'Processed',
+    hardness: 250,
+    probability: 0,
+    worth: 250,
+    minlevel: 99999,
+    color: '#4a1828ff',
+    weight: 30
+  },
+  'polished obsidian': {
+    name: 'Polished Obsidian',
+    type: 'Processed',
+    hardness: 250,
+    probability: 0,
+    worth: 290,
+    minlevel: 99999,
+    color: '#2a6f68ff',
     weight: 30
   },
   'bronce': {
@@ -489,16 +505,6 @@ const materials = {
     forge: 'Base',
     weight: 18
   },
-  'copper ore': {
-    name: 'Copper Ore',
-    type: 'Ore Soft',
-    hardness: 180,
-    probability: 50,
-    worth: 60,
-    minlevel: 6000,
-    color: '#c75e41ff',
-    weight: 30
-  },
   'copper': {
     name: 'Copper Ingot',
     type: 'Ingot',
@@ -509,20 +515,6 @@ const materials = {
     color: '#962c0cff',
     forge: 'Base',
     weight: 18
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // MEDIUM ORES & INGOTS
-  // ──────────────────────────────────────────────────────────────────────────
-  'zinc ore': {
-    name: 'Zinc Ore',
-    type: 'Ore Medium',
-    hardness: 650,
-    probability: 25,
-    worth: 200,
-    minlevel: 15000,
-    color: '#8ec281ff',
-    weight: 40
   },
   'zinc': {
     name: 'Zinc Ingot',
@@ -546,16 +538,6 @@ const materials = {
     forge: 'Base',
     weight: 18
   },
-  'silver ore': {
-    name: 'Silver Ore',
-    type: 'Ore Medium',
-    hardness: 350,
-    probability: 20,
-    worth: 1200,
-    minlevel: 10999,
-    color: '#c0c0c0ff',
-    weight: 42
-  },
   'silver': {
     name: 'Silver Ingot',
     type: 'Ingot',
@@ -567,16 +549,6 @@ const materials = {
     forge: 'Plating',
     weight: 20
   },
-  'gold ore': {
-    name: 'Gold Ore',
-    type: 'Ore Medium',
-    hardness: 400,
-    probability: 15,
-    worth: 3000,
-    minlevel: 15000,
-    color: '#d6a80eff',
-    weight: 45
-  },
   'gold': {
     name: 'Gold Ingot',
     type: 'Ingot',
@@ -587,16 +559,6 @@ const materials = {
     color: '#ffd700ff',
     forge: 'Plating',
     weight: 22
-  },
-  'iron ore': {
-    name: 'Iron Ore',
-    type: 'Ore Medium',
-    hardness: 500,
-    probability: 50,
-    worth: 400,
-    minlevel: 30000,
-    color: '#572012ff',
-    weight: 48
   },
   'pig iron': {
     name: 'Pig Iron Ingot',
@@ -652,16 +614,6 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
-    'nickel ore': {
-    name: 'Nickel Ore',
-    type: 'Ore Medium',
-    hardness: 450,
-    probability: 30,
-    worth: 350,
-    minlevel: 40000,
-    color: '#b2b25cff',
-    weight: 46
-  },
   'nickel': {
     name: 'Nickel Ingot',
     type: 'Ingot',
@@ -673,21 +625,7 @@ const materials = {
     forge: 'Plating',
     weight: 23
   },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // HARD ORES
-  // ──────────────────────────────────────────────────────────────────────────
-  'platinum ore': {
-    name: 'Platinum Ore',
-    type: 'Ore Hard',
-    hardness: 4000,
-    probability: 15,
-    worth: 2500,
-    minlevel: 55000,
-    color: '#c75e41ff',
-    weight: 50
-  },
-    'platinum': {
+  'platinum': {
     name: 'Platinum Ingot',
     type: 'Ingot',
     hardness: 700,
@@ -698,17 +636,7 @@ const materials = {
     forge: 'Base',
     weight: 25
   },
-  'titanium ore': {
-    name: 'Titanium Ore',
-    type: 'Ore Hard',
-    hardness: 6000,
-    probability: 15,
-    worth: 3000,
-    minlevel: 90000,
-    color: '#57375dff',
-    weight: 50
-  },
-    'titanium': {
+  'titanium': {
     name: 'Titanium Ingot',
     type: 'Ingot',
     hardness: 900,
@@ -719,17 +647,7 @@ const materials = {
     forge: 'Base',
     weight: 50
   },
-  'adamantine ore': {
-    name: 'Adamantine Ore',
-    type: 'Ore Hard',
-    hardness: 10000,
-    probability: 15,
-    worth: 7000,
-    minlevel: 110000,
-    color: '#8eb95eff',
-    weight: 50
-  },
-    'adamantine': {
+  'adamantine': {
     name: 'Adamantine Ingot',
     type: 'Ingot',
     hardness: 1200,
@@ -739,6 +657,56 @@ const materials = {
     color: '#2d2121ff',
     forge: 'Base',
     weight: 50
+  },
+  'ruby': {
+    name: 'Ruby',
+    type: 'Gem',
+    hardness: 300,
+    probability: 0,
+    worth: 50,
+    minlevel: 5000,
+    color: '#9b111eff',
+    weight: 1
+  },
+  'emerald': {
+    name: 'Emerald',
+    type: 'Gem',
+    hardness: 400,
+    probability: 0,
+    worth: 50,
+    minlevel: 5000,
+    color: '#50c878ff',
+    weight: 1
+  },
+  'sapphire': {
+    name: 'Sapphire',
+    type: 'Gem',
+    hardness: 500,
+    probability: 0,
+    worth: 50,
+    minlevel: 5000,
+    color: '#0f52baff',
+    weight: 1
+  },
+  'diamond': {
+    name: 'Diamond',
+    type: 'Gem',
+    hardness: 600,
+    probability: 0,
+    worth: 75,
+    minlevel: 5000,
+    color: '#b9f2ffff',
+    weight: 1
+  },
+  'amethyst': {
+    name: 'Amethyst',
+    type: 'Gem',
+    hardness: 900,
+    probability: 0,
+    worth: 90,
+    minlevel: 5000,
+    color: '#9966ccff',
+    weight: 1
   },
 };
 
@@ -1148,15 +1116,15 @@ let researchtree = [
     { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 200, requires: [{'grinding-machine':1}],
       min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
     { id: 'gem-cutting', name: 'Gem Cutting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 1, hardness: 300, requires: [{'grinding-machine':1}],
-      min_depth: 2500, description: 'Unlocks gem cutting at the smelter. The cutting takes 250 Ticks.' },
+      min_depth: 2000, description: 'Unlocks gem cutting at the smelter.' },
     { id: 'gem-setting', name: 'Gem Setting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 3, hardness: 320, requires: [{'gem-cutting':1}],
-      min_depth: 2500, description: 'Set up to 3 Gems into the dwarfs tools.' },
+      min_depth: 2000, description: 'Set up to 3 Gems into the dwarfs tools.' },
       { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, hardness: 250, requires: [{'grinding-machine':1}],
-      min_depth: 2000, description: 'Unlocks the furnace for smelting of ores.' },
+      min_depth: 1000, description: 'Unlocks the furnace for smelting of ores.' },
     { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, hardness: 500, requires: [{'furnace':1}],
       min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
     { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, hardness: 350, requires: [{'furnace':1}],
-      min_depth: 2000, description: 'Unlocks the forge for crafting and upgrading tools.' },
+      min_depth: 1000, description: 'Unlocks the forge for crafting and upgrading tools.' },
     { id: 'alloys', name: 'Alloys', cost: 4000, goldCost: 8000, level: 0, maxlevel: 1, hardness: 700, requires: [{'furnace':1}],
       min_depth: 15000, description: 'Unlocks the ability to create alloys in the smelter.' },
     { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 100,
