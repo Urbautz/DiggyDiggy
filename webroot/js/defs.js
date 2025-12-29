@@ -1094,52 +1094,265 @@ let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user con
 let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
-let researchtree = [
-    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, goldCost: 10, level: 0, hardness: 10,
-      description: 'Dwarfs dig 1% harder.' },
-    { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 10, level: 0, hardness: 20,
-      description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-    { id: 'trading', name: 'Better trading', cost: 100, goldCost: 10, level: 0, hardness: 30,
-      description: 'Prices are improved by 3% per level' },
-    { id: 'price-negotiations', name: 'Price Negotiations', cost: 3000, goldCost: 500, level: 0, maxlevel: 1, hardness: 50, requires: [{'trading':10}],
-      min_depth: 5000, description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.' },
-    { id: 'small-time-investments', name: 'Small Time Investments', cost: 5000, goldCost: 1000, level: 0, maxlevel: 1, hardness: 100, requires: [{'price-negotiations':1}],
-      min_depth: 8000, description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.' },
-    { id: 'buckets', name: 'Bigger Buckets', cost: 300, goldCost: 200, level: 0, maxlevel:10, hardness: 50,
-      description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).' },
-    { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15, hardness: 60,
-      description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-    { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 600, goldCost: 300, level: 0, maxlevel: 30, hardness: 150,
-      min_depth: 250, description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.' },
-    { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1, hardness: 70,
-      min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
-    { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 200, requires: [{'grinding-machine':1}],
-      min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'gem-cutting', name: 'Gem Cutting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 1, hardness: 300, requires: [{'grinding-machine':1}],
-      min_depth: 2000, description: 'Unlocks gem cutting at the smelter.' },
-    { id: 'gem-setting', name: 'Gem Setting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 3, hardness: 320, requires: [{'gem-cutting':1}],
-      min_depth: 2000, description: 'Set up to 3 Gems into the dwarfs tools.' },
-      { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, hardness: 250, requires: [{'grinding-machine':1}],
-      min_depth: 1000, description: 'Unlocks the furnace for smelting of ores.' },
-    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, hardness: 500, requires: [{'furnace':1}],
-      min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
-    { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, hardness: 350, requires: [{'furnace':1}],
-      min_depth: 1000, description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'alloys', name: 'Alloys', cost: 4000, goldCost: 8000, level: 0, maxlevel: 1, hardness: 700, requires: [{'furnace':1}],
-      min_depth: 15000, description: 'Unlocks the ability to create alloys in the smelter.' },
-    { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 100,
-      min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
-    { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20, hardness: 400,
-      min_depth: 3000, unlock_requires: 'wage_increase', description: 'Reduces wage increase per dwarf level by 1%.' },
-    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, goldCost: 3000, level: 0, maxlevel: 15, hardness: 450, requires: [{'material-science':3}],
-      min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.' },
-    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, hardness: 800, requires: [{'material-science':5}, {'expertise-stone':1}],
-      min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.' },
-    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, hardness: 550, requires: [{'forge':1}],
-      min_depth: 6000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
-    { id: 'magma-furnace', name: 'Magma Operated Furnace', cost: 25000, goldCost: 50000, level: 0, maxlevel: 1, hardness: 1000, requires: [{'furnace-insulation':5},  {'furnace-temperature':10}],
-      min_depth: 8000, description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.' },
-    ];
+// ============================================================================
+// RESEARCH REGISTRY
+// ============================================================================
+// Research data - object where id is the key, with ordered array tracking display order
+const researchData = {
+  'improved-digging': {
+    name: 'Improved Digging Technique',
+    cost: 50,
+    goldCost: 10,
+    level: 0,
+    hardness: 10,
+    description: 'Dwarfs dig 1% harder.'
+  },
+  'better-housing': {
+    name: 'Better Housing',
+    cost: 100,
+    goldCost: 10,
+    level: 0,
+    hardness: 20,
+    description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.'
+  },
+  'trading': {
+    name: 'Better trading',
+    cost: 100,
+    goldCost: 10,
+    level: 0,
+    hardness: 30,
+    description: 'Prices are improved by 3% per level'
+  },
+  'price-negotiations': {
+    name: 'Price Negotiations',
+    cost: 3000,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 1,
+    hardness: 50,
+    requires: [{'trading': 10}],
+    min_depth: 5000,
+    description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
+  },
+  'small-time-investments': {
+    name: 'Small Time Investments',
+    cost: 5000,
+    goldCost: 1000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 100,
+    requires: [{'price-negotiations': 1}],
+    min_depth: 8000,
+    description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
+  },
+  'buckets': {
+    name: 'Bigger Buckets',
+    cost: 300,
+    goldCost: 200,
+    level: 0,
+    maxlevel: 10,
+    hardness: 50,
+    description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).'
+  },
+  'union-busting': {
+    name: 'Union Busting',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 15,
+    hardness: 60,
+    description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.'
+  },
+  'tool-enchanting': {
+    name: 'Tool Enchanting',
+    cost: 600,
+    goldCost: 300,
+    level: 0,
+    maxlevel: 30,
+    hardness: 150,
+    min_depth: 250,
+    description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.'
+  },
+  'grinding-machine': {
+    name: 'Grinding Machine',
+    cost: 200,
+    goldCost: 200,
+    level: 0,
+    maxlevel: 1,
+    hardness: 70,
+    min_depth: 500,
+    description: 'Unlocks the grind task at the Smelter.'
+  },
+  'stone-polishing': {
+    name: 'Stone Polishing',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 5,
+    hardness: 200,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 4000,
+    description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).'
+  },
+  'gem-cutting': {
+    name: 'Gem Cutting',
+    cost: 1500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 300,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 2000,
+    description: 'Unlocks gem cutting at the smelter.'
+  },
+  'gem-setting': {
+    name: 'Gem Setting',
+    cost: 1500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 3,
+    hardness: 320,
+    requires: [{'gem-cutting': 1}],
+    min_depth: 2000,
+    description: 'Set up to 3 Gems into the dwarfs tools.'
+  },
+  'furnace': {
+    name: 'Furnace',
+    cost: 750,
+    goldCost: 750,
+    level: 0,
+    maxlevel: 1,
+    hardness: 250,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 1000,
+    description: 'Unlocks the furnace for smelting of ores.'
+  },
+  'furnace-insulation': {
+    name: 'Furnace Insulation',
+    cost: 10000,
+    goldCost: 10000,
+    level: 0,
+    maxlevel: 5,
+    hardness: 500,
+    requires: [{'furnace': 1}],
+    min_depth: 2000,
+    description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).'
+  },
+  'forge': {
+    name: 'Forge',
+    cost: 2000,
+    goldCost: 2000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 350,
+    requires: [{'furnace': 1}],
+    min_depth: 1000,
+    description: 'Unlocks the forge for crafting and upgrading tools.'
+  },
+  'alloys': {
+    name: 'Alloys',
+    cost: 4000,
+    goldCost: 8000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 700,
+    requires: [{'furnace': 1}],
+    min_depth: 15000,
+    description: 'Unlocks the ability to create alloys in the smelter.'
+  },
+  'material-science': {
+    name: 'Material Science',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 5,
+    hardness: 100,
+    min_depth: 1000,
+    description: 'Increases critical hit chance to any stone by 5% per level.'
+  },
+  'wage-optimization': {
+    name: 'Wage Negotiation',
+    cost: 1000,
+    goldCost: 1000,
+    level: 0,
+    maxlevel: 20,
+    hardness: 400,
+    min_depth: 3000,
+    unlock_requires: 'wage_increase',
+    description: 'Reduces wage increase per dwarf level by 1%.'
+  },
+  'expertise-stone': {
+    name: 'Stone Expertise',
+    cost: 3000,
+    goldCost: 3000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 450,
+    requires: [{'material-science': 3}],
+    min_depth: 1000,
+    description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.'
+  },
+  'expertise-ore': {
+    name: 'Ore Expertise',
+    cost: 20000,
+    goldCost: 20000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 800,
+    requires: [{'material-science': 5}, {'expertise-stone': 1}],
+    min_depth: 2000,
+    description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.'
+  },
+  'furnace-temperature': {
+    name: 'Furnace Temperature',
+    cost: 5000,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 550,
+    requires: [{'forge': 1}],
+    min_depth: 6000,
+    description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).'
+  },
+  'magma-furnace': {
+    name: 'Magma Operated Furnace',
+    cost: 25000,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 1000,
+    requires: [{'furnace-insulation': 5}, {'furnace-temperature': 10}],
+    min_depth: 8000,
+    description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.'
+  }
+};
+
+// Ordered array of research IDs (determines display order)
+let researchTree = [
+  'improved-digging',
+  'better-housing',
+  'trading',
+  'price-negotiations',
+  'small-time-investments',
+  'buckets',
+  'union-busting',
+  'tool-enchanting',
+  'grinding-machine',
+  'stone-polishing',
+  'gem-cutting',
+  'gem-setting',
+  'furnace',
+  'furnace-insulation',
+  'forge',
+  'alloys',
+  'material-science',
+  'wage-optimization',
+  'expertise-stone',
+  'expertise-ore',
+  'furnace-temperature',
+  'magma-furnace'
+];
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
     

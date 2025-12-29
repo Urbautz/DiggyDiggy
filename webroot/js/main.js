@@ -464,7 +464,7 @@ function updateGridDisplay() {
 
                     // show forge icon if this is the forge cell and forge research is unlocked
                     if (typeof forge === 'object' && forge !== null && forge.x === gx && forge.y === gy) {
-                        const forgeResearch = researchtree.find(r => r.id === 'forge');
+                        const forgeResearch = researchData['forge'];
                         const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
                         
                         if (isForgeUnlocked) {
@@ -567,7 +567,7 @@ function updateGridDisplay() {
 
                         // Add temperature progress bar
                         const tempValue = Math.round(smelterTemperature);
-                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTemp = researchData['furnace-temperature'];
                         const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                         const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
                         const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
@@ -1128,7 +1128,7 @@ function populateToolsInPanel() {
         }
 
         // Enchant button
-        const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
+        const enchantResearch = researchData['tool-enchanting'];
         const enchantLevel = enchantResearch ? enchantResearch.level : 0;
         const isEnchanted = tool.enchantLevel && tool.enchantLevel > 0;
 
@@ -1157,7 +1157,7 @@ function populateToolsInPanel() {
         }
 
         // Gems button
-        const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+        const gemSettingResearch = researchData['gem-setting'];
         const gemSettingLevel = gemSettingResearch ? gemSettingResearch.level : 0;
         const hasGems = tool.gems && tool.gems.length > 0;
 
@@ -1573,7 +1573,7 @@ function updateDwarfsInPanel() {
             const bucketWeight = calculateBucketWeight(d.bucket);
             const dwarfCapacity = calculateDwarfBucketCapacity(d);
 
-            const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+            const wageOptimization = researchData['wage-optimization'];
             const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
             const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
             const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
@@ -1588,7 +1588,7 @@ function updateDwarfsInPanel() {
                 if (tool) {
                     toolName = tool.name || tool.type;
                     const levelBonus = 1 + (d.digPower || 0) * 0.1;
-                    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                    const improvedDigging = researchData['improved-digging'];
                     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
                     let toolPower;
                     if (tool.power !== undefined) {
@@ -1673,7 +1673,7 @@ function populateDwarfsInPanel() {
             const tool = toolsInventory.find(t => t.id === d.toolId);
             if (tool) {
                 const levelBonus = 1 + (d.digPower || 0) * 0.1;
-                const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+                const improvedDigging = researchData['improved-digging'];
                 const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
 
                 // Check if tool has custom power (forged tools) or use base definition
@@ -1713,7 +1713,7 @@ function populateDwarfsInPanel() {
         const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
 
         // Calculate wage using same logic as game-worker.js
-        const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+        const wageOptimization = researchData['wage-optimization'];
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
         const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
         const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
@@ -2315,16 +2315,15 @@ function initWorker() {
                     }
                     researchQueue = data.researchQueue;
                 }
-                if (data.researchtree) {
+                if (data.researchData) {
                     // Merge research progress from worker with current definitions
-                    for (const workerResearch of data.researchtree) {
-                        const currentResearch = researchtree.find(r => r.id === workerResearch.id);
-                        if (currentResearch) {
-                            if (currentResearch.level !== workerResearch.level) {
+                    for (const researchId in data.researchData) {
+                        if (researchData[researchId]) {
+                            if (researchData[researchId].level !== data.researchData[researchId].level) {
                                 researchStateChanged = true;
                             }
-                            currentResearch.level = workerResearch.level || 0;
-                            currentResearch.progress = workerResearch.progress || 0;
+                            researchData[researchId].level = data.researchData[researchId].level || 0;
+                            researchData[researchId].progress = data.researchData[researchId].progress || 0;
                         }
                     }
                 }
@@ -2445,7 +2444,8 @@ function initWorker() {
             toolsInventory,
             activeResearch,
             researchQueue,
-            researchtree,
+            researchData,
+            researchTree,
             smelterTemperature,
             smelterCoalMinTemp,
             smelterCoalMaxTemp,
@@ -2500,7 +2500,7 @@ function saveGame() {
             nextGemId: nextGemId,
             toolsInventory: toolsInventory,
             gold: gold,
-            researchtree: researchtree,
+            researchData: researchData,
             activeResearch: activeResearch,
             researchQueue: researchQueue,
             transactionLog: transactionLog,
@@ -2638,20 +2638,42 @@ function loadGame() {
             toolsInventory.push(...migratedTools);
         }
         
-        // Restore research tree - merge saved progress with current definitions
-        if (gameState.researchtree) {
-            // Update existing research items with saved progress
-            for (const savedResearch of gameState.researchtree) {
-                const currentResearch = researchtree.find(r => r.id === savedResearch.id);
-                if (currentResearch) {
-                    currentResearch.level = savedResearch.level || 0;
-                    currentResearch.progress = savedResearch.progress || 0;
+        // Restore research data - merge saved progress with current definitions
+        if (gameState.researchData) {
+            // New format - update existing research items with saved progress
+            for (const researchId in gameState.researchData) {
+                if (researchData[researchId]) {
+                    researchData[researchId].level = gameState.researchData[researchId].level || 0;
+                    researchData[researchId].progress = gameState.researchData[researchId].progress || 0;
                 }
             }
+            console.log('Loaded research data (new format)');
+        } else if (gameState.researchtree) {
+            // Legacy format support - convert old array format to new object format
+            console.log('Converting legacy researchtree format to new researchData format...');
+            for (const savedResearch of gameState.researchtree) {
+                if (researchData[savedResearch.id]) {
+                    researchData[savedResearch.id].level = savedResearch.level || 0;
+                    researchData[savedResearch.id].progress = savedResearch.progress || 0;
+                }
+            }
+            console.log('Legacy research data converted successfully');
         }
-        
-        // Restore active research
+
+        // Restore active research (with legacy format support)
         if (gameState.activeResearch) {
+            // Ensure activeResearch has an 'id' field (legacy saves might not have it)
+            if (!gameState.activeResearch.id && researchTree.length > 0) {
+                // Try to find the research by matching properties
+                for (const researchId of researchTree) {
+                    const research = researchData[researchId];
+                    if (research && research.name === gameState.activeResearch.name) {
+                        gameState.activeResearch.id = researchId;
+                        console.log(`Added missing id '${researchId}' to active research: ${research.name}`);
+                        break;
+                    }
+                }
+            }
             activeResearch = gameState.activeResearch;
         }
 
@@ -2797,7 +2819,7 @@ window.activateCheat = function activateCheat() {
                 gold: gold,
                 materialsStock: materialsStock,
                 activeResearch: activeResearch,
-                researchtree: researchtree,
+                researchData: researchData,
                 toolsInventory: toolsInventory
             }
         });
@@ -2865,7 +2887,7 @@ function populateFunctionsList() {
     };
 
     // Check if forge is unlocked
-    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const forgeResearch = researchData['forge'];
     const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
 
     if (!isForgeUnlocked) {
@@ -2897,7 +2919,7 @@ function updateForgeFunctionLink() {
     if (!forgeLink) return;
 
     // Check if forge is unlocked
-    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const forgeResearch = researchData['forge'];
     const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
 
     if (isForgeUnlocked) {

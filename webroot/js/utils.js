@@ -376,7 +376,7 @@ function getAmethystModifiedResearchPoints(dwarf, baseResearchPoints) {
  * @returns {Object|null} Research object or null if not found
  */
 function getResearch(researchId) {
-    return researchtree.find(r => r.id === researchId) || null;
+    return researchData[researchId] || null;
 }
 
 /**
@@ -385,7 +385,7 @@ function getResearch(researchId) {
  * @returns {number} Current research level (0 if not found or not researched)
  */
 function getResearchLevel(researchId) {
-    const research = getResearch(researchId);
+    const research = researchData[researchId];
     return research ? (research.level || 0) : 0;
 }
 
@@ -680,7 +680,7 @@ function applyEnergyConsumption(dwarf, baseCost) {
  */
 function calculateFinalCritChance(dwarf) {
     // Get material science research level
-    const materialScience = researchtree.find(r => r.id === 'material-science');
+    const materialScience = researchData['material-science'];
     const baseCritChance = CRITICAL_HIT_BASE_CHANCE + ((materialScience ? materialScience.level : 0) * RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS);
 
     // Apply Emerald gem modifier

@@ -33,7 +33,7 @@ function checkResearchRequirements(researchItem) {
     for (const req of researchItem.requires) {
         // Each requirement is an object like {'material-science': 1}
         for (const [reqId, reqLevel] of Object.entries(req)) {
-            const requiredResearch = researchtree.find(r => r.id === reqId);
+            const requiredResearch = researchData[reqId];
             if (!requiredResearch) {
                 missingReqs.push(`Unknown research: ${reqId}`);
                 continue;
@@ -101,7 +101,7 @@ function updateResearchButtons() {
         const researchId = researchBtn.dataset.researchId;
         if (!researchId) return; // Skip already disabled buttons
 
-        const researchItem = researchtree.find(r => r.id === researchId);
+        const researchItem = researchData[researchId];
         if (!researchItem) return;
 
         // Calculate current state
@@ -180,7 +180,7 @@ function populateResearch() {
 
     const hideEndless = document.getElementById('hide-endless-research').checked;
 
-    //console.log('Populating research, researchtree has', researchtree.length, 'items:', researchtree.map(r => r.id));
+    //console.log('Populating research, researchTree has', researchTree.length, 'items:', researchTree);
 
     // Show active research if any
     if (activeResearch) {
@@ -268,7 +268,10 @@ function populateResearch() {
     const tbody = document.createElement('tbody');
 
     // Show all researchable items
-    for (const researchItem of researchtree) {
+    for (const researchId of researchTree) {
+        const researchItem = researchData[researchId];
+        if (!researchItem) continue;
+
         const currentLevel = researchItem.level || 0;
         const maxLevel = researchItem.maxlevel || Infinity;
 
@@ -366,7 +369,7 @@ function populateResearch() {
                 researchBtn.className = 'btn-research';
                 researchBtn.textContent = researchQueue.length >= 5 ? 'Queue Full' : 'Queue';
                 researchBtn.disabled = researchQueue.length >= 5;
-                researchBtn.dataset.researchId = researchItem.id;
+                researchBtn.dataset.researchId = researchId;
                 if (researchQueue.length >= 5) {
                     researchBtn.className = 'btn-research disabled';
                     researchBtn.title = 'Research queue is full (max 5)';
@@ -376,7 +379,7 @@ function populateResearch() {
             } else {
                 researchBtn.className = 'btn-research';
                 researchBtn.textContent = 'Research';
-                researchBtn.dataset.researchId = researchItem.id;
+                researchBtn.dataset.researchId = researchId;
             }
 
             actionTd.appendChild(researchBtn);
@@ -393,7 +396,7 @@ function populateResearch() {
     container.appendChild(researchTable);
 
     // Show completed researches section
-    const completedResearches = researchtree.filter(r => {
+    const completedResearches = researchTree.map(id => ({id, ...researchData[id]})).filter(r => {
         const currentLevel = r.level || 0;
         const maxLevel = r.maxlevel || Infinity;
         return currentLevel >= maxLevel && maxLevel !== Infinity;
@@ -445,7 +448,7 @@ function populateResearch() {
  * @param {string} researchId - The ID of the research to start
  */
 function startResearch(researchId) {
-    const researchItem = researchtree.find(r => r.id === researchId);
+    const researchItem = researchData[researchId];
     if (!researchItem) {
         console.error('Research not found:', researchId);
         return;
@@ -485,7 +488,7 @@ function startResearch(researchId) {
         logTransaction('expense', goldCost, `Queued research: ${researchItem.name} (Level ${targetLevel})`);
 
         researchQueue.push({
-            id: researchItem.id,
+            id: researchId,
             name: researchItem.name,
             level: currentLevel,
             targetLevel: targetLevel,
@@ -544,7 +547,7 @@ function startResearch(researchId) {
             type: 'update-state',
             data: {
                 activeResearch: activeResearch,
-                researchtree: researchtree,
+                researchData: researchData,
                 gold: gold,
                 researchQueue: researchQueue
             }
@@ -568,7 +571,7 @@ function startNextQueuedResearch() {
     }
 
     const nextResearch = researchQueue.shift();
-    const researchItem = researchtree.find(r => r.id === nextResearch.id);
+    const researchItem = researchData[nextResearch.id];
 
     if (!researchItem) {
         console.error('Queued research not found:', nextResearch.id);
@@ -590,7 +593,7 @@ function startNextQueuedResearch() {
             type: 'update-state',
             data: {
                 activeResearch: activeResearch,
-                researchtree: researchtree,
+                researchData: researchData,
                 researchQueue: researchQueue
             }
         });

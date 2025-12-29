@@ -30,7 +30,8 @@ let gold = 1000;
 let toolsInventory = [];
 let activeResearch = null;
 let researchQueue = [];
-let researchtree = [];
+let researchData = {}; // Research data object (id as key)
+let researchTree = []; // Ordered array of research IDs
 let pendingTransactions = []; // Queue of transactions to send to main thread
 
 // Smelter temperature system
@@ -412,7 +413,7 @@ function handleSmelterTaskOutput(task, dwarf) {
     // Check for break chance (for polishing tasks)
     let success = true;
     if (task.breakChance && task.breakChance > 0) {
-        const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+        const stonePolishing = researchData['stone-polishing'];
         const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
         const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
         const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
@@ -469,7 +470,7 @@ function getDwarfToolPower(dwarf) {
     const levelBonus = 1 + modifiedDigPower * DWARF_DIG_POWER_BONUS;
     
     // Apply improved-digging research bonus
-    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 0);
     
     if (!dwarf.toolId) return (DWARF_BASE_POWER * levelBonus) * researchBonus; // default power if no tool
@@ -748,7 +749,7 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'resting') {
         const maxEnergy = dwarf.maxEnergy || 100;
         // Apply better-housing research bonus with diminishing returns
-        const betterHousing = researchtree.find(r => r.id === 'better-housing');
+        const betterHousing = researchData['better-housing'];
         const housingLevel = betterHousing ? (betterHousing.level || 0) : 0;
         const restBonus = housingLevel > 0 ? 1 + (housingLevel * RESEARCH_BETTER_HOUSING_BASE_BONUS) / (1 + housingLevel * RESEARCH_BETTER_HOUSING_DIMINISH) : 1;
         const restAmount = DWARF_REST_AMOUNT * restBonus;
@@ -802,7 +803,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -899,18 +900,16 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const targetLevel = currentLevel + 1;
             const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
             if (activeResearch.progress >= actualCost) {
-                const completedResearch = activeResearch;
-                completedResearch.level = (completedResearch.level || 0) + 1;
-                completedResearch.progress = 0;
+                const completedResearchId = activeResearch.id;
+                const completedResearchLevel = (activeResearch.level || 0) + 1;
 
-                // Find and update in researchtree
-                const treeItem = researchtree.find(r => r.id === completedResearch.id);
-                if (treeItem) {
-                    treeItem.level = completedResearch.level;
-                    treeItem.progress = 0;
+                // Update in researchData
+                if (researchData[completedResearchId]) {
+                    researchData[completedResearchId].level = completedResearchLevel;
+                    researchData[completedResearchId].progress = 0;
                 }
 
-                console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
+                console.log(`Research completed: ${activeResearch.name} (Level ${completedResearchLevel})`);
 
                 // Clear active research and release reservation
                 activeResearch = null;
@@ -925,7 +924,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 if (researchQueue.length > 0) {
                     const nextResearch = researchQueue.shift();
                     console.log(`[WORKER] Starting next queued research:`, nextResearch);
-                    const nextResearchItem = researchtree.find(r => r.id === nextResearch.id);
+                    const nextResearchItem = researchData[nextResearch.id];
 
                     if (nextResearchItem) {
                         // Initialize progress if not set
@@ -933,8 +932,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                             nextResearchItem.progress = 0;
                         }
 
-                        // Set as active
-                        activeResearch = nextResearchItem;
+                        // Create active research object with id
+                        activeResearch = { ...nextResearchItem, id: nextResearch.id };
                         console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
                     } else {
                         console.error('[WORKER] Queued research not found:', nextResearch.id);
@@ -972,7 +971,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1097,7 +1096,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     }
                     // Handle heating task completion
                     else if (task.type === 'heating' && task.heatGain) {
-                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTemp = researchData['furnace-temperature'];
                         const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                         const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1169,7 +1168,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Handle heating task
             if (task.type === 'heating' && task.heatGain) {
                 // Calculate max temperature based on furnace-temperature research
-                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTemp = researchData['furnace-temperature'];
                 const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                 const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1356,7 +1355,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1385,8 +1384,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
                 
-                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
-                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                const stoneExpertise = researchData['expertise-stone'];
+                const oreExpertise = researchData['expertise-ore'];
                 
                 let oneHitChance = 0;
                 let expertiseType = null;
@@ -1466,7 +1465,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1493,8 +1492,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
                 
-                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
-                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                const stoneExpertise = researchData['expertise-stone'];
+                const oreExpertise = researchData['expertise-ore'];
                 
                 let oneHitChance = 0;
                 let expertiseType = null;
@@ -1689,7 +1688,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     const wage = calculateWage(dwarf);
     if (gold < wage) {
         // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchtree.find(r => r.id === 'union-busting');
+        const unionBusting = researchData['union-busting'];
         const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
         if (Math.random() > continueWorkChance) {
             dwarf.status = 'striking';
@@ -1729,7 +1728,7 @@ function tick() {
     try {
         // Cool down smelter temperature with insulation research
         if (smelterTemperature > SMELTER_BASE_TEMPERATURE) {
-            const insulationResearch = researchtree.find(r => r.id === 'furnace-insulation');
+            const insulationResearch = researchData['furnace-insulation'];
             const insulationLevel = insulationResearch ? (insulationResearch.level || 0) : 0;
             const coolingReduction = insulationLevel * RESEARCH_FURNACE_INSULATION_BONUS;
             const coolingRate = SMELTER_COOLING_RATE * (1 - coolingReduction);
@@ -1737,7 +1736,7 @@ function tick() {
         }
 
         // Apply interest from Small Time Investments research
-        const smallTimeInvestments = researchtree.find(r => r.id === 'small-time-investments');
+        const smallTimeInvestments = researchData['small-time-investments'];
         if (smallTimeInvestments && (smallTimeInvestments.level || 0) > 0 && gold > 0) {
             let totalInterest = 0;
 
@@ -1816,7 +1815,7 @@ function tick() {
                 toolsInventory,
                 activeResearch,
                 researchQueue,
-                researchtree,
+                researchData,
                 shifted,
                 smelterTemperature,
                 smelterCoalMinTemp,
@@ -1873,9 +1872,13 @@ self.addEventListener('message', (e) => {
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
             researchQueue = data.researchQueue ? JSON.parse(JSON.stringify(data.researchQueue)) : [];
-            if (data.researchtree) {
-                // Copy the full researchtree from main thread
-                researchtree = JSON.parse(JSON.stringify(data.researchtree));
+            if (data.researchData) {
+                // Copy the full researchData from main thread
+                researchData = JSON.parse(JSON.stringify(data.researchData));
+            }
+            if (data.researchTree) {
+                // Copy the researchTree array from main thread
+                researchTree = JSON.parse(JSON.stringify(data.researchTree));
             }
             // Initialize smelter temperature state
             if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
@@ -1935,9 +1938,13 @@ self.addEventListener('message', (e) => {
                     researchQueue = JSON.parse(JSON.stringify(data.researchQueue));
                     console.log(`[WORKER] Research queue updated. Length: ${researchQueue.length}`, researchQueue);
                 }
-                if (data.researchtree) {
-                    // Copy the full researchtree from main thread
-                    researchtree = JSON.parse(JSON.stringify(data.researchtree));
+                if (data.researchData) {
+                    // Copy the full researchData from main thread
+                    researchData = JSON.parse(JSON.stringify(data.researchData));
+                }
+                if (data.researchTree) {
+                    // Copy the researchTree array from main thread
+                    researchTree = JSON.parse(JSON.stringify(data.researchTree));
                 }
                 if (data.smelterTasks) {
                     // Copy the smelter tasks from main thread

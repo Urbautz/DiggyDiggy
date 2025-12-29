@@ -239,7 +239,7 @@ function executeBulkSell(action) {
  */
 function sellAllMaterials() {
     // Calculate total gold from all materials
-    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const betterTrading = researchData['trading'];
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
 
     // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
@@ -319,7 +319,7 @@ function sellNotCraftableMaterials() {
     }
 
     // Calculate trade bonus
-    const betterTrading = researchtree.find(r => r.id === 'trading');
+    const betterTrading = researchData['trading'];
     const tradeBonus = betterTrading ? 1 + (betterTrading.level || 0) * 0.03 : 1;
 
     // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)

@@ -250,7 +250,7 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             tempTable.appendChild(currentTempTr);
         } else if (task.type === 'heating') {
             const currentTemp = Math.round(smelterTemperature);
-            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTemp = researchData['furnace-temperature'];
             const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
             const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -338,7 +338,7 @@ function updateTaskDetailTemperature() {
     }
 
     if (tempBarEl) {
-        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+        const furnaceTemp = researchData['furnace-temperature'];
         const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
         const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
         const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
@@ -385,7 +385,7 @@ function updateSmelterTemperatureDisplay() {
         const tempBars = heatingTaskRow.querySelectorAll('div[style*="background: linear-gradient"]');
         if (tempBars.length > 0) {
             // Calculate max temperature based on furnace-temperature research
-            const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+            const furnaceTemp = researchData['furnace-temperature'];
             const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
             const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
             const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
@@ -396,7 +396,7 @@ function updateSmelterTemperatureDisplay() {
         const task = smelterTasksData[taskId];
         if (task) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+            const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
 
             // For magma, only check if temp is below min (always heats to max)
             // For coal, use smelterHeatingMode for accurate status (respects hysteresis)
@@ -440,7 +440,7 @@ function updateSmelterTemperatureDisplay() {
                 // Display format depends on task type
                 if (task.heatGain === 'dynamic') {
                     // Magma: show "to max temp"
-                    const furnaceTempRes = researchtree.find(r => r.id === 'furnace-temperature');
+                    const furnaceTempRes = researchData['furnace-temperature'];
                     const furnaceTempLvl = furnaceTempRes ? (furnaceTempRes.level || 0) : 0;
                     const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLvl * 100);
                     recipeSpan.textContent = `${task.input.amount}x ${inputName} ${stockInfo} → Heat to ${maxTemp}° (max)`;
@@ -539,7 +539,7 @@ function getCurrentActiveTask() {
         const task = smelterTasksData[taskId];
 
         // Check if task is unlocked
-        const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+        const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
         if (!isUnlocked) continue;
 
         // Check if task has required materials/gems
@@ -632,7 +632,7 @@ function populateSmelter() {
         let isUnlocked = true;
         let requiredResearchName = null;
         if (task.requires) {
-            const requiredResearch = researchtree.find(r => r.id === task.requires);
+            const requiredResearch = researchData[task.requires];
             if (requiredResearch) {
                 isUnlocked = (requiredResearch.level || 0) >= 1;
                 requiredResearchName = requiredResearch.name;
@@ -866,7 +866,7 @@ function populateSmelter() {
             let heatingDisplay = '';
             if (task.heatGain === 'dynamic') {
                 // Magma: show "to max temp"
-                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTemp = researchData['furnace-temperature'];
                 const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                 const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
                 heatingDisplay = `${task.input.amount}x ${inputName} → Heat to ${maxTemp}° (max)${runsText}`;
@@ -1140,7 +1140,7 @@ function moveSmelterTask(index, direction) {
 // Adjust coal minimum temperature setting
 window.adjustCoalMinTemp = function(amount) {
     // Calculate max temperature limit based on furnace-temperature research
-    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTemp = researchData['furnace-temperature'];
     const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
     const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1167,7 +1167,7 @@ window.adjustCoalMinTemp = function(amount) {
 // Adjust coal maximum temperature setting
 window.adjustCoalMaxTemp = function(amount) {
     // Calculate max temperature based on furnace-temperature research
-    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTemp = researchData['furnace-temperature'];
     const furnaceTempLevel = furnaceTemp ? furnaceTemp.level : 0;
     const researchMaxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1197,7 +1197,7 @@ window.adjustCoalMaxTemp = function(amount) {
 // Adjust magma minimum temperature setting
 window.adjustMagmaMinTemp = function(amount) {
     // Calculate max temperature limit based on furnace-temperature research
-    const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+    const furnaceTemp = researchData['furnace-temperature'];
     const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
     const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
