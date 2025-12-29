@@ -375,266 +375,117 @@ function updateGridDisplay() {
     }
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
         // Update visible stock counts too
-        // render the small drop-off grid (if present)
-        const dropTable = document.getElementById('drop-grid');
-        if (dropTable && typeof dropGridStartX === 'number' && typeof dropGridWidth === 'number' && typeof dropGridHeight === 'number') {
-            let tb = dropTable.querySelector('tbody');
-            if (!tb) { tb = document.createElement('tbody'); dropTable.appendChild(tb); }
+
+        // Render the functions grid (1x5 above main grid)
+        const functionsTable = document.getElementById('functions-grid');
+        if (functionsTable && typeof functionsGridWidth === 'number') {
+            let tb = functionsTable.querySelector('tbody');
+            if (!tb) { tb = document.createElement('tbody'); functionsTable.appendChild(tb); }
             tb.innerHTML = '';
-            for (let rr = 0; rr < dropGridHeight; rr++) {
-                const rowEl = document.createElement('tr');
-                for (let cc = 0; cc < dropGridWidth; cc++) {
-                    const gx = dropGridStartX + cc;
-                    const gy = rr;
-                    const cell = document.createElement('td');
-                    cell.className = 'cell';
-                    cell.dataset.row = rr;
-                    cell.dataset.col = cc;
-                    // find dwarfs at this location
-                    const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === gx && d.y === gy) : [];
-                    const movingHere = dwarfsHere.filter(d => d.status === 'moving');
-                    const standingHere = dwarfsHere.filter(d => d.status !== 'moving');
-                    const diggersHere = dwarfsHere.filter(d => d.status === 'digging');
+            const rowEl = document.createElement('tr');
+            for (let cc = 0; cc < functionsGridWidth; cc++) {
+                const gx = cc;
+                const gy = functionsGridY;
+                const cell = document.createElement('td');
+                cell.className = 'cell';
+                cell.dataset.row = 0;
+                cell.dataset.col = cc;
 
-                    // drop-grid is intentionally empty for now — show dwarfs or markers
-                    if (standingHere.length > 0) {
-                        cell.classList.add('has-dwarf');
-                        cell.textContent = '';
-                        cell.title = `${standingHere.map(d => d.name).join(', ')}`;
-                        if (diggersHere.length > 0) {
-                            cell.classList.add('is-digging');
-                            const digMarker = document.createElement('span');
-                            digMarker.className = 'digging-marker strike';
-                            digMarker.textContent = '⛏️';
-                            cell.appendChild(digMarker);
-                        }
-                    } else {
-                        cell.textContent = '';
+                // find dwarfs at this location
+                const dwarfsHere = Array.isArray(dwarfs) ? dwarfs.filter(d => d.x === gx && d.y === gy) : [];
+                const movingHere = dwarfsHere.filter(d => d.status === 'moving');
+                const standingHere = dwarfsHere.filter(d => d.status !== 'moving');
+                const diggersHere = dwarfsHere.filter(d => d.status === 'digging');
+
+                if (standingHere.length > 0) {
+                    cell.classList.add('has-dwarf');
+                    cell.textContent = '';
+                    cell.title = `${standingHere.map(d => d.name).join(', ')}`;
+                    if (diggersHere.length > 0) {
+                        cell.classList.add('is-digging');
+                        const digMarker = document.createElement('span');
+                        digMarker.className = 'digging-marker strike';
+                        digMarker.textContent = '⛏️';
+                        cell.appendChild(digMarker);
                     }
-
-                    if (movingHere.length > 0) {
-                        const mover = document.createElement('span');
-                        mover.className = 'moving-marker';
-                        mover.textContent = '🏃';
-                        cell.appendChild(mover);
-                    }
-
-                    // show drop-off marker if this is the configured dropOff
-                    if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
-                        cell.classList.add('drop-off');
-                        cell.dataset.clickAction = 'focus-materials';
-                        const box = document.createElement('span');
-                        box.className = 'drop-off-marker warehouse';
-                        box.textContent = '🏭';
-                        box.title = 'Warehouse (drop-off)';
-                        cell.appendChild(box);
-                        cell.style.cursor = 'pointer';
-                    }
-
-                    // show house / bed icon if this is the house cell
-                    if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
-                        cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-dwarfs';
-                        
-                        // Create container for icon and badge with absolute positioning
-                        const iconContainer = document.createElement('span');
-                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
-                        
-                        const bed = document.createElement('span');
-                        bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
-                        bed.textContent = '🏠';
-                        
-                        // Show number of dwarfs currently resting in the house
-                        const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
-                        if (dwarfsResting.length > 0) {
-                            bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
-                            // Add notification badge for resting dwarfs
-                            const badge = document.createElement('span');
-                            badge.className = 'notification-badge';
-                            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4a90e2; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
-                            badge.textContent = dwarfsResting.length;
-                            bed.appendChild(badge);
-                        } else {
-                            bed.title = 'House (open dwarfs overview)';
-                        }
-                        
-                        iconContainer.appendChild(bed);
-                        cell.appendChild(iconContainer);
-                    }
-
-                    // show forge icon if this is the forge cell and forge research is unlocked
-                    if (typeof forge === 'object' && forge !== null && forge.x === gx && forge.y === gy) {
-                        const forgeResearch = researchData['forge'];
-                        const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
-                        
-                        if (isForgeUnlocked) {
-                            cell.style.cursor = 'pointer';
-                            cell.dataset.clickAction = 'open-forge';
-                            
-                            // Create container for icon and badge with absolute positioning
-                            const iconContainer = document.createElement('span');
-                            iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
-                            
-                            const bench = document.createElement('span');
-                            bench.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
-                            bench.textContent = '🔨';
-                            bench.title = 'Forge (craft new tools)';
-                            
-                            iconContainer.appendChild(bench);
-                            cell.appendChild(iconContainer);
-                        } else {
-                            // Show locked icon
-                            const lockedIcon = document.createElement('span');
-                            lockedIcon.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.5;';
-                            lockedIcon.textContent = '🔒';
-                            lockedIcon.title = 'Forge (requires Forge research)';
-                            cell.appendChild(lockedIcon);
-                        }
-                    }
-
-                    // show research icon if this is the research cell
-                    if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
-                        cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-research';
-                        
-                        // Add research icon
-                        const researchIcon = document.createElement('span');
-                        researchIcon.className = 'drop-off-marker research';
-                        researchIcon.textContent = '🔬';
-                        researchIcon.title = 'Research Lab';
-                        cell.appendChild(researchIcon);
-                        
-                        // Add progress bar if research is active
-                        if (activeResearch) {
-                            const progress = activeResearch.progress || 0;
-                            const currentLevel = activeResearch.level || 0;
-                            const targetLevel = currentLevel + 1;
-                            const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
-                            const progressPercent = Math.min(100, Math.floor((progress / actualCost) * 100));
-                            
-                            const progressContainer = document.createElement('div');
-                            progressContainer.className = 'research-progress-container';
-                            progressContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
-                            
-                            const progressBar = document.createElement('div');
-                            progressBar.className = 'research-progress-bar';
-                            progressBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); width: ${progressPercent}%; transition: width 0.3s ease;`;
-                            
-                            progressContainer.appendChild(progressBar);
-                            cell.appendChild(progressContainer);
-                            
-                            // Update title with progress info
-                            researchIcon.title = `Research Lab\n${activeResearch.name}: ${progress}/${actualCost} (${progressPercent}%)`;
-                        }
-                    }
-
-                    // show smelter icon if this is the smelter cell
-                    if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
-                        cell.style.cursor = 'pointer';
-                        cell.dataset.clickAction = 'open-smelter';
-                        
-                        // Create container for icon and badge with absolute positioning
-                        const iconContainer = document.createElement('span');
-                        iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
-                        
-                        // Add smelter icon
-                        const smelterIcon = document.createElement('span');
-                        smelterIcon.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
-                        smelterIcon.textContent = '♨️';
-                        
-                        // Add status badge
-                        const smelterBadge = document.createElement('span');
-                        smelterBadge.className = 'smelter-badge';
-                        
-                        if (isSmelterPaused()) {
-                            smelterBadge.textContent = '⏸';
-                            smelterBadge.classList.add('smelter-badge-paused');
-                            smelterIcon.title = 'Smelter (Paused - Do Nothing is top task)';
-                        } else {
-                            const actionableCount = countActionableSmelterTasks();
-                            smelterBadge.textContent = actionableCount;
-                            if (actionableCount > 0) {
-                                smelterBadge.classList.add('smelter-badge-active');
-                                smelterIcon.title = `Smelter (${actionableCount} task${actionableCount !== 1 ? 's' : ''} ready)`;
-                            } else {
-                                smelterBadge.classList.add('smelter-badge-idle');
-                                smelterIcon.title = 'Smelter (No tasks ready)';
-                            }
-                        }
-                        smelterIcon.appendChild(smelterBadge);
-                        iconContainer.appendChild(smelterIcon);
-                        cell.appendChild(iconContainer);
-
-                        // Add temperature progress bar
-                        const tempValue = Math.round(smelterTemperature);
-                        const furnaceTemp = researchData['furnace-temperature'];
-                        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
-                        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-                        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
-
-                        const tempContainer = document.createElement('div');
-                        tempContainer.className = 'smelter-temp-container';
-                        tempContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
-
-                        const tempBar = document.createElement('div');
-                        tempBar.className = 'smelter-temp-bar';
-                        tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
-
-                        tempContainer.appendChild(tempBar);
-                        cell.appendChild(tempContainer);
-
-                        // Update title with temperature info
-                        smelterIcon.title = `${smelterIcon.title}\nTemperature: ${tempValue}°/${maxTempLimit}° (${Math.round(tempPercent)}%)`;
-                    }
-
-                    // show resting marker when dwarf is resting here
-                    const restersHere = dwarfsHere.filter(d => d.status === 'resting');
-                    if (restersHere.length > 0) {
-                        const sleep = document.createElement('span');
-                        sleep.className = 'resting-marker';
-                        sleep.textContent = '😴';
-                        cell.appendChild(sleep);
-                    }
-
-                    // show researching marker when dwarf is researching here
-                    const researchersHere = dwarfsHere.filter(d => d.status === 'researching');
-                    if (researchersHere.length > 0) {
-                        const researchMarker = document.createElement('span');
-                        researchMarker.className = 'researching-marker';
-                        researchMarker.textContent = '📚';
-                        researchMarker.title = 'Researching';
-                        cell.appendChild(researchMarker);
-                    }
-
-                    // show strike marker when dwarf is striking here
-                    const strikersHere = dwarfsHere.filter(d => d.status === 'striking');
-                    if (strikersHere.length > 0) {
-                        const strike = document.createElement('span');
-                        strike.className = 'striking-marker';
-                        strike.textContent = '🪧';
-                        strike.title = 'On strike - not enough gold!';
-                        cell.appendChild(strike);
-                    }
-
-                    // Show unloading animation when dwarf is unloading here
-                    // (Disabled - visual clutter with warehouse icon)
-                    /*
-                    const unloadersHere = dwarfsHere.filter(d => d.status === 'unloading');
-                    if (unloadersHere.length > 0) {
-                        const anim = document.createElement('span');
-                        anim.className = 'unloading-marker';
-                        const crate = document.createElement('span');
-                        crate.className = 'crate';
-                        crate.textContent = '📦';
-                        anim.appendChild(crate);
-                        cell.appendChild(anim);
-                    }
-                    */
-
-                    rowEl.appendChild(cell);
+                } else {
+                    cell.textContent = '';
                 }
-                tb.appendChild(rowEl);
+
+                if (movingHere.length > 0) {
+                    const mover = document.createElement('span');
+                    mover.className = 'moving-marker';
+                    mover.textContent = '🏃';
+                    cell.appendChild(mover);
+                }
+
+                // Show icons for each function cell
+                if (typeof dropOff === 'object' && dropOff !== null && dropOff.x === gx && dropOff.y === gy) {
+                    cell.classList.add('drop-off');
+                    cell.dataset.clickAction = 'focus-materials';
+                    const box = document.createElement('span');
+                    box.className = 'drop-off-marker warehouse';
+                    box.textContent = '🏭';
+                    box.title = 'Warehouse (drop-off)';
+                    cell.appendChild(box);
+                    cell.style.cursor = 'pointer';
+                }
+
+                if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
+                    cell.style.cursor = 'pointer';
+                    cell.dataset.clickAction = 'open-dwarfs';
+                    const iconContainer = document.createElement('span');
+                    iconContainer.style.cssText = 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;';
+                    const bed = document.createElement('span');
+                    bed.style.cssText = 'position: relative; display: inline-block; font-size: 18px; opacity: 0.95;';
+                    bed.textContent = '🏠';
+                    const dwarfsResting = dwarfs.filter(d => d.status === 'resting' && d.x === gx && d.y === gy);
+                    if (dwarfsResting.length > 0) {
+                        bed.title = `House (${dwarfsResting.length} dwarf(s) resting)`;
+                        const badge = document.createElement('span');
+                        badge.className = 'notification-badge';
+                        badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #4a90e2; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid white;';
+                        badge.textContent = dwarfsResting.length;
+                        bed.appendChild(badge);
+                    } else {
+                        bed.title = 'House (Rest here)';
+                    }
+                    iconContainer.appendChild(bed);
+                    cell.appendChild(iconContainer);
+                }
+
+                if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
+                    cell.style.cursor = 'pointer';
+                    cell.dataset.clickAction = 'open-research';
+                    const res = document.createElement('span');
+                    res.className = 'drop-off-marker';
+                    res.textContent = '🔬';
+                    res.title = 'Research';
+                    cell.appendChild(res);
+                }
+
+                if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
+                    cell.style.cursor = 'pointer';
+                    cell.dataset.clickAction = 'open-smelter';
+                    const sm = document.createElement('span');
+                    sm.className = 'drop-off-marker';
+                    sm.textContent = '♨️';
+                    sm.title = 'Smelter';
+                    cell.appendChild(sm);
+                }
+
+                if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
+                    cell.style.opacity = '0.5';
+                    const auto = document.createElement('span');
+                    auto.className = 'drop-off-marker';
+                    auto.textContent = '🛞';
+                    auto.title = 'Automate (Coming soon)';
+                    cell.appendChild(auto);
+                }
+
+                rowEl.appendChild(cell);
             }
+            tb.appendChild(rowEl);
         }
 
         // Don't call updateMaterialsPanel here - it recreates buttons too frequently
@@ -642,6 +493,7 @@ function updateGridDisplay() {
         updateStockDisplay();
         updateGoldDisplay();
         updateDwarfsLevelUpBadge();
+        updateFunctionLinks(); // Update research progress and smelter temperature bars
         refreshTooltipAfterRedraw();
 }
 
@@ -2857,6 +2709,7 @@ function populateFunctionsList() {
     const researchLink = document.createElement('a');
     researchLink.href = '#';
     researchLink.className = 'function-link';
+    researchLink.id = 'research-function-link'; // Add ID for easy updates
     researchLink.innerHTML = '<span class="icon">🔬</span><span>Research</span>';
     researchLink.onclick = (e) => {
         e.preventDefault();
@@ -2868,6 +2721,7 @@ function populateFunctionsList() {
     const smelterLink = document.createElement('a');
     smelterLink.href = '#';
     smelterLink.className = 'function-link';
+    smelterLink.id = 'smelter-function-link'; // Add ID for easy updates
     smelterLink.innerHTML = '<span class="icon">♨️</span><span>Smelter</span>';
     smelterLink.onclick = (e) => {
         e.preventDefault();
@@ -2898,11 +2752,11 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
-    // Automation function (placeholder for future) - last position
+    // Automate function (placeholder for future) - last position
     const automationLink = document.createElement('a');
     automationLink.href = '#';
     automationLink.className = 'function-link';
-    automationLink.innerHTML = '<span class="icon">⚙️</span><span>Automation</span>';
+    automationLink.innerHTML = '<span class="icon">🛞</span><span>Automate</span>';
     automationLink.onclick = (e) => {
         e.preventDefault();
         // TODO: Open automation modal
@@ -2936,6 +2790,72 @@ function updateForgeFunctionLink() {
             forgeLink.style.cursor = 'not-allowed';
             forgeLink.title = 'Requires Forge research';
         }
+    }
+}
+
+// Update research and smelter function links with progress bars and temperature indicators
+function updateFunctionLinks() {
+    // Update research link with progress bar
+    const researchLink = document.getElementById('research-function-link');
+    if (researchLink) {
+        // Remove existing progress bar if present
+        let progressContainer = researchLink.querySelector('.research-progress-container');
+
+        if (activeResearch) {
+            const progress = activeResearch.progress || 0;
+            const currentLevel = activeResearch.level || 0;
+            const targetLevel = currentLevel + 1;
+            const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+            const progressPercent = Math.min(100, Math.floor((progress / actualCost) * 100));
+
+            if (!progressContainer) {
+                progressContainer = document.createElement('div');
+                progressContainer.className = 'research-progress-container';
+                progressContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+                researchLink.appendChild(progressContainer);
+            }
+
+            let progressBar = progressContainer.querySelector('.research-progress-bar');
+            if (!progressBar) {
+                progressBar = document.createElement('div');
+                progressBar.className = 'research-progress-bar';
+                progressContainer.appendChild(progressBar);
+            }
+
+            progressBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); width: ${progressPercent}%; transition: width 0.3s ease;`;
+        } else if (progressContainer) {
+            // Remove progress bar if no active research
+            progressContainer.remove();
+        }
+    }
+
+    // Update smelter link with temperature bar
+    const smelterLink = document.getElementById('smelter-function-link');
+    if (smelterLink) {
+        // Remove existing temp bar if present
+        let tempContainer = smelterLink.querySelector('.smelter-temp-container');
+
+        const tempValue = Math.round(smelterTemperature);
+        const furnaceTemp = researchData['furnace-temperature'];
+        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+        const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+        const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+
+        if (!tempContainer) {
+            tempContainer = document.createElement('div');
+            tempContainer.className = 'smelter-temp-container';
+            tempContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+            smelterLink.appendChild(tempContainer);
+        }
+
+        let tempBar = tempContainer.querySelector('.smelter-temp-bar');
+        if (!tempBar) {
+            tempBar = document.createElement('div');
+            tempBar.className = 'smelter-temp-bar';
+            tempContainer.appendChild(tempBar);
+        }
+
+        tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
     }
 }
 

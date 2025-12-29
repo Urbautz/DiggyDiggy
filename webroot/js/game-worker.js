@@ -665,7 +665,8 @@ function actForDwarf(dwarf) {
 
     // Check for stuck dwarf - only track when actively moving or digging
     const shouldTrackStuck = (dwarf.status === 'moving' || dwarf.status === 'digging' || dwarf.status === 'idle');
-    const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
+    // Functions grid (y=-1) has no hardness, only check main grid cells
+    const cellHardness = (dwarf.y >= 0 && grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
     const trackKey = dwarf.name; // Use name as unique key
     const tracked = stuckTracking.get(trackKey);
     
@@ -1307,14 +1308,20 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     const rowIndex = dwarf.y;
     const originalX = dwarf.x;
-    if (typeof rowIndex !== 'number' || rowIndex < 0 || rowIndex >= grid.length) {
+
+    // Allow y = -1 for functions grid, otherwise validate against main grid bounds
+    const isInFunctionsGrid = rowIndex === -1;
+    const isInMainGrid = rowIndex >= 0 && rowIndex < grid.length;
+
+    if (typeof rowIndex !== 'number' || (!isInFunctionsGrid && !isInMainGrid)) {
         console.warn(`Dwarf ${dwarf.name} has invalid y=${rowIndex}`);
         return;
     }
 
     const power = getDwarfToolPower(dwarf);
 
-    const row = grid[rowIndex];
+    // Only access grid row if dwarf is in the main grid (not in functions grid at y=-1)
+    const row = isInMainGrid ? grid[rowIndex] : null;
 
     // Check if dwarf is at research/smelter location BEFORE accessing grid cells (they are outside main grid)
     // If so, use unified task assignment to respect priorities
@@ -1328,7 +1335,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         return;
     }
 
-    const curCell = row[originalX];
+    // Only access current cell if in main grid (row exists)
+    const curCell = row ? row[originalX] : null;
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
@@ -1342,6 +1350,15 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         if (assignedTask === 'research' || assignedTask === 'smelting') {
             return;
         }
+
+        // If digging was assigned and dwarf is in functions grid, move to main grid first
+        if (assignedTask === 'digging' && dwarf.y === -1) {
+            // Move dwarf from functions grid to main grid (same x position, y=0)
+            scheduleMove(dwarf, dwarf.x, 0);
+            dwarf.status = 'moving';
+            return;
+        }
+
         // If 'digging' would be assigned, we continue to the digging logic below
         // If null was returned, no valid task was available (all blacklisted) - dwarf should stay idle
         if (assignedTask === null) {
@@ -1437,7 +1454,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         const nextX = dwarf.x + (stepX !== 0 ? stepX : 0);
         const nextY = dwarf.y + (stepX === 0 ? stepY : 0);
 
-        if (!Array.isArray(grid) || dwarf.y < 0 || dwarf.y >= grid.length) {
+        // Allow y = -1 for functions grid, validate other positions against main grid
+        const validPosition = dwarf.y === -1 || (dwarf.y >= 0 && dwarf.y < grid.length);
+        if (!Array.isArray(grid) || !validPosition) {
             dwarf.moveTarget = null;
             dwarf.status = 'idle';
             // Release any reservations when movement fails
@@ -1466,7 +1485,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     if (dwarf.status === 'digging') {
         const curKeyDig = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf.name);
-        const curCellDig = grid[dwarf.y][dwarf.x];
+        // Can't dig in functions grid (y=-1), only in main grid
+        const curCellDig = (dwarf.y >= 0 && grid[dwarf.y]) ? grid[dwarf.y][dwarf.x] : null;
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
@@ -1539,6 +1559,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
     }
 
+    // All digging-related logic below only applies to main grid (not functions grid at y=-1)
+    // If dwarf is in functions grid, they should only perform functions tasks
+    if (!row) {
+        // Dwarf is in functions grid - no digging available
+        return;
+    }
+
     // Try moving down if current cell is empty
     if (curCell && curCell.hardness <= 0) {
         if (Math.random() < GRID_MOVE_DOWN_CHANCE) {
@@ -1567,7 +1594,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Check if dwarf has been stuck for a while - allow overriding reservations
         const tracked = stuckTracking.get(dwarf.name);
         const isNearStuck = tracked && tracked.ticks > STUCK_DETECTION_TICKS * 0.5;
-        
+
         for (let offset = 0; offset < row.length; offset++) {
             const c = (originalX + dir * offset + row.length) % row.length;
             if (!(row[c] && row[c].hardness > 0)) continue;

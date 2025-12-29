@@ -1367,7 +1367,7 @@ let dwarfs = [
       toolId: 1,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriority: ['digging', 'research', 'smelting'],
@@ -1376,7 +1376,7 @@ let dwarfs = [
       toolId: 2,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriority: ['digging', 'research', 'smelting'],
@@ -1385,7 +1385,7 @@ let dwarfs = [
       toolId: 3,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1394,7 +1394,7 @@ let dwarfs = [
      toolId: 4,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1403,7 +1403,7 @@ let dwarfs = [
      toolId: 5,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1412,7 +1412,7 @@ let dwarfs = [
      toolId: 6,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['research', 'smelting', 'digging',],
@@ -1441,15 +1441,17 @@ let nextGemId = 1;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Drop-off location (where dwarfs should deliver their bucket contents).
-// Place the small 2x2 drop-area to the right of the digging grid.
-const dropGridStartX = gridWidth; // 2x2 grid placed immediately to the right
+// Functions grid - 1x5 grid above the main digging grid (y = -1)
+const functionsGridY = -1; // One row above the main grid
+const functionsGridWidth = 5;
+
+// Function locations in the 1x5 grid above main grid
+const dropOff = { x: 0, y: functionsGridY };     // First cell (Warehouse)
+const house = { x: 1, y: functionsGridY };        // Second cell (House/Bed)
+const research = { x: 2, y: functionsGridY };     // Third cell (Research)
+const smelter = { x: 3, y: functionsGridY };      // Fourth cell (Smelter)
+const automate = { x: 4, y: functionsGridY };     // Fifth cell (Automate - placeholder)
+
+// Keep old drop-grid on the right for backward compatibility (2x2 grid)
+const dropGridStartX = gridWidth;
 const dropGridWidth = 2, dropGridHeight = 2;
-// drop-off inside the 2x2 grid: first cell (0,0) in drop-grid coordinates
-const dropOff = { x: dropGridStartX + 0, y: 0 };
-// bed / house: place second cell (1,0) in drop-grid coordinates
-const house = { x: dropGridStartX + 1, y: 0 };
-// research: place third cell (0,1) in drop-grid coordinates
-const research = { x: dropGridStartX + 0, y: 1 };
-// smelter: place fourth cell (1,1) in drop-grid coordinates
-const smelter = { x: dropGridStartX + 1, y: 1 };

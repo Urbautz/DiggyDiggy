@@ -38,6 +38,56 @@ main {
 }
 .grids #side-grids { display:flex; flex-direction:column; margin:-12px; flex: 0 0 auto; }
 
+/* Functions grid (1x5) above main digging grid */
+.functions-grid {
+    border-collapse: collapse;
+    display: block;
+    width: fit-content;
+    background-color: #333333;
+    margin-bottom: 8px;
+}
+
+.functions-grid .cell {
+    width: 50px;
+    max-width: 50px;
+    height: 50px;
+    border: 1px solid rgba(0,0,0,0.5);
+    background: rgba(255,255,255,0.02);
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    vertical-align: middle;
+    position: relative;
+}
+
+/* Dwarf and marker styling for functions grid */
+.functions-grid .cell.has-dwarf::before {
+    content: '👷';
+    font-size: 20px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.functions-grid .cell > * {
+    position: relative;
+    z-index: 1;
+}
+
+.functions-grid .cell .drop-off-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    font-size: 18px;
+    opacity: 0.95;
+}
+
 /* Functions container with grid + links side by side */
 .functions-container {
     display: flex;
@@ -46,34 +96,10 @@ main {
     height: 100px;
 }
 
-.functions-grid-wrapper {
-    flex: 0 0 auto;
-}
-
-/* the small drop-grid uses smaller cells to visually differentiate it */
-#drop-grid { border-collapse: collapse; background: #222; padding: 6px; width: auto; }
-#drop-grid .cell { width: 44px; max-width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.5); font-size: 12px; line-height:44px; position: relative; }
-#drop-grid .cell { background: rgba(255,255,255,0.02); color: #fff }
-
-/* Pause all animations and hide moving markers when hovering over the Functions panel for better responsiveness */
-#drop-grid-panel:hover * {
-    animation-play-state: paused !important;
-}
-#drop-grid-panel:hover .moving-marker {
-    display: none !important;
-}
-/* ensure content within drop-grid cells stacks correctly */
-#drop-grid .cell > * { position: relative; z-index: 1; }
-/* dwarf background marker should be positioned absolutely so it doesn't push layout */
-#drop-grid .has-dwarf::before { content: '👷'; font-size: 20px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; opacity: 0.75; pointer-events: none; }
-/* center the warehouse icon inside the cell so it doesn't move when other content changes */
-#drop-grid .cell .drop-off-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; font-size: 18px; opacity: 0.95; }
-#drop-grid .cell .unloading-marker { z-index: 5; }
-
-/* Functions list with clickable links (4 per row grid layout) */
+/* Functions list with clickable links (5 per row grid layout) */
 .functions-list {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     padding: 8px;
     flex: 0 0 auto;
@@ -97,6 +123,7 @@ main {
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
+    position: relative; /* Allow absolute positioning of progress bars */
 }
 
 .functions-list a:hover {
