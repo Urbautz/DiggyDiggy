@@ -330,9 +330,10 @@ main {
     width: 50px;
     min-width: 50px;
     background: transparent;
-    color: #fff;
+    color: #ddd;
     text-align: center;
-    font-weight: 600;
+    font-size:12px;
+    font-weight:600;
     padding: 0 2px;
     border: 1px solid #000000;
     vertical-align: middle;
@@ -375,7 +376,7 @@ header, footer {
     gap: 8px;
     padding: 8px;
     margin-bottom: 16px;
-    width: calc(532px + 28px + 450px + 166px);
+    width: calc(532px + 28px + 450px + 162px);
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
