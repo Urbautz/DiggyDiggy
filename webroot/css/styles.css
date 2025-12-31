@@ -50,7 +50,6 @@ main {
 .functions-grid .depth-cell {
     width: 50px;
     min-width: 50px;
-    xbackground: transparent;
     border: none;
 }
 
