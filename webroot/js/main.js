@@ -2375,6 +2375,7 @@ function saveGame() {
             smelterCoalMaxTemp: smelterCoalMaxTemp,
             smelterMagmaMinTemp: smelterMagmaMinTemp,
             smelterHeatingMode: smelterHeatingMode,
+            hasForgedHighHardnessTool: hasForgedHighHardnessTool,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2582,6 +2583,9 @@ function loadGame() {
         if (gameState.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = gameState.smelterCoalMaxTemp;
         if (gameState.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = gameState.smelterMagmaMinTemp;
         if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
+
+        // Restore forge state
+        if (gameState.hasForgedHighHardnessTool !== undefined) hasForgedHighHardnessTool = gameState.hasForgedHighHardnessTool;
 
         // Backwards compatibility: if old variables exist but new ones don't, migrate them
         if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {

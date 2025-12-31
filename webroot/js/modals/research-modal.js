@@ -538,8 +538,8 @@ function startResearch(researchId) {
         researchItem.progress = 0;
     }
 
-    // Set as active
-    activeResearch = researchItem;
+    // Set as active (include id so worker can save completion)
+    activeResearch = { ...researchItem, id: researchId };
 
     // Sync with worker
     if (gameWorker && workerInitialized) {
@@ -584,8 +584,8 @@ function startNextQueuedResearch() {
         researchItem.progress = 0;
     }
 
-    // Set as active
-    activeResearch = researchItem;
+    // Set as active (include id so worker can save completion)
+    activeResearch = { ...researchItem, id: nextResearch.id };
 
     // Sync with worker
     if (gameWorker && workerInitialized) {

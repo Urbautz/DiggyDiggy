@@ -33,6 +33,7 @@ let researchQueue = [];
 let researchData = {}; // Research data object (id as key)
 let researchTree = []; // Ordered array of research IDs
 let pendingTransactions = []; // Queue of transactions to send to main thread
+let hasForgedHighHardnessTool = false; // Track if player has successfully forged a tool with 100+ hardness material
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
