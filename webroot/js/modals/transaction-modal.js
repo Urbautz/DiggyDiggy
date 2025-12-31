@@ -450,7 +450,7 @@ function populateRecentTab(container) {
 
 function populateInvestmentsTab(container) {
     // Check if Small Time Investments research is unlocked
-    const smallTimeInvestments = researchtree.find(r => r.id === 'small-time-investments');
+    const smallTimeInvestments = researchData['small-time-investments'];
     const isUnlocked = smallTimeInvestments && (smallTimeInvestments.level || 0) > 0;
 
     if (!isUnlocked) {

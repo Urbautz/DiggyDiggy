@@ -424,7 +424,27 @@ const materials = {
     color: '#484848ff',
     weight: 35
   },
-  'adamantine ore': {
+  'wolfram ore': {
+    name: 'Wolframit',
+    type: 'Ore Hard',
+    hardness: 5000,
+    probability: 15,
+    worth: 8000,
+    minlevel: 100000,
+    color: '#b7bd07ff',
+    weight: 50
+  },
+  'sillimanite': {
+    name: 'Sillimanite',
+    type: 'Stone Hard',
+    hardness: 7850,
+    probability: 140,
+    worth: 20,
+    minlevel: 105000,
+    color: '#8b7d5bff',
+    weight: 34
+  },
+    'adamantine ore': {
     name: 'Adamantine Ore',
     type: 'Ore Hard',
     hardness: 10000,
@@ -434,25 +454,25 @@ const materials = {
     color: '#8eb95eff',
     weight: 50
   },
-  'sillimanite': {
-    name: 'Sillimanite',
-    type: 'Stone Hard',
-    hardness: 7850,
-    probability: 140,
-    worth: 20,
-    minlevel: 125000,
-    color: '#8b7d5bff',
-    weight: 34
-  },
   'quartzite': {
     name: 'Quartzite',
     type: 'Stone Hard',
     hardness: 8500,
     probability: 200,
     worth: 31,
-    minlevel: 135000,
+    minlevel: 115000,
     color: '#c35858ff',
     weight: 35
+  },
+  'uranium ore': {
+    name: 'Uranium Ore',
+    type: 'Ore Hard',
+    hardness: 1000,
+    probability: 15,
+    worth: 6000,
+    minlevel: 125000,
+    color: '#26c07dff',
+    weight: 25
   },
   'obsidian': {
     name: 'Obsidian',
@@ -460,9 +480,19 @@ const materials = {
     hardness: 9999,
     probability: 200,
     worth: 45,
-    minlevel: 195000,
+    minlevel: 125000,
     color: '#184f48ff',
     weight: 35
+  },
+  'plutonium ore': {
+    name: 'Plutonium Ore',
+    type: 'Ore Hard',
+    hardness: 4000,
+    probability: 15,
+    worth: 12000,
+    minlevel: 135000,
+    color: '#35fa00',
+    weight: 25
   },
   'polished marble': {
     name: 'Polished Marble',
@@ -657,6 +687,39 @@ const materials = {
     color: '#2d2121ff',
     forge: 'Base',
     weight: 50
+  },
+  'wolfram': {
+    name: 'Wolfram Ingot',
+    type: 'Ingot',
+    hardness: 1000,
+    probability: 0,
+    worth: 9000,
+    minlevel: 99999,
+    color: '#b1c41cff',
+    forge: 'Plating',
+    weight: 50
+  },
+  'uranium': {
+    name: 'Enriched Uranium',
+    type: 'Ingot',
+    hardness: 800,
+    probability: 0,
+    worth: 7000,
+    minlevel: 99999,
+    color: '#13cb7fff',
+    forge: 'Plating',
+    weight: 25
+  },
+  'plutonium': {
+    name: 'Enriched Plutonium',
+    type: 'Ingot',
+    hardness: 1100,
+    probability: 0,
+    worth: 13000,
+    minlevel: 99999,
+    color: '#35fa00',
+    forge: 'Plating',
+    weight: 25
   },
   'ruby': {
     name: 'Ruby',
@@ -1054,6 +1117,36 @@ const smelterTasksData = {
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
     requires: 'furnace',
     hardness: 100
+  },
+  'enrich-wolfram': {
+    name: 'Enrich Wolfram',
+    description: 'Enrich wolfram ore through advanced processing.',
+    input: { material: 'wolfram ore', amount: 1 },
+    output: { material: 'wolfram', amount: 1 },
+    minTemp: 3422,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 105
+  },
+  'enrich-uranium': {
+    name: 'Enrich Uranium',
+    description: 'Enrich uranium ore through advanced processing.',
+    input: { material: 'uranium ore', amount: 1 },
+    output: { material: 'uranium', amount: 1 },
+    minTemp: 1135,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 110
+  },
+  'enrich-plutonium': {
+    name: 'Enrich Plutonium',
+    description: 'Enrich plutonium ore through advanced processing.',
+    input: { material: 'plutonium ore', amount: 1 },
+    output: { material: 'plutonium', amount: 1 },
+    minTemp: 640,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 115
   }
 };
 
@@ -1084,7 +1177,10 @@ let smelterTasks = [
     'smelt-nickel',
     'smelt-platinum',
     'smelt-titanium',
-    'smelt-adamantine'
+    'smelt-adamantine',
+    'enrich-wolfram',
+    'enrich-uranium',
+    'enrich-plutonium'
 ];
 
 // Smelter temperature system
@@ -1094,52 +1190,279 @@ let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user con
 let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
-let researchtree = [
-    { id: 'improved-digging', name: 'Improved Digging Technique', cost: 50, goldCost: 10, level: 0, hardness: 10,
-      description: 'Dwarfs dig 1% harder.' },
-    { id: 'better-housing', name: 'Better Housing', cost: 100, goldCost: 10, level: 0, hardness: 20,
-      description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.' },
-    { id: 'trading', name: 'Better trading', cost: 100, goldCost: 10, level: 0, hardness: 30,
-      description: 'Prices are improved by 3% per level' },
-    { id: 'price-negotiations', name: 'Price Negotiations', cost: 3000, goldCost: 500, level: 0, maxlevel: 1, hardness: 50, requires: [{'trading':10}],
-      min_depth: 5000, description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.' },
-    { id: 'small-time-investments', name: 'Small Time Investments', cost: 5000, goldCost: 1000, level: 0, maxlevel: 1, hardness: 100, requires: [{'price-negotiations':1}],
-      min_depth: 8000, description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.' },
-    { id: 'buckets', name: 'Bigger Buckets', cost: 300, goldCost: 200, level: 0, maxlevel:10, hardness: 50,
-      description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).' },
-    { id: 'union-busting', name: 'Union Busting', cost: 500, goldCost: 500, level: 0, maxlevel: 15, hardness: 60,
-      description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.' },
-    { id: 'tool-enchanting', name: 'Tool Enchanting', cost: 600, goldCost: 300, level: 0, maxlevel: 30, hardness: 150,
-      min_depth: 250, description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.' },
-    { id: 'grinding-machine', name: 'Grinding Machine', cost: 200, goldCost: 200, level: 0, maxlevel: 1, hardness: 70,
-      min_depth: 500, description: 'Unlocks the grind task at the Smelter.' },
-    { id: 'stone-polishing', name: 'Stone Polishing', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 200, requires: [{'grinding-machine':1}],
-      min_depth: 4000, description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).' },
-    { id: 'gem-cutting', name: 'Gem Cutting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 1, hardness: 300, requires: [{'grinding-machine':1}],
-      min_depth: 2000, description: 'Unlocks gem cutting at the smelter.' },
-    { id: 'gem-setting', name: 'Gem Setting', cost: 1500, goldCost: 5000, level: 0, maxlevel: 3, hardness: 320, requires: [{'gem-cutting':1}],
-      min_depth: 2000, description: 'Set up to 3 Gems into the dwarfs tools.' },
-      { id: 'furnace', name: 'Furnace', cost: 750, goldCost: 750, level: 0, maxlevel: 1, hardness: 250, requires: [{'grinding-machine':1}],
-      min_depth: 1000, description: 'Unlocks the furnace for smelting of ores.' },
-    { id: 'furnace-insulation', name: 'Furnace Insulation', cost: 10000, goldCost: 10000, level: 0, maxlevel: 5, hardness: 500, requires: [{'furnace':1}],
-      min_depth: 2000, description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).' },
-    { id: 'forge', name: 'Forge', cost: 2000, goldCost: 2000, level: 0, maxlevel: 1, hardness: 350, requires: [{'furnace':1}],
-      min_depth: 1000, description: 'Unlocks the forge for crafting and upgrading tools.' },
-    { id: 'alloys', name: 'Alloys', cost: 4000, goldCost: 8000, level: 0, maxlevel: 1, hardness: 700, requires: [{'furnace':1}],
-      min_depth: 15000, description: 'Unlocks the ability to create alloys in the smelter.' },
-    { id: 'material-science', name: 'Material Science', cost: 500, goldCost: 500, level: 0, maxlevel: 5, hardness: 100,
-      min_depth: 1000, description: 'Increases critical hit chance to any stone by 5% per level.' },
-    { id: 'wage-optimization', name: 'Wage Negotiation', cost: 1000, goldCost: 1000, level: 0, maxlevel: 20, hardness: 400,
-      min_depth: 3000, unlock_requires: 'wage_increase', description: 'Reduces wage increase per dwarf level by 1%.' },
-    { id: 'expertise-stone', name: 'Stone Expertise', cost: 3000, goldCost: 3000, level: 0, maxlevel: 15, hardness: 450, requires: [{'material-science':3}],
-      min_depth: 1000, description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.' },
-    { id: 'expertise-ore', name: 'Ore Expertise', cost: 20000, goldCost: 20000, level: 0, maxlevel: 15, hardness: 800, requires: [{'material-science':5}, {'expertise-stone':1}],
-      min_depth: 2000, description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.' },
-    { id: 'furnace-temperature', name: 'Furnace Temperature', cost: 5000, goldCost: 5000, level: 0, maxlevel: 15, hardness: 550, requires: [{'forge':1}],
-      min_depth: 6000, description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).' },
-    { id: 'magma-furnace', name: 'Magma Operated Furnace', cost: 25000, goldCost: 50000, level: 0, maxlevel: 1, hardness: 1000, requires: [{'furnace-insulation':5},  {'furnace-temperature':10}],
-      min_depth: 8000, description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.' },
-    ];
+// ============================================================================
+// RESEARCH REGISTRY
+// ============================================================================
+// Research data - object where id is the key, with ordered array tracking display order
+const researchData = {
+  'improved-digging': {
+    name: 'Improved Digging Technique',
+    cost: 50,
+    goldCost: 10,
+    level: 0,
+    hardness: 10,
+    description: 'Dwarfs dig 1% harder.'
+  },
+  'better-housing': {
+    name: 'Better Housing',
+    cost: 100,
+    goldCost: 10,
+    level: 0,
+    hardness: 20,
+    description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.'
+  },
+  'trading': {
+    name: 'Better trading',
+    cost: 100,
+    goldCost: 10,
+    level: 0,
+    hardness: 30,
+    description: 'Prices are improved by 3% per level'
+  },
+  'price-negotiations': {
+    name: 'Price Negotiations',
+    cost: 3000,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 1,
+    hardness: 50,
+    requires: [{'trading': 10}],
+    min_depth: 5000,
+    description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
+  },
+  'small-time-investments': {
+    name: 'Small Time Investments',
+    cost: 5000,
+    goldCost: 1000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 750,
+    requires: [{'price-negotiations': 1}],
+    min_depth: 8000,
+    description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
+  },
+  'wage-optimization': {
+    name: 'Wage Negotiation',
+    cost: 1000,
+    goldCost: 1000,
+    level: 0,
+    maxlevel: 20,
+    hardness: 70,
+    min_depth: 3000,
+    unlock_requires: 'wage_increase',
+    description: 'Reduces wage increase per dwarf level by 1%.'
+  },
+  'buckets': {
+    name: 'Bigger Buckets',
+    cost: 300,
+    goldCost: 200,
+    level: 0,
+    maxlevel: 10,
+    hardness: 30,
+    description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).'
+  },
+  'union-busting': {
+    name: 'Union Busting',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 15,
+    hardness: 40,
+    description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.'
+  },
+  'tool-enchanting': {
+    name: 'Tool Enchanting',
+    cost: 600,
+    goldCost: 300,
+    level: 0,
+    maxlevel: 30,
+    hardness: 40,
+    min_depth: 250,
+    description: 'Hire a wizard to enchant your tools, better enchantments with higher levels.'
+  },
+  'grinding-machine': {
+    name: 'Grinding Machine',
+    cost: 200,
+    goldCost: 200,
+    level: 0,
+    maxlevel: 1,
+    hardness: 40,
+    min_depth: 500,
+    description: 'Unlocks the grind task at the Smelter.'
+  },
+  'stone-polishing': {
+    name: 'Stone Polishing',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 5,
+    hardness: 50,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 4000,
+    description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).'
+  },
+  'gem-cutting': {
+    name: 'Gem Cutting',
+    cost: 1500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 55,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 2000,
+    description: 'Unlocks gem cutting at the smelter.'
+  },
+  'gem-setting': {
+    name: 'Gem Setting',
+    cost: 1500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 3,
+    hardness: 55,
+    requires: [{'gem-cutting': 1}],
+    min_depth: 2000,
+    description: 'Set up to 3 Gems into the dwarfs tools.'
+  },
+  'furnace': {
+    name: 'Furnace',
+    cost: 750,
+    goldCost: 750,
+    level: 0,
+    maxlevel: 1,
+    hardness: 60,
+    requires: [{'grinding-machine': 1}],
+    min_depth: 1000,
+    description: 'Unlocks the furnace for smelting of ores.'
+  },
+  'furnace-insulation': {
+    name: 'Furnace Insulation',
+    cost: 10000,
+    goldCost: 10000,
+    level: 0,
+    maxlevel: 5,
+    hardness: 60,
+    requires: [{'furnace': 1}],
+    min_depth: 2000,
+    description: 'Reduces furnace heat loss by 10% per level (from 0.05% base cooling rate).'
+  },
+  'forge': {
+    name: 'Forge',
+    cost: 2000,
+    goldCost: 2000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 65,
+    requires: [{'furnace': 1}],
+    min_depth: 1000,
+    description: 'Unlocks the forge for crafting and upgrading tools.'
+  },
+  'alloys': {
+    name: 'Alloys',
+    cost: 4000,
+    goldCost: 8000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 70,
+    requires: [{'furnace': 1}],
+    min_depth: 15000,
+    description: 'Unlocks the ability to create alloys in the smelter.'
+  },
+    'furnace-temperature': {
+    name: 'Furnace Temperature',
+    cost: 5000,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 80,
+    requires: [{'forge': 1}],
+    min_depth: 6000,
+    description: 'Increases maximum furnace temperature by 100° per level (from 1500° to 3000°).'
+  },
+  'magma-furnace': {
+    name: 'Magma Operated Furnace',
+    cost: 25000,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 90,
+    requires: [{'furnace-insulation': 5}, {'furnace-temperature': 10}],
+    min_depth: 8000,
+    description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.'
+  },
+  'material-science': {
+    name: 'Material Science',
+    cost: 500,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 5,
+    hardness: 70,
+    min_depth: 1000,
+    description: 'Increases critical hit chance to any stone by 5% per level.'
+  },
+
+  'expertise-stone': {
+    name: 'Stone Expertise',
+    cost: 3000,
+    goldCost: 3000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 80,
+    requires: [{'material-science': 3}],
+    min_depth: 1000,
+    description: 'Critical hits have a 2% chance to one-hit any stone.'
+  },
+  'expertise-ore': {
+    name: 'Ore Expertise',
+    cost: 20000,
+    goldCost: 20000,
+    level: 0,
+    maxlevel: 15,
+    hardness: 85,
+    requires: [{'material-science': 5}, {'expertise-stone': 1}],
+    min_depth: 2000,
+    description: 'Critical hits have a 2% chance to one-hit any ore.',
+  },
+  'ore-enrichment': {
+    name: 'Ore Enrichment',
+    cost: 50000,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 120,
+    requires: [{'furnace-temperature': 15}, {'magma-furnace': 1}],
+    min_depth: 100000,
+    description: 'Unlocks the ability to enrich special ores (Wolfram, Uranium, Plutonium) for use in advanced plating.'
+  },
+
+};
+
+// Ordered array of research IDs (determines display order)
+let researchTree = [
+  'improved-digging',
+  'better-housing',
+  'trading',
+  'price-negotiations',
+  'small-time-investments',
+  'buckets',
+  'union-busting',
+  'tool-enchanting',
+  'grinding-machine',
+  'stone-polishing',
+  'gem-cutting',
+  'gem-setting',
+  'furnace',
+  'furnace-insulation',
+  'forge',
+  'alloys',
+  'material-science',
+  'wage-optimization',
+  'expertise-stone',
+  'expertise-ore',
+  'furnace-temperature',
+  'magma-furnace',
+  'ore-enrichment'
+];
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
     
@@ -1152,7 +1475,7 @@ let dwarfs = [
       toolId: 1,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriority: ['digging', 'research', 'smelting'],
@@ -1161,7 +1484,7 @@ let dwarfs = [
       toolId: 2,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriority: ['digging', 'research', 'smelting'],
@@ -1170,7 +1493,7 @@ let dwarfs = [
       toolId: 3,
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 0, y: 0,
+      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1179,7 +1502,7 @@ let dwarfs = [
      toolId: 4,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1188,7 +1511,7 @@ let dwarfs = [
      toolId: 5,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['digging', 'research', 'smelting'],
@@ -1197,7 +1520,7 @@ let dwarfs = [
      toolId: 6,
      level: 0, xp: 0,
      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
-     x: 0, y: 0,
+     x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriority: ['research', 'smelting', 'digging',],
@@ -1226,15 +1549,18 @@ let nextGemId = 1;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Drop-off location (where dwarfs should deliver their bucket contents).
-// Place the small 2x2 drop-area to the right of the digging grid.
-const dropGridStartX = gridWidth; // 2x2 grid placed immediately to the right
+// Functions grid - 1x5 grid above the main digging grid (y = -1)
+const functionsGridY = -1; // One row above the main grid
+const functionsGridWidth = 5;
+
+// Function locations in the 1x5 grid above main grid
+// Order: House, Warehouse, Smelter, Research, Automate
+const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
+const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
+const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
+const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
+const automate = { x: 4, y: functionsGridY };     // Fifth cell (Automate - placeholder)
+
+// Keep old drop-grid on the right for backward compatibility (2x2 grid)
+const dropGridStartX = gridWidth;
 const dropGridWidth = 2, dropGridHeight = 2;
-// drop-off inside the 2x2 grid: first cell (0,0) in drop-grid coordinates
-const dropOff = { x: dropGridStartX + 0, y: 0 };
-// bed / house: place second cell (1,0) in drop-grid coordinates
-const house = { x: dropGridStartX + 1, y: 0 };
-// research: place third cell (0,1) in drop-grid coordinates
-const research = { x: dropGridStartX + 0, y: 1 };
-// smelter: place fourth cell (1,1) in drop-grid coordinates
-const smelter = { x: dropGridStartX + 1, y: 1 };

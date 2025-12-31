@@ -14,7 +14,7 @@ function openEnchantModal(toolId) {
         return;
     }
 
-    const enchantResearch = researchtree.find(r => r.id === 'tool-enchanting');
+    const enchantResearch = researchData['tool-enchanting'];
     const maxEnchantLevel = enchantResearch ? enchantResearch.level : 0;
 
     if (maxEnchantLevel === 0) {

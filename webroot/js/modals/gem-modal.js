@@ -18,7 +18,7 @@ function openGemModal(toolId) {
         return;
     }
 
-    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const gemSettingResearch = researchData['gem-setting'];
     const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
 
     if (maxGemSlots === 0) {
@@ -156,7 +156,7 @@ function confirmGemSetting(toolId) {
     const tool = toolsInventory.find(t => t.id === toolId);
     if (!tool) return;
 
-    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const gemSettingResearch = researchData['gem-setting'];
     const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
 
     // Collect new gem selections
@@ -284,7 +284,7 @@ function unsetGem(toolId, slotIndex) {
     }
 
     // Refresh the gem modal
-    const gemSettingResearch = researchtree.find(r => r.id === 'gem-setting');
+    const gemSettingResearch = researchData['gem-setting'];
     const maxGemSlots = gemSettingResearch ? gemSettingResearch.level : 0;
     populateGemModal(tool, maxGemSlots);
 
@@ -498,7 +498,7 @@ function populateGemsList() {
             gemItem.className = 'gem-item gem-item-compact';
 
             // Check if gem cutting is researched
-            const gemCuttingResearch = researchtree.find(r => r.id === 'gem-cutting');
+            const gemCuttingResearch = researchData['gem-cutting'];
             const hasGemCutting = gemCuttingResearch && gemCuttingResearch.level > 0;
 
             // Show cut button for rough gems if gem cutting is researched, placeholder for polished gems

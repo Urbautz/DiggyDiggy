@@ -50,7 +50,7 @@ function getDwarfCurrentActivity(dwarf) {
                 const task = smelterTasksData[taskId];
 
                 // Check if task is unlocked (researched)
-                const isUnlocked = !task.requires || (researchtree.find(r => r.id === task.requires)?.level || 0) >= 1;
+                const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
                 if (!isUnlocked) continue;
 
                 // For heating tasks, check temperature requirements
@@ -546,7 +546,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const modifiedDigPowerPoints = getDiamondModifiedDigPower(dwarf, baseDigPowerPoints);
     const levelBonus = 1 + modifiedDigPowerPoints * 0.1;
 
-    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
 
@@ -638,7 +638,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     `;
 
     // Calculate and populate wage
-    const wageOptimization = researchtree.find(r => r.id === 'wage-optimization');
+    const wageOptimization = researchData['wage-optimization'];
     const wageResearchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
     const researchReduction = wageResearchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
     const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
@@ -926,7 +926,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
         }
     }
     const levelBonus = 1 + (dwarf.digPower || 0) * 0.1;
-    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
 

@@ -30,8 +30,10 @@ let gold = 1000;
 let toolsInventory = [];
 let activeResearch = null;
 let researchQueue = [];
-let researchtree = [];
+let researchData = {}; // Research data object (id as key)
+let researchTree = []; // Ordered array of research IDs
 let pendingTransactions = []; // Queue of transactions to send to main thread
+let hasForgedHighHardnessTool = false; // Track if player has successfully forged a tool with 100+ hardness material
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -127,24 +129,24 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     };
 
     // Debug logging
-    console.log(`[${dwarf.name}] assignDwarfTask called:`, {
-        priority: taskPriority,
-        blacklist: taskBlacklist,
-        availability: taskAvailability,
-        researchDetails: researchAvailabilityDetails,
-        position: `(${dwarf.x}, ${dwarf.y})`,
-        status: dwarf.status
-    });
+    //console.log(`[${dwarf.name}] assignDwarfTask called:`, {
+    //    priority: taskPriority,
+    //    blacklist: taskBlacklist,
+    //    availability: taskAvailability,
+    //    researchDetails: researchAvailabilityDetails,
+    //    position: `(${dwarf.x}, ${dwarf.y})`,
+    //    status: dwarf.status
+    //});
 
     // Find the highest priority task that is available and not blacklisted
     for (const taskId of taskPriority) {
         // Skip if blacklisted or not available
         if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
-            console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
+            //console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
             continue;
         }
 
-        console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
+        //console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
 
         // Task is available! Execute it
         if (taskId === 'research') {
@@ -154,7 +156,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 if (researchReservedBy === dwarf.name || !researchReservedBy) {
                     researchReservedBy = dwarf.name;
                     dwarf.status = 'researching';
-                    console.log(`[${dwarf.name}] Started researching (already at location)`);
+                    //console.log(`[${dwarf.name}] Started researching (already at location)`);
                     return 'research';
                 }
             } else {
@@ -162,7 +164,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 researchReservedBy = dwarf.name;
                 scheduleMove(dwarf, research.x, research.y);
                 dwarf.status = 'moving';
-                console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
+                //console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
                 return 'research';
             }
         } else if (taskId === 'smelting') {
@@ -172,7 +174,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
                     smelterReservedBy = dwarf.name;
                     dwarf.status = 'smelting';
-                    console.log(`[${dwarf.name}] Started smelting (already at location)`);
+                    //console.log(`[${dwarf.name}] Started smelting (already at location)`);
                     return 'smelting';
                 }
             } else {
@@ -180,7 +182,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 smelterReservedBy = dwarf.name;
                 scheduleMove(dwarf, smelter.x, smelter.y);
                 dwarf.status = 'moving';
-                console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
+                //console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
                 return 'smelting';
             }
         } else if (taskId === 'digging') {
@@ -188,13 +190,13 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
             if (diggingX !== null && diggingY !== null) {
                 scheduleMove(dwarf, diggingX, diggingY);
             }
-            console.log(`[${dwarf.name}] Assigned digging task`);
+            //console.log(`[${dwarf.name}] Assigned digging task`);
             return 'digging';
         }
     }
 
     // No task was assigned
-    console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
+    //console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
     return null;
 }
 
@@ -412,7 +414,7 @@ function handleSmelterTaskOutput(task, dwarf) {
     // Check for break chance (for polishing tasks)
     let success = true;
     if (task.breakChance && task.breakChance > 0) {
-        const stonePolishing = researchtree.find(r => r.id === 'stone-polishing');
+        const stonePolishing = researchData['stone-polishing'];
         const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
         const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
         const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
@@ -469,7 +471,7 @@ function getDwarfToolPower(dwarf) {
     const levelBonus = 1 + modifiedDigPower * DWARF_DIG_POWER_BONUS;
     
     // Apply improved-digging research bonus
-    const improvedDigging = researchtree.find(r => r.id === 'improved-digging');
+    const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 0);
     
     if (!dwarf.toolId) return (DWARF_BASE_POWER * levelBonus) * researchBonus; // default power if no tool
@@ -664,7 +666,8 @@ function actForDwarf(dwarf) {
 
     // Check for stuck dwarf - only track when actively moving or digging
     const shouldTrackStuck = (dwarf.status === 'moving' || dwarf.status === 'digging' || dwarf.status === 'idle');
-    const cellHardness = (grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
+    // Functions grid (y=-1) has no hardness, only check main grid cells
+    const cellHardness = (dwarf.y >= 0 && grid[dwarf.y] && grid[dwarf.y][dwarf.x]) ? grid[dwarf.y][dwarf.x].hardness : 0;
     const trackKey = dwarf.name; // Use name as unique key
     const tracked = stuckTracking.get(trackKey);
     
@@ -748,7 +751,7 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'resting') {
         const maxEnergy = dwarf.maxEnergy || 100;
         // Apply better-housing research bonus with diminishing returns
-        const betterHousing = researchtree.find(r => r.id === 'better-housing');
+        const betterHousing = researchData['better-housing'];
         const housingLevel = betterHousing ? (betterHousing.level || 0) : 0;
         const restBonus = housingLevel > 0 ? 1 + (housingLevel * RESEARCH_BETTER_HOUSING_BASE_BONUS) / (1 + housingLevel * RESEARCH_BETTER_HOUSING_DIMINISH) : 1;
         const restAmount = DWARF_REST_AMOUNT * restBonus;
@@ -802,7 +805,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -899,18 +902,16 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const targetLevel = currentLevel + 1;
             const actualCost = Math.round(activeResearch.cost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
             if (activeResearch.progress >= actualCost) {
-                const completedResearch = activeResearch;
-                completedResearch.level = (completedResearch.level || 0) + 1;
-                completedResearch.progress = 0;
+                const completedResearchId = activeResearch.id;
+                const completedResearchLevel = (activeResearch.level || 0) + 1;
 
-                // Find and update in researchtree
-                const treeItem = researchtree.find(r => r.id === completedResearch.id);
-                if (treeItem) {
-                    treeItem.level = completedResearch.level;
-                    treeItem.progress = 0;
+                // Update in researchData
+                if (researchData[completedResearchId]) {
+                    researchData[completedResearchId].level = completedResearchLevel;
+                    researchData[completedResearchId].progress = 0;
                 }
 
-                console.log(`Research completed: ${completedResearch.name} (Level ${completedResearch.level})`);
+                console.log(`Research completed: ${activeResearch.name} (Level ${completedResearchLevel})`);
 
                 // Clear active research and release reservation
                 activeResearch = null;
@@ -925,7 +926,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 if (researchQueue.length > 0) {
                     const nextResearch = researchQueue.shift();
                     console.log(`[WORKER] Starting next queued research:`, nextResearch);
-                    const nextResearchItem = researchtree.find(r => r.id === nextResearch.id);
+                    const nextResearchItem = researchData[nextResearch.id];
 
                     if (nextResearchItem) {
                         // Initialize progress if not set
@@ -933,8 +934,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                             nextResearchItem.progress = 0;
                         }
 
-                        // Set as active
-                        activeResearch = nextResearchItem;
+                        // Create active research object with id
+                        activeResearch = { ...nextResearchItem, id: nextResearch.id };
                         console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
                     } else {
                         console.error('[WORKER] Queued research not found:', nextResearch.id);
@@ -972,7 +973,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1097,7 +1098,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     }
                     // Handle heating task completion
                     else if (task.type === 'heating' && task.heatGain) {
-                        const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                        const furnaceTemp = researchData['furnace-temperature'];
                         const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                         const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1169,7 +1170,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Handle heating task
             if (task.type === 'heating' && task.heatGain) {
                 // Calculate max temperature based on furnace-temperature research
-                const furnaceTemp = researchtree.find(r => r.id === 'furnace-temperature');
+                const furnaceTemp = researchData['furnace-temperature'];
                 const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
                 const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
 
@@ -1308,14 +1309,20 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     const rowIndex = dwarf.y;
     const originalX = dwarf.x;
-    if (typeof rowIndex !== 'number' || rowIndex < 0 || rowIndex >= grid.length) {
+
+    // Allow y = -1 for functions grid, otherwise validate against main grid bounds
+    const isInFunctionsGrid = rowIndex === -1;
+    const isInMainGrid = rowIndex >= 0 && rowIndex < grid.length;
+
+    if (typeof rowIndex !== 'number' || (!isInFunctionsGrid && !isInMainGrid)) {
         console.warn(`Dwarf ${dwarf.name} has invalid y=${rowIndex}`);
         return;
     }
 
     const power = getDwarfToolPower(dwarf);
 
-    const row = grid[rowIndex];
+    // Only access grid row if dwarf is in the main grid (not in functions grid at y=-1)
+    const row = isInMainGrid ? grid[rowIndex] : null;
 
     // Check if dwarf is at research/smelter location BEFORE accessing grid cells (they are outside main grid)
     // If so, use unified task assignment to respect priorities
@@ -1329,7 +1336,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         return;
     }
 
-    const curCell = row[originalX];
+    // Only access current cell if in main grid (row exists)
+    const curCell = row ? row[originalX] : null;
 
     let movedDownByChance = false;
     let skipHorizontalScan = false;
@@ -1343,12 +1351,28 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         if (assignedTask === 'research' || assignedTask === 'smelting') {
             return;
         }
+
+        // If digging was assigned and dwarf is in functions grid, move to main grid first
+        if (assignedTask === 'digging' && dwarf.y === -1) {
+            // Move dwarf from functions grid to main grid (same x position, y=0)
+            scheduleMove(dwarf, dwarf.x, 0);
+            dwarf.status = 'moving';
+            return;
+        }
+
         // If 'digging' would be assigned, we continue to the digging logic below
-        // If null was returned, no valid task was available (all blacklisted) - continue to digging as fallback
+        // If null was returned, no valid task was available (all blacklisted) - dwarf should stay idle
+        if (assignedTask === null) {
+            // All tasks blacklisted - do nothing
+            return;
+        }
     }
 
     // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
-    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 && 
+    // Also check that digging is not blacklisted
+    const taskBlacklist = dwarf.taskBlacklist || [];
+    if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 &&
+        !taskBlacklist.includes('digging') &&
         !(activeResearch && typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y)) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
@@ -1356,7 +1380,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1385,8 +1409,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
                 
-                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
-                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                const stoneExpertise = researchData['expertise-stone'];
+                const oreExpertise = researchData['expertise-ore'];
                 
                 let oneHitChance = 0;
                 let expertiseType = null;
@@ -1431,7 +1455,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         const nextX = dwarf.x + (stepX !== 0 ? stepX : 0);
         const nextY = dwarf.y + (stepX === 0 ? stepY : 0);
 
-        if (!Array.isArray(grid) || dwarf.y < 0 || dwarf.y >= grid.length) {
+        // Allow y = -1 for functions grid, validate other positions against main grid
+        const validPosition = dwarf.y === -1 || (dwarf.y >= 0 && dwarf.y < grid.length);
+        if (!Array.isArray(grid) || !validPosition) {
             dwarf.moveTarget = null;
             dwarf.status = 'idle';
             // Release any reservations when movement fails
@@ -1460,13 +1486,14 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     if (dwarf.status === 'digging') {
         const curKeyDig = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKeyDig)) reservedDigBy.set(curKeyDig, dwarf.name);
-        const curCellDig = grid[dwarf.y][dwarf.x];
+        // Can't dig in functions grid (y=-1), only in main grid
+        const curCellDig = (dwarf.y >= 0 && grid[dwarf.y]) ? grid[dwarf.y][dwarf.x] : null;
         if (curCellDig && curCellDig.hardness > 0) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
                 // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchtree.find(r => r.id === 'union-busting');
+                const unionBusting = researchData['union-busting'];
                 const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
                 if (Math.random() > continueWorkChance) {
                     dwarf.status = 'striking';
@@ -1493,8 +1520,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
                 
-                const stoneExpertise = researchtree.find(r => r.id === 'expertise-stone');
-                const oreExpertise = researchtree.find(r => r.id === 'expertise-ore');
+                const stoneExpertise = researchData['expertise-stone'];
+                const oreExpertise = researchData['expertise-ore'];
                 
                 let oneHitChance = 0;
                 let expertiseType = null;
@@ -1533,6 +1560,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
     }
 
+    // All digging-related logic below only applies to main grid (not functions grid at y=-1)
+    // If dwarf is in functions grid, they should only perform functions tasks
+    if (!row) {
+        // Dwarf is in functions grid - no digging available
+        return;
+    }
+
     // Try moving down if current cell is empty
     if (curCell && curCell.hardness <= 0) {
         if (Math.random() < GRID_MOVE_DOWN_CHANCE) {
@@ -1561,7 +1595,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Check if dwarf has been stuck for a while - allow overriding reservations
         const tracked = stuckTracking.get(dwarf.name);
         const isNearStuck = tracked && tracked.ticks > STUCK_DETECTION_TICKS * 0.5;
-        
+
         for (let offset = 0; offset < row.length; offset++) {
             const c = (originalX + dir * offset + row.length) % row.length;
             if (!(row[c] && row[c].hardness > 0)) continue;
@@ -1689,7 +1723,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     const wage = calculateWage(dwarf);
     if (gold < wage) {
         // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchtree.find(r => r.id === 'union-busting');
+        const unionBusting = researchData['union-busting'];
         const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
         if (Math.random() > continueWorkChance) {
             dwarf.status = 'striking';
@@ -1729,7 +1763,7 @@ function tick() {
     try {
         // Cool down smelter temperature with insulation research
         if (smelterTemperature > SMELTER_BASE_TEMPERATURE) {
-            const insulationResearch = researchtree.find(r => r.id === 'furnace-insulation');
+            const insulationResearch = researchData['furnace-insulation'];
             const insulationLevel = insulationResearch ? (insulationResearch.level || 0) : 0;
             const coolingReduction = insulationLevel * RESEARCH_FURNACE_INSULATION_BONUS;
             const coolingRate = SMELTER_COOLING_RATE * (1 - coolingReduction);
@@ -1737,7 +1771,7 @@ function tick() {
         }
 
         // Apply interest from Small Time Investments research
-        const smallTimeInvestments = researchtree.find(r => r.id === 'small-time-investments');
+        const smallTimeInvestments = researchData['small-time-investments'];
         if (smallTimeInvestments && (smallTimeInvestments.level || 0) > 0 && gold > 0) {
             let totalInterest = 0;
 
@@ -1816,7 +1850,7 @@ function tick() {
                 toolsInventory,
                 activeResearch,
                 researchQueue,
-                researchtree,
+                researchData,
                 shifted,
                 smelterTemperature,
                 smelterCoalMinTemp,
@@ -1873,9 +1907,13 @@ self.addEventListener('message', (e) => {
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
             researchQueue = data.researchQueue ? JSON.parse(JSON.stringify(data.researchQueue)) : [];
-            if (data.researchtree) {
-                // Copy the full researchtree from main thread
-                researchtree = JSON.parse(JSON.stringify(data.researchtree));
+            if (data.researchData) {
+                // Copy the full researchData from main thread
+                researchData = JSON.parse(JSON.stringify(data.researchData));
+            }
+            if (data.researchTree) {
+                // Copy the researchTree array from main thread
+                researchTree = JSON.parse(JSON.stringify(data.researchTree));
             }
             // Initialize smelter temperature state
             if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
@@ -1935,9 +1973,13 @@ self.addEventListener('message', (e) => {
                     researchQueue = JSON.parse(JSON.stringify(data.researchQueue));
                     console.log(`[WORKER] Research queue updated. Length: ${researchQueue.length}`, researchQueue);
                 }
-                if (data.researchtree) {
-                    // Copy the full researchtree from main thread
-                    researchtree = JSON.parse(JSON.stringify(data.researchtree));
+                if (data.researchData) {
+                    // Copy the full researchData from main thread
+                    researchData = JSON.parse(JSON.stringify(data.researchData));
+                }
+                if (data.researchTree) {
+                    // Copy the researchTree array from main thread
+                    researchTree = JSON.parse(JSON.stringify(data.researchTree));
                 }
                 if (data.smelterTasks) {
                     // Copy the smelter tasks from main thread

@@ -162,6 +162,7 @@ const SMELTER_STEEL_TICKS_REQUIRED = 20; // Time for iron and steel smelting
 const SMELTER_HARDENED_STEEL_TICKS_REQUIRED = 22; // Time for hardened steel smelting
 const SMELTER_DWARF_STEEL_TICKS_REQUIRED = 28; // Time for dwarfen steel smelting
 const SMELTER_PRECIOUS_METAL_TICKS_REQUIRED = 30; // Time for precious metal smelting (silver, gold)
+const SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED = 35; // Time for exotic ore enrichment (wolfram, uranium, plutonium)
 
 // Smelter difficulty system (wisdom-based reruns like research)
 const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point

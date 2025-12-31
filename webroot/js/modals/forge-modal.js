@@ -3,6 +3,9 @@
  * Handles forge interface, forging process, gem setting, and tool inventory display
  */
 
+// Track if player has successfully forged a tool with 100+ hardness material
+let hasForgedHighHardnessTool = false;
+
 // Forge state - tracks the current forging process
 let forgeState = {
     baseMaterial: null,      // Selected ingot material
@@ -10,7 +13,8 @@ let forgeState = {
     coolingOilQuality: 1,    // 1-25 quality
     platingMaterial: '',     // Selected plating material (optional)
     handleQuality: 1,        // 1-100 quality
-    retryCount: 1            // 1-stock amount
+    retryCount: 1,           // 1-stock amount
+    skipAnimation: false     // Skip forging animation
 };
 
 /**
@@ -25,7 +29,7 @@ function sleep(ms) {
  */
 function openForge() {
     // Check if forge research is unlocked
-    const forgeResearch = researchtree.find(r => r.id === 'forge');
+    const forgeResearch = researchData['forge'];
     const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
 
     if (!isForgeUnlocked) {
@@ -50,6 +54,12 @@ function populateForge() {
 
     // Restore previous forge state settings
     restoreForgeState();
+
+    // Show/hide skip animation checkbox based on whether player has forged high hardness tool
+    const skipAnimationContainer = document.getElementById('skip-animation-container');
+    if (skipAnimationContainer) {
+        skipAnimationContainer.style.display = hasForgedHighHardnessTool ? 'block' : 'none';
+    }
 }
 
 /**
@@ -193,6 +203,12 @@ function createForgeInterface(container) {
         <label for="retry-slider">Number of Retries: <span id="retry-value">1</span> (Max: <span id="retry-max">1</span> based on stock)</label>
         <input type="range" id="retry-slider" min="1" max="1" value="1" step="1">
         <p class="forge-info">If forging fails, automatically retry with another ingot. Limited by available stock.</p>
+        <div id="skip-animation-container" style="display: none; margin-top: 10px;">
+            <label>
+                <input type="checkbox" id="skip-animation-checkbox">
+                Skip animation
+            </label>
+        </div>
     `;
     container.appendChild(stepRetry);
 
@@ -218,6 +234,7 @@ function setupForgeListeners() {
     const platingSelect = document.getElementById('plating-material');
     const handleSlider = document.getElementById('handle-slider');
     const retrySlider = document.getElementById('retry-slider');
+    const skipAnimationCheckbox = document.getElementById('skip-animation-checkbox');
 
     if (materialSelect) {
         materialSelect.addEventListener('change', updateForgeState);
@@ -237,6 +254,9 @@ function setupForgeListeners() {
     if (retrySlider) {
         retrySlider.addEventListener('input', updateForgeState);
     }
+    if (skipAnimationCheckbox) {
+        skipAnimationCheckbox.addEventListener('change', updateForgeState);
+    }
 }
 
 /**
@@ -249,6 +269,7 @@ function restoreForgeState() {
     const platingSelect = document.getElementById('plating-material');
     const handleSlider = document.getElementById('handle-slider');
     const retrySlider = document.getElementById('retry-slider');
+    const skipAnimationCheckbox = document.getElementById('skip-animation-checkbox');
 
     // Restore material selection
     if (materialSelect && forgeState.baseMaterial) {
@@ -270,6 +291,9 @@ function restoreForgeState() {
     }
     if (retrySlider) {
         retrySlider.value = forgeState.retryCount;
+    }
+    if (skipAnimationCheckbox) {
+        skipAnimationCheckbox.checked = forgeState.skipAnimation;
     }
 
     // Update UI to reflect restored state
@@ -392,6 +416,12 @@ function updateForgeState() {
         }
     }
 
+    // Update skip animation checkbox state
+    const skipAnimationCheckbox = document.getElementById('skip-animation-checkbox');
+    if (skipAnimationCheckbox) {
+        forgeState.skipAnimation = skipAnimationCheckbox.checked;
+    }
+
     // Calculate and display total cost
     const totalCostDisplay = document.getElementById('total-forge-cost');
     const forgeButton = document.getElementById('forge-button');
@@ -510,10 +540,20 @@ async function startForging() {
     const animationContent = document.getElementById('forging-animation-content');
     animationContent.innerHTML = '<div class="forging-anvil">🔨</div><div class="forging-message">Forging...</div>';
 
+    // Helper function to conditionally sleep based on skipAnimation setting
+    const conditionalSleep = async (ms) => {
+        if (!forgeState.skipAnimation) {
+            await sleep(ms);
+        }
+    };
+
     // Try forging up to retryCount times
     let success = false;
     let finalQuality = 0;
     let attemptsUsed = 0;
+    let failedAttempts = 0;
+    let failureReasons = []; // Track why each attempt failed
+    let qualityProgression = {}; // Track quality at each step for successful attempt
 
     for (let attempt = 0; attempt < forgeState.retryCount; attempt++) {
         attemptsUsed++;
@@ -549,25 +589,32 @@ async function startForging() {
 
         let currentQuality = baseQuality + materialHardness;
 
+        // Track initial quality
+        qualityProgression = {
+            initial: Math.round(currentQuality)
+        };
+
         // Animate hammering
         const hammeringSteps = forgeState.hammeringCount;
         let hammeringFailed = false;
         for (let i = 0; i < hammeringSteps; i++) {
             animationContent.innerHTML = `<div class="forging-anvil shake">🔨</div><div class="forging-message">Hammering... (${i + 1}/${hammeringSteps})</div>`;
-            await sleep(1200);
+            await conditionalSleep(1200);
 
             // Check if material destroyed during hammering
             if (Math.random() > FORGE_HAMMERING_SUCCESS_RATE) {
                 animationContent.innerHTML = `<div class="forging-anvil">💥</div><div class="forging-message forging-failure">Material destroyed during hammering!</div>`;
-                await sleep(2000);
+                await conditionalSleep(2000);
                 hammeringFailed = true;
+                failedAttempts++;
+                failureReasons.push('Destroyed during hammering');
                 break;
             }
 
             // Show completion of this hammer strike with quality
             const strikeQuality = Math.round(currentQuality + (i + 1) * FORGE_HAMMERING_BONUS_PER_ITERATION);
             animationContent.innerHTML = `<div class="forging-anvil">🔨</div><div class="forging-message">Hammering complete (${i + 1}/${hammeringSteps})</div><div class="forging-quality">Current Power: ${strikeQuality}</div>`;
-            await sleep(800);
+            await conditionalSleep(800);
         }
 
         // Check if we broke during hammering
@@ -576,10 +623,11 @@ async function startForging() {
         }
 
         currentQuality += hammeringBonus;
+        qualityProgression.afterHammering = Math.round(currentQuality);
 
         // Show hammering success
         animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Hammering successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
-        await sleep(1000);
+        await conditionalSleep(1000);
 
         // Deduct cooling cost (only after successful hammering)
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
@@ -598,20 +646,23 @@ async function startForging() {
 
         // Cooling step
         animationContent.innerHTML = `<div class="forging-anvil shake">💧</div><div class="forging-message">Cooling...</div>`;
-        await sleep(1800);
+        await conditionalSleep(1800);
 
         const coolingBrittleChance = Math.max(0, FORGE_COOLING_BASE_BRITTLE_CHANCE - (forgeState.coolingOilQuality - 1) * FORGE_COOLING_BRITTLE_REDUCTION_PER_QUALITY);
         if (Math.random() < coolingBrittleChance) {
             animationContent.innerHTML = `<div class="forging-anvil">💔</div><div class="forging-message forging-failure">Material became brittle during cooling!</div>`;
-            await sleep(2000);
+            await conditionalSleep(2000);
+            failedAttempts++;
+            failureReasons.push('Became brittle during cooling');
             continue; // Try next attempt
         }
 
         currentQuality += coolingBonus;
+        qualityProgression.afterCooling = Math.round(currentQuality);
 
         // Show cooling success
         animationContent.innerHTML = `<div class="forging-anvil">❄️</div><div class="forging-message forging-success">Cooling successful!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
-        await sleep(1200);
+        await conditionalSleep(1200);
 
         // Plating step (optional)
         if (forgeState.platingMaterial) {
@@ -627,7 +678,7 @@ async function startForging() {
             }
 
             animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Applying plating...</div>`;
-            await sleep(1800);
+            await conditionalSleep(1800);
 
             // Get plating material name
             const platingMat = materials[forgeState.platingMaterial];
@@ -635,7 +686,7 @@ async function startForging() {
 
             // Show plating success
             animationContent.innerHTML = `<div class="forging-anvil">🌟</div><div class="forging-message forging-success">Plating applied!</div><div class="forging-quality">${platingName} plating complete</div>`;
-            await sleep(1200);
+            await conditionalSleep(1200);
         }
 
         // Deduct handle cost before mounting
@@ -653,21 +704,23 @@ async function startForging() {
 
         // Handle mounting step
         animationContent.innerHTML = `<div class="forging-anvil shake">🪓</div><div class="forging-message">Mounting handle...</div>`;
-        await sleep(1800);
+        await conditionalSleep(1800);
 
         currentQuality += handleBonus;
+        qualityProgression.afterHandle = Math.round(currentQuality);
 
         // Show handle mounting success
         animationContent.innerHTML = `<div class="forging-anvil">✅</div><div class="forging-message forging-success">Handle mounted!</div><div class="forging-quality">Current Power: ${Math.round(currentQuality)}</div>`;
-        await sleep(1200);
+        await conditionalSleep(1200);
 
         // Sharpening step - 3 iterations
         let sharpeningQuality = currentQuality;
+        qualityProgression.beforeSharpening = Math.round(sharpeningQuality);
         const sharpeningIterations = FORGE_SHARPENING_ITERATIONS;
 
         for (let i = 0; i < sharpeningIterations; i++) {
             animationContent.innerHTML = `<div class="forging-anvil shake">✨</div><div class="forging-message">Sharpening... (${i + 1}/${sharpeningIterations})</div>`;
-            await sleep(1200);
+            await conditionalSleep(1200);
 
             // Apply percentage-based sharpening variance: -5% to +20% of current quality
             const variancePercent = (Math.random() * (FORGE_SHARPENING_MAX_VARIANCE - FORGE_SHARPENING_MIN_VARIANCE)) + FORGE_SHARPENING_MIN_VARIANCE;
@@ -678,15 +731,16 @@ async function startForging() {
             const changePercent = (variancePercent * 100).toFixed(1);
             const changeSign = variancePercent >= 0 ? '+' : '';
             animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message">Sharpening pass ${i + 1} complete (${changeSign}${changePercent}%)</div><div class="forging-quality">Current Power: ${Math.round(sharpeningQuality)}</div>`;
-            await sleep(800);
+            await conditionalSleep(800);
         }
 
         // Calculate final quality
         finalQuality = Math.max(1, Math.round(sharpeningQuality));
+        qualityProgression.final = finalQuality;
 
         // Show final sharpening completion
         animationContent.innerHTML = `<div class="forging-anvil">✨</div><div class="forging-message forging-success">Sharpening complete!</div><div class="forging-quality">Final Power: ${finalQuality}</div>`;
-        await sleep(1200);
+        await conditionalSleep(1200);
 
         success = true;
         break;
@@ -712,6 +766,13 @@ async function startForging() {
 
         toolsInventory.push(newTool);
 
+        // Check if this is the first time forging a tool with 100+ hardness material
+        const materialHardness = material ? material.hardness : 0;
+        if (!hasForgedHighHardnessTool && materialHardness >= 100) {
+            hasForgedHighHardnessTool = true;
+            saveGame(); // Save the flag immediately
+        }
+
         // Build dwarf options with current tool info
         const dwarfOptions = dwarfs.map(d => {
             let label = d.name;
@@ -727,19 +788,64 @@ async function startForging() {
             return `<option value="${d.name}">${label}</option>`;
         }).join('');
 
+        // Build forging summary
+        const platingMat = forgeState.platingMaterial ? materials[forgeState.platingMaterial] : null;
+        const platingName = platingMat ? platingMat.name : null;
+
+        let forgingSummary = `
+            <div style="text-align: left; margin: 5px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 5px; max-height: 200px; overflow-y: auto; line-height: 1.3;">
+                <strong>Forging Summary:</strong><br>
+                Material: ${materialName} (Hardness: ${material.hardness})<br>
+                Hammering: ${forgeState.hammeringCount} iteration${forgeState.hammeringCount > 1 ? 's' : ''}<br>
+                Cooling Oil: Quality ${forgeState.coolingOilQuality}<br>`;
+
+        if (platingName) {
+            forgingSummary += `Plating: ${platingName}<br>`;
+        }
+
+        forgingSummary += `Handle: Quality ${forgeState.handleQuality}<br><br>`;
+
+        // Add quality progression
+        forgingSummary += `<strong>Quality Progression:</strong><br>`;
+        forgingSummary += `<span style="font-size: 0.9em;">`;
+        forgingSummary += `Initial: ${qualityProgression.initial}<br>`;
+        forgingSummary += `After Hammering: ${qualityProgression.afterHammering} <span style="color: #4ade80;">(+${qualityProgression.afterHammering - qualityProgression.initial})</span><br>`;
+        forgingSummary += `After Cooling: ${qualityProgression.afterCooling} <span style="color: #4ade80;">(+${qualityProgression.afterCooling - qualityProgression.afterHammering})</span><br>`;
+        forgingSummary += `After Handle: ${qualityProgression.afterHandle} <span style="color: #4ade80;">(+${qualityProgression.afterHandle - qualityProgression.afterCooling})</span><br>`;
+
+        const sharpeningChange = qualityProgression.final - qualityProgression.beforeSharpening;
+        const sharpeningColor = sharpeningChange >= 0 ? '#4ade80' : '#ff6b6b';
+        const sharpeningSign = sharpeningChange >= 0 ? '+' : '';
+        forgingSummary += `After Sharpening: ${qualityProgression.final} <span style="color: ${sharpeningColor};">(${sharpeningSign}${sharpeningChange})</span><br>`;
+        forgingSummary += `</span><br>`;
+
+        if (failedAttempts > 0) {
+            forgingSummary += `<span style="color: #ff6b6b;">Failed Attempts: ${failedAttempts}</span><br>`;
+            if (failureReasons.length > 0) {
+                forgingSummary += `<span style="color: #ff6b6b; font-size: 0.9em;">`;
+                failureReasons.forEach((reason, i) => {
+                    forgingSummary += `  ${i + 1}. ${reason}<br>`;
+                });
+                forgingSummary += `</span>`;
+            }
+        }
+
+        forgingSummary += `Total Attempts: ${attemptsUsed}
+            </div>`;
+
         animationContent.innerHTML = `
-            <div class="forging-anvil">⚒️</div>
-            <div class="forging-message forging-success">Success!</div>
-            <div class="forging-result">
-                <p><strong>${materialName} Pickaxe #${newToolId}</strong></p>
-                <p>Power: ${finalQuality}</p>
-                <p>Attempts used: ${attemptsUsed}</p>
+            <div class="forging-anvil" style="font-size: 2em; margin: 5px 0;">⚒️</div>
+            <div class="forging-message forging-success" style="margin: 5px 0;">Success!</div>
+            <div class="forging-result" style="margin: 5px 0;">
+                <p style="margin: 2px 0;"><strong>${materialName} Pickaxe #${newToolId}</strong></p>
+                <p style="margin: 2px 0;">Power: ${finalQuality}</p>
             </div>
-            <div class="forging-assign">
+            ${forgingSummary}
+            <div class="forging-assign" style="margin: 8px 0;">
                 <label>Name your tool:</label>
                 <input type="text" id="forge-name-input" class="forge-name-input" placeholder="${materialName} Pickaxe" maxlength="30">
             </div>
-            <div class="forging-assign">
+            <div class="forging-assign" style="margin: 8px 0;">
                 <label>Assign to dwarf:</label>
                 <select id="forge-assign-select" class="assign-select-small">
                     <option value="">-- Don't assign --</option>
@@ -751,13 +857,45 @@ async function startForging() {
 
         logTransaction('income', 0, `Forged new tool with quality ${finalQuality}`);
     } else {
+        // Build failure summary
+        const material = materials[forgeState.baseMaterial];
+        const materialName = material ? material.name.replace(' Ingot', '') : 'Unknown';
+        const platingMat = forgeState.platingMaterial ? materials[forgeState.platingMaterial] : null;
+        const platingName = platingMat ? platingMat.name : null;
+
+        let failureSummary = `
+            <div style="text-align: left; margin: 5px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 5px; max-height: 200px; overflow-y: auto; line-height: 1.3;">
+                <strong>Forging Summary:</strong><br>
+                Material: ${materialName} (Hardness: ${material.hardness})<br>
+                Hammering: ${forgeState.hammeringCount} iteration${forgeState.hammeringCount > 1 ? 's' : ''}<br>
+                Cooling Oil: Quality ${forgeState.coolingOilQuality}<br>`;
+
+        if (platingName) {
+            failureSummary += `Plating: ${platingName}<br>`;
+        }
+
+        failureSummary += `Handle: Quality ${forgeState.handleQuality}<br>`;
+        failureSummary += `<span style="color: #ff6b6b;">All ${attemptsUsed} attempt${attemptsUsed > 1 ? 's' : ''} failed</span><br>`;
+
+        if (failureReasons.length > 0) {
+            failureSummary += `<span style="color: #ff6b6b; font-size: 0.9em;"><strong>Failure Reasons:</strong><br>`;
+            failureReasons.forEach((reason, i) => {
+                failureSummary += `  ${i + 1}. ${reason}<br>`;
+            });
+            failureSummary += `</span>`;
+        }
+
+        failureSummary += `
+            </div>`;
+
         animationContent.innerHTML = `
-            <div class="forging-anvil">💀</div>
-            <div class="forging-message forging-failure">All forging attempts failed!</div>
-            <div class="forging-result">
-                <p>Used ${attemptsUsed} materials</p>
-                <p>No tool created</p>
+            <div class="forging-anvil" style="font-size: 2em; margin: 5px 0;">💀</div>
+            <div class="forging-message forging-failure" style="margin: 5px 0;">All forging attempts failed!</div>
+            <div class="forging-result" style="margin: 5px 0;">
+                <p style="margin: 2px 0;">Used ${attemptsUsed} materials</p>
+                <p style="margin: 2px 0;">No tool created</p>
             </div>
+            ${failureSummary}
             <button class="btn-primary" onclick="closeForging()">Return to Forge</button>
         `;
     }

@@ -50,6 +50,7 @@ main {
 .functions-grid .depth-cell {
     width: 50px;
     min-width: 50px;
+    background: transparent;
     border: none;
 }
 
@@ -329,12 +330,11 @@ main {
     width: 50px;
     min-width: 50px;
     background: transparent;
-    color: #ddd;
+    color: #fff;
     text-align: center;
-    font-size:12px;
-    font-weight:600;
-    padding: 0 2px;
-    border: 1px solid #000000;
+    font-weight: 600;
+    padding: 0;
+    border: none;
     vertical-align: middle;
 }
 
@@ -375,7 +375,7 @@ header, footer {
     gap: 8px;
     padding: 8px;
     margin-bottom: 16px;
-    width: calc(532px + 28px + 450px + 162px);
+    width: calc(532px + 28px + 450px + 156px);
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
@@ -3335,55 +3335,42 @@ header, footer {
 
 /* Functions grid row styling (first row in digging grid table) */
 .functions-cell {
-    background: #333333  !important;
-    border-bottom: 3px double #000000 !important;
+    background: rgba(255,255,255,0.02) !important;
 }
 
 .functions-depth-cell {
     background: transparent !important;
-    border-bottom: 3px double #000000 !important;
 }
 
-/* Center all icons in functions cells - position icons behind dwarfs */
-#digging-grid .functions-cell .drop-off-marker {
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 1;
-    font-size: 24px;
-    opacity: 0.95;
-}
-
-#digging-grid .functions-cell.has-dwarf::before {
-    content: '🧍';
-    font-size: 24px;
+.functions-cell.has-dwarf::before {
+    content: '👷';
+    font-size: 20px;
     position: absolute;
-    left: 80%;
+    left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2 !important;
-    opacity: 0.9;
+    z-index: 1;
+    opacity: 0.75;
     pointer-events: none;
 }
 
-#digging-grid .functions-cell .moving-marker,
-#digging-grid .functions-cell .digging-marker {
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%) !important;
+.functions-cell > * {
+    position: relative;
+    z-index: 1;
+}
+
+.functions-cell .drop-off-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     z-index: 3;
+    font-size: 18px;
+    opacity: 0.95;
 }
 
 /* Functions grid row needs position: relative for absolute positioning */
-#digging-grid .functions-cell {
+.functions-cell {
+    background: rgba(255,255,255,0.02) !important;
     position: relative;
-    cursor: default !important;
-}
-
-#digging-grid .functions-depth-cell {
-    background: transparent !important;
 }
