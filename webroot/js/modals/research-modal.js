@@ -18,6 +18,30 @@ function openResearch() {
 }
 
 /**
+ * Get all research IDs that depend on a given research
+ * @param {string} researchId - The research ID to check dependencies for
+ * @param {number} requiredLevel - The minimum level required
+ * @returns {string[]} - Array of research IDs that depend on this research
+ */
+function getDependentResearches(researchId, requiredLevel) {
+    const dependents = [];
+
+    for (const [id, research] of Object.entries(researchData)) {
+        if (!research.requires) continue;
+
+        for (const req of research.requires) {
+            for (const [reqId, reqLevel] of Object.entries(req)) {
+                if (reqId === researchId && reqLevel > requiredLevel) {
+                    dependents.push(id);
+                }
+            }
+        }
+    }
+
+    return dependents;
+}
+
+/**
  * Check if research requirements are met
  * @param {Object} researchItem - The research item to check
  * @returns {Object} - { met: boolean, reason?: string }
@@ -107,10 +131,10 @@ function updateResearchButtons() {
         // Calculate current state
         const currentLevel = researchItem.level || 0;
         const targetLevel = currentLevel + 1;
+        const maxLevel = researchItem.maxlevel || Infinity;
         const actualGoldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
 
         const isActive = activeResearch && activeResearch.id === researchItem.id;
-        const isInQueue = researchQueue.some(r => r.id === researchItem.id);
         const requirementsMet = checkResearchRequirements(researchItem);
         const hasEnoughGold = gold >= actualGoldCost;
 
@@ -122,12 +146,6 @@ function updateResearchButtons() {
             newText = 'Active';
             newDisabled = true;
             newTitle = '';
-        } else if (isInQueue) {
-            newClassName = 'btn-research active';
-            newText = 'Queued';
-            newDisabled = true;
-            const queuePos = researchQueue.findIndex(r => r.id === researchItem.id) + 1;
-            newTitle = `In queue (position ${queuePos})`;
         } else if (!requirementsMet.met) {
             newClassName = 'btn-research disabled';
             newText = 'Locked';
@@ -140,9 +158,18 @@ function updateResearchButtons() {
             newTitle = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
         } else if (activeResearch) {
             newClassName = 'btn-research';
+            // Check how many levels are available for this research
+            // Calculate effective level including active and queued
+            const activeCount = (activeResearch && activeResearch.id === researchId) ? 1 : 0;
+            const queuedCount = researchQueue.filter(r => r.id === researchId).length;
+            const effectiveLevel = currentLevel + activeCount + queuedCount;
+            const canQueueMore = effectiveLevel < maxLevel;
+
             newText = researchQueue.length >= 5 ? 'Queue Full' : 'Queue';
-            newDisabled = researchQueue.length >= 5;
-            newTitle = researchQueue.length >= 5 ? 'Research queue is full (max 5)' : `Add to queue (${researchQueue.length}/5 slots used)`;
+            newDisabled = researchQueue.length >= 5 || !canQueueMore;
+            newTitle = researchQueue.length >= 5 ? 'Research queue is full (max 5)' :
+                       !canQueueMore ? `Max level (${maxLevel}) will be reached` :
+                       `Add to queue (${researchQueue.length}/5 slots used)`;
             if (newDisabled) {
                 newClassName = 'btn-research disabled';
             }
@@ -332,9 +359,8 @@ function populateResearch() {
         } else {
             const researchBtn = document.createElement('button');
 
-            // Check if this research is already active or in queue
+            // Check if this research is already active
             const isActive = activeResearch && activeResearch.id === researchItem.id;
-            const isInQueue = researchQueue.some(r => r.id === researchItem.id);
 
             // Check if requirements are met
             const requirementsMet = checkResearchRequirements(researchItem);
@@ -346,12 +372,6 @@ function populateResearch() {
                 researchBtn.className = 'btn-research active';
                 researchBtn.textContent = 'Active';
                 researchBtn.disabled = true;
-            } else if (isInQueue) {
-                researchBtn.className = 'btn-research active';
-                researchBtn.textContent = 'Queued';
-                researchBtn.disabled = true;
-                const queuePos = researchQueue.findIndex(r => r.id === researchItem.id) + 1;
-                researchBtn.title = `In queue (position ${queuePos})`;
             } else if (!requirementsMet.met) {
                 // Requirements not met - gray out
                 researchBtn.className = 'btn-research disabled';
@@ -366,13 +386,23 @@ function populateResearch() {
                 researchBtn.title = `Not enough gold! Required: ${formatNumber(actualGoldCost, 'gold')} 💰, Available: ${formatNumber(gold, 'gold')} 💰`;
             } else if (activeResearch) {
                 // Another research is active - show queue button
+                // Check how many levels are available for this research
+                // Calculate effective level including active and queued
+                const activeCount = (activeResearch && activeResearch.id === researchId) ? 1 : 0;
+                const queuedCount = researchQueue.filter(r => r.id === researchId).length;
+                const effectiveLevel = currentLevel + activeCount + queuedCount;
+                const canQueueMore = effectiveLevel < maxLevel;
+
                 researchBtn.className = 'btn-research';
                 researchBtn.textContent = researchQueue.length >= 5 ? 'Queue Full' : 'Queue';
-                researchBtn.disabled = researchQueue.length >= 5;
+                researchBtn.disabled = researchQueue.length >= 5 || !canQueueMore;
                 researchBtn.dataset.researchId = researchId;
                 if (researchQueue.length >= 5) {
                     researchBtn.className = 'btn-research disabled';
                     researchBtn.title = 'Research queue is full (max 5)';
+                } else if (!canQueueMore) {
+                    researchBtn.className = 'btn-research disabled';
+                    researchBtn.title = `Max level (${maxLevel}) will be reached`;
                 } else {
                     researchBtn.title = `Add to queue (${researchQueue.length}/5 slots used)`;
                 }
@@ -454,17 +484,21 @@ function startResearch(researchId) {
         return;
     }
 
-    // Check if research is already in queue or active
-    if (activeResearch && activeResearch.id === researchId) {
-        console.error('This research is already active');
-        return;
-    }
-    if (researchQueue.some(r => r.id === researchId)) {
-        console.error('This research is already in the queue');
+    // Allow multiple levels of the same research to be queued
+    // Calculate the effective current level (base level + active + queued)
+    const baseLevel = researchItem.level || 0;
+    const activeCount = (activeResearch && activeResearch.id === researchId) ? 1 : 0;
+    const queuedCount = researchQueue.filter(r => r.id === researchId).length;
+    const effectiveLevel = baseLevel + activeCount + queuedCount;
+    const maxLevel = researchItem.maxlevel || Infinity;
+
+    // Check if we can queue another level
+    if (effectiveLevel >= maxLevel) {
+        console.error('Cannot queue more levels - max level will be reached');
         return;
     }
 
-    // If another research is active, add to queue
+    // If ANY research is active (including this one), add to queue
     if (activeResearch) {
         if (researchQueue.length >= 5) {
             alert('Research queue is full! Maximum 5 researches can be queued.');
@@ -472,8 +506,8 @@ function startResearch(researchId) {
         }
 
         // Calculate gold cost for next level
-        const currentLevel = researchItem.level || 0;
-        const targetLevel = currentLevel + 1;
+        // Target level is effective level + 1 (accounts for active and queued levels)
+        const targetLevel = effectiveLevel + 1;
         const goldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
 
         // Check if player has enough gold
@@ -490,7 +524,7 @@ function startResearch(researchId) {
         researchQueue.push({
             id: researchId,
             name: researchItem.name,
-            level: currentLevel,
+            level: effectiveLevel,  // Use effective level to show correct progression
             targetLevel: targetLevel,
             goldCost: goldCost
         });
@@ -517,7 +551,7 @@ function startResearch(researchId) {
         return;
     }
 
-    // Calculate gold cost for next level
+    // Calculate gold cost for next level (when starting immediately, no active/queued levels)
     const currentLevel = researchItem.level || 0;
     const targetLevel = currentLevel + 1;
     const goldCost = Math.round(researchItem.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
@@ -616,6 +650,7 @@ function cancelResearch() {
     }
 
     const researchName = activeResearch.name;
+    const researchId = activeResearch.id;
 
     // Refund gold cost
     const currentLevel = activeResearch.level || 0;
@@ -623,6 +658,29 @@ function cancelResearch() {
     const goldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
     gold += goldCost;
     logTransaction('income', goldCost, `Cancelled research: ${researchName} (Level ${targetLevel}) - refund`);
+
+    // Remove all queued levels of the same research (since we're canceling the active one)
+    const removedSameLevels = [];
+    for (let i = researchQueue.length - 1; i >= 0; i--) {
+        if (researchQueue[i].id === researchId) {
+            const removed = researchQueue.splice(i, 1)[0];
+            gold += removed.goldCost;
+            logTransaction('income', removed.goldCost, `Auto-removed dependent: ${removed.name} (Level ${removed.targetLevel}) - refund`);
+            removedSameLevels.push(removed);
+        }
+    }
+
+    // Find dependent researches and remove them from queue
+    const dependents = getDependentResearches(researchId, currentLevel);
+    const removedDependents = [];
+    for (let i = researchQueue.length - 1; i >= 0; i--) {
+        if (dependents.includes(researchQueue[i].id)) {
+            const removed = researchQueue.splice(i, 1)[0];
+            gold += removed.goldCost;
+            logTransaction('income', removed.goldCost, `Auto-removed dependent: ${removed.name} (Level ${removed.targetLevel}) - refund`);
+            removedDependents.push(removed);
+        }
+    }
 
     // Clear active research
     activeResearch = null;
@@ -632,6 +690,19 @@ function cancelResearch() {
         if (dwarf.status === 'researching') {
             dwarf.status = 'idle';
         }
+    }
+
+    // Notify user if dependents were removed
+    if (removedSameLevels.length > 0 || removedDependents.length > 0) {
+        const messages = [];
+        if (removedSameLevels.length > 0) {
+            messages.push(`${removedSameLevels.length} queued level(s) of ${researchName}`);
+        }
+        if (removedDependents.length > 0) {
+            const depNames = removedDependents.map(r => r.name).join(', ');
+            messages.push(`Dependent researches: ${depNames}`);
+        }
+        console.log(`Also removed from queue: ${messages.join('; ')}`);
     }
 
     // Start next queued research
@@ -659,6 +730,7 @@ function cancelResearch() {
 
 /**
  * Removes a research from the queue and refunds gold
+ * Also removes any queued researches that depend on this one or are higher levels of the same research
  * @param {number} index - The index of the queued research to remove
  */
 function removeFromResearchQueue(index) {
@@ -668,10 +740,48 @@ function removeFromResearchQueue(index) {
     }
 
     const removed = researchQueue.splice(index, 1)[0];
+    const removedId = removed.id;
+    const removedLevel = removed.level;
 
     // Refund gold
     gold += removed.goldCost;
     logTransaction('income', removed.goldCost, `Removed from queue: ${removed.name} (Level ${removed.targetLevel}) - refund`);
+
+    // Remove any subsequent levels of the same research (they come after this level)
+    const removedSameLevels = [];
+    for (let i = researchQueue.length - 1; i >= 0; i--) {
+        if (researchQueue[i].id === removedId && researchQueue[i].targetLevel > removed.targetLevel) {
+            const dep = researchQueue.splice(i, 1)[0];
+            gold += dep.goldCost;
+            logTransaction('income', dep.goldCost, `Auto-removed dependent level: ${dep.name} (Level ${dep.targetLevel}) - refund`);
+            removedSameLevels.push(dep);
+        }
+    }
+
+    // Find researches that depend on this research and remove them
+    const dependents = getDependentResearches(removedId, removedLevel);
+    const removedDependents = [];
+    for (let i = researchQueue.length - 1; i >= 0; i--) {
+        if (dependents.includes(researchQueue[i].id)) {
+            const dep = researchQueue.splice(i, 1)[0];
+            gold += dep.goldCost;
+            logTransaction('income', dep.goldCost, `Auto-removed dependent: ${dep.name} (Level ${dep.targetLevel}) - refund`);
+            removedDependents.push(dep);
+        }
+    }
+
+    // Notify user if dependents were removed
+    if (removedSameLevels.length > 0 || removedDependents.length > 0) {
+        const messages = [];
+        if (removedSameLevels.length > 0) {
+            messages.push(`${removedSameLevels.length} higher level(s) of ${removed.name}`);
+        }
+        if (removedDependents.length > 0) {
+            const depNames = removedDependents.map(r => r.name).join(', ');
+            messages.push(`Dependent researches: ${depNames}`);
+        }
+        console.log(`Also removed from queue: ${messages.join('; ')}`);
+    }
 
     // Sync with worker
     if (gameWorker && workerInitialized) {
