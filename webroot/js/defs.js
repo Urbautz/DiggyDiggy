@@ -424,7 +424,27 @@ const materials = {
     color: '#484848ff',
     weight: 35
   },
-  'adamantine ore': {
+  'wolfram ore': {
+    name: 'Wolframit',
+    type: 'Ore Hard',
+    hardness: 5000,
+    probability: 15,
+    worth: 8000,
+    minlevel: 100000,
+    color: '#b7bd07ff',
+    weight: 50
+  },
+  'sillimanite': {
+    name: 'Sillimanite',
+    type: 'Stone Hard',
+    hardness: 7850,
+    probability: 140,
+    worth: 20,
+    minlevel: 105000,
+    color: '#8b7d5bff',
+    weight: 34
+  },
+    'adamantine ore': {
     name: 'Adamantine Ore',
     type: 'Ore Hard',
     hardness: 10000,
@@ -434,25 +454,25 @@ const materials = {
     color: '#8eb95eff',
     weight: 50
   },
-  'sillimanite': {
-    name: 'Sillimanite',
-    type: 'Stone Hard',
-    hardness: 7850,
-    probability: 140,
-    worth: 20,
-    minlevel: 125000,
-    color: '#8b7d5bff',
-    weight: 34
-  },
   'quartzite': {
     name: 'Quartzite',
     type: 'Stone Hard',
     hardness: 8500,
     probability: 200,
     worth: 31,
-    minlevel: 135000,
+    minlevel: 115000,
     color: '#c35858ff',
     weight: 35
+  },
+  'uranium ore': {
+    name: 'Uranium Ore',
+    type: 'Ore Hard',
+    hardness: 1000,
+    probability: 15,
+    worth: 6000,
+    minlevel: 125000,
+    color: '#26c07dff',
+    weight: 25
   },
   'obsidian': {
     name: 'Obsidian',
@@ -460,9 +480,19 @@ const materials = {
     hardness: 9999,
     probability: 200,
     worth: 45,
-    minlevel: 195000,
+    minlevel: 125000,
     color: '#184f48ff',
     weight: 35
+  },
+  'plutonium ore': {
+    name: 'Plutonium Ore',
+    type: 'Ore Hard',
+    hardness: 4000,
+    probability: 15,
+    worth: 12000,
+    minlevel: 135000,
+    color: '#35fa00',
+    weight: 25
   },
   'polished marble': {
     name: 'Polished Marble',
@@ -657,6 +687,39 @@ const materials = {
     color: '#2d2121ff',
     forge: 'Base',
     weight: 50
+  },
+  'wolfram': {
+    name: 'Wolfram Ingot',
+    type: 'Ingot',
+    hardness: 1000,
+    probability: 0,
+    worth: 9000,
+    minlevel: 99999,
+    color: '#b1c41cff',
+    forge: 'Plating',
+    weight: 50
+  },
+  'uranium': {
+    name: 'Enriched Uranium',
+    type: 'Ingot',
+    hardness: 800,
+    probability: 0,
+    worth: 7000,
+    minlevel: 99999,
+    color: '#13cb7fff',
+    forge: 'Plating',
+    weight: 25
+  },
+  'plutonium': {
+    name: 'Enriched Plutonium',
+    type: 'Ingot',
+    hardness: 1100,
+    probability: 0,
+    worth: 13000,
+    minlevel: 99999,
+    color: '#35fa00',
+    forge: 'Plating',
+    weight: 25
   },
   'ruby': {
     name: 'Ruby',
@@ -1054,6 +1117,36 @@ const smelterTasksData = {
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
     requires: 'furnace',
     hardness: 100
+  },
+  'enrich-wolfram': {
+    name: 'Enrich Wolfram',
+    description: 'Enrich wolfram ore through advanced processing.',
+    input: { material: 'wolfram ore', amount: 1 },
+    output: { material: 'wolfram', amount: 1 },
+    minTemp: 3422,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 105
+  },
+  'enrich-uranium': {
+    name: 'Enrich Uranium',
+    description: 'Enrich uranium ore through advanced processing.',
+    input: { material: 'uranium ore', amount: 1 },
+    output: { material: 'uranium', amount: 1 },
+    minTemp: 1135,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 110
+  },
+  'enrich-plutonium': {
+    name: 'Enrich Plutonium',
+    description: 'Enrich plutonium ore through advanced processing.',
+    input: { material: 'plutonium ore', amount: 1 },
+    output: { material: 'plutonium', amount: 1 },
+    minTemp: 640,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 115
   }
 };
 
@@ -1084,7 +1177,10 @@ let smelterTasks = [
     'smelt-nickel',
     'smelt-platinum',
     'smelt-titanium',
-    'smelt-adamantine'
+    'smelt-adamantine',
+    'enrich-wolfram',
+    'enrich-uranium',
+    'enrich-plutonium'
 ];
 
 // Smelter temperature system
@@ -1313,7 +1409,7 @@ const researchData = {
     hardness: 80,
     requires: [{'material-science': 3}],
     min_depth: 1000,
-    description: 'When a dwarf does a critical strike he has a 2% chance to one-hit any stone.'
+    description: 'Critical hits have a 2% chance to one-hit any stone.'
   },
   'expertise-ore': {
     name: 'Ore Expertise',
@@ -1324,7 +1420,18 @@ const researchData = {
     hardness: 85,
     requires: [{'material-science': 5}, {'expertise-stone': 1}],
     min_depth: 2000,
-    description: 'When a dwarf does a critical strike he has a 3% chance to one-hit any ore.'
+    description: 'Critical hits have a 2% chance to one-hit any ore.',
+  },
+  'ore-enrichment': {
+    name: 'Ore Enrichment',
+    cost: 50000,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 120,
+    requires: [{'furnace-temperature': 15}, {'magma-furnace': 1}],
+    min_depth: 100000,
+    description: 'Unlocks the ability to enrich special ores (Wolfram, Uranium, Plutonium) for use in advanced plating.'
   },
 
 };
@@ -1352,7 +1459,8 @@ let researchTree = [
   'expertise-stone',
   'expertise-ore',
   'furnace-temperature',
-  'magma-furnace'
+  'magma-furnace',
+  'ore-enrichment'
 ];
 
 let activeResearch = null; // Track which research is currently being researched
