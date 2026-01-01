@@ -360,7 +360,7 @@ const materials = {
     hardness: 500,
     probability: 50,
     worth: 400,
-    minlevel: 30000,
+    minlevel: 22000,
     color: '#572012ff',
     weight: 48
   },
@@ -655,6 +655,17 @@ const materials = {
     forge: 'Plating',
     weight: 23
   },
+    'dwarfen-metallic-glass': {
+    name: 'Dwarfen Metallic Glass',
+    type: 'Ingot',
+    hardness: 600,
+    probability: 0,
+    worth: 2550,
+    minlevel: 40000,
+    color: '#e03607ff',
+    forge: 'Base',
+    weight: 23
+  },
   'platinum': {
     name: 'Platinum Ingot',
     type: 'Ingot',
@@ -663,6 +674,17 @@ const materials = {
     worth: 2800,
     minlevel: 70000,
     color: '#2d2121ff',
+    forge: 'Base',
+    weight: 25
+  },
+    'moonsilver': {
+    name: 'Moonsilver',
+    type: 'Ingot',
+    hardness: 800,
+    probability: 0,
+    worth: 6000,
+    minlevel: 70000,
+    color: '#73bfe5ff',
     forge: 'Base',
     weight: 25
   },
@@ -677,6 +699,17 @@ const materials = {
     forge: 'Base',
     weight: 50
   },
+  'incocel ': {
+    name: 'Inocel',
+    type: 'Ingot',
+    hardness: 1000,
+    probability: 0,
+    worth: 7500,
+    minlevel: 105000,
+    color: '#9a2fa4ff',
+    forge: 'Base',
+    weight: 50
+  },
   'adamantine': {
     name: 'Adamantine Ingot',
     type: 'Ingot',
@@ -685,6 +718,17 @@ const materials = {
     worth: 7500,
     minlevel: 99999,
     color: '#2d2121ff',
+    forge: 'Base',
+    weight: 50
+  },
+    'thornless-dwarfen-silver': {
+    name: 'Thornless Dwarfen Silver',
+    type: 'Ingot',
+    hardness: 1500,
+    probability: 0,
+    worth: 10000,
+    minlevel: 99999,
+    color: '#be0d0dff',
     forge: 'Base',
     weight: 50
   },
@@ -1118,6 +1162,68 @@ const smelterTasksData = {
     requires: 'furnace',
     hardness: 100
   },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GLASS METALS ALLOYS
+  // ──────────────────────────────────────────────────────────────────────────
+  'smelt-dwarfen-metallic-glass': {
+    name: 'Smelt Dwarfen Metallic Glass',
+    description: 'Create dwarfen metallic glass alloy from dwarfen steel and nickel.',
+    inputs: [
+      { material: 'dwarf steel', amount: 1 },
+      { material: 'nickel', amount: 1 }
+    ],
+    output: { material: 'dwarfen-metallic-glass', amount: 1 },
+    minTemp: 2400,
+    ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
+    requires: 'glass-metals',
+    hardness: 90
+  },
+  'smelt-moonsilver': {
+    name: 'Smelt Moonsilver',
+    description: 'Create moonsilver alloy from platinum, silver, and nickel.',
+    inputs: [
+      { material: 'platinum', amount: 1 },
+      { material: 'silver', amount: 5 },
+      { material: 'nickel', amount: 1 }
+    ],
+    output: { material: 'moonsilver', amount: 1 },
+    minTemp: 1800,
+    ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
+    requires: 'glass-metals',
+    hardness: 95
+  },
+  'smelt-incocel': {
+    name: 'Smelt Incocel',
+    description: 'Create incocel alloy from titanium and nickel.',
+    inputs: [
+      { material: 'titanium', amount: 3 },
+      { material: 'nickel', amount: 1 }
+    ],
+    output: { material: 'incocel ', amount: 1 },
+    minTemp: 1700,
+    ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
+    requires: 'glass-metals',
+    hardness: 100
+  },
+  'smelt-thornless-silver': {
+    name: 'Smelt Thornless Silver',
+    description: 'Create thornless silver alloy from adamantine, silver, and nickel.',
+    inputs: [
+      { material: 'adamantine', amount: 2 },
+      { material: 'silver', amount: 15 },
+      { material: 'nickel', amount: 1 }
+    ],
+    output: { material: 'thornless-dwarfen-silver', amount: 1 },
+    minTemp: 2900,
+    ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
+    requires: 'glass-metals',
+    hardness: 110
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ORE ENRICHMENT
+  // ──────────────────────────────────────────────────────────────────────────
   'enrich-wolfram': {
     name: 'Enrich Wolfram',
     description: 'Enrich wolfram ore through advanced processing.',
@@ -1178,6 +1284,10 @@ let smelterTasks = [
     'smelt-platinum',
     'smelt-titanium',
     'smelt-adamantine',
+    'smelt-dwarfen-metallic-glass',
+    'smelt-moonsilver',
+    'smelt-incocel',
+    'smelt-thornless-silver',
     'enrich-wolfram',
     'enrich-uranium',
     'enrich-plutonium'
@@ -1389,6 +1499,17 @@ const researchData = {
     min_depth: 8000,
     description: 'Unlocks the ability to use Magma to heat the furnace. Magma heats based on your Furnace Temperature research level.'
   },
+  'glass-metals': {
+    name: 'Glass Metals',
+    cost: 30000,
+    goldCost: 60000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 95,
+    requires: [{'magma-furnace': 1}],
+    min_depth: 40000,
+    description: 'Unlocks the ability to create advanced metallic glass alloys with superior properties.'
+  },
   'material-science': {
     name: 'Material Science',
     cost: 500,
@@ -1456,6 +1577,7 @@ let researchTree = [
   'expertise-ore',
   'furnace-temperature',
   'magma-furnace',
+  'glass-metals',
   'ore-enrichment',
   'improved-digging',
   'better-housing',
