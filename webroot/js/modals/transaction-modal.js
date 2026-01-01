@@ -174,11 +174,28 @@ function processHourlyRollup() {
         hourlyData[desc].count++;
     }
 
-    // Add the hourly summary to history
-    transactionHistory.push({
-        hour: currentHourTimestamp,
-        transactions: hourlyData
-    });
+    // Add or merge the hourly summary to history
+    const existingHourIndex = transactionHistory.findIndex(h => h.hour === currentHourTimestamp);
+
+    if (existingHourIndex >= 0) {
+        // Merge with existing hour data
+        const existingHour = transactionHistory[existingHourIndex];
+        for (const desc in hourlyData) {
+            if (!existingHour.transactions[desc]) {
+                existingHour.transactions[desc] = hourlyData[desc];
+            } else {
+                existingHour.transactions[desc].income += hourlyData[desc].income;
+                existingHour.transactions[desc].expense += hourlyData[desc].expense;
+                existingHour.transactions[desc].count += hourlyData[desc].count;
+            }
+        }
+    } else {
+        // Add as new hour entry
+        transactionHistory.push({
+            hour: currentHourTimestamp,
+            transactions: hourlyData
+        });
+    }
 
     // Clear the detailed transaction log for the completed hour
     transactionLog = [];
