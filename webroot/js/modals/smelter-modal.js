@@ -616,6 +616,9 @@ function populateSmelter() {
     // Get the currently active task
     const activeTaskId = getCurrentActiveTask();
 
+    // Track display index for visible tasks only
+    let displayIndex = 0;
+
     // Render each task
     smelterTasks.forEach((taskId, index) => {
         const task = smelterTasksData[taskId];
@@ -637,6 +640,11 @@ function populateSmelter() {
                 isUnlocked = (requiredResearch.level || 0) >= 1;
                 requiredResearchName = requiredResearch.name;
             }
+        }
+
+        // Skip rendering tasks that are not unlocked
+        if (!isUnlocked) {
+            return;
         }
 
         // Check if this task is actionable (has enough materials)
@@ -700,11 +708,14 @@ function populateSmelter() {
             }
         }
 
-        // Priority number
+        // Priority number (using displayIndex for visible tasks only)
         const priorityNum = document.createElement('span');
         priorityNum.className = 'smelter-task-priority';
-        priorityNum.textContent = `${index + 1}.`;
+        priorityNum.textContent = `${displayIndex + 1}.`;
         taskRow.appendChild(priorityNum);
+
+        // Increment display index for next visible task
+        displayIndex++;
 
         // Status indicator
         const statusIndicator = document.createElement('span');
