@@ -494,12 +494,10 @@ function updateSmelterTasksDisplay() {
         if (task && task.ticksRequired) {
             const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
             if (taskRecipe) {
-                // Find if any dwarf is currently working on this task
-                const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
-
-                if (workingDwarf && task.progress !== undefined) {
-                    // Show progress for task being worked on (progress is now stored on the task, not the dwarf)
-                    const progress = task.progress || 0;
+                // Check if task has progress (being worked on or paused)
+                if (task.progress !== undefined && task.progress > 0) {
+                    // Show progress for task with active progress
+                    const progress = task.progress;
                     const ticksRequired = task.ticksRequired;
                     const percentage = Math.round((progress / ticksRequired) * 100);
 
@@ -781,15 +779,13 @@ function populateSmelter() {
         taskName.textContent = task.name;
         taskInfo.appendChild(taskName);
 
-        // Check if any dwarf is working on this task and show progress
-        const workingDwarf = dwarfs.find(d => d.status === 'smelting' && d.currentSmelterTask === taskId);
-
-        if (workingDwarf && task.progress !== undefined && task.ticksRequired) {
-            // Show progress for active task (progress is now stored on the task, not the dwarf)
+        // Check if this task has progress (being worked on or paused)
+        if (task.progress !== undefined && task.progress > 0 && task.ticksRequired) {
+            // Show progress for task with active progress
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
 
-            const progress = task.progress || 0;
+            const progress = task.progress;
             const ticksRequired = task.ticksRequired;
             const percentage = Math.round((progress / ticksRequired) * 100);
 
@@ -801,7 +797,7 @@ function populateSmelter() {
             taskRecipe.classList.add('recipe-ready');
             taskInfo.appendChild(taskRecipe);
         }
-        // Show gem cutting queue if this is gem cutting and not being worked on
+        // Show gem cutting queue if this is gem cutting and not showing progress
         else if (task.type === 'gem-cutting') {
             const taskRecipe = document.createElement('span');
             taskRecipe.className = 'smelter-task-recipe';
