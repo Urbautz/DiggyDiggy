@@ -91,7 +91,7 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 // GEM SPAWN CONSTANTS
 // ============================================================================
 
-const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
+const GEM_SPAWN_CHANCE = 0.012; // 1,2% chance to find a gem when destroying stone materials
 const GEM_CUTTING_VALUE_MULTIPLIER = 1.8; // 80% value increase when gems are cut and polished
 const GEM_CUTTING_TICKS_REQUIRED = 50; // Ticks required to cut and polish a gem
 const GEM_CARAT_DEPTH_DIVISOR = 2500; // Depth divisor for calculating maximum gem carat
