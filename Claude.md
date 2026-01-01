@@ -92,16 +92,15 @@ All game balance constants and data definitions live here.
 | File | Purpose | Key Elements |
 |------|---------|--------------|
 | `about-modal.html` | About/Version information | Loads content from `version.html` |
-| `dwarfs-modal.html` | Dwarfs overview list | Shows all dwarfs with level, tool, status |
+| `dwarf-detail-modal.html` | Dwarf stats and leveling | Dwarf details, skill points, tool assignment, task priorities |
 | `enchant-modal.html` | Tool enchanting interface | Enchant tools to increase power |
 | `forge-modal.html` | Tool forging interface | Hammer, cool, sharpen to create tools |
-| `forging-animation-modal.html` | Forging animation overlay | Visual feedback during forging |
+| `forging-animation-modal.html` | Forging animation overlay | Visual feedback during forging (skippable) |
 | `gem-modal.html` | Gem setting interface | Set gems into tools for bonuses |
-| `gems-modal.html` | Gems collection view | View all discovered gems |
-| `levelup-modal.html` | Dwarf stats and leveling | Largest modal (5.6KB) - dwarf details, skill points, tool assignment |
-| `research-modal.html` | Research lab | Unlock technologies and upgrades |
+| `gems-modal.html` | Gems collection view | View all discovered gems, sell all button |
+| `research-modal.html` | Research lab | Unlock technologies and upgrades, research queue |
 | `sell-modal.html` | Individual material selling | Slider-based selling interface |
-| `settings-modal.html` | Game settings | Cheat mode activation, save deletion |
+| `settings-modal.html` | Game settings | Cheat mode activation, save deletion, export |
 | `smelter-modal.html` | Smelter task queue | Heat furnace, smelt ores, polish gems |
 | `task-details-modal.html` | Smelter task details | Shows materials, temperature, requirements |
 | `transactions-modal.html` | Finances/money flow | Hourly summary and transaction log |
@@ -267,44 +266,89 @@ Modal-specific styles use selectors like:
 ## Game Mechanics
 
 ### Dwarfs
-- **Leveling:** Dwarfs gain XP for actions like digging and smelting. They level up after reaching a certain XP threshold.
+- **Leveling:** Dwarfs gain XP for actions like digging and smelting. XP requirements scale exponentially: Level 0 needs 25 XP, Level 10 needs 1000 XP, Level 50 needs 100,000 XP.
 - **Stats:**
-    - `digPower`: Increases digging damage.
-    - `strength`: Increases bucket capacity.
-    - `wisdom`: Reduces research costs.
-- **Energy:** Dwarfs consume energy for actions and must rest to replenish it.
-- **Wages:** Dwarfs have a base wage that increases with their level. They may go on strike if they are not paid.
+    - `digPower`: Increases digging damage by 10% per point.
+    - `strength`: Increases bucket capacity (5kg per point).
+    - `wisdom`: Improves research success chance (2% per point) and enables price negotiation bonuses.
+- **Energy:** Dwarfs consume energy for actions (5 per dig, 1 per move, 10 per task). They rest when energy drops below 20, recovering 15 energy per tick. Max energy increases 20% per level.
+- **Wages:** Base wage is 0.01 gold per dig, increasing 18% per level (reducible via "Wage Negotiation" research).
+- **Task Priorities:** Each dwarf has customizable task priorities (digging, research, smelting) and can blacklist specific tasks.
+- **Skill Points Reset:** Can reset skill points for 1000 gold per dwarf level.
 
 ### Combat
 - **Critical Hits:** Dwarfs have a base chance to perform a critical hit, which deals double damage. This can be increased through research.
 - **One-Hit Kills:** With the right research, critical hits have a chance to instantly destroy a block.
 
 ### Research
-- The research tree in `defs.js` defines all available research options.
-- Research can unlock new abilities, improve dwarf stats, and provide various bonuses.
-- Research has a cost in research points and gold, and some research has dependencies on other research or a minimum depth.
+- **Structure:** Research definitions stored in `researchData` object in `defs.js`, display order in `researchTree` array.
+- **Costs:** Research costs both research points and gold. Cost formula: `baseCost × (1.3^(level-1))` rounded.
+- **Success Rate:** Based on wisdom and research hardness. Higher wisdom = better success chance. Minimum 5% success rate.
+- **Research Queue:** Can queue up to 5 researches. Right-click to add follow-up levels to queue automatically.
+- **Hardness Scaling:** Each research level increases hardness, making it harder (requires more wisdom).
+- **Dependencies:** Many researches require other researches first (specified via `requires` field).
+- **Depth Unlocks:** Some researches require minimum depth (e.g., Furnace requires depth 1000).
+- **Key Research Paths:**
+  - **Smelting:** Furnace → Alloys → Magma Furnace → Glass Metals → Ore Enrichment
+  - **Tools:** Forge → Tool Enchanting → Gem Setting
+  - **Economy:** Trading → Price Negotiations → Small Time Investments → Long Term Investments
+  - **Combat:** Material Science → Stone/Ore Expertise (one-hit kill chances)
 
 ### Smelter
-- The smelter is used to process materials.
-- **Tasks:** The `smelterTasks` array in `defs.js` defines the available tasks, such as heating the furnace, smelting ore into ingots, and polishing stones.
-- **Temperature:** The smelter has a temperature that must be managed. Different smelting tasks require different temperatures.
-- **Polishing:** Some materials can be polished to increase their value, but there is a chance of the item breaking during the process.
+- **Structure:** Task definitions in `smelterTasksData` object, task order in `smelterTasks` array.
+- **Task Categories:**
+  - **Control:** Do nothing
+  - **Heating:** Coal (100° per coal, max 2000°), Magma (heats to max temp based on research)
+  - **Basic Processing:** Dry mud, sieve loose stone (8% chance for bonus ore from 2× depth)
+  - **Grinding:** Sandstone → Sand, Limestone → Lime
+  - **Gem Cutting:** Cut and polish gems (50 ticks, +80% value)
+  - **Stone Polishing:** Marble, Granite, Obsidian (50% base break chance, reduced by research)
+  - **Metal Smelting:** Soft metals (copper, zinc, bronze), Iron chain (ore→pig iron→iron→steel→hardened→dwarf steel)
+  - **Alloys:** Brass, Glass Metals (Dwarfen Metallic Glass, Moonsilver, Incocel, Thornless Silver)
+  - **Ore Enrichment:** Wolfram, Uranium, Plutonium
+- **Temperature Management:** Heat loss 0.05% per tick (reducible via "Furnace Insulation"). Max temp 1500° base, +100° per "Furnace Temperature" research level.
+- **Task Progress:** Based on dwarf wisdom. Higher wisdom = faster task completion.
+- **Task Hardness:** Each task has hardness rating determining difficulty and time required.
+- **Hysteresis:** Auto-heating uses min/max temperature settings to avoid constant toggling.
 
 ### Forge
 - The forge is used to craft and upgrade tools.
 - The process involves hammering, cooling, and sharpening.
 - The quality of the materials and the skill of the dwarf affect the final quality of the tool.
 
-### Enchanting
-- Tools can be enchanted to increase their power.
-- Enchanting costs gold and the cost increases with each enchantment level.
+### Enchanting & Plating
+- **Enchanting:** Unlocked via "Tool Enchanting" research. Increases tool power by 8% per level. Cost increases exponentially.
+- **Plating:** Apply processed metals to tools for special effects:
+  - **Zinc Plating:** -2 energy cost per dig
+  - **Silver Plating:** +40% gem find probability
+  - **Gold Plating:** +10% critical strike chance
+  - **Wolfram/Uranium/Plutonium:** Advanced plating options (requires "Ore Enrichment" research)
 
 ### Gems
-- Gems have a chance to spawn when a stone material is destroyed.
-- They can be cut and polished at the smelter to increase their value.
+- **Spawning:** 1.2% base chance to find gems when destroying stone materials. Improved by Silver Plating (+40%).
+- **Cutting & Polishing:** Unlocked via "Gem Cutting" research. Takes 50 ticks, increases value by 80%.
+- **Gem Setting:** Unlocked via "Gem Setting" research. Set up to 3 cut gems into tools for bonuses:
+  - **Ruby:** +2% critical hit chance per carat
+  - **Emerald:** +2% gem find chance per carat
+  - **Sapphire:** -1 energy cost per dig per carat
+  - **Diamond:** +3% dig power per carat
+  - **Amethyst:** +2 bucket capacity per carat
+- **Carat Size:** Determined by depth found (depth ÷ 2500 = max carats)
+- **Selling:** Can sell individual gems or use "Sell All" button in gems modal.
 
 ### Materials
-- The `materials` array in `defs.js` defines all the materials in the game, including their hardness, probability, worth, and the depth at which they can be found.
+- **Structure:** Materials defined in `materials` object in `defs.js`, indexed by material ID.
+- **Properties:**
+  - `hardness`: HP before destroyed
+  - `probability`: Spawn weight (higher = more common)
+  - `worth`: Base sell price (modified by trading research and price negotiations)
+  - `minlevel`/`maxlevel`: Depth range where material spawns
+  - `type`: Material category (Loose, Stone Soft/Medium/Hard, Ore Soft/Medium/Hard, Ingot, Gem, Special, Processed)
+  - `color`: CSS color for grid display
+  - `weight`: Kg per unit (affects bucket capacity)
+- **Material Types:** Affect expertise bonuses and gameplay mechanics.
+- **Processed Materials:** Created via smelter (ingots, polished stones, enriched ores, lime).
+- **Stock Tracking:** All materials stored in `materialsStock` object (material ID → quantity).
 
 ---
 
@@ -351,20 +395,41 @@ $listener = New-Object System.Net.HttpListener; $listener.Prefixes.Add("http://l
 ```
 
 ### Adding Research Items
-Research tree uses dependency chains via `requires` field:
+Research uses object-based data structure with separate display order array:
+
+**1. Add to `researchData` object in `defs.js`:**
 ```javascript
-researchtree.push({
-  id: 'advanced-smelting',
-  name: 'Advanced Smelting',
-  description: 'Unlock high-temperature smelting',
-  cost: 500,                    // Base research points needed
-  level: 0,                     // Current level (0 = not researched)
-  progress: 0,                  // Current progress toward next level
-  requires: 'furnace',          // Must complete 'furnace' research first
-  category: 'technology'
-});
+'my-research': {
+  name: 'My New Research',
+  description: 'Does something cool',
+  cost: 500,                           // Base research points
+  goldCost: 1000,                      // Base gold cost
+  level: 0,                            // Current level
+  maxlevel: 5,                         // Optional: max levels (omit for endless)
+  hardness: 75,                        // Difficulty rating (affects success chance)
+  requires: [{'furnace': 1}],          // Optional: prerequisite research + level
+  min_depth: 5000,                     // Optional: minimum depth to unlock
+  unlock_requires: 'some_event'        // Optional: special unlock condition
+}
 ```
-**Research cost doubles each level** via `RESEARCH_COST_MULTIPLIER`.
+
+**2. Add ID to `researchTree` array for display order:**
+```javascript
+let researchTree = [
+  'improved-digging',
+  'my-research',  // Add here in desired display position
+  'better-housing',
+  // ...
+];
+```
+
+**3. Implement effect in game code:**
+- Main thread: Update relevant calculations in `main.js`
+- Worker thread: Update duplicated logic in `game-worker.js`
+
+**Cost formula:** `baseCost × (1.3^(level-1))` rounded to nearest integer.
+**Hardness scaling:** Increases by 1 per level (up to 9999 max).
+**Success chance:** Based on dwarf wisdom and research hardness (minimum 5%).
 
 ---
 
@@ -375,15 +440,23 @@ researchtree.push({
    gameWorker.postMessage({ type: 'update-state', data: { activeResearch } });
    ```
 
-2. **Constants out of sync**: `game-worker.js` duplicates constants from `constants.js` because workers can't import ES modules. Keep them synchronized manually.
+2. **Constants out of sync**: `game-worker.js` duplicates constants from `constants.js` because workers can't import ES modules. Keep them synchronized manually. Always update both files!
 
 3. **Modal pause state**: Opening a settings modal auto-pauses the game via the `gamePaused` flag. Don't forget to unpause in the close handler.
 
 4. **Grid rendering thrash**: `updateGridDisplay()` rebuilds the entire grid HTML. For animations, manipulate CSS classes instead (see `triggerCritAnimation()`).
 
-5. **Save/load version mismatch**: Changing the save schema requires bumping the `gameversion` string in `constants.js`.
+5. **Save/load version mismatch**: Changing the save schema requires bumping the `gameversion` string in `constants.js` (currently `0.20.2`).
 
 6. **Modal timing issues**: If accessing modal elements before they load, listen for `modalsLoaded` event instead of relying on DOMContentLoaded.
+
+7. **Research vs Research Tree confusion**: `researchData` is the object with research definitions (indexed by ID), `researchTree` is the array controlling display order. Always update both when adding new research.
+
+8. **Smelter task structure**: `smelterTasksData` contains task definitions, `smelterTasks` array controls priority order. Same pattern as research.
+
+9. **Material ID changes**: Materials use string IDs as keys. Changing IDs breaks save compatibility and requires version bump.
+
+10. **Dwarf task priorities**: Each dwarf has `taskPriority` array and `taskBlacklist` array. These are user-configurable via dwarf detail modal.
 
 ---
 
@@ -411,9 +484,83 @@ researchtree.push({
 
 ---
 
+## Economy System
+
+### Price Mechanics
+- **Base Prices:** Defined in `materials` object via `worth` property
+- **Trading Research:** +3% sell price per level
+- **Price Negotiations:** Highest wisdom dwarf gives +1% per wisdom point
+- **Sell Options:**
+  - Individual materials via `sell-modal.html` (slider interface)
+  - Bulk selling via `warehouse-sell-modal.html` (stones, ores, ingots, etc.)
+  - Sell all gems via button in `gems-modal.html`
+
+### Investment Systems
+- **Small Time Investments:** Passive interest on gold reserves (requires research)
+  - Tier 1: 0.0125% rate up to 100 gold
+  - Tier 2: 0.000135% rate from 100 to 10,100 gold
+  - Tier 3: 0.0000000875% rate from 10,100 to 110,100 gold
+- **One-Time Investments:** Active investments that pay back over 12 hours (requires research)
+  - Tracked in `oneTimeInvestments` array
+  - Each investment has ID, amount, timestamp, and payout tracking
+
+### Transaction Tracking
+- **Transaction Log:** Real-time log of all income/expenses in current hour
+- **Transaction History:** Hourly summaries saved permanently (format: `{ hour: timestamp, transactions: {} }`)
+- **Hourly Rollup:** Transactions grouped by description with income/expense/count
+- **Viewing:** Access via `transactions-modal.html`
+
+---
+
 ## Version History & Migration Notes
 
+### v0.20.05 (2026-01-0x) - Current
+- Added counter badges to GUI
+- Rebalanced ore and gem probability
+- Fixed smelter heat display visibility
+
+### v0.20.04 (2026-01-01) - Glass Metals & Investments
+- **New Feature:** Advanced alloys (Glass Metals research tree)
+- **New Feature:** One-time investments system
+- Fixed gems spawning at correct depth (5000)
+- Fixed smelter task reset bug when dwarfs rest
+
+### v0.20.03 (2025-12-30) - Research Queue
+- Added research queue system (up to 5 researches)
+- Added enrichable materials (Wolfram, Uranium, Plutonium)
+- Research data structure refactored to object-based system
+- Forging animation now skippable
+- Research hardness rebalancing
+
+### v0.20.02 (2025-12-28) - Export & Rebalancing
+- Added savegame export functionality
+- Materials rebalance
+- Smelter and research XP rebalancing
+- Various bug fixes
+
+### v0.20.01 (2025-12-28) - Task Management
+- **New Feature:** Dwarf task priorities and blacklist system
+- **New Feature:** Loose stone sieving with random ore bonus (8% chance, 2× depth)
+- Dwarfs now start at level 0
+- Added more stone types and rebalanced stone values
+
+### v0.20.0 (2025-12-27) - Wisdom & Economy
+- Smelter progress now wisdom-dependent
+- Added "Gem sell all" button
+- Added "Price Negotiations" research
+- Added "Small Time Investments" research
+
+### v0.14.2 (2025-12-24) - Plating System
+- **New Feature:** Tool plating system (Zinc, Silver, Gold effects)
+- Fixed dwarf pathfinding bugs (no more getting stuck)
+- Material IDs implemented for better performance
+- Improved smelter and gem cutting UI
+
 ### v0.14.1 (2024-12-23) - Modal System Refactor
+- **New Feature:** Research queue system
+- Modal system refactored to separate HTML files (see Modal System Architecture section)
+- Level up modal improvements
+- Selling fixes
 
 This refactor was completed on 2024-12-23. No game logic changed - purely organizational.
 
@@ -439,8 +586,51 @@ This refactor was completed on 2024-12-23. No game logic changed - purely organi
 - ✅ **Clearer Separation**: HTML structure vs JavaScript logic vs Styling
 - ✅ **No Breaking Changes**: All existing modal code works unchanged
 
+### Earlier Versions
+- **v0.14.0:** Bucket weight system, non-linear XP, research hardness, wisdom-based rolls
+- **v0.13.x:** Gems, gem cutting, enchanting, skill point reset, iron smelting, alloys, magma furnace
+- **v0.12.x:** Forging system implementation
+- **v0.11.x:** Research system, critical hits, wages, money flow tracking
+- **v0.10.0:** Web Worker architecture, background tab support
+
 ### See `version.html` for full changelog
 GitHub issues are tracked at https://github.com/Urbautz/DiggyDiggy/issues.
+
+---
+
+## Data Structure Patterns
+
+### Object + Array Pattern
+Many game systems use a **dual structure** for flexibility and performance:
+
+1. **Data Object:** Contains full definitions, indexed by ID
+2. **Order Array:** Controls display/priority order, contains only IDs
+
+**Examples:**
+```javascript
+// Research system
+const researchData = { 'furnace': { name: '...', cost: 750, ... } };
+let researchTree = ['furnace', 'forge', ...];  // Display order
+
+// Smelter system
+const smelterTasksData = { 'heat-furnace': { name: '...', ... } };
+let smelterTasks = ['heat-furnace', 'smelt-copper', ...];  // Priority order
+
+// Materials system
+const materials = { 'copper ore': { hardness: 1800, ... } };
+// Note: Materials only use object, no separate array
+```
+
+**Benefits:**
+- Easy to reorder without touching definitions
+- User can customize order (smelter task priority)
+- Lookup by ID is O(1) via object
+- Iteration order controlled via array
+
+### Adding New Items to These Systems
+1. Add full definition to data object
+2. Add ID to order array at desired position
+3. Update any dependent code (rendering, calculations)
 
 ---
 
@@ -450,14 +640,20 @@ GitHub issues are tracked at https://github.com/Urbautz/DiggyDiggy/issues.
 - [ ] Lazy load rarely-used modals (gems, warehouse-sell) only when first opened
 - [ ] Bundle modal HTML into a single file for production to reduce HTTP requests
 - [ ] Add loading spinner during modal initialization
-- [ ] Preload critical modals (levelup, settings) before others
+- [ ] Preload critical modals (dwarf-detail, settings) before others
 - [ ] Add hot-reload during development for faster iteration
 
-### General
-- [ ] Optimize grid rendering for large grids
-- [ ] Add service worker for offline play
-- [ ] Implement save game cloud sync
+### Gameplay
 - [ ] Add achievement system
+- [ ] Implement save game cloud sync
+- [ ] Add more depth-based progression (deeper = new mechanics)
+- [ ] Expand investment system with more options
+
+### Technical
+- [ ] Optimize grid rendering for large grids (virtualization?)
+- [ ] Add service worker for offline play
+- [ ] Consider webpack/vite bundling for production
+- [ ] Add automated testing for game mechanics
 
 ---
 
