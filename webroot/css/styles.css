@@ -826,7 +826,7 @@ header, footer {
 
 .warehouse-table-header {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    grid-template-columns: 2fr 80px 0.8fr 0.8fr 1fr 1.8fr;
     gap: 12px;
     padding: 10px 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
@@ -851,7 +851,7 @@ header, footer {
 
 .warehouse-row {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    grid-template-columns: 2fr 80px 0.8fr 0.8fr 1fr 1.8fr;
     gap: 8px;
     align-items: center;
     padding: 4px 8px;
@@ -921,11 +921,11 @@ header, footer {
 
 .wh-col-icons {
     font-size: 14px;
-    text-align: center;
+    text-align: left;
     white-space: nowrap;
     display: inline-flex;
     gap: 2px;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .wh-col-actions {

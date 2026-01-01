@@ -1734,10 +1734,10 @@ function initMaterialsPanel() {
     tableHeader.className = 'warehouse-table-header';
     tableHeader.innerHTML = `
         <span class="wh-col-name">MATERIAL</span>
+        <span class="wh-col-icons"></span>
         <span class="wh-col-price">PRICE</span>
         <span class="wh-col-count">STOCK</span>
         <span class="wh-col-total">VALUE</span>
-        <span class="wh-col-icons"></span>
         <span class="wh-col-actions">SELL</span>
     `;
     container.appendChild(tableHeader);
@@ -1808,14 +1808,14 @@ function initMaterialsPanel() {
         sellBtn.dataset.materialId = id;
 
         buttons.appendChild(sellBtn);
-        
+
         row.appendChild(name);
+        row.appendChild(icons);
         row.appendChild(worth);
         row.appendChild(cnt);
         row.appendChild(totalValue);
-        row.appendChild(icons);
         row.appendChild(buttons);
-        
+
         container.appendChild(row);
     }
     
