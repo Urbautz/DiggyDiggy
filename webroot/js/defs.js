@@ -1309,7 +1309,7 @@ const researchData = {
     maxlevel: 1,
     hardness: 55,
     requires: [{'grinding-machine': 1}],
-    min_depth: 2000,
+    min_depth: 5000,
     description: 'Unlocks gem cutting at the smelter.'
   },
   'gem-setting': {
@@ -1320,7 +1320,7 @@ const researchData = {
     maxlevel: 3,
     hardness: 55,
     requires: [{'gem-cutting': 1}],
-    min_depth: 2000,
+    min_depth: 5000,
     description: 'Set up to 3 Gems into the dwarfs tools.'
   },
   'furnace': {
@@ -1438,13 +1438,9 @@ const researchData = {
 
 // Ordered array of research IDs (determines display order)
 let researchTree = [
-  'improved-digging',
-  'better-housing',
-  'trading',
+
   'price-negotiations',
   'small-time-investments',
-  'buckets',
-  'union-busting',
   'tool-enchanting',
   'grinding-machine',
   'stone-polishing',
@@ -1460,7 +1456,12 @@ let researchTree = [
   'expertise-ore',
   'furnace-temperature',
   'magma-furnace',
-  'ore-enrichment'
+  'ore-enrichment',
+  'improved-digging',
+  'better-housing',
+  'trading',
+  'buckets',
+  'union-busting',
 ];
 
 let activeResearch = null; // Track which research is currently being researched
