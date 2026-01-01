@@ -80,6 +80,69 @@ function logTransaction(type, amount, description) {
         processHourlyRollup();
         currentHourTimestamp = currentHour;
     }
+
+    // Limit transaction log to 10,000 entries to prevent storage issues
+    // Before deleting old transactions, ensure they're captured in hourly statistics
+    if (transactionLog.length > 10000) {
+        // Get the oldest transactions that will be removed
+        const transactionsToRemove = transactionLog.slice(10000);
+
+        // Always aggregate removed transactions into hourly statistics
+        if (transactionsToRemove.length > 0) {
+            // Group removed transactions by hour
+            const hourlyGroups = {};
+
+            for (const transaction of transactionsToRemove) {
+                const txHour = getHourTimestamp(new Date(transaction.timestampMs));
+
+                if (!hourlyGroups[txHour]) {
+                    hourlyGroups[txHour] = {};
+                }
+
+                const desc = transaction.description;
+                if (!hourlyGroups[txHour][desc]) {
+                    hourlyGroups[txHour][desc] = { income: 0, expense: 0, count: 0 };
+                }
+
+                if (transaction.type === 'income') {
+                    hourlyGroups[txHour][desc].income += transaction.amount;
+                } else {
+                    hourlyGroups[txHour][desc].expense += transaction.amount;
+                }
+                hourlyGroups[txHour][desc].count++;
+            }
+
+            // Add or merge these hourly groups into transaction history
+            for (const hour in hourlyGroups) {
+                const hourTimestamp = parseInt(hour);
+                const existingHourIndex = transactionHistory.findIndex(h => h.hour === hourTimestamp);
+
+                if (existingHourIndex >= 0) {
+                    // Merge with existing hour data
+                    const existingHour = transactionHistory[existingHourIndex];
+                    for (const desc in hourlyGroups[hour]) {
+                        if (!existingHour.transactions[desc]) {
+                            existingHour.transactions[desc] = hourlyGroups[hour][desc];
+                        } else {
+                            // Merge the data
+                            existingHour.transactions[desc].income += hourlyGroups[hour][desc].income;
+                            existingHour.transactions[desc].expense += hourlyGroups[hour][desc].expense;
+                            existingHour.transactions[desc].count += hourlyGroups[hour][desc].count;
+                        }
+                    }
+                } else {
+                    // Add as new hour entry
+                    transactionHistory.push({
+                        hour: hourTimestamp,
+                        transactions: hourlyGroups[hour]
+                    });
+                }
+            }
+        }
+
+        // Now trim the transaction log to 10,000 entries
+        transactionLog = transactionLog.slice(0, 10000);
+    }
 }
 
 // Get timestamp for the start of the hour
@@ -150,6 +213,7 @@ function populateSummaryTab(container) {
     let currentHourExpense = 0;
     let currentHourCount = 0;
 
+    // First, add up transactions currently in the log
     for (const transaction of transactionLog) {
         if (transaction.type === 'income') {
             currentHourIncome += transaction.amount;
@@ -157,6 +221,20 @@ function populateSummaryTab(container) {
             currentHourExpense += transaction.amount;
         }
         currentHourCount++;
+    }
+
+    // Also check if there's already a history entry for the current hour
+    // (happens when we exceed 10,000 transactions in the current hour)
+    if (currentHourTimestamp !== null) {
+        const existingCurrentHour = transactionHistory.find(h => h.hour === currentHourTimestamp);
+        if (existingCurrentHour) {
+            // Add the historical data to current hour totals
+            for (const desc in existingCurrentHour.transactions) {
+                currentHourIncome += existingCurrentHour.transactions[desc].income;
+                currentHourExpense += existingCurrentHour.transactions[desc].expense;
+                currentHourCount += existingCurrentHour.transactions[desc].count;
+            }
+        }
     }
 
     const hasCurrentHour = currentHourCount > 0;
@@ -309,7 +387,7 @@ function populateHourDetails(container, hourIdentifier) {
     if (hourIdentifier === 'current') {
         header.textContent = 'Current Hour - Transaction Details';
 
-        // Aggregate current transactions by description
+        // Aggregate current transactions by description from the log
         for (const transaction of transactionLog) {
             const desc = transaction.description;
             if (!transactionData[desc]) {
@@ -321,6 +399,23 @@ function populateHourDetails(container, hourIdentifier) {
                 transactionData[desc].expense += transaction.amount;
             }
             transactionData[desc].count++;
+        }
+
+        // Also merge in any existing history for the current hour
+        // (happens when we exceed 10,000 transactions in the current hour)
+        if (currentHourTimestamp !== null) {
+            const existingCurrentHour = transactionHistory.find(h => h.hour === currentHourTimestamp);
+            if (existingCurrentHour) {
+                for (const desc in existingCurrentHour.transactions) {
+                    if (!transactionData[desc]) {
+                        transactionData[desc] = { ...existingCurrentHour.transactions[desc] };
+                    } else {
+                        transactionData[desc].income += existingCurrentHour.transactions[desc].income;
+                        transactionData[desc].expense += existingCurrentHour.transactions[desc].expense;
+                        transactionData[desc].count += existingCurrentHour.transactions[desc].count;
+                    }
+                }
+            }
         }
     } else {
         // Find the historical hour
@@ -572,4 +667,230 @@ function populateInvestmentsTab(container) {
     }
 
     container.appendChild(interestCard);
+
+    // Check if One Time Investments research is unlocked
+    const oneTimeInvestmentsResearch = researchData['one-time-investments'];
+    const isOneTimeUnlocked = oneTimeInvestmentsResearch && (oneTimeInvestmentsResearch.level || 0) > 0;
+
+    if (isOneTimeUnlocked) {
+        // One-time investments section
+        const oneTimeHeader = document.createElement('h3');
+        oneTimeHeader.className = 'investments-header';
+        oneTimeHeader.style.marginTop = '30px';
+        oneTimeHeader.textContent = '💰 One-Time Investments';
+        container.appendChild(oneTimeHeader);
+
+        // Create investment form
+        const investmentForm = document.createElement('div');
+        investmentForm.className = 'investment-form';
+        investmentForm.style.cssText = 'background: #1e2a35; padding: 20px; border-radius: 8px; margin-bottom: 20px;';
+
+        const formTitle = document.createElement('div');
+        formTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; color: #9fbfe0;';
+        formTitle.textContent = 'Create New Investment';
+        investmentForm.appendChild(formTitle);
+
+        const formDesc = document.createElement('div');
+        formDesc.style.cssText = 'font-size: 0.9em; color: #7a8a99; margin-bottom: 15px;';
+        formDesc.textContent = 'Invest 100,000 to 75% of your gold. Receive 1 gold per 100k invested for 120,000 ticks (10 hours).';
+        investmentForm.appendChild(formDesc);
+
+        // Min and max investment amounts
+        const minInvestment = 100000;
+        const maxInvestment = Math.floor(gold * 0.75 / 100000) * 100000;
+
+        if (gold >= minInvestment) {
+            // Track current investment amount - preserve across refreshes
+            if (!window.currentInvestmentAmount || window.currentInvestmentAmount < minInvestment) {
+                window.currentInvestmentAmount = minInvestment;
+            }
+            // Clamp to valid range
+            window.currentInvestmentAmount = Math.max(minInvestment, Math.min(maxInvestment, window.currentInvestmentAmount));
+            let currentAmount = window.currentInvestmentAmount;
+
+            // Amount label
+            const amountLabel = document.createElement('label');
+            amountLabel.textContent = 'Amount:';
+            amountLabel.style.cssText = 'color: #9fbfe0; margin-bottom: 8px; display: block;';
+            investmentForm.appendChild(amountLabel);
+
+            // Amount display
+            const amountDisplay = document.createElement('div');
+            amountDisplay.style.cssText = 'font-size: 1.5em; font-weight: bold; color: #4ade80; text-align: center; margin-bottom: 10px;';
+            amountDisplay.id = 'investment-amount-display';
+            investmentForm.appendChild(amountDisplay);
+
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;';
+
+            // Minus button
+            const minusBtn = document.createElement('button');
+            minusBtn.textContent = '-';
+            minusBtn.className = 'btn-secondary';
+            minusBtn.style.cssText = 'padding: 8px; font-size: 1.2em; font-weight: bold;';
+            buttonContainer.appendChild(minusBtn);
+
+            // Plus button
+            const plusBtn = document.createElement('button');
+            plusBtn.textContent = '+';
+            plusBtn.className = 'btn-secondary';
+            plusBtn.style.cssText = 'padding: 8px; font-size: 1.2em; font-weight: bold;';
+            buttonContainer.appendChild(plusBtn);
+
+            // 50% button
+            const fiftyPercentBtn = document.createElement('button');
+            fiftyPercentBtn.textContent = '50%';
+            fiftyPercentBtn.className = 'btn-secondary';
+            fiftyPercentBtn.style.cssText = 'padding: 8px;';
+            buttonContainer.appendChild(fiftyPercentBtn);
+
+            // Max button
+            const maxBtn = document.createElement('button');
+            maxBtn.textContent = 'Max';
+            maxBtn.className = 'btn-secondary';
+            maxBtn.style.cssText = 'padding: 8px;';
+            buttonContainer.appendChild(maxBtn);
+
+            investmentForm.appendChild(buttonContainer);
+
+            // Info display
+            const infoDisplay = document.createElement('div');
+            infoDisplay.style.cssText = 'font-size: 0.9em; color: #7a8a99; margin-bottom: 15px; text-align: center;';
+            infoDisplay.id = 'investment-info-display';
+            investmentForm.appendChild(infoDisplay);
+
+            // Update info when amount changes
+            const updateInfo = () => {
+                amountDisplay.textContent = formatNumber(currentAmount, 'gold');
+                const payoutPerTick = currentAmount / 100000;
+                const totalPayout = payoutPerTick * 120000;
+                const roi = ((totalPayout - currentAmount) / currentAmount * 100).toFixed(1);
+                infoDisplay.textContent = `Payout: ${formatNumber(payoutPerTick, 'gold')}/tick × 120,000 ticks = ${formatNumber(totalPayout, 'gold')} total (${roi}% ROI)`;
+            };
+
+            // Button handlers
+            minusBtn.onclick = () => {
+                currentAmount = Math.max(minInvestment, currentAmount - 100000);
+                window.currentInvestmentAmount = currentAmount;
+                updateInfo();
+            };
+
+            plusBtn.onclick = () => {
+                currentAmount = Math.min(maxInvestment, currentAmount + 100000);
+                window.currentInvestmentAmount = currentAmount;
+                updateInfo();
+            };
+
+            fiftyPercentBtn.onclick = () => {
+                currentAmount = Math.floor(gold * 0.5 / 100000) * 100000;
+                currentAmount = Math.max(minInvestment, Math.min(maxInvestment, currentAmount));
+                window.currentInvestmentAmount = currentAmount;
+                updateInfo();
+            };
+
+            maxBtn.onclick = () => {
+                currentAmount = maxInvestment;
+                window.currentInvestmentAmount = currentAmount;
+                updateInfo();
+            };
+
+            updateInfo();
+
+            // Create button
+            const createButton = document.createElement('button');
+            createButton.textContent = 'Create Investment';
+            createButton.className = 'btn-primary';
+            createButton.style.cssText = 'width: 100%;';
+            createButton.onclick = () => {
+                if (currentAmount < minInvestment) {
+                    alert(`Minimum investment is ${formatNumber(minInvestment, 'gold')}`);
+                    return;
+                }
+                if (currentAmount > maxInvestment) {
+                    alert(`Maximum investment is 75% of your gold (${formatNumber(maxInvestment, 'gold')})`);
+                    return;
+                }
+                if (currentAmount > gold) {
+                    alert('Not enough gold!');
+                    return;
+                }
+
+                // Send message to worker to create investment
+                if (gameWorker) {
+                    gameWorker.postMessage({
+                        type: 'create-investment',
+                        data: { amount: currentAmount }
+                    });
+                    // Reset the amount to minimum after creating
+                    window.currentInvestmentAmount = minInvestment;
+                    // Refresh modal after creating
+                    setTimeout(() => {
+                        populateTransactions();
+                    }, 100);
+                }
+            };
+            investmentForm.appendChild(createButton);
+        } else {
+            const notEnoughGold = document.createElement('div');
+            notEnoughGold.style.cssText = 'color: #ff6b6b; text-align: center; padding: 10px;';
+            notEnoughGold.textContent = `You need at least ${formatNumber(minInvestment, 'gold')} to create an investment.`;
+            investmentForm.appendChild(notEnoughGold);
+        }
+
+        container.appendChild(investmentForm);
+
+        // Active investments list
+        if (oneTimeInvestments && oneTimeInvestments.length > 0) {
+            const activeHeader = document.createElement('h4');
+            activeHeader.style.cssText = 'margin-top: 20px; margin-bottom: 10px; color: #9fbfe0;';
+            activeHeader.textContent = 'Active Investments';
+            container.appendChild(activeHeader);
+
+            for (const investment of oneTimeInvestments) {
+                const investmentCard = document.createElement('div');
+                investmentCard.style.cssText = 'background: #1e2a35; padding: 15px; border-radius: 8px; margin-bottom: 10px;';
+
+                const investmentHeader = document.createElement('div');
+                investmentHeader.style.cssText = 'display: flex; justify-content: space-between; margin-bottom: 8px;';
+
+                const investmentTitle = document.createElement('div');
+                investmentTitle.style.cssText = 'font-weight: bold; color: #9fbfe0;';
+                investmentTitle.textContent = `Investment #${investment.id}`;
+                investmentHeader.appendChild(investmentTitle);
+
+                const investmentAmount = document.createElement('div');
+                investmentAmount.style.cssText = 'color: #4ade80;';
+                investmentAmount.textContent = formatNumber(investment.amount, 'gold');
+                investmentHeader.appendChild(investmentAmount);
+
+                investmentCard.appendChild(investmentHeader);
+
+                const progressBar = document.createElement('div');
+                progressBar.style.cssText = 'background: #2a3f5a; height: 20px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;';
+
+                const progressFill = document.createElement('div');
+                const percentComplete = ((120000 - investment.ticksRemaining) / 120000) * 100;
+                progressFill.style.cssText = `background: #4ade80; height: 100%; width: ${percentComplete}%; transition: width 0.3s;`;
+                progressBar.appendChild(progressFill);
+
+                investmentCard.appendChild(progressBar);
+
+                const investmentDetails = document.createElement('div');
+                investmentDetails.style.cssText = 'font-size: 0.9em; color: #7a8a99;';
+                const ticksElapsed = 120000 - investment.ticksRemaining;
+                const totalPayout = investment.payoutPerTick * 120000;
+                const payoutSoFar = investment.payoutPerTick * ticksElapsed;
+                investmentDetails.innerHTML = `
+                    <div>Progress: ${formatNumber(ticksElapsed)} / 120,000 ticks (${percentComplete.toFixed(1)}%)</div>
+                    <div>Payout per tick: ${formatNumber(investment.payoutPerTick, 'gold')}</div>
+                    <div>Paid out so far: ${formatNumber(payoutSoFar, 'gold')} / ${formatNumber(totalPayout, 'gold')}</div>
+                    <div>Remaining: ${formatNumber(investment.ticksRemaining)} ticks (~${(investment.ticksRemaining * 0.3 / 3600).toFixed(1)} hours)</div>
+                `;
+                investmentCard.appendChild(investmentDetails);
+
+                container.appendChild(investmentCard);
+            }
+        }
+    }
 }

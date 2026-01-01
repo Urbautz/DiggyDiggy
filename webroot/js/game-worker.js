@@ -34,6 +34,8 @@ let researchData = {}; // Research data object (id as key)
 let researchTree = []; // Ordered array of research IDs
 let pendingTransactions = []; // Queue of transactions to send to main thread
 let hasForgedHighHardnessTool = false; // Track if player has successfully forged a tool with 100+ hardness material
+let oneTimeInvestments = []; // Array of active one-time investments {amount, ticksRemaining, payoutPerTick, id}
+let nextInvestmentId = 1; // Next investment ID to assign
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -959,10 +961,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
             // Check if dwarf has enough energy
             if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
-                // Reset task progress when dwarf stops due to low energy
-                if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
-                    smelterTasksData[dwarf.currentSmelterTask].progress = 0;
-                }
+                // Don't reset progress when dwarf stops - allow continuation by next dwarf
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
                 dwarf.currentSmelterTask = null;
@@ -985,10 +984,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             const taskResult = findActionableSmelterTask();
             if (!taskResult) {
                 // No work available, release smelter and become idle
-                // Reset task progress when dwarf stops due to no work
-                if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
-                    smelterTasksData[dwarf.currentSmelterTask].progress = 0;
-                }
+                // Don't reset progress - allow continuation when work becomes available
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 dwarf.status = 'idle';
                 dwarf.currentSmelterTask = null;
@@ -1005,11 +1001,27 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     // Starting a new task or switching tasks
                     dwarf.currentSmelterTask = taskId;
 
-                    // For gem cutting, also initialize gem progress
+                    // For gem cutting, find the gem that's already being worked on or start a new one
                     if (task.type === 'gem-cutting') {
-                        const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-                        if (gemToProcess && !gemToProcess.cuttingProgress) {
-                            gemToProcess.cuttingProgress = 0;
+                        // First, try to find a gem that's already in progress
+                        let gemToProcess = gems.find(g => g.markedForCutting && !g.polished && g.cuttingProgress > 0);
+
+                        // If no gem in progress, find any gem marked for cutting
+                        if (!gemToProcess) {
+                            gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                        }
+
+                        if (gemToProcess) {
+                            // Track which gem we're working on
+                            task.currentGemId = gemToProcess.id;
+
+                            // Initialize progress if needed
+                            if (!gemToProcess.cuttingProgress) {
+                                gemToProcess.cuttingProgress = 0;
+                            }
+
+                            // Restore progress from the gem to the task
+                            task.progress = gemToProcess.cuttingProgress;
                         }
                     }
                 }
@@ -1072,9 +1084,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // Apply progress to the task (not the dwarf)
                 task.progress += totalProgressGained;
 
-                // For gem cutting, sync progress with gem object
-                if (task.type === 'gem-cutting') {
-                    const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                // For gem cutting, sync progress with the specific gem being worked on
+                if (task.type === 'gem-cutting' && task.currentGemId) {
+                    const gemToProcess = gems.find(g => g.id === task.currentGemId);
                     if (gemToProcess) {
                         gemToProcess.cuttingProgress = task.progress;
                     }
@@ -1088,12 +1100,14 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     // Task complete! Process the result
 
                     // Handle gem cutting completion
-                    if (task.type === 'gem-cutting') {
-                        const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                    if (task.type === 'gem-cutting' && task.currentGemId) {
+                        const gemToProcess = gems.find(g => g.id === task.currentGemId);
                         if (gemToProcess) {
                             gemToProcess.polished = true;
                             gemToProcess.markedForCutting = false;
                             gemToProcess.cuttingProgress = 0;
+                            // Clear the tracked gem ID
+                            task.currentGemId = null;
                         }
                     }
                     // Handle heating task completion
@@ -1201,10 +1215,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             return;
         } else {
             // Not at smelter location, release reservation and become idle
-            // Reset task progress when dwarf stops
-            if (dwarf.currentSmelterTask && smelterTasksData[dwarf.currentSmelterTask]) {
-                smelterTasksData[dwarf.currentSmelterTask].progress = 0;
-            }
+            // Don't reset progress - allow continuation by next dwarf
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
             dwarf.status = 'idle';
             dwarf.currentSmelterTask = null;
@@ -1804,6 +1815,55 @@ function tick() {
             }
         }
 
+        // Process one-time investments
+        if (oneTimeInvestments && oneTimeInvestments.length > 0) {
+            const activeInvestments = [];
+            let totalInvestmentPayout = 0;
+            const completedInvestments = [];
+
+            for (const investment of oneTimeInvestments) {
+                if (investment.ticksRemaining > 0) {
+                    // Pay out for this tick
+                    gold += investment.payoutPerTick;
+                    totalInvestmentPayout += investment.payoutPerTick;
+
+                    // Decrement remaining ticks
+                    investment.ticksRemaining--;
+
+                    // Keep investment if not complete
+                    if (investment.ticksRemaining > 0) {
+                        activeInvestments.push(investment);
+                    } else {
+                        // Investment complete
+                        completedInvestments.push(investment.id);
+                    }
+                } else {
+                    // This shouldn't happen, but filter out just in case
+                    continue;
+                }
+            }
+
+            // Log single transaction for all investment payouts this tick
+            if (totalInvestmentPayout > 0) {
+                pendingTransactions.push({
+                    type: 'income',
+                    amount: totalInvestmentPayout,
+                    description: 'Investment payouts'
+                });
+            }
+
+            // Log completion messages for any completed investments
+            for (const investmentId of completedInvestments) {
+                pendingTransactions.push({
+                    type: 'income',
+                    amount: 0,
+                    description: `Investment #${investmentId} completed`
+                });
+            }
+
+            oneTimeInvestments = activeInvestments;
+        }
+
         for (const d of dwarfs) {
             actForDwarf(d);
         }
@@ -1858,6 +1918,8 @@ function tick() {
                 smelterMagmaMinTemp,
                 smelterHeatingMode,
                 smelterTasksData,
+                oneTimeInvestments,
+                nextInvestmentId,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
@@ -1921,6 +1983,9 @@ self.addEventListener('message', (e) => {
             if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
             if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
             if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+            // Initialize one-time investments
+            if (data.oneTimeInvestments) oneTimeInvestments = JSON.parse(JSON.stringify(data.oneTimeInvestments));
+            if (data.nextInvestmentId !== undefined) nextInvestmentId = data.nextInvestmentId;
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -1992,7 +2057,43 @@ self.addEventListener('message', (e) => {
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
             }
             break;
-            
+
+        case 'create-investment':
+            // Create a new one-time investment
+            if (data && data.amount) {
+                const amount = data.amount;
+                const payoutPerTick = amount / 100000; // 1 gold per 100k invested per tick
+                const ticksRequired = 120000; // 120,000 ticks (10 hours at 300ms per tick)
+
+                const investment = {
+                    id: nextInvestmentId++,
+                    amount: amount,
+                    ticksRemaining: ticksRequired,
+                    payoutPerTick: payoutPerTick,
+                    startTick: Date.now() // For display purposes
+                };
+
+                oneTimeInvestments.push(investment);
+                gold -= amount; // Deduct the investment amount
+
+                pendingTransactions.push({
+                    type: 'expense',
+                    amount: amount,
+                    description: `One-time investment #${investment.id} created`
+                });
+
+                console.log(`Created investment #${investment.id}: ${amount} gold, ${payoutPerTick} per tick for ${ticksRequired} ticks`);
+
+                // Send updated state back
+                self.postMessage({
+                    type: 'investment-created',
+                    investment: investment,
+                    gold: gold,
+                    oneTimeInvestments: oneTimeInvestments
+                });
+            }
+            break;
+
         default:
             console.warn('Unknown message type:', type);
     }

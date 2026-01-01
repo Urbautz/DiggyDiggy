@@ -2208,6 +2208,14 @@ function initWorker() {
                     }
                 }
 
+                // Update one-time investments from worker
+                if (data.oneTimeInvestments !== undefined) {
+                    oneTimeInvestments = data.oneTimeInvestments;
+                }
+                if (data.nextInvestmentId !== undefined) {
+                    nextInvestmentId = data.nextInvestmentId;
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2270,7 +2278,16 @@ function initWorker() {
             case 'tick-error':
                 console.error('Worker tick error:', error);
                 break;
-                
+
+            case 'investment-created':
+                // Update state when investment is created
+                if (data) {
+                    if (data.gold !== undefined) gold = data.gold;
+                    if (data.oneTimeInvestments !== undefined) oneTimeInvestments = data.oneTimeInvestments;
+                    console.log('Investment created successfully:', data.investment);
+                }
+                break;
+
             default:
                 console.warn('Unknown worker message type:', type);
         }
@@ -2312,7 +2329,9 @@ function initWorker() {
             smelterTemperature,
             smelterCoalMinTemp,
             smelterCoalMaxTemp,
-            smelterMagmaMinTemp
+            smelterMagmaMinTemp,
+            oneTimeInvestments: oneTimeInvestments || [],
+            nextInvestmentId: nextInvestmentId || 1
         }
     });
     
@@ -2376,6 +2395,8 @@ function saveGame() {
             smelterMagmaMinTemp: smelterMagmaMinTemp,
             smelterHeatingMode: smelterHeatingMode,
             hasForgedHighHardnessTool: hasForgedHighHardnessTool,
+            oneTimeInvestments: oneTimeInvestments || [],
+            nextInvestmentId: nextInvestmentId || 1,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2586,6 +2607,14 @@ function loadGame() {
 
         // Restore forge state
         if (gameState.hasForgedHighHardnessTool !== undefined) hasForgedHighHardnessTool = gameState.hasForgedHighHardnessTool;
+
+        // Restore one-time investments
+        if (gameState.oneTimeInvestments) {
+            oneTimeInvestments = gameState.oneTimeInvestments;
+        }
+        if (gameState.nextInvestmentId !== undefined) {
+            nextInvestmentId = gameState.nextInvestmentId;
+        }
 
         // Backwards compatibility: if old variables exist but new ones don't, migrate them
         if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {

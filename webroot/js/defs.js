@@ -1329,17 +1329,6 @@ const researchData = {
     hardness: 30,
     description: 'Prices are improved by 3% per level'
   },
-  'price-negotiations': {
-    name: 'Price Negotiations',
-    cost: 3000,
-    goldCost: 500,
-    level: 0,
-    maxlevel: 1,
-    hardness: 50,
-    requires: [{'trading': 10}],
-    min_depth: 5000,
-    description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
-  },
   'small-time-investments': {
     name: 'Small Time Investments',
     cost: 5000,
@@ -1347,9 +1336,32 @@ const researchData = {
     level: 0,
     maxlevel: 1,
     hardness: 750,
-    requires: [{'price-negotiations': 1}],
-    min_depth: 8000,
+    requires: [{'trading': 5}],
+    min_depth: 800,
     description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
+  },
+  'price-negotiations': {
+    name: 'Price Negotiations',
+    cost: 3000,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 1,
+    hardness: 50,
+    requires: [{'trading': 5}],
+    min_depth: 5000,
+    description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
+  },
+
+  'one-time-investments': {
+    name: 'Long Term Investments',
+    cost: 10000,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 1000,
+    requires: [{'price-negotiations': 1}],
+    min_depth: 5000,
+    description: 'Unlock the ability to make one-time investments. Pays back over 12 hours.'
   },
   'wage-optimization': {
     name: 'Wage Negotiation',
@@ -1562,6 +1574,7 @@ let researchTree = [
 
   'price-negotiations',
   'small-time-investments',
+  'one-time-investments',
   'tool-enchanting',
   'grinding-machine',
   'stone-polishing',
@@ -1588,10 +1601,14 @@ let researchTree = [
 
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
-    
+
 let grid = [];
 let startX = 0;
 let gold = 50;
+
+// One-time investments system
+let oneTimeInvestments = []; // Array of active one-time investments
+let nextInvestmentId = 1; // Next investment ID to assign
 
 let dwarfs = [
     { name: "Diggingston",
