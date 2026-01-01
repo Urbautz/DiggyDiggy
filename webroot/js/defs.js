@@ -699,7 +699,7 @@ const materials = {
     forge: 'Base',
     weight: 50
   },
-  'incocel ': {
+  'incocel': {
     name: 'Inocel',
     type: 'Ingot',
     hardness: 1000,
@@ -1200,7 +1200,7 @@ const smelterTasksData = {
       { material: 'titanium', amount: 3 },
       { material: 'nickel', amount: 1 }
     ],
-    output: { material: 'incocel ', amount: 1 },
+    output: { material: 'incocel', amount: 1 },
     minTemp: 1700,
     ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
     requires: 'glass-metals',
