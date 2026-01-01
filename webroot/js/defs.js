@@ -1331,41 +1331,41 @@ const researchData = {
   },
   'small-time-investments': {
     name: 'Small Time Investments',
-    cost: 5000,
+    cost: 1200,
     goldCost: 1000,
     level: 0,
     maxlevel: 1,
-    hardness: 750,
+    hardness: 75,
     requires: [{'trading': 5}],
     min_depth: 800,
     description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
   },
   'price-negotiations': {
     name: 'Price Negotiations',
-    cost: 3000,
+    cost: 2000,
     goldCost: 500,
     level: 0,
     maxlevel: 1,
     hardness: 50,
-    requires: [{'trading': 5}],
+    requires: [{'trading': 5}], 
     min_depth: 5000,
     description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
   },
 
   'one-time-investments': {
     name: 'Long Term Investments',
-    cost: 10000,
+    cost: 2000,
     goldCost: 5000,
     level: 0,
     maxlevel: 1,
-    hardness: 1000,
+    hardness: 75,
     requires: [{'price-negotiations': 1}],
     min_depth: 5000,
     description: 'Unlock the ability to make one-time investments. Pays back over 12 hours.'
   },
   'wage-optimization': {
     name: 'Wage Negotiation',
-    cost: 1000,
+    cost: 400,
     goldCost: 1000,
     level: 0,
     maxlevel: 20,
@@ -1394,7 +1394,7 @@ const researchData = {
   },
   'tool-enchanting': {
     name: 'Tool Enchanting',
-    cost: 600,
+    cost: 300,
     goldCost: 300,
     level: 0,
     maxlevel: 30,
@@ -1458,8 +1458,8 @@ const researchData = {
   },
   'furnace-insulation': {
     name: 'Furnace Insulation',
-    cost: 10000,
-    goldCost: 10000,
+    cost: 1000,
+    goldCost: 8000,
     level: 0,
     maxlevel: 5,
     hardness: 60,
@@ -1480,7 +1480,7 @@ const researchData = {
   },
   'alloys': {
     name: 'Alloys',
-    cost: 4000,
+    cost: 2000,
     goldCost: 8000,
     level: 0,
     maxlevel: 1,
@@ -1491,8 +1491,8 @@ const researchData = {
   },
     'furnace-temperature': {
     name: 'Furnace Temperature',
-    cost: 5000,
-    goldCost: 5000,
+    cost: 700,
+    goldCost: 1500,
     level: 0,
     maxlevel: 15,
     hardness: 80,
@@ -1502,7 +1502,7 @@ const researchData = {
   },
   'magma-furnace': {
     name: 'Magma Operated Furnace',
-    cost: 25000,
+    cost: 2500,
     goldCost: 50000,
     level: 0,
     maxlevel: 1,
@@ -1513,7 +1513,7 @@ const researchData = {
   },
   'glass-metals': {
     name: 'Glass Metals',
-    cost: 30000,
+    cost: 3000,
     goldCost: 60000,
     level: 0,
     maxlevel: 1,
@@ -1535,7 +1535,7 @@ const researchData = {
 
   'expertise-stone': {
     name: 'Stone Expertise',
-    cost: 3000,
+    cost: 1000,
     goldCost: 3000,
     level: 0,
     maxlevel: 15,
@@ -1546,8 +1546,8 @@ const researchData = {
   },
   'expertise-ore': {
     name: 'Ore Expertise',
-    cost: 20000,
-    goldCost: 20000,
+    cost: 1500,
+    goldCost: 6000,
     level: 0,
     maxlevel: 15,
     hardness: 85,
@@ -1557,7 +1557,7 @@ const researchData = {
   },
   'ore-enrichment': {
     name: 'Ore Enrichment',
-    cost: 50000,
+    cost: 2000,
     goldCost: 50000,
     level: 0,
     maxlevel: 1,

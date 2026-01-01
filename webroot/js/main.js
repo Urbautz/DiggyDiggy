@@ -2873,9 +2873,7 @@ function updateFunctionLinks() {
         }
     }
 
-    // Temperature bar on smelter button is now hidden
-    // Uncomment the code below to re-enable the temperature indicator
-    /*
+    // Temperature bar on smelter button
     const smelterLink = document.getElementById('smelter-function-link');
     if (smelterLink) {
         // Remove existing temp bar if present
@@ -2903,7 +2901,6 @@ function updateFunctionLinks() {
 
         tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
     }
-    */
 }
 
 // Switch between Warehouse and Dwarfs tabs in the materials panel

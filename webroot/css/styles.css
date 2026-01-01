@@ -130,6 +130,7 @@ main {
     transition: all 0.2s ease;
     text-align: center;
     position: relative; /* Allow absolute positioning of progress bars */
+    overflow: hidden; /* Contain progress/temperature bars within button */
 }
 
 .functions-list a:hover {
