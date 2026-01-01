@@ -565,6 +565,71 @@ function hasMaterialsForTask(task, materialsStock) {
     return true;
 }
 
+/**
+ * Count the number of actionable smelter tasks (tasks that can be performed right now)
+ * @returns {number} Number of actionable tasks
+ */
+function countActionableSmelterTasks() {
+    // Find "do-nothing" index to exclude unreachable tasks
+    const doNothingIndex = smelterTasks.findIndex(id => id === 'do-nothing');
+    let count = 0;
+
+    for (let i = 0; i < smelterTasks.length; i++) {
+        const taskId = smelterTasks[i];
+
+        // Skip if task is unreachable (below "do-nothing")
+        if (doNothingIndex >= 0 && i > doNothingIndex && taskId !== 'do-nothing') {
+            continue;
+        }
+
+        // Skip "do-nothing" task itself
+        if (taskId === 'do-nothing') {
+            continue;
+        }
+
+        const task = smelterTasksData[taskId];
+        if (!task) continue;
+
+        // Check if task is unlocked
+        const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
+        if (!isUnlocked) continue;
+
+        // Check if task is actionable
+        let isActionable = false;
+
+        if (task.type === 'gem-cutting') {
+            // For gem cutting, check if there are gems marked for cutting
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            isActionable = !!gemToProcess;
+        } else {
+            // Check materials
+            const hasMaterials = hasMaterialsForTask(task, materialsStock);
+
+            // For heating tasks, check temperature requirements
+            if (task.type === 'heating') {
+                if (task.heatGain === 'dynamic') {
+                    // Magma: check against magma min
+                    isActionable = hasMaterials && (smelterTemperature < smelterMagmaMinTemp);
+                } else {
+                    // Coal: use smelterHeatingMode for accurate status
+                    isActionable = hasMaterials && smelterHeatingMode;
+                }
+            } else if (task.minTemp) {
+                // For smelting tasks with temp requirements
+                isActionable = hasMaterials && (smelterTemperature >= task.minTemp);
+            } else {
+                isActionable = hasMaterials;
+            }
+        }
+
+        if (isActionable) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 // ============================================================================
 // PLATING EFFECT UTILITIES
 // ============================================================================

@@ -443,6 +443,7 @@ function updateGridDisplay() {
                 }
 
                 if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const bed = document.createElement('span');
                     bed.className = 'drop-off-marker';
                     bed.textContent = '🏠';
@@ -453,22 +454,53 @@ function updateGridDisplay() {
                         cell.title = 'House (Rest here)';
                     }
                     cell.appendChild(bed);
+
+                    // Add notification badge showing number of resting dwarfs
+                    if (dwarfsResting.length > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = dwarfsResting.length;
+                        cell.appendChild(badge);
+                    }
                 }
 
                 if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     cell.title = 'Research';
                     const res = document.createElement('span');
                     res.className = 'drop-off-marker';
                     res.textContent = '🔬';
                     cell.appendChild(res);
+
+                    // Add notification badge showing active + queued research count
+                    const activeCount = activeResearch ? 1 : 0;
+                    const queueCount = researchQueue ? researchQueue.length : 0;
+                    const totalResearchCount = activeCount + queueCount;
+
+                    if (totalResearchCount > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = totalResearchCount;
+                        cell.appendChild(badge);
+                    }
                 }
 
                 if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
                     cell.title = 'Smelter';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const sm = document.createElement('span');
                     sm.className = 'drop-off-marker';
                     sm.textContent = '♨️';
                     cell.appendChild(sm);
+
+                    // Add notification badge showing number of actionable tasks
+                    const actionableTasksCount = countActionableSmelterTasks();
+                    if (actionableTasksCount > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = actionableTasksCount;
+                        cell.appendChild(badge);
+                    }
                 }
 
                 if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
@@ -2873,7 +2905,7 @@ function updateFunctionLinks() {
         }
     }
 
-    // Temperature bar on smelter button
+    // Temperature bar and notification badge on smelter button
     const smelterLink = document.getElementById('smelter-function-link');
     if (smelterLink) {
         // Remove existing temp bar if present
