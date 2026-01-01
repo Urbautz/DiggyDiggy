@@ -513,10 +513,14 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 320px;
-    min-width: 550px;
-    max-width: 550px;
+    width: 550px;
 }
+
+/* Only the materials panel (not functions panel) should have fixed height */
+#materials-panel {
+    height: 435px;
+}
+
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
 }
@@ -799,7 +803,7 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     backdrop-filter: blur(10px) saturate(120%);
-    max-height: 270px;
+    max-height: 468px;
     width:540px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -951,7 +955,7 @@ header, footer {
 
 /* Dwarf panel rows (when shown in materials panel) */
 #materials-list {
-    max-height: 340px;
+    max-height: 468px;
     overflow-y: auto;
     padding-right: 8px;
     scrollbar-width: thin;
@@ -979,6 +983,7 @@ header, footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
+    align-content: start;
 }
 
 .dwarf-row { 

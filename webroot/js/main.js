@@ -1023,7 +1023,7 @@ function populateToolsInPanel() {
         if (isEnchanted) {
             // Show enchantment level instead of button
             const enchantInfo = document.createElement('span');
-            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 10px; font-weight: bold; white-space: nowrap; line-height: 1;';
             enchantInfo.textContent = `✨ Enchant +${tool.enchantLevel}`;
             enchantInfo.title = `Enchanted to level ${tool.enchantLevel}`;
             actions.appendChild(enchantInfo);

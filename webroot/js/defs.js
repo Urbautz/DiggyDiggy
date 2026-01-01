@@ -929,7 +929,7 @@ const smelterTasksData = {
     output: { material: 'gravel', amount: 5 },
     bonusChance: 0.08,
     bonusType: 'deep-ore',
-    bonusAmount: 0.1,
+    bonusAmount: 0.25,
     ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
     hardness: 2
   },
