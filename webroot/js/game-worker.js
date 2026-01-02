@@ -1351,8 +1351,18 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Dwarf at special location - use unified task assignment
-        assignDwarfTask(dwarf, null, null);
-        // Task was assigned (or all tasks blacklisted) - return either way
+        const assignedTask = assignDwarfTask(dwarf, null, null);
+
+        // If no task was assigned (e.g. no research/smelting work available),
+        // don't just stand here and get stuck. Go home.
+        if (assignedTask === null && house) {
+            // Also release any reservations that might have been made, just in case
+            if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+            scheduleMove(dwarf, house.x, house.y);
+        }
+
+        // Task was assigned (or fallback move to house was scheduled) - return either way
         return;
     }
 
