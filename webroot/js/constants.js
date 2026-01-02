@@ -219,7 +219,7 @@ const ENCHANT_POWER_BONUS = 0.08; // 8% power bonus per enchantment level
 // GAME SYSTEM CONSTANTS
 // ============================================================================
 
-const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
+const STUCK_DETECTION_TICKS = 10; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
 const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
 

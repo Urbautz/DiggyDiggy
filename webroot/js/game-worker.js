@@ -650,6 +650,13 @@ function attemptCollapse(x, y) {
 }
 
 function actForDwarf(dwarf) {
+    // If a dwarf is resting but not at the house, it's an invalid state.
+    // Correct it by setting them to idle so they can be reassigned a task (like moving to the house).
+    if (dwarf.status === 'resting' && house && (dwarf.x !== house.x || dwarf.y !== house.y)) {
+        console.warn(`[State Correction] Dwarf ${dwarf.name} was 'resting' at wrong location (${dwarf.x},${dwarf.y}). House is at (${house.x},${house.y}). Setting to 'idle'.`);
+        dwarf.status = 'idle';
+    }
+
     attemptCollapse(dwarf.x, dwarf.y);
     if (!dwarf.status) dwarf.status = 'idle';
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
@@ -675,8 +682,10 @@ function actForDwarf(dwarf) {
     
     if (shouldTrackStuck) {
         if (tracked) {
-            // Check if position or hardness changed
-            if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
+            // Check if dwarf moved or made progress digging
+            const positionChanged = tracked.x !== dwarf.x || tracked.y !== dwarf.y;
+            const progressMade = cellHardness < tracked.hardness;
+            if (positionChanged || progressMade) {
                 // Dwarf moved or made progress, reset tracking
                 stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
             } else {
@@ -692,10 +701,10 @@ function actForDwarf(dwarf) {
                     const hasResearch = researchReservedBy === dwarf.name;
                     const hasSmelter = smelterReservedBy === dwarf.name;
 
-                    console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
-                    console.log(`  Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
-                    console.log(`  Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
-                    console.log(`  Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
+                    console.log(`[stuck] Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    console.log(`  [stuck] Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
+                    console.log(`  [stuck] Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
+                    console.log(`  [stuck] Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
 
                     dwarf.x = house.x;
                     dwarf.y = house.y;
@@ -1477,6 +1486,10 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
+
+            if (dwarf.x === 0 && dwarf.y === 0) {
+                console.log(`[0,0] Dwarf ${dwarf.name} reached (0,0). Status: ${dwarf.status}, Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
+            }
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
             applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
