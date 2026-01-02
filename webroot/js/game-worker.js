@@ -429,7 +429,7 @@ function handleSmelterTaskOutput(task, dwarf) {
 
         // Check for bonus ore (for sieve-loose-stone task)
         if (task.bonusChance && task.bonusType === 'deep-ore' && task.bonusAmount) {
-            console.log(`Checking bonus ore: chance=${task.bonusChance}, type=${task.bonusType}, amount=${task.bonusAmount}`);
+            //console.log(`Checking bonus ore: chance=${task.bonusChance}, type=${task.bonusType}, amount=${task.bonusAmount}`);
             if (Math.random() < task.bonusChance) {
                 // Calculate current depth (deepest dug row)
                 const currentDepth = startX;
@@ -459,7 +459,7 @@ function handleSmelterTaskOutput(task, dwarf) {
                     console.log(`No ores available at target depth ${targetDepth} (current depth: ${currentDepth})`);
                 }
             } else {
-                console.log(`Bonus roll failed for ${dwarf.name}`);
+                //console.log(`Bonus roll failed for ${dwarf.name}`);
             }
         }
     }
@@ -576,8 +576,12 @@ function checkAndShiftTopRows() {
         if (typeof startX === 'number') startX += 1;
 
         for (const d of dwarfs) {
-            d.y = Math.max(0, d.y - 1);
-            if (d.moveTarget && typeof d.moveTarget.y === 'number') {
+            // Only shift dwarfs that are within the grid.
+            // Dwarfs in the function row (y < 0) should not be shifted.
+            if (d.y >= 0) {
+                d.y = Math.max(0, d.y - 1);
+            }
+            if (d.moveTarget && typeof d.moveTarget.y === 'number' && d.moveTarget.y >= 0) {
                 d.moveTarget.y = Math.max(0, d.moveTarget.y - 1);
             }
         }
@@ -701,7 +705,7 @@ function actForDwarf(dwarf) {
                     const hasResearch = researchReservedBy === dwarf.name;
                     const hasSmelter = smelterReservedBy === dwarf.name;
 
-                    console.log(`[stuck] Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    console.warn(`[stuck] Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
                     console.log(`  [stuck] Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
                     console.log(`  [stuck] Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
                     console.log(`  [stuck] Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
@@ -936,7 +940,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 console.log(`[WORKER] Research completed. Queue length: ${researchQueue.length}`);
                 if (researchQueue.length > 0) {
                     const nextResearch = researchQueue.shift();
-                    console.log(`[WORKER] Starting next queued research:`, nextResearch);
+                    //console.log(`[WORKER] Starting next queued research:`, nextResearch);
                     const nextResearchItem = researchData[nextResearch.id];
 
                     if (nextResearchItem) {
@@ -947,13 +951,11 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
                         // Create active research object with id
                         activeResearch = { ...nextResearchItem, id: nextResearch.id };
-                        console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
+                        //console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
                     } else {
                         console.error('[WORKER] Queued research not found:', nextResearch.id);
                         // Recursively try next in queue by re-processing
                     }
-                } else {
-                    console.log('[WORKER] No researches in queue to start');
                 }
             }
             return;
@@ -1497,10 +1499,6 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             dwarf.x = nextX;
             dwarf.y = nextY;
 
-            if (dwarf.x === 0 && dwarf.y === 0) {
-                console.log(`[0,0] Dwarf ${dwarf.name} reached (0,0). Status: ${dwarf.status}, Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
-            }
-
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
             applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
@@ -1594,11 +1592,16 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
     }
 
-    // All digging-related logic below only applies to main grid (not functions grid at y=-1)
-    // If dwarf is in functions grid, they should only perform functions tasks
+    // If dwarf is in functions grid, they should only perform functions tasks, unless they are idle.
     if (!row) {
-        // Dwarf is in functions grid - no digging available
-        return;
+        // If the dwarf is idle in the function row, it should try to move to the grid to find work.
+        if (dwarf.status === 'idle') {
+            const taskBlacklist = dwarf.taskBlacklist || [];
+            if (!taskBlacklist.includes('digging')) {
+                scheduleMove(dwarf, dwarf.x, 0); // Move to (x,0) to start digging
+            }
+        }
+        return; // For other statuses in function row, do nothing else.
     }
 
     // Try moving down if current cell is empty
@@ -1726,7 +1729,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 //console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
             }
         } else if (aboveCell && aboveCell.hardness > 0 && occupiedAbove) {
-            console.log(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
+            console.warn(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
         }
     }
 
@@ -1906,12 +1909,12 @@ function tick() {
                     const activelySmelting = reservingDwarf.status === 'smelting';
                     
                     if (!atSmelter && !headingToSmelter && !activelySmelting) {
-                        console.log(`Failsafe: Releasing smelter reservation from ${smelterReservedBy} (at house or elsewhere)`);
+                        console.error(`Failsafe: Releasing smelter reservation from ${smelterReservedBy} (at house or elsewhere)`);
                         smelterReservedBy = null;
                     }
                 } else {
                     // Reserved by a dwarf that doesn't exist anymore
-                    console.log(`Failsafe: Releasing smelter reservation from non-existent dwarf ${smelterReservedBy}`);
+                    console.error(`Failsafe: Releasing smelter reservation from non-existent dwarf ${smelterReservedBy}`);
                     smelterReservedBy = null;
                 }
             }
