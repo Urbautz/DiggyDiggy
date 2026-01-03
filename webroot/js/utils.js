@@ -544,6 +544,7 @@ function getSmelterInputMaterials() {
  * Non-craftable materials are those that are NOT:
  * - Used as smelter inputs
  * - Ingots (used in forge)
+ * - Gems
  * @param {Object} materialsStock - The materials stock object
  * @returns {number} Total quantity of non-craftable materials
  */
@@ -555,14 +556,43 @@ function calculateNonCraftableMaterialsTotal(materialsStock) {
         const mat = materials[materialId];
         if (!mat) continue;
 
-        // Skip materials that are used as smelter inputs or forge inputs (ingots)
+        const materialType = mat.type || '';
+
+        // Skip materials that are used as smelter inputs or forge inputs (ingots) or gems
         if (smelterInputMaterials.has(materialId)) continue;
-        if (mat.type === 'Ingot') continue;
+        if (materialType.startsWith('Ingot')) continue;
+        if (materialType.startsWith('Gem')) continue;
 
         totalNonCraftables += quantity;
     }
 
     return totalNonCraftables;
+}
+
+/**
+ * Calculate total trade bonus (trading research + price negotiations)
+ * @param {Object} researchData - Research data object
+ * @param {Array} dwarfs - Array of dwarf objects
+ * @returns {number} Total trade bonus multiplier
+ */
+function calculateTradeBonus(researchData, dwarfs) {
+    // Trading research bonus
+    const tradeBonus = researchData['trading'] ? 1 + (researchData['trading'].level || 0) * RESEARCH_TRADING_BONUS : 1;
+
+    // Price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
+    const priceNegotiationsLevel = researchData['price-negotiations']?.level || 0;
+    let negotiationsBonus = 1;
+    if (priceNegotiationsLevel > 0) {
+        let highestWisdom = 0;
+        for (const d of dwarfs) {
+            if ((d.wisdom || 0) > highestWisdom) {
+                highestWisdom = d.wisdom || 0;
+            }
+        }
+        negotiationsBonus = 1 + highestWisdom * RESEARCH_PRICE_NEGOTIATIONS_BONUS;
+    }
+
+    return tradeBonus * negotiationsBonus;
 }
 
 // ============================================================================

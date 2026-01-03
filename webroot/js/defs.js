@@ -656,7 +656,7 @@ const materials = {
     weight: 23
   },
     'dwarfen-metallic-glass': {
-    name: 'Dwarfen Metallic Glass',
+    name: 'Dwarf Glass',
     type: 'Ingot',
     hardness: 600,
     probability: 0,
@@ -722,7 +722,7 @@ const materials = {
     weight: 50
   },
     'thornless-dwarfen-silver': {
-    name: 'Thornless Dwarfen Silver',
+    name: 'Thornless Silver',
     type: 'Ingot',
     hardness: 1500,
     probability: 0,

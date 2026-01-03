@@ -376,6 +376,9 @@ function findActiveManagementTask() {
 function executeManagementTask(task, taskDef) {
     console.log(`[Management] Executing task: ${task.type}`);
 
+    // Calculate trade bonus once (used by all selling tasks)
+    const totalTradeBonus = calculateTradeBonus(researchData, dwarfs);
+
     switch (task.type) {
         case 'sell-material': {
             // Sell material down to keepQuantity
@@ -388,23 +391,6 @@ function executeManagementTask(task, taskDef) {
             if (amountToSell > 0) {
                 const material = materials[materialId];
                 if (material) {
-                    // Calculate trade bonus (same as warehouse selling)
-                    const tradeBonus = researchData['trading'] ? 1 + (researchData['trading'].level || 0) * 0.03 : 1;
-
-                    // Apply price negotiations bonus (1% per wisdom level of highest wisdom dwarf)
-                    const priceNegotiationsLevel = researchData['price-negotiations']?.level || 0;
-                    let negotiationsBonus = 1;
-                    if (priceNegotiationsLevel > 0) {
-                        let highestWisdom = 0;
-                        for (const d of dwarfs) {
-                            if ((d.wisdom || 0) > highestWisdom) {
-                                highestWisdom = d.wisdom || 0;
-                            }
-                        }
-                        negotiationsBonus = 1 + highestWisdom * RESEARCH_PRICE_NEGOTIATIONS_BONUS;
-                    }
-
-                    const totalTradeBonus = tradeBonus * negotiationsBonus;
                     const goldEarned = Math.floor(amountToSell * material.worth * totalTradeBonus);
 
                     // Update stock and gold
@@ -424,8 +410,49 @@ function executeManagementTask(task, taskDef) {
             break;
         }
 
+        case 'sell-non-craftables': {
+            // Sell all non-craftable materials (excludes smelter inputs, ingots, and gems)
+            const smelterInputMaterials = getSmelterInputMaterials();
+
+            let totalGold = 0;
+            let totalItems = 0;
+
+            for (const [id, m] of Object.entries(materials)) {
+                const materialType = m.type || '';
+
+                // Skip materials that are:
+                // - Used as smelter inputs
+                // - Ingots (used in forge)
+                // - Gems (have their own sell task)
+                if (smelterInputMaterials.has(id)) continue;
+                if (materialType.startsWith('Ingot')) continue;
+                if (materialType.startsWith('Gem')) continue;
+
+                const count = materialsStock[id] || 0;
+                if (count > 0) {
+                    const goldForThisMaterial = Math.floor(count * m.worth * totalTradeBonus);
+                    totalGold += goldForThisMaterial;
+                    totalItems += count;
+                    console.log(`[Management] Selling ${count}x ${m.name} for ${goldForThisMaterial} gold`);
+                    // Log individual material transaction
+                    pendingTransactions.push({
+                        type: 'income',
+                        amount: goldForThisMaterial,
+                        description: `[Auto] Sold ${count}x ${m.name}`
+                    });
+
+                    materialsStock[id] = 0;
+                }
+            }
+
+            if (totalItems > 0) {
+                gold += totalGold;
+                console.log(`[Management] Sold all non-craftable materials (${totalItems} items) for ${totalGold} gold`);
+            }
+            break;
+        }
+
         // TODO: Implement other task types
-        case 'sell-non-craftables':
         case 'sell-gems':
         case 'auto-reserach-cheapest':
         case 'auto-invest':
