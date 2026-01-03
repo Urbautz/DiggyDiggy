@@ -137,11 +137,11 @@ function populateManagement() {
 // Format management task values for display
 function formatManagementValue(key, value, valueDef) {
     // Check type from valueDef if available
-    if (valueDef && valueDef.type === 'material-dropdown') {
+    if (valueDef && (valueDef.type === 'material-dropdown' || valueDef.type === 'gem-dropdown')) {
         const mat = getMaterialById(value);
         return mat ? mat.name : value;
     }
-    if (key === 'material') {
+    if (key === 'material' || key === 'gem') {
         const mat = getMaterialById(value);
         return mat ? mat.name : value;
     }
@@ -218,8 +218,10 @@ function populateAddTaskModal() {
 
 // Update the task value input fields based on selected task type
 function updateTaskValueFields() {
+    console.log('[Management] updateTaskValueFields called');
     const taskTypeSelect = document.getElementById('task-type-select');
     const selectedType = taskTypeSelect.value;
+    console.log('[Management] Selected type:', selectedType);
 
     const descriptionDiv = document.getElementById('task-description');
     const valuesContainer = document.getElementById('task-values-container');
@@ -227,6 +229,7 @@ function updateTaskValueFields() {
     const costValue = document.getElementById('task-cost-value');
 
     if (!selectedType) {
+        console.log('[Management] No task selected');
         descriptionDiv.innerHTML = '<em>Select a task type to see its description</em>';
         valuesContainer.innerHTML = '';
         costDisplay.style.display = 'none';
@@ -234,9 +237,14 @@ function updateTaskValueFields() {
     }
 
     const taskDef = mangementTasks[selectedType];
-    if (!taskDef) return;
+    console.log('[Management] Task definition:', taskDef);
+    if (!taskDef) {
+        console.error('[Management] Task definition not found for:', selectedType);
+        return;
+    }
 
     // Update description
+    console.log('[Management] Setting description to:', taskDef.description);
     descriptionDiv.textContent = taskDef.description;
 
     // Update cost
@@ -265,13 +273,35 @@ function updateTaskValueFields() {
         const defaultValue = valueDef.default !== undefined ? valueDef.default : '';
 
         if (fieldType === 'material-dropdown') {
-            // Material dropdown
+            // Material dropdown (exclude gems and zero-value materials)
             input = document.createElement('select');
             input.className = 'management-input';
             input.id = `task-value-${key}`;
 
-            // Populate with materials
+            // Populate with materials, filtering out gems and worthless materials
             for (const [matId, matData] of Object.entries(materials)) {
+                // Skip gems (type contains "Gem")
+                if (matData.type && matData.type.includes('Gem')) continue;
+                // Skip materials with zero or negative worth
+                if (matData.worth <= 0) continue;
+
+                const option = document.createElement('option');
+                option.value = matId;
+                option.textContent = matData.name;
+                if (matId === defaultValue) option.selected = true;
+                input.appendChild(option);
+            }
+        } else if (fieldType === 'gem-dropdown') {
+            // Gem dropdown (only gems)
+            input = document.createElement('select');
+            input.className = 'management-input';
+            input.id = `task-value-${key}`;
+
+            // Populate with gems only
+            for (const [matId, matData] of Object.entries(materials)) {
+                // Only include materials where type contains "Gem"
+                if (!matData.type || !matData.type.includes('Gem')) continue;
+
                 const option = document.createElement('option');
                 option.value = matId;
                 option.textContent = matData.name;

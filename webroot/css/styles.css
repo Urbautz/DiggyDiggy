@@ -3385,6 +3385,13 @@ header, footer {
 }
 
 /* Management Modal Styles */
+
+/* Make management modals narrower */
+#management-modal .modal-dialog,
+#add-management-task-modal .modal-dialog {
+    max-width: 500px;
+}
+
 .management-task-form {
     width: 100%;
     border-collapse: collapse;
@@ -3409,6 +3416,7 @@ header, footer {
 
 .management-input {
     width: 100%;
+    min-width: 200px;
     padding: 8px 12px;
     background: #2a2a2a;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -3418,6 +3426,7 @@ header, footer {
     font-size: 14px;
     outline: none;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .management-input:focus {
@@ -3434,8 +3443,58 @@ header, footer {
     text-align: right;
 }
 
+/* Remove number input spinners */
+.management-number-input::-webkit-outer-spin-button,
+.management-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+.management-number-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 /* Dropdown arrow styling for dark theme */
 .management-input option {
     background: #2a2a2a;
     color: #fff;
+}
+
+/* Style the task type select dropdown */
+#task-type-select {
+    width: 100%;
+    padding: 8px 12px;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+#task-type-select:focus {
+    border-color: #3b82f6;
+    background: #333333;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#task-type-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#task-type-select option {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+/* Style the form-group label */
+.form-group label {
+    display: block;
+    color: #dbeafe;
+    font-weight: 500;
+    margin-bottom: 6px;
 }

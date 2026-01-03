@@ -1627,6 +1627,16 @@ let mangementTasks = {
     requires: {},
     cost: 100,
   },
+  'sell-gems': {
+    name: 'Sell Gems',
+    description: 'Automatically sell gems that you do not need.',
+    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-type-dropdown'},
+             minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
+             maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
+            },
+    requires: {},
+    cost: 100,
+  },
   'auto-reserach-cheapest': {
     name: 'Auto research cheapest endless research',
     description: 'Automatically queue the cheapest available research.',
