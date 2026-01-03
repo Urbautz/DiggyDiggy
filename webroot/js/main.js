@@ -2251,6 +2251,18 @@ function initWorker() {
                     nextInvestmentId = data.nextInvestmentId;
                 }
 
+                // Update management tasks from worker (activation states)
+                if (data.activeManagementTasks !== undefined) {
+                    // Preserve task order and only update activation states
+                    activeManagementTasks = data.activeManagementTasks;
+
+                    // Update management modal if it's open
+                    const managementModal = document.getElementById('management-modal');
+                    if (managementModal && managementModal.getAttribute('aria-hidden') === 'false') {
+                        populateManagement();
+                    }
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 

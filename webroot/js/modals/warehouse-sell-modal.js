@@ -306,17 +306,8 @@ function sellAllMaterials() {
  * Sells only non-craftable materials (excludes smelter inputs and ingots)
  */
 function sellNotCraftableMaterials() {
-    // Get materials that are used as smelter inputs
-    const smelterInputMaterials = new Set();
-    for (const taskId of smelterTasks) {
-        const task = smelterTasksData[taskId];
-        if (task.input && task.input.material) {
-            smelterInputMaterials.add(task.input.material);
-        }
-        if (task.inputs && Array.isArray(task.inputs)) {
-            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
-        }
-    }
+    // Get materials that are used as smelter inputs (these are craftable)
+    const smelterInputMaterials = getSmelterInputMaterials();
 
     // Calculate trade bonus
     const betterTrading = researchData['trading'];

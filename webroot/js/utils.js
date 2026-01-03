@@ -518,6 +518,54 @@ function checkCanAffordWageOrStrike(dwarf, currentGold) {
 }
 
 // ============================================================================
+// MATERIAL CATEGORIZATION UTILITIES
+// ============================================================================
+
+/**
+ * Get a set of material IDs that are used as smelter inputs (craftable materials)
+ * @returns {Set<string>} Set of material IDs that are smelter inputs
+ */
+function getSmelterInputMaterials() {
+    const smelterInputMaterials = new Set();
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (task && task.input && task.input.material) {
+            smelterInputMaterials.add(task.input.material);
+        }
+        if (task && task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+        }
+    }
+    return smelterInputMaterials;
+}
+
+/**
+ * Calculate total quantity of non-craftable materials in stock
+ * Non-craftable materials are those that are NOT:
+ * - Used as smelter inputs
+ * - Ingots (used in forge)
+ * @param {Object} materialsStock - The materials stock object
+ * @returns {number} Total quantity of non-craftable materials
+ */
+function calculateNonCraftableMaterialsTotal(materialsStock) {
+    const smelterInputMaterials = getSmelterInputMaterials();
+    let totalNonCraftables = 0;
+
+    for (const [materialId, quantity] of Object.entries(materialsStock)) {
+        const mat = materials[materialId];
+        if (!mat) continue;
+
+        // Skip materials that are used as smelter inputs or forge inputs (ingots)
+        if (smelterInputMaterials.has(materialId)) continue;
+        if (mat.type === 'Ingot') continue;
+
+        totalNonCraftables += quantity;
+    }
+
+    return totalNonCraftables;
+}
+
+// ============================================================================
 // SMELTER UTILITIES
 // ============================================================================
 

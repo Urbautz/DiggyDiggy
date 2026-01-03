@@ -1623,7 +1623,9 @@ let mangementTasks = {
   'sell-non-craftables': {
     name: 'Sell Non-Craftables',
     description: 'Automatically sell materials that are not used in any crafting recipes.',
-    values: {},
+    values: {
+      minQuantity: {Description: 'Run when total quantity >', default:1000, type:'number'},
+    },
     requires: {},
     cost: 100,
   },

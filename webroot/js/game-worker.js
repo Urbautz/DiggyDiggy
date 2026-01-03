@@ -36,6 +36,8 @@ let pendingTransactions = []; // Queue of transactions to send to main thread
 let hasForgedHighHardnessTool = false; // Track if player has successfully forged a tool with 100+ hardness material
 let oneTimeInvestments = []; // Array of active one-time investments {amount, ticksRemaining, payoutPerTick, id}
 let nextInvestmentId = 1; // Next investment ID to assign
+let activeManagementTasks = []; // Array of active management tasks
+let mangementTasks = {}; // Management task definitions
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -1796,6 +1798,81 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     }
 }
 
+/**
+ * Check management task activation conditions and update their active status
+ */
+function checkManagementTaskActivation() {
+    if (!activeManagementTasks || activeManagementTasks.length === 0) return;
+
+    for (const task of activeManagementTasks) {
+        const taskDef = mangementTasks[task.type];
+        if (!taskDef) continue;
+        if(task.active) continue;
+
+        let shouldActivate = false;
+
+        // Check activation condition based on task type
+        switch (task.type) {
+            case 'sell-material': {
+                // Activate when material stock exceeds minQuantity
+                const material = task.values.material;
+                const minQuantity = task.values.minQuantity || 0;
+                const currentStock = materialsStock[material] || 0;
+                shouldActivate = currentStock > minQuantity;
+                break;
+            }
+
+            case 'sell-non-craftables': {
+                // Activate when total non-craftable materials exceed minQuantity
+                const minQuantity = task.values.minQuantity || 0;
+                const totalNonCraftables = calculateNonCraftableMaterialsTotal(materialsStock);
+                shouldActivate = totalNonCraftables > minQuantity;
+                break;
+            }
+
+            case 'sell-gems': {
+                // Activate when gem count exceeds minQuantity
+                const gemtype = task.values.gemtype || 'all';
+                const minQuantity = task.values.minQuantity || 0;
+                const maxcarats = task.values.maxcarats || 1;
+
+                let matchingGemCount = 0;
+                for (const gem of gems) {
+                    if (gemtype === 'all' || gem.type === gemtype) {
+                        if (gem.carats <= maxcarats) {
+                            matchingGemCount++;
+                        }
+                    }
+                }
+                shouldActivate = matchingGemCount > minQuantity;
+                break;
+            }
+
+            case 'auto-reserach-cheapest': {
+                // Activate when gold is above threshold AND research queue size is below threshold
+                const minBankGold = task.values.minBankGold || 0;
+                const minQueueSize = task.values.minQueueSize || 0;
+                shouldActivate = gold > minBankGold && researchQueue.length <= minQueueSize;
+                break;
+            }
+
+            case 'auto-invest': {
+                // Activate when gold is above threshold
+                const minBankGold = task.values.minBankGold || 0;
+                shouldActivate = gold > minBankGold;
+                break;
+            }
+
+            default:
+                // Unknown task type, keep current state
+                continue;
+        }
+
+        // Update task active status
+        task.active = shouldActivate;
+    }
+}
+
 function tick() {
     try {
         // Cool down smelter temperature with insulation research
@@ -1921,7 +1998,10 @@ function tick() {
         }
         
         const shifted = checkAndShiftTopRows();
-        
+
+        // Check and update management task activation states
+        checkManagementTaskActivation();
+
         // Send updated state back to main thread
         self.postMessage({
             type: 'tick-complete',
@@ -1946,6 +2026,7 @@ function tick() {
                 smelterTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,
+                activeManagementTasks,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
@@ -2012,6 +2093,9 @@ self.addEventListener('message', (e) => {
             // Initialize one-time investments
             if (data.oneTimeInvestments) oneTimeInvestments = JSON.parse(JSON.stringify(data.oneTimeInvestments));
             if (data.nextInvestmentId !== undefined) nextInvestmentId = data.nextInvestmentId;
+            // Initialize management tasks
+            if (data.activeManagementTasks) activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
+            if (data.mangementTasks) mangementTasks = JSON.parse(JSON.stringify(data.mangementTasks));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -2081,6 +2165,9 @@ self.addEventListener('message', (e) => {
                 if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
                 if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+                if (data.activeManagementTasks !== undefined) {
+                    activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
+                }
             }
             break;
 
