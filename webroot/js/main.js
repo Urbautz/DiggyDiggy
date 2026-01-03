@@ -2256,10 +2256,10 @@ function initWorker() {
                     // Preserve task order and only update activation states
                     activeManagementTasks = data.activeManagementTasks;
 
-                    // Update management modal if it's open
+                    // Update management modal if it's open (only refresh active/inactive badges)
                     const managementModal = document.getElementById('management-modal');
                     if (managementModal && managementModal.getAttribute('aria-hidden') === 'false') {
-                        populateManagement();
+                        updateManagementTaskActivationStates();
                     }
                 }
 

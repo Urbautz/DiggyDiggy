@@ -71,7 +71,19 @@ function populateManagement() {
 
             const taskName = document.createElement('span');
             taskName.className = 'management-task-name';
-            taskName.textContent = activeTask.name || taskDef.name;
+
+            // Check if task name is the default (or starts with default)
+            const defaultName = taskDef.name;
+            const customName = activeTask.name || defaultName;
+            const isDefaultName = customName === defaultName || customName.startsWith(defaultName + ' (');
+
+            if (isDefaultName) {
+                // Use default name with parameters
+                taskName.textContent = defaultName + getTaskParameterSummary(activeTask, taskDef);
+            } else {
+                // Use custom name as-is
+                taskName.textContent = customName;
+            }
 
             // Active/Inactive badge
             const statusBadge = document.createElement('span');
@@ -123,6 +135,29 @@ function populateManagement() {
     container.appendChild(taskList);
 }
 
+// Lightweight update: only refresh active/inactive badges without redrawing entire list
+function updateManagementTaskActivationStates() {
+    if (activeManagementTasks.length === 0) return;
+
+    activeManagementTasks.forEach((activeTask) => {
+        const taskRow = document.querySelector(`[data-task-id="${activeTask.id}"]`);
+        if (!taskRow) return;
+
+        // Find the status badge within this task row
+        const statusBadge = taskRow.querySelector('.management-task-active, .management-task-inactive');
+        if (!statusBadge) return;
+
+        // Update badge class and text based on current active state
+        if (activeTask.active) {
+            statusBadge.className = 'management-task-active';
+            statusBadge.textContent = 'Active';
+        } else {
+            statusBadge.className = 'management-task-inactive';
+            statusBadge.textContent = 'Inactive';
+        }
+    });
+}
+
 // Format management task values for display
 function formatManagementValue(key, value, valueDef) {
     // Check type from valueDef if available
@@ -141,6 +176,21 @@ function formatManagementValue(key, value, valueDef) {
         return formatNumber(value, 'material');
     }
     return value;
+}
+
+// Generate parameter summary for task display (e.g., "Earth, 100, 50")
+function getTaskParameterSummary(activeTask, taskDef) {
+    if (!activeTask.values || !taskDef.values) return '';
+
+    const params = [];
+    for (const [key, valueDef] of Object.entries(taskDef.values)) {
+        const value = activeTask.values[key];
+        if (value !== undefined) {
+            params.push(formatManagementValue(key, value, valueDef));
+        }
+    }
+
+    return params.length > 0 ? ` (${params.join(', ')})` : '';
 }
 
 // Open modal to add a new management task
@@ -245,10 +295,10 @@ function updateTaskValueFields() {
     descriptionDiv.textContent = taskDef.description;
     descriptionDiv.style.display = 'block';
 
-    // Show task name field with suggested name
+    // Show task name field with placeholder for auto-generated name
     taskNameGroup.style.display = 'block';
-    taskNameInput.value = taskDef.name;
-    taskNameInput.placeholder = taskDef.name;
+    taskNameInput.value = '';
+    taskNameInput.placeholder = '(auto generated description)';
 
     // Update cost
     costValue.textContent = taskDef.cost;
@@ -450,7 +500,19 @@ function populateEditTaskModal(task, taskDef) {
     // Set task name
     const taskNameInput = document.getElementById('edit-task-name-input');
     if (taskNameInput) {
-        taskNameInput.value = task.name || taskDef.name;
+        // Check if task has a custom name (not matching default or auto-generated)
+        const defaultName = taskDef.name;
+        const isDefaultName = !task.name || task.name === defaultName || task.name.startsWith(defaultName + ' (');
+
+        if (isDefaultName) {
+            // Show placeholder for auto-generated description
+            taskNameInput.value = '';
+            taskNameInput.placeholder = '(auto generated description)';
+        } else {
+            // Show custom name
+            taskNameInput.value = task.name;
+            taskNameInput.placeholder = '(auto generated description)';
+        }
     }
 
     // Set cost
@@ -578,6 +640,7 @@ function confirmEditManagementTask() {
     // Update task
     task.name = taskName;
     task.values = values;
+    task.active = false; // Set to inactive when edited
 
     console.log('[Management] Updated task:', task);
 
