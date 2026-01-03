@@ -280,7 +280,8 @@ function updateNextSkillpointButton(currentDwarfName) {
 const TASK_DEFINITIONS = {
     'digging': { icon: '⛏️', name: 'Digging' },
     'research': { icon: '🔬', name: 'Research' },
-    'smelting': { icon: '🔥', name: 'Smelter' }
+    'smelting': { icon: '🔥', name: 'Smelter' },
+    'managing': { icon: '🏢', name: 'Managing' }
 };
 
 /**
@@ -297,7 +298,7 @@ function populateTaskPriorityLists(dwarf) {
     blacklistList.innerHTML = '';
 
     // Ensure dwarf has task arrays
-    if (!dwarf.taskPriority) dwarf.taskPriority = ['digging', 'research', 'smelting'];
+    if (!dwarf.taskPriority) dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
     if (!dwarf.taskBlacklist) dwarf.taskBlacklist = [];
 
     // Populate priority list

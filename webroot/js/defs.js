@@ -1619,6 +1619,7 @@ let mangementTasks = {
             keepQuantity: {Description: 'Keep a minimum of', default:0, type:'number'}},
     requires: {},
     cost: 5,
+    hardness: 1,
   },
   'sell-non-craftables': {
     name: 'Sell Non-Craftables',
@@ -1628,6 +1629,7 @@ let mangementTasks = {
     },
     requires: {},
     cost: 100,
+    hardness: 10,
   },
   'sell-gems': {
     name: 'Sell Gems',
@@ -1637,7 +1639,8 @@ let mangementTasks = {
              maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
             },
     requires: {},
-    cost: 100,
+    cost: 25,
+    hardness: 10,
   },
   'auto-reserach-cheapest': {
     name: 'Auto research cheapest endless research',
@@ -1647,7 +1650,8 @@ let mangementTasks = {
       minQueueSize: {Description: 'When research queue is at', default: 1, type: 'number'}
     },
     requires: {},
-    cost: 75
+    cost: 75,
+    hardness: 20,
   },
   'auto-invest': {
     name: 'Invest',
@@ -1657,7 +1661,8 @@ let mangementTasks = {
       amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'}
     },
     requires: {'one-time-investments': 1},
-    cost: 50
+    cost: 50,
+    hardness: 40,
   },
 }
 
@@ -1680,7 +1685,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Shovelli",
       toolId: 2,
@@ -1689,7 +1694,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Diggmaster",
       toolId: 3,
@@ -1698,7 +1703,7 @@ let dwarfs = [
       x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "Burrower",
      toolId: 4,
@@ -1707,7 +1712,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "NevertiredMcPickaxemer",
      toolId: 5,
@@ -1716,7 +1721,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "SmartDigger",
      toolId: 6,
@@ -1725,7 +1730,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['research', 'smelting', 'digging',],
+    taskPriority: ['managing','research', 'smelting', 'digging',],
     taskBlacklist: [] },
 ]
 

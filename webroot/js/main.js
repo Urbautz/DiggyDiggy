@@ -506,13 +506,25 @@ function updateGridDisplay() {
                 if (typeof management === 'object' && management !== null && management.x === gx && management.y === gy) {
                     const hasManagement = researchData['management'] && researchData['management'].level >= 1;
                     cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const mgmt = document.createElement('span');
                     mgmt.className = 'drop-off-marker';
                     if (!hasManagement) {
                         mgmt.style.opacity = '0.5';
                     }
-                    mgmt.textContent = '🗓️';
+                    mgmt.textContent = '🏢';
                     cell.appendChild(mgmt);
+
+                    // Add notification badge showing number of active management tasks
+                    if (hasManagement && activeManagementTasks) {
+                        const activeTasksCount = activeManagementTasks.filter(task => task.active).length;
+                        if (activeTasksCount > 0) {
+                            const badge = document.createElement('div');
+                            badge.className = 'grid-badge';
+                            badge.textContent = activeTasksCount;
+                            cell.appendChild(badge);
+                        }
+                    }
                 }
 
                 functionsGridRow.appendChild(cell);
@@ -2365,6 +2377,7 @@ function initWorker() {
             house,
             research,
             smelter,
+            management,
             smelterTasks,
             smelterTasksData,
             dropGridStartX,
@@ -2521,7 +2534,11 @@ function loadGame() {
 
             // Migration: Add task priority system if not present
             if (!dwarf.taskPriority) {
-                dwarf.taskPriority = ['digging', 'research', 'smelting'];
+                dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
+            }
+            // Migration: Add 'managing' to existing task priorities if missing
+            if (dwarf.taskPriority && !dwarf.taskPriority.includes('managing')) {
+                dwarf.taskPriority.push('managing');
             }
             if (!dwarf.taskBlacklist) {
                 dwarf.taskBlacklist = [];
@@ -2861,7 +2878,7 @@ function populateFunctionsList() {
     managementLink.href = '#';
     managementLink.className = 'function-link';
     managementLink.id = 'management-function-link';
-    managementLink.innerHTML = '<span class="icon">🗓️</span><span>Management</span>';
+    managementLink.innerHTML = '<span class="icon">🏢</span><span>Management</span>';
     managementLink.onclick = (e) => {
         e.preventDefault();
         openManagement();

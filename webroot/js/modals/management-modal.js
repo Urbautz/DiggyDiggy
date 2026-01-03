@@ -150,7 +150,17 @@ function updateManagementTaskActivationStates() {
         // Update badge class and text based on current active state
         if (activeTask.active) {
             statusBadge.className = 'management-task-active';
-            statusBadge.textContent = 'Active';
+
+            // Show progress if task is being worked on
+            const taskDef = mangementTasks[activeTask.type];
+            if (activeTask.progress && taskDef && taskDef.cost) {
+                const progress = Math.floor(activeTask.progress);
+                const total = taskDef.cost;
+                const percentage = Math.round((progress / total) * 100);
+                statusBadge.textContent = `Active (${progress}/${total})`;
+            } else {
+                statusBadge.textContent = 'Active';
+            }
         } else {
             statusBadge.className = 'management-task-inactive';
             statusBadge.textContent = 'Inactive';
