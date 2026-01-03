@@ -503,13 +503,28 @@ function updateGridDisplay() {
                     }
                 }
 
-                if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
-                    cell.title = 'Automate (Coming soon)';
-                    const auto = document.createElement('span');
-                    auto.className = 'drop-off-marker';
-                    auto.style.opacity = '0.5';
-                    auto.textContent = '🛞';
-                    cell.appendChild(auto);
+                if (typeof management === 'object' && management !== null && management.x === gx && management.y === gy) {
+                    const hasManagement = researchData['management'] && researchData['management'].level >= 1;
+                    cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
+                    const mgmt = document.createElement('span');
+                    mgmt.className = 'drop-off-marker';
+                    if (!hasManagement) {
+                        mgmt.style.opacity = '0.5';
+                    }
+                    mgmt.textContent = '🏢';
+                    cell.appendChild(mgmt);
+
+                    // Add notification badge showing number of active management tasks
+                    if (hasManagement && activeManagementTasks) {
+                        const activeTasksCount = activeManagementTasks.filter(task => task.active).length;
+                        if (activeTasksCount > 0) {
+                            const badge = document.createElement('div');
+                            badge.className = 'grid-badge';
+                            badge.textContent = activeTasksCount;
+                            cell.appendChild(badge);
+                        }
+                    }
                 }
 
                 functionsGridRow.appendChild(cell);
@@ -2248,6 +2263,18 @@ function initWorker() {
                     nextInvestmentId = data.nextInvestmentId;
                 }
 
+                // Update management tasks from worker (activation states)
+                if (data.activeManagementTasks !== undefined) {
+                    // Preserve task order and only update activation states
+                    activeManagementTasks = data.activeManagementTasks;
+
+                    // Update management modal if it's open (only refresh active/inactive badges)
+                    const managementModal = document.getElementById('management-modal');
+                    if (managementModal && managementModal.getAttribute('aria-hidden') === 'false') {
+                        updateManagementTaskActivationStates();
+                    }
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2298,9 +2325,10 @@ function initWorker() {
                     }
                 }
 
-                // Update forge function link when research state changes (e.g., forge unlocked)
+                // Update forge and management function links when research state changes
                 if (researchStateChanged) {
                     updateForgeFunctionLink();
+                    updateManagementFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -2349,6 +2377,7 @@ function initWorker() {
             house,
             research,
             smelter,
+            management,
             smelterTasks,
             smelterTasksData,
             dropGridStartX,
@@ -2363,7 +2392,9 @@ function initWorker() {
             smelterCoalMaxTemp,
             smelterMagmaMinTemp,
             oneTimeInvestments: oneTimeInvestments || [],
-            nextInvestmentId: nextInvestmentId || 1
+            nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            mangementTasks: mangementTasks || {}
         }
     });
     
@@ -2429,6 +2460,8 @@ function saveGame() {
             hasForgedHighHardnessTool: hasForgedHighHardnessTool,
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            nextManagementTaskId: nextManagementTaskId || 1,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2501,7 +2534,11 @@ function loadGame() {
 
             // Migration: Add task priority system if not present
             if (!dwarf.taskPriority) {
-                dwarf.taskPriority = ['digging', 'research', 'smelting'];
+                dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
+            }
+            // Migration: Add 'managing' to existing task priorities if missing
+            if (dwarf.taskPriority && !dwarf.taskPriority.includes('managing')) {
+                dwarf.taskPriority.push('managing');
             }
             if (!dwarf.taskBlacklist) {
                 dwarf.taskBlacklist = [];
@@ -2646,6 +2683,14 @@ function loadGame() {
         }
         if (gameState.nextInvestmentId !== undefined) {
             nextInvestmentId = gameState.nextInvestmentId;
+        }
+
+        // Restore management tasks
+        if (gameState.activeManagementTasks) {
+            activeManagementTasks = gameState.activeManagementTasks;
+        }
+        if (gameState.nextManagementTaskId !== undefined) {
+            nextManagementTaskId = gameState.nextManagementTaskId;
         }
 
         // Backwards compatibility: if old variables exist but new ones don't, migrate them
@@ -2828,19 +2873,28 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
-    // Automate function (placeholder for future) - last position
-    const automationLink = document.createElement('a');
-    automationLink.href = '#';
-    automationLink.className = 'function-link';
-    automationLink.innerHTML = '<span class="icon">🛞</span><span>Automate</span>';
-    automationLink.onclick = (e) => {
+    // Management function - last position
+    const managementLink = document.createElement('a');
+    managementLink.href = '#';
+    managementLink.className = 'function-link';
+    managementLink.id = 'management-function-link';
+    managementLink.innerHTML = '<span class="icon">🏢</span><span>Management</span>';
+    managementLink.onclick = (e) => {
         e.preventDefault();
-        // TODO: Open automation modal
+        openManagement();
     };
-    automationLink.style.opacity = '0.5';
-    automationLink.style.cursor = 'not-allowed';
-    automationLink.title = 'Coming soon';
-    list.appendChild(automationLink);
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (!isManagementUnlocked) {
+        managementLink.style.opacity = '0.5';
+        managementLink.style.cursor = 'not-allowed';
+        managementLink.title = 'Requires Management research';
+    }
+
+    list.appendChild(managementLink);
 }
 
 // Update forge function link state without rebuilding the entire list
@@ -2865,6 +2919,32 @@ function updateForgeFunctionLink() {
             forgeLink.style.opacity = '0.5';
             forgeLink.style.cursor = 'not-allowed';
             forgeLink.title = 'Requires Forge research';
+        }
+    }
+}
+
+// Update management function link state without rebuilding the entire list
+function updateManagementFunctionLink() {
+    const managementLink = document.getElementById('management-function-link');
+    if (!managementLink) return;
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (isManagementUnlocked) {
+        // Only update if state actually changed
+        if (managementLink.style.opacity === '0.5') {
+            managementLink.style.opacity = '1';
+            managementLink.style.cursor = 'pointer';
+            managementLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (managementLink.style.opacity !== '0.5') {
+            managementLink.style.opacity = '0.5';
+            managementLink.style.cursor = 'not-allowed';
+            managementLink.title = 'Requires Management research';
         }
     }
 }

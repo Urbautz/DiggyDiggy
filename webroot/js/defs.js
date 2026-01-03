@@ -656,7 +656,7 @@ const materials = {
     weight: 23
   },
     'dwarfen-metallic-glass': {
-    name: 'Dwarfen Metallic Glass',
+    name: 'Dwarf Glass',
     type: 'Ingot',
     hardness: 600,
     probability: 0,
@@ -722,7 +722,7 @@ const materials = {
     weight: 50
   },
     'thornless-dwarfen-silver': {
-    name: 'Thornless Dwarfen Silver',
+    name: 'Thornless Silver',
     type: 'Ingot',
     hardness: 1500,
     probability: 0,
@@ -1566,6 +1566,16 @@ const researchData = {
     min_depth: 100000,
     description: 'Unlocks the ability to enrich special ores (Wolfram, Uranium, Plutonium) for use in advanced plating.'
   },
+  'management': {
+    name: 'Management',
+    cost: 5000,
+    goldCost: 100000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 100,
+    min_depth: 10000,
+    description: 'Unlocks dwarf self management to make your life eaiser. Dwarfs will do certain stuff for you.'
+  },
 
 };
 
@@ -1575,6 +1585,7 @@ let researchTree = [
   'price-negotiations',
   'small-time-investments',
   'one-time-investments',
+  'management',
   'tool-enchanting',
   'grinding-machine',
   'stone-polishing',
@@ -1599,6 +1610,62 @@ let researchTree = [
   'union-busting',
 ];
 
+let mangementTasks = {
+  'sell-material': {
+    name: 'Sell Material',
+    description: 'Automatically sell excess materials when stock exceeds defined threshold.',
+    values: {material: {Description: 'Material', default:'earth', type:'material-dropdown'},
+            minQuantity: {Description: 'Run when quantity >', default:100, type:'number'},
+            keepQuantity: {Description: 'Keep a minimum of', default:0, type:'number'}},
+    requires: {},
+    cost: 5,
+    hardness: 1,
+  },
+  'sell-non-craftables': {
+    name: 'Sell Non-Craftables',
+    description: 'Automatically sell materials that are not used in any crafting recipes.',
+    values: {
+      minQuantity: {Description: 'Run when total quantity >', default:1000, type:'number'},
+    },
+    requires: {},
+    cost: 100,
+    hardness: 10,
+  }, /*
+  'sell-gems': {
+    name: 'Sell Gems',
+    description: 'Automatically sell gems that you do not need.',
+    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-dropdown'},
+             minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
+             maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
+            },
+    requires: {},
+    cost: 25,
+    hardness: 10,
+  },
+  'auto-reserach-cheapest': {
+    name: 'Auto research cheapest endless research',
+    description: 'Automatically queue the cheapest available research.',
+    values: {
+      minBankGold: {Description: 'Only when gold above', default: 100000, type: 'number'},
+      minQueueSize: {Description: 'When research queue is at', default: 1, type: 'number'}
+    },
+    requires: {},
+    cost: 75,
+    hardness: 20,
+  },
+  'auto-invest': {
+    name: 'Invest',
+    description: 'Automatically invest available one-time investment.',
+    values: {
+      minBankGold: {Description: 'Only when gold above', default: 3000000, type: 'number'},
+      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'}
+    },
+    requires: {'one-time-investments': 1},
+    cost: 50,
+    hardness: 40,
+  },*/
+}
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
 
@@ -1618,7 +1685,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Shovelli",
       toolId: 2,
@@ -1627,7 +1694,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Diggmaster",
       toolId: 3,
@@ -1636,7 +1703,7 @@ let dwarfs = [
       x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "Burrower",
      toolId: 4,
@@ -1645,7 +1712,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "NevertiredMcPickaxemer",
      toolId: 5,
@@ -1654,7 +1721,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "SmartDigger",
      toolId: 6,
@@ -1663,7 +1730,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['research', 'smelting', 'digging',],
+    taskPriority: ['managing','research', 'smelting', 'digging',],
     taskBlacklist: [] },
 ]
 
@@ -1694,12 +1761,12 @@ const functionsGridY = -1; // One row above the main grid
 const functionsGridWidth = 5;
 
 // Function locations in the 1x5 grid above main grid
-// Order: House, Warehouse, Smelter, Research, Automate
+// Order: House, Warehouse, Smelter, Research, Management
 const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
 const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
 const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
 const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
-const automate = { x: 4, y: functionsGridY };     // Fifth cell (Automate - placeholder)
+const management = { x: 4, y: functionsGridY };   // Fifth cell (Management)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)
 const dropGridStartX = gridWidth;
