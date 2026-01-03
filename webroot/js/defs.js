@@ -1630,7 +1630,7 @@ let mangementTasks = {
   'sell-gems': {
     name: 'Sell Gems',
     description: 'Automatically sell gems that you do not need.',
-    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-type-dropdown'},
+    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-dropdown'},
              minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
              maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
             },

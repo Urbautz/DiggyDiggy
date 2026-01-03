@@ -6,6 +6,7 @@
 // Initialize active management tasks array (populated from save file or starts empty)
 let activeManagementTasks = [];
 let nextManagementTaskId = 1;
+let currentEditingTaskId = null;
 
 // Open the management modal
 function openManagement() {
@@ -31,20 +32,6 @@ function populateManagement() {
 
     container.innerHTML = '';
 
-    // Header description
-    const headerDesc = document.createElement('p');
-    headerDesc.className = 'management-description';
-    headerDesc.textContent = 'Manage automated tasks. Dwarfs will execute these tasks automatically based on priority.';
-    container.appendChild(headerDesc);
-
-    // Add task button
-    const addTaskBtn = document.createElement('button');
-    addTaskBtn.className = 'btn-primary';
-    addTaskBtn.style.marginBottom = '16px';
-    addTaskBtn.innerHTML = '➕ Add Task';
-    addTaskBtn.onclick = () => openAddManagementTaskModal();
-    container.appendChild(addTaskBtn);
-
     // Task list container
     const taskList = document.createElement('div');
     taskList.className = 'management-task-list';
@@ -68,61 +55,63 @@ function populateManagement() {
             taskRow.dataset.taskIndex = index;
             taskRow.draggable = true;
 
-            // Task header with drag handle and name
-            const taskHeader = document.createElement('div');
-            taskHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+            // Priority number (like smelter)
+            const priority = document.createElement('span');
+            priority.className = 'management-task-priority';
+            priority.textContent = index + 1;
 
-            const leftSide = document.createElement('div');
-            leftSide.style.cssText = 'display: flex; align-items: center; gap: 8px;';
-
+            // Drag handle
             const dragHandle = document.createElement('span');
             dragHandle.className = 'drag-handle';
             dragHandle.textContent = '⠿';
-            dragHandle.style.cssText = 'cursor: grab; font-size: 18px; color: #666;';
 
-            const taskName = document.createElement('strong');
-            taskName.textContent = taskDef.name;
+            // Task name and status
+            const taskInfo = document.createElement('div');
+            taskInfo.className = 'management-task-info';
 
-            leftSide.appendChild(dragHandle);
-            leftSide.appendChild(taskName);
+            const taskName = document.createElement('span');
+            taskName.className = 'management-task-name';
+            taskName.textContent = activeTask.name || taskDef.name;
+
+            // Active/Inactive badge
+            const statusBadge = document.createElement('span');
+            statusBadge.className = activeTask.active ? 'management-task-active' : 'management-task-inactive';
+            statusBadge.textContent = activeTask.active ? 'Active' : 'Inactive';
+
+            taskInfo.appendChild(taskName);
+            taskInfo.appendChild(statusBadge);
+
+            // Buttons container
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'management-task-buttons';
+
+            // Details button
+            const detailsBtn = document.createElement('button');
+            detailsBtn.className = 'management-task-detail-btn';
+            detailsBtn.textContent = '📋';
+            detailsBtn.title = 'Details';
+            detailsBtn.onclick = (e) => {
+                e.stopPropagation();
+                openEditManagementTaskModal(activeTask.id);
+            };
 
             // Delete button
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn-danger';
-            deleteBtn.style.cssText = 'padding: 4px 8px; font-size: 11px;';
-            deleteBtn.textContent = '🗑️ Remove';
-            deleteBtn.onclick = () => removeManagementTask(activeTask.id);
+            deleteBtn.className = 'management-task-delete-btn';
+            deleteBtn.textContent = '🗑️';
+            deleteBtn.title = 'Remove';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeManagementTask(activeTask.id);
+            };
 
-            taskHeader.appendChild(leftSide);
-            taskHeader.appendChild(deleteBtn);
+            buttonsContainer.appendChild(detailsBtn);
+            buttonsContainer.appendChild(deleteBtn);
 
-            // Task description
-            const taskDesc = document.createElement('div');
-            taskDesc.style.cssText = 'font-size: 12px; color: #aaa; margin-bottom: 8px;';
-            taskDesc.textContent = taskDef.description;
-
-            // Task values display
-            const valuesDiv = document.createElement('div');
-            valuesDiv.style.cssText = 'font-size: 12px; margin-bottom: 8px; padding: 8px; background: #1a2a3a; border-radius: 4px;';
-
-            const valuesList = [];
-            for (const [key, value] of Object.entries(activeTask.values)) {
-                // Get label from task definition if available
-                const valueDef = taskDef.values[key];
-                const labelText = (valueDef && valueDef.Description) || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                valuesList.push(`<strong>${labelText}:</strong> ${formatManagementValue(key, value, valueDef)}`);
-            }
-            valuesDiv.innerHTML = valuesList.join('<br>');
-
-            // Cost display
-            const costDiv = document.createElement('div');
-            costDiv.style.cssText = 'font-size: 12px; color: #ffbb00;';
-            costDiv.innerHTML = `<strong>Cost:</strong> ${taskDef.cost} research points per execution`;
-
-            taskRow.appendChild(taskHeader);
-            taskRow.appendChild(taskDesc);
-            taskRow.appendChild(valuesDiv);
-            taskRow.appendChild(costDiv);
+            taskRow.appendChild(priority);
+            taskRow.appendChild(dragHandle);
+            taskRow.appendChild(taskInfo);
+            taskRow.appendChild(buttonsContainer);
 
             taskList.appendChild(taskRow);
         });
@@ -212,7 +201,10 @@ function populateAddTaskModal() {
 
     // Clear previous values
     document.getElementById('task-values-container').innerHTML = '';
-    document.getElementById('task-description').innerHTML = '<em>Select a task type to see its description</em>';
+    document.getElementById('task-description').innerHTML = '';
+    document.getElementById('task-description').style.display = 'none';
+    document.getElementById('task-name-group').style.display = 'none';
+    document.getElementById('task-name-input').value = '';
     document.getElementById('task-cost-display').style.display = 'none';
 }
 
@@ -227,10 +219,15 @@ function updateTaskValueFields() {
     const valuesContainer = document.getElementById('task-values-container');
     const costDisplay = document.getElementById('task-cost-display');
     const costValue = document.getElementById('task-cost-value');
+    const taskNameGroup = document.getElementById('task-name-group');
+    const taskNameInput = document.getElementById('task-name-input');
 
     if (!selectedType) {
         console.log('[Management] No task selected');
-        descriptionDiv.innerHTML = '<em>Select a task type to see its description</em>';
+        descriptionDiv.innerHTML = '';
+        descriptionDiv.style.display = 'none';
+        taskNameGroup.style.display = 'none';
+        taskNameInput.value = '';
         valuesContainer.innerHTML = '';
         costDisplay.style.display = 'none';
         return;
@@ -243,9 +240,15 @@ function updateTaskValueFields() {
         return;
     }
 
-    // Update description
+    // Update description and show it
     console.log('[Management] Setting description to:', taskDef.description);
     descriptionDiv.textContent = taskDef.description;
+    descriptionDiv.style.display = 'block';
+
+    // Show task name field with suggested name
+    taskNameGroup.style.display = 'block';
+    taskNameInput.value = taskDef.name;
+    taskNameInput.placeholder = taskDef.name;
 
     // Update cost
     costValue.textContent = taskDef.cost;
@@ -344,6 +347,10 @@ function confirmAddManagementTask() {
     console.log('[Management] Task definition:', taskDef);
     if (!taskDef) return;
 
+    // Get task name
+    const taskNameInput = document.getElementById('task-name-input');
+    const taskName = taskNameInput.value.trim() || taskDef.name;
+
     // Collect values from form
     const values = {};
     for (const key of Object.keys(taskDef.values)) {
@@ -355,12 +362,13 @@ function confirmAddManagementTask() {
     }
     console.log('[Management] Collected values:', values);
 
-    // Create new task
+    // Create new task (inactive by default)
     const newTask = {
         id: nextManagementTaskId++,
         type: selectedType,
+        name: taskName,
         values: values,
-        enabled: true
+        active: false  // Tasks start inactive
     };
     console.log('[Management] New task:', newTask);
 
@@ -389,6 +397,201 @@ function removeManagementTask(taskId) {
             saveGame();
         }
     }
+}
+
+// Open modal to edit an existing management task
+async function openEditManagementTaskModal(taskId) {
+    console.log('[Management] openEditManagementTaskModal called for task', taskId);
+
+    // Find the task
+    const task = activeManagementTasks.find(t => t.id === taskId);
+    if (!task) {
+        console.error('[Management] Task not found:', taskId);
+        return;
+    }
+
+    const taskDef = mangementTasks[task.type];
+    if (!taskDef) {
+        console.error('[Management] Task definition not found:', task.type);
+        return;
+    }
+
+    currentEditingTaskId = taskId;
+
+    // Ensure modal is loaded before trying to populate it
+    if (window.modalManager) {
+        await window.modalManager.ensureLoaded('management-modal');
+    }
+
+    openModal('edit-management-task-modal');
+
+    // Use setTimeout to ensure modal DOM is ready
+    setTimeout(() => {
+        populateEditTaskModal(task, taskDef);
+    }, 50);
+}
+
+// Populate the edit task modal
+function populateEditTaskModal(task, taskDef) {
+    console.log('[Management] populateEditTaskModal called');
+
+    // Set task type (readonly)
+    const taskTypeDisplay = document.getElementById('edit-task-type-display');
+    if (taskTypeDisplay) {
+        taskTypeDisplay.value = taskDef.name;
+    }
+
+    // Set description
+    const descriptionDiv = document.getElementById('edit-task-description');
+    if (descriptionDiv) {
+        descriptionDiv.textContent = taskDef.description;
+    }
+
+    // Set task name
+    const taskNameInput = document.getElementById('edit-task-name-input');
+    if (taskNameInput) {
+        taskNameInput.value = task.name || taskDef.name;
+    }
+
+    // Set cost
+    const costValue = document.getElementById('edit-task-cost-value');
+    if (costValue) {
+        costValue.textContent = taskDef.cost;
+    }
+
+    // Build value input fields
+    const valuesContainer = document.getElementById('edit-task-values-container');
+    if (!valuesContainer) {
+        console.error('[Management] edit-task-values-container not found');
+        return;
+    }
+
+    valuesContainer.innerHTML = '';
+
+    const table = document.createElement('table');
+    table.className = 'management-task-form';
+
+    for (const [key, valueDef] of Object.entries(taskDef.values)) {
+        const row = document.createElement('tr');
+
+        const labelCell = document.createElement('td');
+        labelCell.className = 'form-label';
+        const labelText = valueDef.Description || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        labelCell.textContent = labelText;
+
+        const inputCell = document.createElement('td');
+        inputCell.className = 'form-input';
+
+        let input;
+        const fieldType = valueDef.type || 'number';
+        const currentValue = task.values[key];
+
+        if (fieldType === 'material-dropdown') {
+            // Material dropdown (exclude gems and zero-value materials)
+            input = document.createElement('select');
+            input.className = 'management-input';
+            input.id = `edit-task-value-${key}`;
+
+            // Populate with materials, filtering out gems and worthless materials
+            for (const [matId, matData] of Object.entries(materials)) {
+                if (matData.type && matData.type.includes('Gem')) continue;
+                if (matData.worth <= 0) continue;
+
+                const option = document.createElement('option');
+                option.value = matId;
+                option.textContent = matData.name;
+                if (matId === currentValue) option.selected = true;
+                input.appendChild(option);
+            }
+        } else if (fieldType === 'gem-dropdown') {
+            // Gem dropdown (only gems)
+            input = document.createElement('select');
+            input.className = 'management-input';
+            input.id = `edit-task-value-${key}`;
+
+            // Populate with gems only
+            for (const [matId, matData] of Object.entries(materials)) {
+                if (!matData.type || !matData.type.includes('Gem')) continue;
+
+                const option = document.createElement('option');
+                option.value = matId;
+                option.textContent = matData.name;
+                if (matId === currentValue) option.selected = true;
+                input.appendChild(option);
+            }
+        } else {
+            // Number input
+            input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'management-input management-number-input';
+            input.id = `edit-task-value-${key}`;
+            input.value = currentValue !== undefined ? currentValue : '';
+            input.min = '0';
+            input.step = key.toLowerCase().includes('gold') || key.toLowerCase().includes('amount') ? '100' : '1';
+        }
+
+        inputCell.appendChild(input);
+        row.appendChild(labelCell);
+        row.appendChild(inputCell);
+        table.appendChild(row);
+    }
+
+    valuesContainer.appendChild(table);
+}
+
+// Confirm editing a management task
+function confirmEditManagementTask() {
+    console.log('[Management] confirmEditManagementTask called');
+
+    if (currentEditingTaskId === null) {
+        console.error('[Management] No task being edited');
+        return;
+    }
+
+    const task = activeManagementTasks.find(t => t.id === currentEditingTaskId);
+    if (!task) {
+        console.error('[Management] Task not found:', currentEditingTaskId);
+        return;
+    }
+
+    const taskDef = mangementTasks[task.type];
+    if (!taskDef) {
+        console.error('[Management] Task definition not found:', task.type);
+        return;
+    }
+
+    // Get task name
+    const taskNameInput = document.getElementById('edit-task-name-input');
+    const taskName = taskNameInput.value.trim() || taskDef.name;
+
+    // Collect values from form
+    const values = {};
+    for (const key of Object.keys(taskDef.values)) {
+        const input = document.getElementById(`edit-task-value-${key}`);
+        console.log('[Management] Edit input for', key, ':', input);
+        if (input) {
+            values[key] = input.type === 'number' ? parseFloat(input.value) : input.value;
+        }
+    }
+    console.log('[Management] Collected edit values:', values);
+
+    // Update task
+    task.name = taskName;
+    task.values = values;
+
+    console.log('[Management] Updated task:', task);
+
+    // Sync with worker
+    syncManagementTasksWithWorker();
+
+    // Close modal and refresh
+    closeModal('edit-management-task-modal');
+    populateManagement();
+
+    // Save game state
+    saveGame();
+
+    currentEditingTaskId = null;
 }
 
 // Set up drag and drop for management task reordering
@@ -475,9 +678,12 @@ function syncManagementTasksWithWorker() {
 // Set up event listener for confirm add task button
 document.addEventListener('click', (e) => {
     if (e.target && e.target.id === 'confirm-add-task-btn') {
-        console.log('[Management] Confirm button clicked!');
+        console.log('[Management] Confirm add button clicked!');
         confirmAddManagementTask();
+    } else if (e.target && e.target.id === 'confirm-edit-task-btn') {
+        console.log('[Management] Confirm edit button clicked!');
+        confirmEditManagementTask();
     }
 });
 
-console.log('[Management] Event listener registered for confirm-add-task-btn');
+console.log('[Management] Event listeners registered for management task buttons');
