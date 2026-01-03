@@ -1630,7 +1630,7 @@ let mangementTasks = {
     requires: {},
     cost: 100,
     hardness: 10,
-  },
+  }, /*
   'sell-gems': {
     name: 'Sell Gems',
     description: 'Automatically sell gems that you do not need.',
@@ -1663,7 +1663,7 @@ let mangementTasks = {
     requires: {'one-time-investments': 1},
     cost: 50,
     hardness: 40,
-  },
+  },*/
 }
 
 let activeResearch = null; // Track which research is currently being researched
