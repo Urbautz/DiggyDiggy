@@ -118,7 +118,7 @@ main {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 6px;
+    padding: px;
     aspect-ratio: 1 / 1;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
@@ -129,6 +129,7 @@ main {
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
+    margin-bottom: 4px;
     position: relative; /* Allow absolute positioning of progress bars */
     overflow: hidden; /* Contain progress/temperature bars within button */
 }
@@ -490,9 +491,9 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    padding: 16px;
+    padding: 8 px;
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(2, 2, 2, 0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
@@ -3381,4 +3382,60 @@ header, footer {
 
 #digging-grid .functions-depth-cell {
     background: transparent !important;
+}
+
+/* Management Modal Styles */
+.management-task-form {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+
+.management-task-form td {
+    padding: 8px 12px;
+    vertical-align: middle;
+}
+
+.management-task-form .form-label {
+    text-align: left;
+    color: #dbeafe;
+    font-weight: 500;
+    width: 45%;
+}
+
+.management-task-form .form-input {
+    width: 55%;
+}
+
+.management-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.management-input:focus {
+    border-color: #3b82f6;
+    background: #333333;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.management-input:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.management-number-input {
+    text-align: right;
+}
+
+/* Dropdown arrow styling for dark theme */
+.management-input option {
+    background: #2a2a2a;
+    color: #fff;
 }

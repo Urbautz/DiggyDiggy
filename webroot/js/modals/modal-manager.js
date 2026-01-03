@@ -19,7 +19,8 @@ class ModalManager {
             'gems-modal',
             'sell-modal',
             'warehouse-sell-modal',
-            'about-modal'
+            'about-modal',
+            'management-modal'
         ];
         this.loadedModals = new Set();
         this.loadPromises = new Map();
@@ -65,8 +66,10 @@ class ModalManager {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
 
-                // Append the modal to the body
-                document.body.appendChild(tempDiv.firstElementChild);
+                // Append all modal elements to the body (some files may contain multiple modals)
+                while (tempDiv.firstElementChild) {
+                    document.body.appendChild(tempDiv.firstElementChild);
+                }
 
                 this.loadedModals.add(modalName);
                 console.log(`Modal loaded: ${modalName}`);

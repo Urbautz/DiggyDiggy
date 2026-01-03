@@ -1,0 +1,53 @@
+<!-- Management modal -->
+<div id="management-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Management dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>🗓️ Management</h2>
+            <button class="modal-close" aria-label="Close management" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <p>Manage automated tasks! Add tasks that your dwarfs will automatically execute.</p>
+            <div id="management-content">
+                <!-- Content will be added here -->
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Add Task modal -->
+<div id="add-management-task-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Add management task">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>➕ Add Management Task</h2>
+            <button class="modal-close" aria-label="Close" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <div id="add-task-content">
+                <div class="form-group">
+                    <label for="task-type-select">Task Type:</label>
+                    <select id="task-type-select" class="form-control">
+                        <option value="">-- Select Task Type --</option>
+                    </select>
+                </div>
+                <div id="task-description" class="task-description" style="margin: 12px 0; padding: 12px; background: #1a2a3a; border-radius: 4px;">
+                    <em>Select a task type to see its description</em>
+                </div>
+                <div id="task-values-container">
+                    <!-- Dynamic form fields will be added here based on task type -->
+                </div>
+                <div id="task-cost-display" style="margin: 12px 0; padding: 12px; background: #2a3a4a; border-radius: 4px; display: none;">
+                    <strong>Cost:</strong> <span id="task-cost-value">0</span> research points per execution
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Cancel</button>
+            <button id="confirm-add-task-btn" class="btn-primary">Add Task</button>
+        </footer>
+    </div>
+</div>

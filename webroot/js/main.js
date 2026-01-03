@@ -503,13 +503,16 @@ function updateGridDisplay() {
                     }
                 }
 
-                if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
-                    cell.title = 'Automate (Coming soon)';
-                    const auto = document.createElement('span');
-                    auto.className = 'drop-off-marker';
-                    auto.style.opacity = '0.5';
-                    auto.textContent = '🛞';
-                    cell.appendChild(auto);
+                if (typeof management === 'object' && management !== null && management.x === gx && management.y === gy) {
+                    const hasManagement = researchData['management'] && researchData['management'].level >= 1;
+                    cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
+                    const mgmt = document.createElement('span');
+                    mgmt.className = 'drop-off-marker';
+                    if (!hasManagement) {
+                        mgmt.style.opacity = '0.5';
+                    }
+                    mgmt.textContent = '🗓️';
+                    cell.appendChild(mgmt);
                 }
 
                 functionsGridRow.appendChild(cell);
@@ -2298,9 +2301,10 @@ function initWorker() {
                     }
                 }
 
-                // Update forge function link when research state changes (e.g., forge unlocked)
+                // Update forge and management function links when research state changes
                 if (researchStateChanged) {
                     updateForgeFunctionLink();
+                    updateManagementFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -2363,7 +2367,9 @@ function initWorker() {
             smelterCoalMaxTemp,
             smelterMagmaMinTemp,
             oneTimeInvestments: oneTimeInvestments || [],
-            nextInvestmentId: nextInvestmentId || 1
+            nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            mangementTasks: mangementTasks || {}
         }
     });
     
@@ -2429,6 +2435,8 @@ function saveGame() {
             hasForgedHighHardnessTool: hasForgedHighHardnessTool,
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            nextManagementTaskId: nextManagementTaskId || 1,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2648,6 +2656,14 @@ function loadGame() {
             nextInvestmentId = gameState.nextInvestmentId;
         }
 
+        // Restore management tasks
+        if (gameState.activeManagementTasks) {
+            activeManagementTasks = gameState.activeManagementTasks;
+        }
+        if (gameState.nextManagementTaskId !== undefined) {
+            nextManagementTaskId = gameState.nextManagementTaskId;
+        }
+
         // Backwards compatibility: if old variables exist but new ones don't, migrate them
         if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {
             smelterCoalMinTemp = gameState.smelterMinTemp;
@@ -2828,19 +2844,28 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
-    // Automate function (placeholder for future) - last position
-    const automationLink = document.createElement('a');
-    automationLink.href = '#';
-    automationLink.className = 'function-link';
-    automationLink.innerHTML = '<span class="icon">🛞</span><span>Automate</span>';
-    automationLink.onclick = (e) => {
+    // Management function - last position
+    const managementLink = document.createElement('a');
+    managementLink.href = '#';
+    managementLink.className = 'function-link';
+    managementLink.id = 'management-function-link';
+    managementLink.innerHTML = '<span class="icon">🗓️</span><span>Management</span>';
+    managementLink.onclick = (e) => {
         e.preventDefault();
-        // TODO: Open automation modal
+        openManagement();
     };
-    automationLink.style.opacity = '0.5';
-    automationLink.style.cursor = 'not-allowed';
-    automationLink.title = 'Coming soon';
-    list.appendChild(automationLink);
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (!isManagementUnlocked) {
+        managementLink.style.opacity = '0.5';
+        managementLink.style.cursor = 'not-allowed';
+        managementLink.title = 'Requires Management research';
+    }
+
+    list.appendChild(managementLink);
 }
 
 // Update forge function link state without rebuilding the entire list
@@ -2865,6 +2890,32 @@ function updateForgeFunctionLink() {
             forgeLink.style.opacity = '0.5';
             forgeLink.style.cursor = 'not-allowed';
             forgeLink.title = 'Requires Forge research';
+        }
+    }
+}
+
+// Update management function link state without rebuilding the entire list
+function updateManagementFunctionLink() {
+    const managementLink = document.getElementById('management-function-link');
+    if (!managementLink) return;
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (isManagementUnlocked) {
+        // Only update if state actually changed
+        if (managementLink.style.opacity === '0.5') {
+            managementLink.style.opacity = '1';
+            managementLink.style.cursor = 'pointer';
+            managementLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (managementLink.style.opacity !== '0.5') {
+            managementLink.style.opacity = '0.5';
+            managementLink.style.cursor = 'not-allowed';
+            managementLink.title = 'Requires Management research';
         }
     }
 }
