@@ -139,7 +139,7 @@ const materials = {
     name: 'Bronce Ore',
     type: 'Ore Soft',
     hardness: 100,
-    probability: 75,
+    probability: 112.5,
     worth: 38,
     minlevel: 1000,
     color: '#7e6136ff',
@@ -278,7 +278,7 @@ const materials = {
     name: 'Copper Ore',
     type: 'Ore Soft',
     hardness: 1800,
-    probability: 50,
+    probability: 75,
     worth: 60,
     minlevel: 6000,
     color: '#c75e41ff',
@@ -298,7 +298,7 @@ const materials = {
     name: 'Silver Ore',
     type: 'Ore Medium',
     hardness: 2100,
-    probability: 20,
+    probability: 30,
     worth: 1200,
     minlevel: 10999,
     color: '#c0c0c0ff',
@@ -318,7 +318,7 @@ const materials = {
     name: 'Zinc Ore',
     type: 'Ore Medium',
     hardness: 650,
-    probability: 25,
+    probability: 37.5,
     worth: 200,
     minlevel: 15000,
     color: '#8ec281ff',
@@ -328,7 +328,7 @@ const materials = {
     name: 'Gold Ore',
     type: 'Ore Medium',
     hardness: 400,
-    probability: 15,
+    probability: 22.5,
     worth: 3000,
     minlevel: 15000,
     color: '#d6a80eff',
@@ -358,7 +358,7 @@ const materials = {
     name: 'Iron Ore',
     type: 'Ore Medium',
     hardness: 500,
-    probability: 50,
+    probability: 75,
     worth: 400,
     minlevel: 22000,
     color: '#572012ff',
@@ -368,7 +368,7 @@ const materials = {
     name: 'Nickel Ore',
     type: 'Ore Medium',
     hardness: 450,
-    probability: 30,
+    probability: 45,
     worth: 350,
     minlevel: 40000,
     color: '#b2b25cff',
@@ -388,7 +388,7 @@ const materials = {
     name: 'Platinum Ore',
     type: 'Ore Hard',
     hardness: 4000,
-    probability: 15,
+    probability: 22.5,
     worth: 2500,
     minlevel: 55000,
     color: '#c75e41ff',
@@ -408,7 +408,7 @@ const materials = {
     name: 'Titanium Ore',
     type: 'Ore Hard',
     hardness: 6000,
-    probability: 15,
+    probability: 22.5,
     worth: 3000,
     minlevel: 90000,
     color: '#57375dff',
@@ -428,7 +428,7 @@ const materials = {
     name: 'Wolframit',
     type: 'Ore Hard',
     hardness: 5000,
-    probability: 15,
+    probability: 22.5,
     worth: 8000,
     minlevel: 100000,
     color: '#b7bd07ff',
@@ -448,7 +448,7 @@ const materials = {
     name: 'Adamantine Ore',
     type: 'Ore Hard',
     hardness: 10000,
-    probability: 15,
+    probability: 22.5,
     worth: 7000,
     minlevel: 110000,
     color: '#8eb95eff',
@@ -468,7 +468,7 @@ const materials = {
     name: 'Uranium Ore',
     type: 'Ore Hard',
     hardness: 1000,
-    probability: 15,
+    probability: 22.5,
     worth: 6000,
     minlevel: 125000,
     color: '#26c07dff',
@@ -488,7 +488,7 @@ const materials = {
     name: 'Plutonium Ore',
     type: 'Ore Hard',
     hardness: 4000,
-    probability: 15,
+    probability: 22.5,
     worth: 12000,
     minlevel: 135000,
     color: '#35fa00',
@@ -656,7 +656,7 @@ const materials = {
     weight: 23
   },
     'dwarfen-metallic-glass': {
-    name: 'Dwarfen Metallic Glass',
+    name: 'Dwarf Glass',
     type: 'Ingot',
     hardness: 600,
     probability: 0,
@@ -722,7 +722,7 @@ const materials = {
     weight: 50
   },
     'thornless-dwarfen-silver': {
-    name: 'Thornless Dwarfen Silver',
+    name: 'Thornless Silver',
     type: 'Ingot',
     hardness: 1500,
     probability: 0,
@@ -929,7 +929,7 @@ const smelterTasksData = {
     output: { material: 'gravel', amount: 5 },
     bonusChance: 0.08,
     bonusType: 'deep-ore',
-    bonusAmount: 0.1,
+    bonusAmount: 0.25,
     ticksRequired: SMELTER_BASIC_PROCESSING_TICKS_REQUIRED,
     hardness: 2
   },
@@ -1331,41 +1331,41 @@ const researchData = {
   },
   'small-time-investments': {
     name: 'Small Time Investments',
-    cost: 5000,
+    cost: 1200,
     goldCost: 1000,
     level: 0,
     maxlevel: 1,
-    hardness: 750,
+    hardness: 75,
     requires: [{'trading': 5}],
     min_depth: 800,
     description: 'Invest your gold wisely. Gain small interest up to 100.000 gold.'
   },
   'price-negotiations': {
     name: 'Price Negotiations',
-    cost: 3000,
+    cost: 2000,
     goldCost: 500,
     level: 0,
     maxlevel: 1,
     hardness: 50,
-    requires: [{'trading': 5}],
+    requires: [{'trading': 5}], 
     min_depth: 5000,
     description: 'The wisest dwarf negotiates better. His wisdom gives +1% sell price per skill point.'
   },
 
   'one-time-investments': {
     name: 'Long Term Investments',
-    cost: 10000,
+    cost: 2000,
     goldCost: 5000,
     level: 0,
     maxlevel: 1,
-    hardness: 1000,
+    hardness: 75,
     requires: [{'price-negotiations': 1}],
     min_depth: 5000,
     description: 'Unlock the ability to make one-time investments. Pays back over 12 hours.'
   },
   'wage-optimization': {
     name: 'Wage Negotiation',
-    cost: 1000,
+    cost: 400,
     goldCost: 1000,
     level: 0,
     maxlevel: 20,
@@ -1394,7 +1394,7 @@ const researchData = {
   },
   'tool-enchanting': {
     name: 'Tool Enchanting',
-    cost: 600,
+    cost: 300,
     goldCost: 300,
     level: 0,
     maxlevel: 30,
@@ -1458,8 +1458,8 @@ const researchData = {
   },
   'furnace-insulation': {
     name: 'Furnace Insulation',
-    cost: 10000,
-    goldCost: 10000,
+    cost: 1000,
+    goldCost: 8000,
     level: 0,
     maxlevel: 5,
     hardness: 60,
@@ -1480,7 +1480,7 @@ const researchData = {
   },
   'alloys': {
     name: 'Alloys',
-    cost: 4000,
+    cost: 2000,
     goldCost: 8000,
     level: 0,
     maxlevel: 1,
@@ -1491,8 +1491,8 @@ const researchData = {
   },
     'furnace-temperature': {
     name: 'Furnace Temperature',
-    cost: 5000,
-    goldCost: 5000,
+    cost: 700,
+    goldCost: 1500,
     level: 0,
     maxlevel: 15,
     hardness: 80,
@@ -1502,7 +1502,7 @@ const researchData = {
   },
   'magma-furnace': {
     name: 'Magma Operated Furnace',
-    cost: 25000,
+    cost: 2500,
     goldCost: 50000,
     level: 0,
     maxlevel: 1,
@@ -1513,7 +1513,7 @@ const researchData = {
   },
   'glass-metals': {
     name: 'Glass Metals',
-    cost: 30000,
+    cost: 3000,
     goldCost: 60000,
     level: 0,
     maxlevel: 1,
@@ -1535,7 +1535,7 @@ const researchData = {
 
   'expertise-stone': {
     name: 'Stone Expertise',
-    cost: 3000,
+    cost: 1000,
     goldCost: 3000,
     level: 0,
     maxlevel: 15,
@@ -1546,8 +1546,8 @@ const researchData = {
   },
   'expertise-ore': {
     name: 'Ore Expertise',
-    cost: 20000,
-    goldCost: 20000,
+    cost: 1500,
+    goldCost: 6000,
     level: 0,
     maxlevel: 15,
     hardness: 85,
@@ -1557,7 +1557,7 @@ const researchData = {
   },
   'ore-enrichment': {
     name: 'Ore Enrichment',
-    cost: 50000,
+    cost: 2000,
     goldCost: 50000,
     level: 0,
     maxlevel: 1,
@@ -1565,6 +1565,16 @@ const researchData = {
     requires: [{'furnace-temperature': 15}, {'magma-furnace': 1}],
     min_depth: 100000,
     description: 'Unlocks the ability to enrich special ores (Wolfram, Uranium, Plutonium) for use in advanced plating.'
+  },
+  'management': {
+    name: 'Management',
+    cost: 5000,
+    goldCost: 100000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 100,
+    min_depth: 10000,
+    description: 'Unlocks dwarf self management to make your life eaiser. Dwarfs will do certain stuff for you.'
   },
 
 };
@@ -1575,6 +1585,7 @@ let researchTree = [
   'price-negotiations',
   'small-time-investments',
   'one-time-investments',
+  'management',
   'tool-enchanting',
   'grinding-machine',
   'stone-polishing',
@@ -1599,6 +1610,62 @@ let researchTree = [
   'union-busting',
 ];
 
+let mangementTasks = {
+  'sell-material': {
+    name: 'Sell Material',
+    description: 'Automatically sell excess materials when stock exceeds defined threshold.',
+    values: {material: {Description: 'Material', default:'earth', type:'material-dropdown'},
+            minQuantity: {Description: 'Run when quantity >', default:100, type:'number'},
+            keepQuantity: {Description: 'Keep a minimum of', default:0, type:'number'}},
+    requires: {},
+    cost: 5,
+    hardness: 1,
+  },
+  'sell-non-craftables': {
+    name: 'Sell Non-Craftables',
+    description: 'Automatically sell materials that are not used in any crafting recipes.',
+    values: {
+      minQuantity: {Description: 'Run when total quantity >', default:1000, type:'number'},
+    },
+    requires: {},
+    cost: 100,
+    hardness: 10,
+  }, /*
+  'sell-gems': {
+    name: 'Sell Gems',
+    description: 'Automatically sell gems that you do not need.',
+    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-dropdown'},
+             minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
+             maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
+            },
+    requires: {},
+    cost: 25,
+    hardness: 10,
+  },
+  'auto-reserach-cheapest': {
+    name: 'Auto research cheapest endless research',
+    description: 'Automatically queue the cheapest available research.',
+    values: {
+      minBankGold: {Description: 'Only when gold above', default: 100000, type: 'number'},
+      minQueueSize: {Description: 'When research queue is at', default: 1, type: 'number'}
+    },
+    requires: {},
+    cost: 75,
+    hardness: 20,
+  },
+  'auto-invest': {
+    name: 'Invest',
+    description: 'Automatically invest available one-time investment.',
+    values: {
+      minBankGold: {Description: 'Only when gold above', default: 3000000, type: 'number'},
+      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'}
+    },
+    requires: {'one-time-investments': 1},
+    cost: 50,
+    hardness: 40,
+  },*/
+}
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
 
@@ -1618,7 +1685,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Shovelli",
       toolId: 2,
@@ -1627,7 +1694,7 @@ let dwarfs = [
       x: 1, y: -1,
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
-      taskPriority: ['digging', 'research', 'smelting'],
+      taskPriority: ['digging', 'research', 'smelting','managing'],
       taskBlacklist: [] },
     { name: "Diggmaster",
       toolId: 3,
@@ -1636,7 +1703,7 @@ let dwarfs = [
       x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "Burrower",
      toolId: 4,
@@ -1645,7 +1712,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "NevertiredMcPickaxemer",
      toolId: 5,
@@ -1654,7 +1721,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['digging', 'research', 'smelting'],
+    taskPriority: ['digging', 'research', 'smelting','managing'],
     taskBlacklist: [] },
     { name: "SmartDigger",
      toolId: 6,
@@ -1663,7 +1730,7 @@ let dwarfs = [
      x: 1, y: -1,
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
-    taskPriority: ['research', 'smelting', 'digging',],
+    taskPriority: ['managing','research', 'smelting', 'digging',],
     taskBlacklist: [] },
 ]
 
@@ -1694,12 +1761,12 @@ const functionsGridY = -1; // One row above the main grid
 const functionsGridWidth = 5;
 
 // Function locations in the 1x5 grid above main grid
-// Order: House, Warehouse, Smelter, Research, Automate
+// Order: House, Warehouse, Smelter, Research, Management
 const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
 const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
 const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
 const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
-const automate = { x: 4, y: functionsGridY };     // Fifth cell (Automate - placeholder)
+const management = { x: 4, y: functionsGridY };   // Fifth cell (Management)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)
 const dropGridStartX = gridWidth;

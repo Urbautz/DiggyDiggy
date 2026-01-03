@@ -146,11 +146,6 @@ function updateResearchButtons() {
             newText = 'Active';
             newDisabled = true;
             newTitle = '';
-        } else if (!requirementsMet.met) {
-            newClassName = 'btn-research disabled';
-            newText = 'Locked';
-            newDisabled = true;
-            newTitle = requirementsMet.reason;
         } else if (!hasEnoughGold) {
             newClassName = 'btn-research disabled';
             newText = activeResearch ? 'Queue' : 'Research';
@@ -223,9 +218,8 @@ function populateResearch() {
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p><strong id="research-name">${activeResearch.name}</strong> (Level ${targetLevel}) • <span id="research-percent">${progressPercent}%</span> complete</p>
-            <p style="font-size: 12px; opacity: 0.9;">${activeResearch.description}</p>
-            <p><small>Progress: <span id="research-progress">${formatNumber(progress, 'material')}</span> / <span id="research-cost">${formatNumber(actualCost,'material')}</span> 🔬<br>Gold paid: ${actualGoldCost} 💰</small></p>
+            <p style="margin: 8px 0;"><strong id="research-name" style="font-size: 1.2em; color: #ffd700;">${activeResearch.name}</strong> (Level ${targetLevel}) • <span id="research-percent">${progressPercent}%</span> complete</p>
+            <p style="margin: 6px 0;"><small>Progress: <span id="research-progress">${formatNumber(progress, 'material')}</span> / <span id="research-cost">${formatNumber(actualCost,'material')}</span></small></p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                 <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" id="research-progress-fill" style="width: ${progressPercent}%"></div></div>
                 <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
@@ -249,14 +243,14 @@ function populateResearch() {
     if (researchQueue.length > 0) {
         const queueDiv = document.createElement('div');
         queueDiv.className = 'research-queue';
-        queueDiv.style.cssText = 'background: #2a2a3e; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #444;';
+        queueDiv.style.cssText = 'background: rgba(42, 42, 62, 0.5); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(68, 68, 68, 0.5);';
 
         let queueHTML = '<h3 style="margin-top: 0; color: #ffa500;">📋 Research Queue</h3>';
         queueHTML += '<div style="display: flex; flex-direction: column; gap: 8px;">';
 
         researchQueue.forEach((queuedResearch, index) => {
             queueHTML += `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: #1e1e2e; padding: 8px 12px; border-radius: 4px; border: 1px solid #555;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 30, 46, 0.5); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(85, 85, 85, 0.5);">
                     <div style="flex: 1;">
                         <strong>${index + 1}. ${queuedResearch.name}</strong> (Level ${queuedResearch.targetLevel})
                         <span style="color: #888; font-size: 11px; margin-left: 8px;">Gold paid: ${formatNumber(queuedResearch.goldCost, 'gold')} 💰</span>
@@ -318,7 +312,8 @@ function populateResearch() {
 
         const nameTd = document.createElement('td');
         const nameDiv = document.createElement('div');
-        nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
+        nameDiv.style.lineHeight = '1.3';
+        nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small style="line-height: 1.2;">${researchItem.description}</small>`;
         nameTd.appendChild(nameDiv);
 
         const levelTd = document.createElement('td');
@@ -346,6 +341,9 @@ function populateResearch() {
 
         const actionTd = document.createElement('td');
 
+        // Check if requirements are met
+        const requirementsMet = checkResearchRequirements(researchItem);
+
         // If research is impossible, show warning instead of button
         if (isImpossible) {
             const warningDiv = document.createElement('div');
@@ -356,14 +354,21 @@ function populateResearch() {
             warningDiv.innerHTML = `⚠️ Dwarf with<br>Wisdom ${minWisdomRequired} required`;
             warningDiv.title = `No dwarf can complete this research!\nRequired hardness: ${effectiveHardness}\nMax possible: ${maxPossiblePower} (Wisdom ${maxWisdom} × 100)\n\nYou need a dwarf with at least Wisdom ${minWisdomRequired}\nor use Amethyst gems to reduce hardness.`;
             actionTd.appendChild(warningDiv);
+        } else if (!requirementsMet.met) {
+            // Requirements not met - show warning text instead of button
+            const warningDiv = document.createElement('div');
+            warningDiv.style.color = '#ff6b6b';
+            warningDiv.style.fontWeight = 'bold';
+            warningDiv.style.fontSize = '12px';
+            warningDiv.style.textAlign = 'center';
+            warningDiv.innerHTML = `Requires ${requirementsMet.reason.replace('Requires: ', '')}`;
+            warningDiv.title = requirementsMet.reason;
+            actionTd.appendChild(warningDiv);
         } else {
             const researchBtn = document.createElement('button');
 
             // Check if this research is already active
             const isActive = activeResearch && activeResearch.id === researchItem.id;
-
-            // Check if requirements are met
-            const requirementsMet = checkResearchRequirements(researchItem);
 
             // Check if player has enough gold
             const hasEnoughGold = gold >= actualGoldCost;
@@ -372,12 +377,6 @@ function populateResearch() {
                 researchBtn.className = 'btn-research active';
                 researchBtn.textContent = 'Active';
                 researchBtn.disabled = true;
-            } else if (!requirementsMet.met) {
-                // Requirements not met - gray out
-                researchBtn.className = 'btn-research disabled';
-                researchBtn.textContent = 'Locked';
-                researchBtn.disabled = true;
-                researchBtn.title = requirementsMet.reason;
             } else if (!hasEnoughGold) {
                 // Not enough gold
                 researchBtn.className = 'btn-research disabled';
@@ -452,7 +451,8 @@ function populateResearch() {
 
             const nameTd = document.createElement('td');
             const nameDiv = document.createElement('div');
-            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
+            nameDiv.style.lineHeight = '1.3';
+            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small style="line-height: 1.2;">${researchItem.description}</small>`;
             nameTd.appendChild(nameDiv);
 
             const levelTd = document.createElement('td');

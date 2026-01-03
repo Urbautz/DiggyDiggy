@@ -44,15 +44,40 @@ function openSellModal(materialId) {
     // Setup slider
     const slider = document.getElementById('sell-amount-slider');
     const amountDisplay = document.getElementById('sell-amount-display');
+    const sliderMin = document.getElementById('sell-slider-min');
     const sliderMax = document.getElementById('sell-slider-max');
     const totalValueEl = document.getElementById('sell-total-value');
     const totalContainer = totalValueEl?.parentElement;
 
     if (slider) {
-        slider.min = '1';
-        slider.max = availableStock.toString();
-        slider.value = '1';
+        // Calculate appropriate step size based on available stock
+        // Ensure step size allows selecting the exact available stock
+        let stepSize;
 
+        // Count decimal places in available stock
+        const stockStr = availableStock.toString();
+        const decimalIndex = stockStr.indexOf('.');
+        const decimalPlaces = decimalIndex === -1 ? 0 : stockStr.length - decimalIndex - 1;
+
+        // Use step size that matches precision needed
+        if (decimalPlaces >= 3 || availableStock < 0.01) {
+            stepSize = Math.pow(10, -Math.max(3, decimalPlaces)); // At least 0.001, more if needed
+        } else if (decimalPlaces === 2 || availableStock < 1) {
+            stepSize = 0.01;
+        } else if (decimalPlaces === 1 || availableStock < 100) {
+            stepSize = 0.1;
+        } else {
+            stepSize = 1;
+        }
+
+        // Set minimum to step size or available stock (whichever is smaller)
+        const minValue = Math.min(stepSize, availableStock);
+        slider.min = minValue.toString();
+        slider.max = availableStock.toString();
+        slider.value = availableStock.toString(); // Start at max (sell all)
+        slider.step = stepSize.toString();
+
+        if (sliderMin) sliderMin.textContent = formatNumber(minValue, 'material');
         if (sliderMax) sliderMax.textContent = formatNumber(availableStock, 'material');
 
         // Set material color as background for total value
@@ -63,7 +88,7 @@ function openSellModal(materialId) {
         // Update display function - gets current slider value from DOM
         const updateDisplay = () => {
             const currentSlider = document.getElementById('sell-amount-slider');
-            const amount = parseInt(currentSlider.value, 10);
+            const amount = parseFloat(currentSlider.value);
             if (amountDisplay) amountDisplay.textContent = formatNumber(amount, 'material');
             if (totalValueEl) {
                 const totalValue = unitPrice * amount;
@@ -87,7 +112,7 @@ function openSellModal(materialId) {
 
     if (sellSelectedBtn) {
         sellSelectedBtn.onclick = () => {
-            const amount = parseInt(document.getElementById('sell-amount-slider').value, 10);
+            const amount = parseFloat(document.getElementById('sell-amount-slider').value);
             sellMaterial(materialId, amount);
             closeModal('sell-modal');
         };

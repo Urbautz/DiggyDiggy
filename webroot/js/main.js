@@ -443,6 +443,7 @@ function updateGridDisplay() {
                 }
 
                 if (typeof house === 'object' && house !== null && house.x === gx && house.y === gy) {
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const bed = document.createElement('span');
                     bed.className = 'drop-off-marker';
                     bed.textContent = '🏠';
@@ -453,31 +454,77 @@ function updateGridDisplay() {
                         cell.title = 'House (Rest here)';
                     }
                     cell.appendChild(bed);
+
+                    // Add notification badge showing number of resting dwarfs
+                    if (dwarfsResting.length > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = dwarfsResting.length;
+                        cell.appendChild(badge);
+                    }
                 }
 
                 if (typeof research === 'object' && research !== null && research.x === gx && research.y === gy) {
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     cell.title = 'Research';
                     const res = document.createElement('span');
                     res.className = 'drop-off-marker';
                     res.textContent = '🔬';
                     cell.appendChild(res);
+
+                    // Add notification badge showing active + queued research count
+                    const activeCount = activeResearch ? 1 : 0;
+                    const queueCount = researchQueue ? researchQueue.length : 0;
+                    const totalResearchCount = activeCount + queueCount;
+
+                    if (totalResearchCount > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = totalResearchCount;
+                        cell.appendChild(badge);
+                    }
                 }
 
                 if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
                     cell.title = 'Smelter';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const sm = document.createElement('span');
                     sm.className = 'drop-off-marker';
                     sm.textContent = '♨️';
                     cell.appendChild(sm);
+
+                    // Add notification badge showing number of actionable tasks
+                    const actionableTasksCount = countActionableSmelterTasks();
+                    if (actionableTasksCount > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = actionableTasksCount;
+                        cell.appendChild(badge);
+                    }
                 }
 
-                if (typeof automate === 'object' && automate !== null && automate.x === gx && automate.y === gy) {
-                    cell.title = 'Automate (Coming soon)';
-                    const auto = document.createElement('span');
-                    auto.className = 'drop-off-marker';
-                    auto.style.opacity = '0.5';
-                    auto.textContent = '🛞';
-                    cell.appendChild(auto);
+                if (typeof management === 'object' && management !== null && management.x === gx && management.y === gy) {
+                    const hasManagement = researchData['management'] && researchData['management'].level >= 1;
+                    cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
+                    const mgmt = document.createElement('span');
+                    mgmt.className = 'drop-off-marker';
+                    if (!hasManagement) {
+                        mgmt.style.opacity = '0.5';
+                    }
+                    mgmt.textContent = '🏢';
+                    cell.appendChild(mgmt);
+
+                    // Add notification badge showing number of active management tasks
+                    if (hasManagement && activeManagementTasks) {
+                        const activeTasksCount = activeManagementTasks.filter(task => task.active).length;
+                        if (activeTasksCount > 0) {
+                            const badge = document.createElement('div');
+                            badge.className = 'grid-badge';
+                            badge.textContent = activeTasksCount;
+                            cell.appendChild(badge);
+                        }
+                    }
                 }
 
                 functionsGridRow.appendChild(cell);
@@ -991,7 +1038,7 @@ function populateToolsInPanel() {
         if (isEnchanted) {
             // Show enchantment level instead of button
             const enchantInfo = document.createElement('span');
-            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 11px; font-weight: bold; white-space: nowrap;';
+            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 10px; font-weight: bold; white-space: nowrap; line-height: 1;';
             enchantInfo.textContent = `✨ Enchant +${tool.enchantLevel}`;
             enchantInfo.title = `Enchanted to level ${tool.enchantLevel}`;
             actions.appendChild(enchantInfo);
@@ -1702,10 +1749,10 @@ function initMaterialsPanel() {
     tableHeader.className = 'warehouse-table-header';
     tableHeader.innerHTML = `
         <span class="wh-col-name">MATERIAL</span>
+        <span class="wh-col-icons"></span>
         <span class="wh-col-price">PRICE</span>
         <span class="wh-col-count">STOCK</span>
         <span class="wh-col-total">VALUE</span>
-        <span class="wh-col-icons"></span>
         <span class="wh-col-actions">SELL</span>
     `;
     container.appendChild(tableHeader);
@@ -1776,14 +1823,14 @@ function initMaterialsPanel() {
         sellBtn.dataset.materialId = id;
 
         buttons.appendChild(sellBtn);
-        
+
         row.appendChild(name);
+        row.appendChild(icons);
         row.appendChild(worth);
         row.appendChild(cnt);
         row.appendChild(totalValue);
-        row.appendChild(icons);
         row.appendChild(buttons);
-        
+
         container.appendChild(row);
     }
     
@@ -2216,6 +2263,18 @@ function initWorker() {
                     nextInvestmentId = data.nextInvestmentId;
                 }
 
+                // Update management tasks from worker (activation states)
+                if (data.activeManagementTasks !== undefined) {
+                    // Preserve task order and only update activation states
+                    activeManagementTasks = data.activeManagementTasks;
+
+                    // Update management modal if it's open (only refresh active/inactive badges)
+                    const managementModal = document.getElementById('management-modal');
+                    if (managementModal && managementModal.getAttribute('aria-hidden') === 'false') {
+                        updateManagementTaskActivationStates();
+                    }
+                }
+
                 // Update UI to reflect new state
                 updateGridDisplay();
                 
@@ -2266,9 +2325,10 @@ function initWorker() {
                     }
                 }
 
-                // Update forge function link when research state changes (e.g., forge unlocked)
+                // Update forge and management function links when research state changes
                 if (researchStateChanged) {
                     updateForgeFunctionLink();
+                    updateManagementFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -2317,6 +2377,7 @@ function initWorker() {
             house,
             research,
             smelter,
+            management,
             smelterTasks,
             smelterTasksData,
             dropGridStartX,
@@ -2331,7 +2392,9 @@ function initWorker() {
             smelterCoalMaxTemp,
             smelterMagmaMinTemp,
             oneTimeInvestments: oneTimeInvestments || [],
-            nextInvestmentId: nextInvestmentId || 1
+            nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            mangementTasks: mangementTasks || {}
         }
     });
     
@@ -2397,6 +2460,8 @@ function saveGame() {
             hasForgedHighHardnessTool: hasForgedHighHardnessTool,
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
+            activeManagementTasks: activeManagementTasks || [],
+            nextManagementTaskId: nextManagementTaskId || 1,
             timestamp: Date.now(),
             version: gameversion
         };
@@ -2469,7 +2534,11 @@ function loadGame() {
 
             // Migration: Add task priority system if not present
             if (!dwarf.taskPriority) {
-                dwarf.taskPriority = ['digging', 'research', 'smelting'];
+                dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
+            }
+            // Migration: Add 'managing' to existing task priorities if missing
+            if (dwarf.taskPriority && !dwarf.taskPriority.includes('managing')) {
+                dwarf.taskPriority.push('managing');
             }
             if (!dwarf.taskBlacklist) {
                 dwarf.taskBlacklist = [];
@@ -2614,6 +2683,14 @@ function loadGame() {
         }
         if (gameState.nextInvestmentId !== undefined) {
             nextInvestmentId = gameState.nextInvestmentId;
+        }
+
+        // Restore management tasks
+        if (gameState.activeManagementTasks) {
+            activeManagementTasks = gameState.activeManagementTasks;
+        }
+        if (gameState.nextManagementTaskId !== undefined) {
+            nextManagementTaskId = gameState.nextManagementTaskId;
         }
 
         // Backwards compatibility: if old variables exist but new ones don't, migrate them
@@ -2796,19 +2873,28 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
-    // Automate function (placeholder for future) - last position
-    const automationLink = document.createElement('a');
-    automationLink.href = '#';
-    automationLink.className = 'function-link';
-    automationLink.innerHTML = '<span class="icon">🛞</span><span>Automate</span>';
-    automationLink.onclick = (e) => {
+    // Management function - last position
+    const managementLink = document.createElement('a');
+    managementLink.href = '#';
+    managementLink.className = 'function-link';
+    managementLink.id = 'management-function-link';
+    managementLink.innerHTML = '<span class="icon">🏢</span><span>Management</span>';
+    managementLink.onclick = (e) => {
         e.preventDefault();
-        // TODO: Open automation modal
+        openManagement();
     };
-    automationLink.style.opacity = '0.5';
-    automationLink.style.cursor = 'not-allowed';
-    automationLink.title = 'Coming soon';
-    list.appendChild(automationLink);
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (!isManagementUnlocked) {
+        managementLink.style.opacity = '0.5';
+        managementLink.style.cursor = 'not-allowed';
+        managementLink.title = 'Requires Management research';
+    }
+
+    list.appendChild(managementLink);
 }
 
 // Update forge function link state without rebuilding the entire list
@@ -2833,6 +2919,32 @@ function updateForgeFunctionLink() {
             forgeLink.style.opacity = '0.5';
             forgeLink.style.cursor = 'not-allowed';
             forgeLink.title = 'Requires Forge research';
+        }
+    }
+}
+
+// Update management function link state without rebuilding the entire list
+function updateManagementFunctionLink() {
+    const managementLink = document.getElementById('management-function-link');
+    if (!managementLink) return;
+
+    // Check if management is unlocked
+    const managementResearch = researchData['management'];
+    const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
+
+    if (isManagementUnlocked) {
+        // Only update if state actually changed
+        if (managementLink.style.opacity === '0.5') {
+            managementLink.style.opacity = '1';
+            managementLink.style.cursor = 'pointer';
+            managementLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (managementLink.style.opacity !== '0.5') {
+            managementLink.style.opacity = '0.5';
+            managementLink.style.cursor = 'not-allowed';
+            managementLink.title = 'Requires Management research';
         }
     }
 }
@@ -2873,9 +2985,7 @@ function updateFunctionLinks() {
         }
     }
 
-    // Temperature bar on smelter button is now hidden
-    // Uncomment the code below to re-enable the temperature indicator
-    /*
+    // Temperature bar and notification badge on smelter button
     const smelterLink = document.getElementById('smelter-function-link');
     if (smelterLink) {
         // Remove existing temp bar if present
@@ -2903,7 +3013,6 @@ function updateFunctionLinks() {
 
         tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
     }
-    */
 }
 
 // Switch between Warehouse and Dwarfs tabs in the materials panel

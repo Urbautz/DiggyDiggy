@@ -91,7 +91,7 @@ const GRID_MOVE_UP_CHANCE = 0.2; // 20% chance to move up after horizontal move
 // GEM SPAWN CONSTANTS
 // ============================================================================
 
-const GEM_SPAWN_CHANCE = 0.04; // 4% chance to find a gem when destroying stone materials
+const GEM_SPAWN_CHANCE = 0.012; // 1,2% chance to find a gem when destroying stone materials
 const GEM_CUTTING_VALUE_MULTIPLIER = 1.8; // 80% value increase when gems are cut and polished
 const GEM_CUTTING_TICKS_REQUIRED = 50; // Ticks required to cut and polish a gem
 const GEM_CARAT_DEPTH_DIVISOR = 2500; // Depth divisor for calculating maximum gem carat
@@ -219,7 +219,7 @@ const ENCHANT_POWER_BONUS = 0.08; // 8% power bonus per enchantment level
 // GAME SYSTEM CONSTANTS
 // ============================================================================
 
-const STUCK_DETECTION_TICKS = 25; // Ticks before teleporting stuck dwarf
+const STUCK_DETECTION_TICKS = 10; // Ticks before teleporting stuck dwarf
 const FAILSAFE_CHECK_INTERVAL = 100; // Ticks between failsafe checks
 const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refresh
 

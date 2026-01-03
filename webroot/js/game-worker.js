@@ -23,6 +23,7 @@ let dropOff = null;
 let house = null;
 let research = null;
 let smelter = null;
+let management = null;
 let smelterTasks = [];
 let smelterTasksData = {};
 let dropGridStartX = 10;
@@ -36,6 +37,8 @@ let pendingTransactions = []; // Queue of transactions to send to main thread
 let hasForgedHighHardnessTool = false; // Track if player has successfully forged a tool with 100+ hardness material
 let oneTimeInvestments = []; // Array of active one-time investments {amount, ticksRemaining, payoutPerTick, id}
 let nextInvestmentId = 1; // Next investment ID to assign
+let activeManagementTasks = []; // Array of active management tasks
+let mangementTasks = {}; // Management task definitions
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -48,6 +51,7 @@ let smelterHeatingMode = false; // Track if we're currently in heating mode (for
 const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
 let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
+let managementReservedBy = null; // Track which dwarf name has reserved the management cell
 
 // Stuck detection tracking
 const stuckTracking = new Map(); // dwarf -> { x, y, hardness, ticks }
@@ -113,7 +117,7 @@ function coordKey(x, y) {
  */
 function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     // Get dwarf's task priority list (default if not set)
-    const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting'];
+    const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting', 'managing'];
     const taskBlacklist = dwarf.taskBlacklist || [];
 
     // Check if each task is available
@@ -127,6 +131,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     const taskAvailability = {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
+        'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
     };
 
@@ -186,6 +191,24 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
                 dwarf.status = 'moving';
                 //console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
                 return 'smelting';
+            }
+        } else if (taskId === 'managing') {
+            // Check if already at management location
+            if (dwarf.x === management.x && dwarf.y === management.y) {
+                // Already at management - start managing immediately
+                if (managementReservedBy === dwarf.name || !managementReservedBy) {
+                    managementReservedBy = dwarf.name;
+                    dwarf.status = 'managing';
+                    //console.log(`[${dwarf.name}] Started managing (already at location)`);
+                    return 'managing';
+                }
+            } else {
+                // Not at management - move there
+                managementReservedBy = dwarf.name;
+                scheduleMove(dwarf, management.x, management.y);
+                dwarf.status = 'moving';
+                //console.log(`[${dwarf.name}] Moving to management at (${management.x}, ${management.y})`);
+                return 'managing';
             }
         } else if (taskId === 'digging') {
             // If digging coordinates provided, move there; otherwise just signal digging task
@@ -335,6 +358,112 @@ function smelterHasWork() {
     return false;
 }
 
+// Check if management has any active tasks
+function managementHasWork() {
+    if (!activeManagementTasks || activeManagementTasks.length === 0) return false;
+    // Check if there are any active management tasks
+    return activeManagementTasks.some(task => task.active);
+}
+
+// Find the first active management task
+function findActiveManagementTask() {
+    if (!activeManagementTasks || activeManagementTasks.length === 0) return null;
+    // Return the first active task in priority order
+    return activeManagementTasks.find(task => task.active);
+}
+
+// Execute a completed management task
+function executeManagementTask(task, taskDef) {
+    console.log(`[Management] Executing task: ${task.type}`);
+
+    // Calculate trade bonus once (used by all selling tasks)
+    const totalTradeBonus = calculateTradeBonus(researchData, dwarfs);
+
+    switch (task.type) {
+        case 'sell-material': {
+            // Sell material down to keepQuantity
+            const materialId = task.values.material;
+            const keepQuantity = task.values.keepQuantity || 0;
+
+            const currentStock = materialsStock[materialId] || 0;
+            const amountToSell = Math.max(0, currentStock - keepQuantity);
+
+            if (amountToSell > 0) {
+                const material = materials[materialId];
+                if (material) {
+                    const goldEarned = Math.floor(amountToSell * material.worth * totalTradeBonus);
+
+                    // Update stock and gold
+                    materialsStock[materialId] = keepQuantity;
+                    gold += goldEarned;
+
+                    // Log transaction
+                    pendingTransactions.push({
+                        type: 'income',
+                        amount: goldEarned,
+                        description: `[Auto] Sold ${amountToSell}x ${material.name}`
+                    });
+
+                    console.log(`[Management] Sold ${amountToSell}x ${material.name} for ${goldEarned} gold (kept ${keepQuantity})`);
+                }
+            }
+            break;
+        }
+
+        case 'sell-non-craftables': {
+            // Sell all non-craftable materials (excludes smelter inputs, ingots, and gems)
+            const smelterInputMaterials = getSmelterInputMaterials();
+
+            let totalGold = 0;
+            let totalItems = 0;
+
+            for (const [id, m] of Object.entries(materials)) {
+                const materialType = m.type || '';
+
+                // Skip materials that are:
+                // - Used as smelter inputs
+                // - Ingots (used in forge)
+                // - Gems (have their own sell task)
+                if (smelterInputMaterials.has(id)) continue;
+                if (materialType.startsWith('Ingot')) continue;
+                if (materialType.startsWith('Gem')) continue;
+
+                const count = materialsStock[id] || 0;
+                if (count > 0) {
+                    const goldForThisMaterial = Math.floor(count * m.worth * totalTradeBonus);
+                    totalGold += goldForThisMaterial;
+                    totalItems += count;
+                    console.log(`[Management] Selling ${count}x ${m.name} for ${goldForThisMaterial} gold`);
+                    // Log individual material transaction
+                    pendingTransactions.push({
+                        type: 'income',
+                        amount: goldForThisMaterial,
+                        description: `[Auto] Sold ${count}x ${m.name}`
+                    });
+
+                    materialsStock[id] = 0;
+                }
+            }
+
+            if (totalItems > 0) {
+                gold += totalGold;
+                console.log(`[Management] Sold all non-craftable materials (${totalItems} items) for ${totalGold} gold`);
+            }
+            break;
+        }
+
+        // TODO: Implement other task types
+        case 'sell-gems':
+        case 'auto-reserach-cheapest':
+        case 'auto-invest':
+            console.log(`[Management] Task type ${task.type} not yet implemented`);
+            break;
+
+        default:
+            console.log(`[Management] Unknown task type: ${task.type}`);
+    }
+}
+
 // Find the first actionable smelter task
 function findActionableSmelterTask() {
     if (!smelterTasks || smelterTasks.length === 0) return null;
@@ -429,7 +558,7 @@ function handleSmelterTaskOutput(task, dwarf) {
 
         // Check for bonus ore (for sieve-loose-stone task)
         if (task.bonusChance && task.bonusType === 'deep-ore' && task.bonusAmount) {
-            console.log(`Checking bonus ore: chance=${task.bonusChance}, type=${task.bonusType}, amount=${task.bonusAmount}`);
+            //console.log(`Checking bonus ore: chance=${task.bonusChance}, type=${task.bonusType}, amount=${task.bonusAmount}`);
             if (Math.random() < task.bonusChance) {
                 // Calculate current depth (deepest dug row)
                 const currentDepth = startX;
@@ -459,7 +588,7 @@ function handleSmelterTaskOutput(task, dwarf) {
                     console.log(`No ores available at target depth ${targetDepth} (current depth: ${currentDepth})`);
                 }
             } else {
-                console.log(`Bonus roll failed for ${dwarf.name}`);
+                //console.log(`Bonus roll failed for ${dwarf.name}`);
             }
         }
     }
@@ -576,8 +705,12 @@ function checkAndShiftTopRows() {
         if (typeof startX === 'number') startX += 1;
 
         for (const d of dwarfs) {
-            d.y = Math.max(0, d.y - 1);
-            if (d.moveTarget && typeof d.moveTarget.y === 'number') {
+            // Only shift dwarfs that are within the grid.
+            // Dwarfs in the function row (y < 0) should not be shifted.
+            if (d.y >= 0) {
+                d.y = Math.max(0, d.y - 1);
+            }
+            if (d.moveTarget && typeof d.moveTarget.y === 'number' && d.moveTarget.y >= 0) {
                 d.moveTarget.y = Math.max(0, d.moveTarget.y - 1);
             }
         }
@@ -650,6 +783,13 @@ function attemptCollapse(x, y) {
 }
 
 function actForDwarf(dwarf) {
+    // If a dwarf is resting but not at the house, it's an invalid state.
+    // Correct it by setting them to idle so they can be reassigned a task (like moving to the house).
+    if (dwarf.status === 'resting' && house && (dwarf.x !== house.x || dwarf.y !== house.y)) {
+        console.warn(`[State Correction] Dwarf ${dwarf.name} was 'resting' at wrong location (${dwarf.x},${dwarf.y}). House is at (${house.x},${house.y}). Setting to 'idle'.`);
+        dwarf.status = 'idle';
+    }
+
     attemptCollapse(dwarf.x, dwarf.y);
     if (!dwarf.status) dwarf.status = 'idle';
     if (typeof dwarf.energy !== 'number') dwarf.energy = 1000;
@@ -663,7 +803,8 @@ function actForDwarf(dwarf) {
     dwarf.reservations = {
         dig: digReservations,
         research: researchReservedBy === dwarf.name,
-        smelter: smelterReservedBy === dwarf.name
+        smelter: smelterReservedBy === dwarf.name,
+        management: managementReservedBy === dwarf.name
     };
 
     // Check for stuck dwarf - only track when actively moving or digging
@@ -675,8 +816,10 @@ function actForDwarf(dwarf) {
     
     if (shouldTrackStuck) {
         if (tracked) {
-            // Check if position or hardness changed
-            if (tracked.x !== dwarf.x || tracked.y !== dwarf.y || tracked.hardness !== cellHardness) {
+            // Check if dwarf moved or made progress digging
+            const positionChanged = tracked.x !== dwarf.x || tracked.y !== dwarf.y;
+            const progressMade = cellHardness < tracked.hardness;
+            if (positionChanged || progressMade) {
                 // Dwarf moved or made progress, reset tracking
                 stuckTracking.set(trackKey, { x: dwarf.x, y: dwarf.y, hardness: cellHardness, ticks: 0 });
             } else {
@@ -692,10 +835,10 @@ function actForDwarf(dwarf) {
                     const hasResearch = researchReservedBy === dwarf.name;
                     const hasSmelter = smelterReservedBy === dwarf.name;
 
-                    console.log(`Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
-                    console.log(`  Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
-                    console.log(`  Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
-                    console.log(`  Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
+                    console.warn(`[stuck] Dwarf ${dwarf.name} stuck for ${tracked.ticks} ticks, teleporting to house`);
+                    console.log(`  [stuck] Position: (${dwarf.x}, ${dwarf.y}), Status: ${dwarf.status}`);
+                    console.log(`  [stuck] Move Target: ${dwarf.moveTarget ? `(${dwarf.moveTarget.x}, ${dwarf.moveTarget.y})` : 'None'}`);
+                    console.log(`  [stuck] Reservations: ${digReservations.length > 0 ? `Dig cells: ${digReservations.join(', ')}` : ''}${hasResearch ? ' Research' : ''}${hasSmelter ? ' Smelter' : ''}${digReservations.length === 0 && !hasResearch && !hasSmelter ? 'None' : ''}`);
 
                     dwarf.x = house.x;
                     dwarf.y = house.y;
@@ -708,6 +851,8 @@ function actForDwarf(dwarf) {
                     }
                     if (researchReservedBy === dwarf.name) researchReservedBy = null;
                     if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                    if (managementReservedBy === dwarf.name) managementReservedBy = null;
                     stuckTracking.delete(trackKey);
                     return;
                 }
@@ -742,6 +887,8 @@ function actForDwarf(dwarf) {
                 // Release reservations if dwarf was heading elsewhere
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 scheduleMove(dwarf, house.x, house.y);
                 dwarf.status = 'moving';
                 return;
@@ -927,7 +1074,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 console.log(`[WORKER] Research completed. Queue length: ${researchQueue.length}`);
                 if (researchQueue.length > 0) {
                     const nextResearch = researchQueue.shift();
-                    console.log(`[WORKER] Starting next queued research:`, nextResearch);
+                    //console.log(`[WORKER] Starting next queued research:`, nextResearch);
                     const nextResearchItem = researchData[nextResearch.id];
 
                     if (nextResearchItem) {
@@ -938,13 +1085,11 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
                         // Create active research object with id
                         activeResearch = { ...nextResearchItem, id: nextResearch.id };
-                        console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
+                        //console.log(`[WORKER] Started next queued research: ${nextResearchItem.name} (${researchQueue.length} remaining in queue)`);
                     } else {
                         console.error('[WORKER] Queued research not found:', nextResearch.id);
                         // Recursively try next in queue by re-processing
                     }
-                } else {
-                    console.log('[WORKER] No researches in queue to start');
                 }
             }
             return;
@@ -963,6 +1108,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // Don't reset progress when dwarf stops - allow continuation by next dwarf
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 dwarf.status = 'idle';
                 dwarf.currentSmelterTask = null;
                 return;
@@ -986,6 +1132,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // No work available, release smelter and become idle
                 // Don't reset progress - allow continuation when work becomes available
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 dwarf.status = 'idle';
                 dwarf.currentSmelterTask = null;
                 return;
@@ -1149,6 +1296,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     if (!nextTaskResult) {
                         // No more work available, release smelter and become idle
                         if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                         dwarf.status = 'idle';
                     }
                     // If there is more work, the dwarf will pick it up on the next tick
@@ -1217,8 +1365,149 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Not at smelter location, release reservation and become idle
             // Don't reset progress - allow continuation by next dwarf
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
             dwarf.status = 'idle';
             dwarf.currentSmelterTask = null;
+        }
+    }
+
+    // Managing state
+    if (dwarf.status === 'managing') {
+        // Check if at management location
+        if (typeof management === 'object' && management !== null && dwarf.x === management.x && dwarf.y === management.y) {
+            // Check if dwarf has enough energy
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+                // Don't reset progress when dwarf stops - allow continuation by next dwarf
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentManagementTask = null;
+                return;
+            }
+
+            // Check if we can afford to pay the dwarf
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance
+                const unionBusting = researchData['union-busting'];
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
+                if (Math.random() > continueWorkChance) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
+
+            // Find an active management task
+            const task = findActiveManagementTask();
+            if (!task) {
+                // No work available, release management and become idle
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentManagementTask = null;
+                return;
+            }
+
+            const taskDef = mangementTasks[task.type];
+            if (!taskDef) {
+                // Task definition not found
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentManagementTask = null;
+                return;
+            }
+
+            // Initialize or validate task tracking
+            if (!dwarf.currentManagementTask || dwarf.currentManagementTask !== task.id) {
+                // Starting a new task or switching tasks
+                dwarf.currentManagementTask = task.id;
+            }
+
+            // Initialize task progress if needed
+            if (!task.progress) {
+                task.progress = 0;
+            }
+
+            // Wisdom-based progress (similar to smelting)
+            let totalProgressGained = 0;
+            let currentWisdom = dwarf.wisdom || 0;
+            let runNumber = 1;
+
+            // Use task hardness as difficulty for rolling (like hardness for smelting)
+            const hardness = taskDef.hardness || 10;
+            // Use task cost as the number of actions needed to complete
+            const cost = taskDef.cost || 10;
+
+            while (true) {
+                // Calculate success chance based on wisdom vs hardness
+                const managingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
+                const roll = Math.random() * hardness;
+
+                // Minimum success chance
+                const minChanceRoll = Math.random();
+                const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
+                const normalSuccess = roll <= managingPower;
+                const success = normalSuccess || minChanceSuccess;
+
+                if (!success) {
+                    break; // Failed this run
+                }
+
+                // Success! Gain 1 progress
+                totalProgressGained++;
+
+                // Halve wisdom for next run
+                if ((dwarf.wisdom || 0) > 0) {
+                    currentWisdom = Math.floor(currentWisdom / 2);
+                } else {
+                    break; // 0 wisdom, only 1 roll
+                }
+
+                // Safety check
+                if (runNumber > 20) break;
+                runNumber++;
+            }
+
+            // Apply progress
+            task.progress += totalProgressGained;
+
+            // Check if task is complete (progress reaches cost)
+            if (task.progress >= cost) {
+                // Task complete!
+                console.log(`[Management] Task "${task.name || taskDef.name}" completed by ${dwarf.name}! (type: ${task.type})`);
+
+                // Award XP (hardness * cost for XP calculation)
+                const xpGain = Math.ceil(Math.sqrt(hardness * cost));
+                dwarf.xp = (dwarf.xp || 0) + xpGain;
+
+                // Execute the task based on type
+                executeManagementTask(task, taskDef);
+
+                // Deactivate the task
+                task.active = false;
+                task.progress = 0;
+
+                // Check for next task
+                const nextTask = findActiveManagementTask();
+                if (!nextTask) {
+                    // No more work, release management and become idle
+                    if (managementReservedBy === dwarf.name) managementReservedBy = null;
+                    dwarf.status = 'idle';
+                    dwarf.currentManagementTask = null;
+                }
+            } else {
+                // Consume energy and pay wage
+                applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK);
+                gold -= wage;
+                pendingTransactions.push({
+                    type: 'expense',
+                    amount: wage,
+                    description: `Wage for ${dwarf.name}`
+                });
+            }
+        } else {
+            // Not at management location, release reservation and become idle
+            if (managementReservedBy === dwarf.name) managementReservedBy = null;
+            dwarf.status = 'idle';
+            dwarf.currentManagementTask = null;
         }
     }
 
@@ -1306,6 +1595,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 // Release smelter reservation if dwarf was heading there
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 //console.log(`Dwarf ${dwarf.name} is full (bucket=${bucketTotal}) and heading to drop-off at (${dropOff.x},${dropOff.y})`);
                 return;
             }
@@ -1342,8 +1632,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         // Dwarf at special location - use unified task assignment
-        assignDwarfTask(dwarf, null, null);
-        // Task was assigned (or all tasks blacklisted) - return either way
+        const assignedTask = assignDwarfTask(dwarf, null, null);
+
+        // If no task was assigned (e.g. no research/smelting work available),
+        // don't just stand here and get stuck. Go home.
+        if (assignedTask === null && house) {
+            // Also release any reservations that might have been made, just in case
+            if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+            scheduleMove(dwarf, house.x, house.y);
+        }
+
+        // Task was assigned (or fallback move to house was scheduled) - return either way
         return;
     }
 
@@ -1474,6 +1775,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Release any reservations when movement fails
             if (researchReservedBy === dwarf.name) researchReservedBy = null;
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+                if (managementReservedBy === dwarf.name) managementReservedBy = null;
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
@@ -1571,11 +1873,16 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
     }
 
-    // All digging-related logic below only applies to main grid (not functions grid at y=-1)
-    // If dwarf is in functions grid, they should only perform functions tasks
+    // If dwarf is in functions grid, they should only perform functions tasks, unless they are idle.
     if (!row) {
-        // Dwarf is in functions grid - no digging available
-        return;
+        // If the dwarf is idle in the function row, it should try to move to the grid to find work.
+        if (dwarf.status === 'idle') {
+            const taskBlacklist = dwarf.taskBlacklist || [];
+            if (!taskBlacklist.includes('digging')) {
+                scheduleMove(dwarf, dwarf.x, 0); // Move to (x,0) to start digging
+            }
+        }
+        return; // For other statuses in function row, do nothing else.
     }
 
     // Try moving down if current cell is empty
@@ -1703,7 +2010,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 //console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
             }
         } else if (aboveCell && aboveCell.hardness > 0 && occupiedAbove) {
-            console.log(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
+            console.warn(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
         }
     }
 
@@ -1767,6 +2074,81 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         dwarf.status = 'idle';
     } else {
         dwarf.status = 'digging';
+    }
+}
+
+/**
+ * Check management task activation conditions and update their active status
+ */
+function checkManagementTaskActivation() {
+    if (!activeManagementTasks || activeManagementTasks.length === 0) return;
+
+    for (const task of activeManagementTasks) {
+        const taskDef = mangementTasks[task.type];
+        if (!taskDef) continue;
+        if(task.active) continue;
+
+        let shouldActivate = false;
+
+        // Check activation condition based on task type
+        switch (task.type) {
+            case 'sell-material': {
+                // Activate when material stock exceeds minQuantity
+                const material = task.values.material;
+                const minQuantity = task.values.minQuantity || 0;
+                const currentStock = materialsStock[material] || 0;
+                shouldActivate = currentStock > minQuantity;
+                break;
+            }
+
+            case 'sell-non-craftables': {
+                // Activate when total non-craftable materials exceed minQuantity
+                const minQuantity = task.values.minQuantity || 0;
+                const totalNonCraftables = calculateNonCraftableMaterialsTotal(materialsStock);
+                shouldActivate = totalNonCraftables > minQuantity;
+                break;
+            }
+
+            case 'sell-gems': {
+                // Activate when gem count exceeds minQuantity
+                const gemtype = task.values.gemtype || 'all';
+                const minQuantity = task.values.minQuantity || 0;
+                const maxcarats = task.values.maxcarats || 1;
+
+                let matchingGemCount = 0;
+                for (const gem of gems) {
+                    if (gemtype === 'all' || gem.type === gemtype) {
+                        if (gem.carat <= maxcarats) {
+                            matchingGemCount++;
+                        }
+                    }
+                }
+                shouldActivate = matchingGemCount > minQuantity;
+                break;
+            }
+
+            case 'auto-reserach-cheapest': {
+                // Activate when gold is above threshold AND research queue size is below threshold
+                const minBankGold = task.values.minBankGold || 0;
+                const minQueueSize = task.values.minQueueSize || 0;
+                shouldActivate = gold > minBankGold && researchQueue.length <= minQueueSize;
+                break;
+            }
+
+            case 'auto-invest': {
+                // Activate when gold is above threshold
+                const minBankGold = task.values.minBankGold || 0;
+                shouldActivate = gold > minBankGold;
+                break;
+            }
+
+            default:
+                // Unknown task type, keep current state
+                continue;
+        }
+
+        // Update task active status
+        task.active = shouldActivate;
     }
 }
 
@@ -1883,19 +2265,22 @@ function tick() {
                     const activelySmelting = reservingDwarf.status === 'smelting';
                     
                     if (!atSmelter && !headingToSmelter && !activelySmelting) {
-                        console.log(`Failsafe: Releasing smelter reservation from ${smelterReservedBy} (at house or elsewhere)`);
+                        console.error(`Failsafe: Releasing smelter reservation from ${smelterReservedBy} (at house or elsewhere)`);
                         smelterReservedBy = null;
                     }
                 } else {
                     // Reserved by a dwarf that doesn't exist anymore
-                    console.log(`Failsafe: Releasing smelter reservation from non-existent dwarf ${smelterReservedBy}`);
+                    console.error(`Failsafe: Releasing smelter reservation from non-existent dwarf ${smelterReservedBy}`);
                     smelterReservedBy = null;
                 }
             }
         }
         
         const shifted = checkAndShiftTopRows();
-        
+
+        // Check and update management task activation states
+        checkManagementTaskActivation();
+
         // Send updated state back to main thread
         self.postMessage({
             type: 'tick-complete',
@@ -1920,6 +2305,7 @@ function tick() {
                 smelterTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,
+                activeManagementTasks,
                 transactions: pendingTransactions.length > 0 ? [...pendingTransactions] : undefined
             }
         });
@@ -1958,6 +2344,7 @@ self.addEventListener('message', (e) => {
             house = data.house;
             research = data.research;
             smelter = data.smelter;
+            management = data.management;
             if (data.smelterTasks) {
                 smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
             }
@@ -1986,6 +2373,9 @@ self.addEventListener('message', (e) => {
             // Initialize one-time investments
             if (data.oneTimeInvestments) oneTimeInvestments = JSON.parse(JSON.stringify(data.oneTimeInvestments));
             if (data.nextInvestmentId !== undefined) nextInvestmentId = data.nextInvestmentId;
+            // Initialize management tasks
+            if (data.activeManagementTasks) activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
+            if (data.mangementTasks) mangementTasks = JSON.parse(JSON.stringify(data.mangementTasks));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -2055,6 +2445,9 @@ self.addEventListener('message', (e) => {
                 if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
                 if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+                if (data.activeManagementTasks !== undefined) {
+                    activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
+                }
             }
             break;
 

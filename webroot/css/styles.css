@@ -118,7 +118,7 @@ main {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 6px;
+    padding: px;
     aspect-ratio: 1 / 1;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
@@ -129,7 +129,9 @@ main {
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
+    margin-bottom: 4px;
     position: relative; /* Allow absolute positioning of progress bars */
+    overflow: hidden; /* Contain progress/temperature bars within button */
 }
 
 .functions-list a:hover {
@@ -489,9 +491,9 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    padding: 16px;
+    padding: 8 px;
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(2, 2, 2, 0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     backdrop-filter: blur(10px) saturate(120%);
@@ -512,10 +514,14 @@ header, footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 320px;
-    min-width: 550px;
-    max-width: 550px;
+    width: 550px;
 }
+
+/* Only the materials panel (not functions panel) should have fixed height */
+#materials-panel {
+    height: 435px;
+}
+
 .materials-panel--highlight {
     box-shadow: 0 0 0 2px rgba(59,130,246,0.8), 0 10px 30px rgba(0,0,0,0.6);
 }
@@ -798,7 +804,7 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
     backdrop-filter: blur(10px) saturate(120%);
-    max-height: 270px;
+    max-height: 468px;
     width:540px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -825,7 +831,7 @@ header, footer {
 
 .warehouse-table-header {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    grid-template-columns: 2fr 80px 0.8fr 0.8fr 1fr 1.8fr;
     gap: 12px;
     padding: 10px 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
@@ -850,7 +856,7 @@ header, footer {
 
 .warehouse-row {
     display: grid;
-    grid-template-columns: 2fr 0.8fr 0.8fr 1fr 0.5fr 1.8fr;
+    grid-template-columns: 2fr 80px 0.8fr 0.8fr 1fr 1.8fr;
     gap: 8px;
     align-items: center;
     padding: 4px 8px;
@@ -920,11 +926,11 @@ header, footer {
 
 .wh-col-icons {
     font-size: 14px;
-    text-align: center;
+    text-align: left;
     white-space: nowrap;
     display: inline-flex;
     gap: 2px;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .wh-col-actions {
@@ -950,7 +956,7 @@ header, footer {
 
 /* Dwarf panel rows (when shown in materials panel) */
 #materials-list {
-    max-height: 340px;
+    max-height: 468px;
     overflow-y: auto;
     padding-right: 8px;
     scrollbar-width: thin;
@@ -978,6 +984,7 @@ header, footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
+    align-content: start;
 }
 
 .dwarf-row { 
@@ -1626,37 +1633,26 @@ header, footer {
     color: #666;
 }
 
-/* Smelter badge on drop grid */
-.smelter-badge {
+/* Notification badge on grid cells (used for house, research, smelter, etc.) */
+.grid-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    min-width: 16px;
-    height: 16px;
+    top: -22px;
+    right: -40px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     font-size: 10px;
     font-weight: bold;
+    line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
-    border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-.smelter-badge-active {
-    background: #3b82f6;
-    color: #fff;
-}
-
-.smelter-badge-idle {
-    background: #757575;
-    color: #fff;
-}
-
-.smelter-badge-paused {
-    background: #ff9800;
-    color: #fff;
+    border: 0px solid white;
+    box-shadow: 0 1px 3px #1a1a1a;
+    padding: 1px;
+    background: #484848;
+    color: #e2e2e2;
 }
 
 /* Smelter Drag and Drop Styles */
@@ -3386,4 +3382,260 @@ header, footer {
 
 #digging-grid .functions-depth-cell {
     background: transparent !important;
+}
+
+/* Management Modal Styles */
+
+/* Management modal widths */
+#management-modal .modal-dialog {
+    max-width: 700px;
+}
+
+#add-management-task-modal .modal-dialog,
+#edit-management-task-modal .modal-dialog {
+    max-width: 400px;
+}
+
+/* Form group styling for management modals */
+.form-group {
+    margin-bottom: 10px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    color: #dbeafe;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* Readonly/disabled styling for edit modal task type field */
+#edit-task-type-display:disabled {
+    background: #1a1a1a;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.management-task-form {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+.management-task-form td {
+    padding: 6px 10px;
+    vertical-align: middle;
+}
+
+.management-task-form .form-label {
+    text-align: left;
+    color: #dbeafe;
+    font-weight: 500;
+    width: 45%;
+}
+
+.management-task-form .form-input {
+    width: 55%;
+}
+
+.management-input {
+    width: 100%;
+    min-width: 200px;
+    padding: 8px 12px;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.management-input:focus {
+    border-color: #3b82f6;
+    background: #333333;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.management-input:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.management-number-input {
+    text-align: right;
+}
+
+/* Remove number input spinners */
+.management-number-input::-webkit-outer-spin-button,
+.management-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+.management-number-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Dropdown arrow styling for dark theme */
+.management-input option {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+/* Style the task type select dropdown */
+#task-type-select {
+    width: 100%;
+    padding: 8px 12px;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+#task-type-select:focus {
+    border-color: #3b82f6;
+    background: #333333;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#task-type-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#task-type-select option {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+/* Style the form-group label */
+.form-group label {
+    display: block;
+    color: #dbeafe;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+/* Management Task List Styles (matching smelter) */
+.management-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.management-task-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: grab;
+}
+
+.management-task-row:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+    border-color: rgba(255,255,255,0.15);
+}
+
+.management-task-row:active {
+    cursor: grabbing;
+}
+
+.management-task-priority {
+    font-weight: 700;
+    font-size: 14px;
+    color: #ffa726;
+    min-width: 24px;
+    text-align: center;
+}
+
+.management-task-row .drag-handle {
+    cursor: grab;
+    font-size: 16px;
+    color: #888;
+    user-select: none;
+}
+
+.management-task-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.management-task-name {
+    font-weight: 500;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.management-task-active {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.management-task-inactive {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    color: #888;
+    white-space: nowrap;
+}
+
+.management-task-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.management-task-detail-btn,
+.management-task-delete-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.management-task-detail-btn {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.management-task-detail-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.management-task-delete-btn {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.management-task-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
 }
