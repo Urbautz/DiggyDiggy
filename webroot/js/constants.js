@@ -152,17 +152,17 @@ const SMELTER_POLISH_BREAK_CHANCE = 0.05; // 5% base break chance when polishing
 
 // Smelter task time requirements (in ticks)
 const SMELTER_HEATING_TICKS_REQUIRED = 1; // Time to heat furnace
-const SMELTER_BASIC_PROCESSING_TICKS_REQUIRED = 2; // Time for basic processing (drying mud)
+const SMELTER_BASIC_PROCESSING_TICKS_REQUIRED = 1; // Time for basic processing (drying mud)
 const SMELTER_GRINDING_TICKS_REQUIRED = 5; // Time for grinding operations
-const SMELTER_POLISHING_TICKS_REQUIRED = 10; // Time for stone polishing
-const SMELTER_SOFT_METAL_TICKS_REQUIRED = 10; // Time for soft metal smelting (bronce, copper, zinc)
-const SMELTER_ALLOY_TICKS_REQUIRED = 12; // Time for alloy creation
-const SMELTER_IRON_TICKS_REQUIRED = 15; // Time for pig iron smelting
-const SMELTER_STEEL_TICKS_REQUIRED = 20; // Time for iron and steel smelting
-const SMELTER_HARDENED_STEEL_TICKS_REQUIRED = 22; // Time for hardened steel smelting
-const SMELTER_DWARF_STEEL_TICKS_REQUIRED = 28; // Time for dwarfen steel smelting
-const SMELTER_PRECIOUS_METAL_TICKS_REQUIRED = 30; // Time for precious metal smelting (silver, gold)
-const SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED = 35; // Time for exotic ore enrichment (wolfram, uranium, plutonium)
+const SMELTER_POLISHING_TICKS_REQUIRED = 5; // Time for stone polishing
+const SMELTER_SOFT_METAL_TICKS_REQUIRED = 7; // Time for soft metal smelting (bronce, copper, zinc)
+const SMELTER_ALLOY_TICKS_REQUIRED = 15; // Time for alloy creation
+const SMELTER_IRON_TICKS_REQUIRED = 8; // Time for pig iron smelting
+const SMELTER_STEEL_TICKS_REQUIRED = 10; // Time for iron and steel smelting
+const SMELTER_HARDENED_STEEL_TICKS_REQUIRED = 11; // Time for hardened steel smelting
+const SMELTER_DWARF_STEEL_TICKS_REQUIRED = 14; // Time for dwarfen steel smelting
+const SMELTER_PRECIOUS_METAL_TICKS_REQUIRED = 15; // Time for precious metal smelting (silver, gold)
+const SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED = 25; // Time for exotic ore enrichment (wolfram, uranium, plutonium)
 
 // Smelter difficulty system (wisdom-based reruns like research)
 const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point
