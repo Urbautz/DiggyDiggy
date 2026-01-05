@@ -491,7 +491,7 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    padding: 8 px;
+    padding: 8px;
     border-radius: 14px;
     border: 1px solid rgba(2, 2, 2, 0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
