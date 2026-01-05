@@ -418,9 +418,13 @@ function updateSmelterTemperatureDisplay() {
                     statusIndicator.textContent = '✅';
                     statusIndicator.title = 'Ready - materials available and temperature below minimum';
                 } else {
-                    // For coal heating, check if it's blocked due to temperature or materials
+                    // For heating tasks, check if it's blocked due to temperature or materials
                     if (task.heatGain !== 'dynamic' && stockAmount >= task.input.amount && !smelterHeatingMode) {
-                        // Temperature is adequate (not in heating mode)
+                        // Coal heating: Temperature is adequate (not in heating mode)
+                        statusIndicator.textContent = '🔥';
+                        statusIndicator.title = 'Temperature adequate - no heating needed';
+                    } else if (task.heatGain === 'dynamic' && stockAmount >= task.input.amount && smelterTemperature >= smelterMagmaMinTemp) {
+                        // Magma heating: Temperature is adequate (above minimum threshold)
                         statusIndicator.textContent = '🔥';
                         statusIndicator.title = 'Temperature adequate - no heating needed';
                     } else {
@@ -741,6 +745,10 @@ function populateSmelter() {
             // Determine why task is blocked
             if (task.type === 'heating' && task.heatGain !== 'dynamic' && stockAmount >= task.input.amount && !smelterHeatingMode) {
                 // Coal heating task: temperature is adequate (not in heating mode)
+                statusIndicator.textContent = '🔥';
+                statusIndicator.title = 'Temperature adequate - no heating needed';
+            } else if (task.type === 'heating' && task.heatGain === 'dynamic' && stockAmount >= task.input.amount && smelterTemperature >= smelterMagmaMinTemp) {
+                // Magma heating task: temperature is adequate (above minimum threshold)
                 statusIndicator.textContent = '🔥';
                 statusIndicator.title = 'Temperature adequate - no heating needed';
             } else if (task.minTemp && smelterTemperature < task.minTemp) {

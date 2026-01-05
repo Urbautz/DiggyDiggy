@@ -109,11 +109,11 @@ function coordKey(x, y) {
 
 /**
  * Unified task assignment for dwarfs
- * Checks task priority and blacklist, then assigns the highest priority available task
+ * Checks task priority and blacklist, then assigns a random task from highest priority tier available
  * @param {Object} dwarf - The dwarf to assign a task to
  * @param {number|null} diggingX - X coordinate for digging (if returning to digging), or null
  * @param {number|null} diggingY - Y coordinate for digging (if returning to digging), or null
- * @returns {string|null} The task assigned ('research', 'smelting', 'digging') or null if none available
+ * @returns {string|null} The task assigned ('research', 'smelting', 'managing', 'digging') or null if none available
  */
 function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     // Get dwarf's task priority lists (default if not set)
@@ -121,16 +121,8 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'managing'];
     const taskPriorityNone = dwarf.taskPriorityNone || [];
 
-    // Combine into single priority list (high first, then normal)
-    const taskPriority = [...taskPriorityHigh, ...taskPriorityNormal];
-
-    // Check if each task is available
-    const researchAvailabilityDetails = {
-        activeResearch: !!activeResearch,
-        researchReservedBy: researchReservedBy,
-        researchObjectExists: typeof research === 'object' && research !== null,
-        canAttempt: canDwarfAttemptResearch(dwarf)
-    };
+    // STEP 1: Find all tasks the dwarf can do
+    const allPossibleTasks = ['research', 'smelting', 'managing', 'digging'];
 
     const taskAvailability = {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
@@ -139,95 +131,130 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
         'digging': true // Digging is always considered "available" in priority check
     };
 
-    // Debug logging
-    //console.log(`[${dwarf.name}] assignDwarfTask called:`, {
-    //    priorityHigh: taskPriorityHigh,
-    //    priorityNormal: taskPriorityNormal,
-    //    priorityNone: taskPriorityNone,
-    //    availability: taskAvailability,
-    //    researchDetails: researchAvailabilityDetails,
-    //    position: `(${dwarf.x}, ${dwarf.y})`,
-    //    status: dwarf.status
-    //});
+    // Filter to only possible tasks (available and not in "no priority" list)
+    const possibleTasks = allPossibleTasks.filter(taskId => {
+        return taskAvailability[taskId] && !taskPriorityNone.includes(taskId);
+    });
 
-    // Find the highest priority task that is available and not in "none" list
-    for (const taskId of taskPriority) {
-        // Skip if in "no priority" list or not available
-        if (taskPriorityNone.includes(taskId) || !taskAvailability[taskId]) {
-            //console.log(`[${dwarf.name}] Skipping ${taskId}: noPriority=${taskPriorityNone.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
-            continue;
-        }
+    // STEP 2: Debug output - which tasks are possible
+    console.log(`[${dwarf.name}] Task Assignment:`, {
+        position: `(${dwarf.x}, ${dwarf.y})`,
+        allAvailability: taskAvailability,
+        possibleTasks: possibleTasks,
+        priorityHigh: taskPriorityHigh,
+        priorityNormal: taskPriorityNormal,
+        priorityNone: taskPriorityNone
+    });
 
-        //console.log(`[${dwarf.name}] Attempting to assign ${taskId}`);
+    // STEP 3: Check high priority tasks
+    const possibleHighPriorityTasks = taskPriorityHigh.filter(taskId => possibleTasks.includes(taskId));
 
-        // Task is available! Execute it
-        if (taskId === 'research') {
-            // Check if already at research location
-            if (dwarf.x === research.x && dwarf.y === research.y) {
-                // Already at research - start researching immediately
-                if (researchReservedBy === dwarf.name || !researchReservedBy) {
-                    researchReservedBy = dwarf.name;
-                    dwarf.status = 'researching';
-                    //console.log(`[${dwarf.name}] Started researching (already at location)`);
-                    return 'research';
-                }
-            } else {
-                // Not at research - move there
-                researchReservedBy = dwarf.name;
-                scheduleMove(dwarf, research.x, research.y);
-                dwarf.status = 'moving';
-                //console.log(`[${dwarf.name}] Moving to research at (${research.x}, ${research.y})`);
-                return 'research';
-            }
-        } else if (taskId === 'smelting') {
-            // Check if already at smelter location
-            if (dwarf.x === smelter.x && dwarf.y === smelter.y) {
-                // Already at smelter - start smelting immediately
-                if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
-                    smelterReservedBy = dwarf.name;
-                    dwarf.status = 'smelting';
-                    //console.log(`[${dwarf.name}] Started smelting (already at location)`);
-                    return 'smelting';
-                }
-            } else {
-                // Not at smelter - move there
-                smelterReservedBy = dwarf.name;
-                scheduleMove(dwarf, smelter.x, smelter.y);
-                dwarf.status = 'moving';
-                //console.log(`[${dwarf.name}] Moving to smelter at (${smelter.x}, ${smelter.y})`);
-                return 'smelting';
-            }
-        } else if (taskId === 'managing') {
-            // Check if already at management location
-            if (dwarf.x === management.x && dwarf.y === management.y) {
-                // Already at management - start managing immediately
-                if (managementReservedBy === dwarf.name || !managementReservedBy) {
-                    managementReservedBy = dwarf.name;
-                    dwarf.status = 'managing';
-                    //console.log(`[${dwarf.name}] Started managing (already at location)`);
-                    return 'managing';
-                }
-            } else {
-                // Not at management - move there
-                managementReservedBy = dwarf.name;
-                scheduleMove(dwarf, management.x, management.y);
-                dwarf.status = 'moving';
-                //console.log(`[${dwarf.name}] Moving to management at (${management.x}, ${management.y})`);
-                return 'managing';
-            }
-        } else if (taskId === 'digging') {
-            // If digging coordinates provided, move there; otherwise just signal digging task
-            if (diggingX !== null && diggingY !== null) {
-                scheduleMove(dwarf, diggingX, diggingY);
-            }
-            //console.log(`[${dwarf.name}] Assigned digging task`);
-            return 'digging';
-        }
+    console.log(`[${dwarf.name}] High Priority Check:`, {
+        configured: taskPriorityHigh,
+        possible: possibleHighPriorityTasks
+    });
+
+    if (possibleHighPriorityTasks.length > 0) {
+        // Select random task from high priority
+        const selectedTask = possibleHighPriorityTasks[Math.floor(Math.random() * possibleHighPriorityTasks.length)];
+        console.log(`[${dwarf.name}] ✅ Selected HIGH PRIORITY task: ${selectedTask}`);
+        return executeTask(dwarf, selectedTask, diggingX, diggingY);
+    }
+
+    // STEP 4: Check normal priority tasks
+    const possibleNormalPriorityTasks = taskPriorityNormal.filter(taskId => possibleTasks.includes(taskId));
+
+    console.log(`[${dwarf.name}] Normal Priority Check:`, {
+        configured: taskPriorityNormal,
+        possible: possibleNormalPriorityTasks
+    });
+
+    if (possibleNormalPriorityTasks.length > 0) {
+        // Select random task from normal priority
+        const selectedTask = possibleNormalPriorityTasks[Math.floor(Math.random() * possibleNormalPriorityTasks.length)];
+        console.log(`[${dwarf.name}] ✅ Selected NORMAL PRIORITY task: ${selectedTask}`);
+        return executeTask(dwarf, selectedTask, diggingX, diggingY);
     }
 
     // No task was assigned
-    //console.log(`[${dwarf.name}] No task assigned (all blacklisted or unavailable)`);
+    console.log(`[${dwarf.name}] ❌ No task assigned (no possible tasks in high or normal priority)`);
     return null;
+}
+
+/**
+ * Execute a specific task for a dwarf
+ * @param {Object} dwarf - The dwarf to assign the task to
+ * @param {string} taskId - The task to execute ('research', 'smelting', 'managing', 'digging')
+ * @param {number|null} diggingX - X coordinate for digging, or null
+ * @param {number|null} diggingY - Y coordinate for digging, or null
+ * @returns {string} The task that was executed
+ */
+function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
+    if (taskId === 'research') {
+        // Check if already at research location
+        if (dwarf.x === research.x && dwarf.y === research.y) {
+            // Already at research - start researching immediately
+            if (researchReservedBy === dwarf.name || !researchReservedBy) {
+                researchReservedBy = dwarf.name;
+                dwarf.status = 'researching';
+                console.log(`[${dwarf.name}] 🔬 Started researching (already at location)`);
+                return 'research';
+            }
+        } else {
+            // Not at research - move there
+            researchReservedBy = dwarf.name;
+            scheduleMove(dwarf, research.x, research.y);
+            dwarf.status = 'moving';
+            console.log(`[${dwarf.name}] 🚶 Moving to research at (${research.x}, ${research.y})`);
+            return 'research';
+        }
+    } else if (taskId === 'smelting') {
+        // Check if already at smelter location
+        if (dwarf.x === smelter.x && dwarf.y === smelter.y) {
+            // Already at smelter - start smelting immediately
+            if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
+                smelterReservedBy = dwarf.name;
+                dwarf.status = 'smelting';
+                console.log(`[${dwarf.name}] 🔥 Started smelting (already at location)`);
+                return 'smelting';
+            }
+        } else {
+            // Not at smelter - move there
+            smelterReservedBy = dwarf.name;
+            scheduleMove(dwarf, smelter.x, smelter.y);
+            dwarf.status = 'moving';
+            console.log(`[${dwarf.name}] 🚶 Moving to smelter at (${smelter.x}, ${smelter.y})`);
+            return 'smelting';
+        }
+    } else if (taskId === 'managing') {
+        // Check if already at management location
+        if (dwarf.x === management.x && dwarf.y === management.y) {
+            // Already at management - start managing immediately
+            if (managementReservedBy === dwarf.name || !managementReservedBy) {
+                managementReservedBy = dwarf.name;
+                dwarf.status = 'managing';
+                console.log(`[${dwarf.name}] 💼 Started managing (already at location)`);
+                return 'managing';
+            }
+        } else {
+            // Not at management - move there
+            managementReservedBy = dwarf.name;
+            scheduleMove(dwarf, management.x, management.y);
+            dwarf.status = 'moving';
+            console.log(`[${dwarf.name}] 🚶 Moving to management at (${management.x}, ${management.y})`);
+            return 'managing';
+        }
+    } else if (taskId === 'digging') {
+        // If digging coordinates provided, move there; otherwise just signal digging task
+        if (diggingX !== null && diggingY !== null) {
+            scheduleMove(dwarf, diggingX, diggingY);
+        }
+        console.log(`[${dwarf.name}] ⛏️ Assigned digging task`);
+        return 'digging';
+    }
+
+    // Shouldn't reach here, but return the taskId anyway
+    return taskId;
 }
 
 function isCellOccupiedByStanding(x, y) {
@@ -1294,16 +1321,10 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     task.progress = 0;
                     dwarf.currentSmelterTask = null;
 
-                    // Task completed! Check if there's more work immediately
-                    // This allows the dwarf to continue to the next task without waiting a tick
-                    const nextTaskResult = findActionableSmelterTask();
-                    if (!nextTaskResult) {
-                        // No more work available, release smelter and become idle
-                        if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
-                        dwarf.status = 'idle';
-                    }
-                    // If there is more work, the dwarf will pick it up on the next tick
+                    // Task completed! Keep dwarf as 'smelting' status
+                    // They will check for more work on the next tick
+                    // Don't release reservation or become idle - stay at smelter
+                    console.log(`[${dwarf.name}] ✅ Completed smelter task, staying at smelter for more work`);
                 }
 
                 // Pay the dwarf, consume energy and award XP for each tick
@@ -1488,15 +1509,12 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 // Deactivate the task
                 task.active = false;
                 task.progress = 0;
+                dwarf.currentManagementTask = null;
 
-                // Check for next task
-                const nextTask = findActiveManagementTask();
-                if (!nextTask) {
-                    // No more work, release management and become idle
-                    if (managementReservedBy === dwarf.name) managementReservedBy = null;
-                    dwarf.status = 'idle';
-                    dwarf.currentManagementTask = null;
-                }
+                // Task completed! Keep dwarf as 'managing' status
+                // They will check for more work on the next tick
+                // Don't release reservation or become idle - stay at management
+                console.log(`[${dwarf.name}] ✅ Completed management task, staying at management for more work`);
             } else {
                 // Consume energy and pay wage
                 applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK);
