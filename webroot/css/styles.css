@@ -118,7 +118,6 @@ main {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: px;
     aspect-ratio: 1 / 1;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
@@ -491,7 +490,7 @@ header, footer {
 .drop-off-marker.workbench { font-size: 18px; transform: translateY(-1px); }
 
 .drop-grid-panel {
-    padding: 8 px;
+    padding: 8px;
     border-radius: 14px;
     border: 1px solid rgba(2, 2, 2, 0.08);
     background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
@@ -3243,6 +3242,12 @@ header, footer {
     gap: 8px;
 }
 
+.task-priority-layout-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+
 .task-priority-box {
     background: rgba(0, 0, 0, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -3319,11 +3324,38 @@ header, footer {
     line-height: 1;
 }
 
+/* High priority tasks - Green */
+.task-priority-high .task-priority-item {
+    background: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+.task-priority-high .task-priority-item:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.15);
+}
+
+/* Normal priority tasks - Blue (default) */
+.task-priority-normal .task-priority-item {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.task-priority-normal .task-priority-item:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+}
+
+/* No priority tasks (blacklist) - Red */
+.task-priority-none .task-priority-item,
 .task-blacklist .task-priority-item {
     background: rgba(239, 68, 68, 0.12);
     border-color: rgba(239, 68, 68, 0.25);
 }
 
+.task-priority-none .task-priority-item:hover,
 .task-blacklist .task-priority-item:hover {
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(239, 68, 68, 0.4);

@@ -46,7 +46,7 @@ function populateManagement() {
     } else {
         // Render each active task
         activeManagementTasks.forEach((activeTask, index) => {
-            const taskDef = mangementTasks[activeTask.type];
+            const taskDef = managementTasks[activeTask.type];
             if (!taskDef) return;
 
             const taskRow = document.createElement('div');
@@ -152,7 +152,7 @@ function updateManagementTaskActivationStates() {
             statusBadge.className = 'management-task-active';
 
             // Show progress if task is being worked on
-            const taskDef = mangementTasks[activeTask.type];
+            const taskDef = managementTasks[activeTask.type];
             if (activeTask.progress && taskDef && taskDef.cost) {
                 const progress = Math.floor(activeTask.progress);
                 const total = taskDef.cost;
@@ -234,8 +234,8 @@ function populateAddTaskModal() {
     // Clear and populate task type dropdown
     taskTypeSelect.innerHTML = '<option value="">-- Select Task Type --</option>';
 
-    console.log('[Management] mangementTasks:', mangementTasks);
-    for (const [taskId, taskDef] of Object.entries(mangementTasks)) {
+    console.log('[Management] managementTasks:', managementTasks);
+    for (const [taskId, taskDef] of Object.entries(managementTasks)) {
         console.log('[Management] Processing task:', taskId, taskDef);
         // Check if task requires research
         if (taskDef.requires) {
@@ -293,7 +293,7 @@ function updateTaskValueFields() {
         return;
     }
 
-    const taskDef = mangementTasks[selectedType];
+    const taskDef = managementTasks[selectedType];
     console.log('[Management] Task definition:', taskDef);
     if (!taskDef) {
         console.error('[Management] Task definition not found for:', selectedType);
@@ -403,7 +403,7 @@ function confirmAddManagementTask() {
         return;
     }
 
-    const taskDef = mangementTasks[selectedType];
+    const taskDef = managementTasks[selectedType];
     console.log('[Management] Task definition:', taskDef);
     if (!taskDef) return;
 
@@ -470,7 +470,7 @@ async function openEditManagementTaskModal(taskId) {
         return;
     }
 
-    const taskDef = mangementTasks[task.type];
+    const taskDef = managementTasks[task.type];
     if (!taskDef) {
         console.error('[Management] Task definition not found:', task.type);
         return;
@@ -626,7 +626,7 @@ function confirmEditManagementTask() {
         return;
     }
 
-    const taskDef = mangementTasks[task.type];
+    const taskDef = managementTasks[task.type];
     if (!taskDef) {
         console.error('[Management] Task definition not found:', task.type);
         return;

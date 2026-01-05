@@ -2394,7 +2394,7 @@ function initWorker() {
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
-            mangementTasks: mangementTasks || {}
+            managementTasks: managementTasks || {}
         }
     });
     
@@ -2532,16 +2532,25 @@ function loadGame() {
                 dwarf.bucket = sanitizedBucket;
             }
 
-            // Migration: Add task priority system if not present
-            if (!dwarf.taskPriority) {
-                dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
+            // Migration: Convert old two-tier system to new three-tier system
+            if (dwarf.taskPriority && !dwarf.taskPriorityNormal) {
+                // Old system detected - migrate to new system
+                dwarf.taskPriorityHigh = [];
+                dwarf.taskPriorityNormal = [...dwarf.taskPriority];
+                dwarf.taskPriorityNone = dwarf.taskBlacklist ? [...dwarf.taskBlacklist] : [];
+                // Clean up old properties
+                delete dwarf.taskPriority;
+                delete dwarf.taskBlacklist;
             }
+
+            // Migration: Ensure new three-tier system exists
+            if (!dwarf.taskPriorityHigh) dwarf.taskPriorityHigh = [];
+            if (!dwarf.taskPriorityNormal) dwarf.taskPriorityNormal = ['digging', 'research', 'smelting', 'managing'];
+            if (!dwarf.taskPriorityNone) dwarf.taskPriorityNone = [];
+
             // Migration: Add 'managing' to existing task priorities if missing
-            if (dwarf.taskPriority && !dwarf.taskPriority.includes('managing')) {
-                dwarf.taskPriority.push('managing');
-            }
-            if (!dwarf.taskBlacklist) {
-                dwarf.taskBlacklist = [];
+            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('managing')) {
+                dwarf.taskPriorityNormal.push('managing');
             }
         }
 

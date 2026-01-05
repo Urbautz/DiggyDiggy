@@ -92,17 +92,23 @@
                 <!-- Task Priority section -->
                 <div class="dwarf-task-priority-container">
                     <h4 class="dwarf-section-title" style="margin-bottom: 10px;">📋 Task Priority</h4>
-                    <div class="task-priority-layout">
+                    <div class="task-priority-layout-three">
                         <div class="task-priority-box">
-                            <div class="task-priority-box-header">Do if possible (digging will always be possible)</div>
-                            <div id="task-priority-list" class="task-priority-list">
-                                <!-- Tasks will be populated here -->
+                            <div class="task-priority-box-header">High Priority</div>
+                            <div id="task-priority-high-list" class="task-priority-list task-priority-high">
+                                <!-- High priority tasks will be populated here -->
                             </div>
                         </div>
                         <div class="task-priority-box">
-                            <div class="task-priority-box-header">Never do</div>
-                            <div id="task-blacklist-list" class="task-priority-list task-blacklist">
-                                <!-- Blacklisted tasks will be populated here -->
+                            <div class="task-priority-box-header">Normal Priority</div>
+                            <div id="task-priority-normal-list" class="task-priority-list task-priority-normal">
+                                <!-- Normal priority tasks will be populated here -->
+                            </div>
+                        </div>
+                        <div class="task-priority-box">
+                            <div class="task-priority-box-header">No Priority</div>
+                            <div id="task-priority-none-list" class="task-priority-list task-priority-none">
+                                <!-- No priority tasks will be populated here -->
                             </div>
                         </div>
                     </div>

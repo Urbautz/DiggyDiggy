@@ -38,7 +38,7 @@ let hasForgedHighHardnessTool = false; // Track if player has successfully forge
 let oneTimeInvestments = []; // Array of active one-time investments {amount, ticksRemaining, payoutPerTick, id}
 let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
-let mangementTasks = {}; // Management task definitions
+let managementTasks = {}; // Management task definitions
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -116,9 +116,13 @@ function coordKey(x, y) {
  * @returns {string|null} The task assigned ('research', 'smelting', 'digging') or null if none available
  */
 function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
-    // Get dwarf's task priority list (default if not set)
-    const taskPriority = dwarf.taskPriority || ['digging', 'research', 'smelting', 'managing'];
-    const taskBlacklist = dwarf.taskBlacklist || [];
+    // Get dwarf's task priority lists (default if not set)
+    const taskPriorityHigh = dwarf.taskPriorityHigh || [];
+    const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'managing'];
+    const taskPriorityNone = dwarf.taskPriorityNone || [];
+
+    // Combine into single priority list (high first, then normal)
+    const taskPriority = [...taskPriorityHigh, ...taskPriorityNormal];
 
     // Check if each task is available
     const researchAvailabilityDetails = {
@@ -137,19 +141,20 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
 
     // Debug logging
     //console.log(`[${dwarf.name}] assignDwarfTask called:`, {
-    //    priority: taskPriority,
-    //    blacklist: taskBlacklist,
+    //    priorityHigh: taskPriorityHigh,
+    //    priorityNormal: taskPriorityNormal,
+    //    priorityNone: taskPriorityNone,
     //    availability: taskAvailability,
     //    researchDetails: researchAvailabilityDetails,
     //    position: `(${dwarf.x}, ${dwarf.y})`,
     //    status: dwarf.status
     //});
 
-    // Find the highest priority task that is available and not blacklisted
+    // Find the highest priority task that is available and not in "none" list
     for (const taskId of taskPriority) {
-        // Skip if blacklisted or not available
-        if (taskBlacklist.includes(taskId) || !taskAvailability[taskId]) {
-            //console.log(`[${dwarf.name}] Skipping ${taskId}: blacklisted=${taskBlacklist.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
+        // Skip if in "no priority" list or not available
+        if (taskPriorityNone.includes(taskId) || !taskAvailability[taskId]) {
+            //console.log(`[${dwarf.name}] Skipping ${taskId}: noPriority=${taskPriorityNone.includes(taskId)}, unavailable=${!taskAvailability[taskId]}`);
             continue;
         }
 
@@ -851,7 +856,6 @@ function actForDwarf(dwarf) {
                     }
                     if (researchReservedBy === dwarf.name) researchReservedBy = null;
                     if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                     if (managementReservedBy === dwarf.name) managementReservedBy = null;
                     stuckTracking.delete(trackKey);
                     return;
@@ -1406,7 +1410,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 return;
             }
 
-            const taskDef = mangementTasks[task.type];
+            const taskDef = managementTasks[task.type];
             if (!taskDef) {
                 // Task definition not found
                 if (managementReservedBy === dwarf.name) managementReservedBy = null;
@@ -1681,10 +1685,10 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     }
 
     // Idle dwarf on cell with hardness - start digging (but not at research location if research is active)
-    // Also check that digging is not blacklisted
-    const taskBlacklist = dwarf.taskBlacklist || [];
+    // Also check that digging is not in the "no priority" list
+    const taskPriorityNone = dwarf.taskPriorityNone || [];
     if (dwarf.status === 'idle' && curCell && curCell.hardness > 0 &&
-        !taskBlacklist.includes('digging') &&
+        !taskPriorityNone.includes('digging') &&
         !(activeResearch && typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y)) {
         const curKey = coordKey(dwarf.x, dwarf.y);
         if (!reservedDigBy.get(curKey) || reservedDigBy.get(curKey) === dwarf.name) {
@@ -1877,8 +1881,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     if (!row) {
         // If the dwarf is idle in the function row, it should try to move to the grid to find work.
         if (dwarf.status === 'idle') {
-            const taskBlacklist = dwarf.taskBlacklist || [];
-            if (!taskBlacklist.includes('digging')) {
+            const taskPriorityNone = dwarf.taskPriorityNone || [];
+            if (!taskPriorityNone.includes('digging')) {
                 scheduleMove(dwarf, dwarf.x, 0); // Move to (x,0) to start digging
             }
         }
@@ -2084,7 +2088,7 @@ function checkManagementTaskActivation() {
     if (!activeManagementTasks || activeManagementTasks.length === 0) return;
 
     for (const task of activeManagementTasks) {
-        const taskDef = mangementTasks[task.type];
+        const taskDef = managementTasks[task.type];
         if (!taskDef) continue;
         if(task.active) continue;
 
@@ -2375,7 +2379,7 @@ self.addEventListener('message', (e) => {
             if (data.nextInvestmentId !== undefined) nextInvestmentId = data.nextInvestmentId;
             // Initialize management tasks
             if (data.activeManagementTasks) activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
-            if (data.mangementTasks) mangementTasks = JSON.parse(JSON.stringify(data.mangementTasks));
+            if (data.managementTasks) managementTasks = JSON.parse(JSON.stringify(data.managementTasks));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
