@@ -288,35 +288,47 @@ const TASK_DEFINITIONS = {
  * Populate task priority lists with drag-and-drop functionality
  */
 function populateTaskPriorityLists(dwarf) {
-    const priorityList = document.getElementById('task-priority-list');
-    const blacklistList = document.getElementById('task-blacklist-list');
+    const priorityHighList = document.getElementById('task-priority-high-list');
+    const priorityNormalList = document.getElementById('task-priority-normal-list');
+    const priorityNoneList = document.getElementById('task-priority-none-list');
 
-    if (!priorityList || !blacklistList) return;
+    if (!priorityHighList || !priorityNormalList || !priorityNoneList) return;
 
     // Clear existing content
-    priorityList.innerHTML = '';
-    blacklistList.innerHTML = '';
+    priorityHighList.innerHTML = '';
+    priorityNormalList.innerHTML = '';
+    priorityNoneList.innerHTML = '';
 
     // Ensure dwarf has task arrays
-    if (!dwarf.taskPriority) dwarf.taskPriority = ['digging', 'research', 'smelting', 'managing'];
-    if (!dwarf.taskBlacklist) dwarf.taskBlacklist = [];
+    if (!dwarf.taskPriorityHigh) dwarf.taskPriorityHigh = [];
+    if (!dwarf.taskPriorityNormal) dwarf.taskPriorityNormal = ['digging', 'research', 'smelting', 'managing'];
+    if (!dwarf.taskPriorityNone) dwarf.taskPriorityNone = [];
 
-    // Populate priority list
-    dwarf.taskPriority.forEach((taskId, index) => {
+    // Populate high priority list
+    dwarf.taskPriorityHigh.forEach((taskId, index) => {
         const taskDef = TASK_DEFINITIONS[taskId];
         if (!taskDef) return;
 
-        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'priority');
-        priorityList.appendChild(item);
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'high');
+        priorityHighList.appendChild(item);
     });
 
-    // Populate blacklist
-    dwarf.taskBlacklist.forEach(taskId => {
+    // Populate normal priority list
+    dwarf.taskPriorityNormal.forEach((taskId, index) => {
         const taskDef = TASK_DEFINITIONS[taskId];
         if (!taskDef) return;
 
-        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'blacklist');
-        blacklistList.appendChild(item);
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'normal');
+        priorityNormalList.appendChild(item);
+    });
+
+    // Populate no priority list
+    dwarf.taskPriorityNone.forEach(taskId => {
+        const taskDef = TASK_DEFINITIONS[taskId];
+        if (!taskDef) return;
+
+        const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'none');
+        priorityNoneList.appendChild(item);
     });
 }
 
@@ -401,24 +413,40 @@ function handleTaskDrop(e) {
 
         const draggedTaskId = draggedTask.dataset.taskId;
         const draggedFromList = draggedTask.dataset.listType;
-        const droppedOnList = this.parentElement.id === 'task-priority-list' ? 'priority' : 'blacklist';
 
-        // Remove from both lists first to prevent duplicates
-        let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
-        if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+        // Determine which list this was dropped on
+        let droppedOnList = 'normal';
+        if (this.parentElement.id === 'task-priority-high-list') {
+            droppedOnList = 'high';
+        } else if (this.parentElement.id === 'task-priority-normal-list') {
+            droppedOnList = 'normal';
+        } else if (this.parentElement.id === 'task-priority-none-list') {
+            droppedOnList = 'none';
+        }
 
-        let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
-        if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+        // Remove from all lists first to prevent duplicates
+        let fromHighIndex = dwarf.taskPriorityHigh.indexOf(draggedTaskId);
+        if (fromHighIndex > -1) dwarf.taskPriorityHigh.splice(fromHighIndex, 1);
+
+        let fromNormalIndex = dwarf.taskPriorityNormal.indexOf(draggedTaskId);
+        if (fromNormalIndex > -1) dwarf.taskPriorityNormal.splice(fromNormalIndex, 1);
+
+        let fromNoneIndex = dwarf.taskPriorityNone.indexOf(draggedTaskId);
+        if (fromNoneIndex > -1) dwarf.taskPriorityNone.splice(fromNoneIndex, 1);
 
         // Add to destination list
-        if (droppedOnList === 'priority') {
+        if (droppedOnList === 'high') {
             const targetTaskId = this.dataset.taskId;
-            const targetIndex = dwarf.taskPriority.indexOf(targetTaskId);
-            dwarf.taskPriority.splice(targetIndex, 0, draggedTaskId);
+            const targetIndex = dwarf.taskPriorityHigh.indexOf(targetTaskId);
+            dwarf.taskPriorityHigh.splice(targetIndex, 0, draggedTaskId);
+        } else if (droppedOnList === 'normal') {
+            const targetTaskId = this.dataset.taskId;
+            const targetIndex = dwarf.taskPriorityNormal.indexOf(targetTaskId);
+            dwarf.taskPriorityNormal.splice(targetIndex, 0, draggedTaskId);
         } else {
-            // Only add if not already in blacklist
-            if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
-                dwarf.taskBlacklist.push(draggedTaskId);
+            // No priority - just add to end if not already present
+            if (!dwarf.taskPriorityNone.includes(draggedTaskId)) {
+                dwarf.taskPriorityNone.push(draggedTaskId);
             }
         }
 
@@ -434,10 +462,11 @@ function handleTaskDrop(e) {
  * Add drop zones for empty lists
  */
 function initializeTaskPriorityDropZones() {
-    const priorityList = document.getElementById('task-priority-list');
-    const blacklistList = document.getElementById('task-blacklist-list');
+    const priorityHighList = document.getElementById('task-priority-high-list');
+    const priorityNormalList = document.getElementById('task-priority-normal-list');
+    const priorityNoneList = document.getElementById('task-priority-none-list');
 
-    [priorityList, blacklistList].forEach(list => {
+    [priorityHighList, priorityNormalList, priorityNoneList].forEach(list => {
         list.addEventListener('dragover', function(e) {
             if (e.preventDefault) e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
@@ -454,24 +483,39 @@ function initializeTaskPriorityDropZones() {
             if (!dwarf) return false;
 
             const draggedTaskId = draggedTask.dataset.taskId;
-            const draggedFromList = draggedTask.dataset.listType;
-            const droppedOnList = this.id === 'task-priority-list' ? 'priority' : 'blacklist';
 
-            // Remove from both lists first to prevent duplicates
-            let fromPriorityIndex = dwarf.taskPriority.indexOf(draggedTaskId);
-            if (fromPriorityIndex > -1) dwarf.taskPriority.splice(fromPriorityIndex, 1);
+            // Determine which list this was dropped on
+            let droppedOnList = 'normal';
+            if (this.id === 'task-priority-high-list') {
+                droppedOnList = 'high';
+            } else if (this.id === 'task-priority-normal-list') {
+                droppedOnList = 'normal';
+            } else if (this.id === 'task-priority-none-list') {
+                droppedOnList = 'none';
+            }
 
-            let fromBlacklistIndex = dwarf.taskBlacklist.indexOf(draggedTaskId);
-            if (fromBlacklistIndex > -1) dwarf.taskBlacklist.splice(fromBlacklistIndex, 1);
+            // Remove from all lists first to prevent duplicates
+            let fromHighIndex = dwarf.taskPriorityHigh.indexOf(draggedTaskId);
+            if (fromHighIndex > -1) dwarf.taskPriorityHigh.splice(fromHighIndex, 1);
+
+            let fromNormalIndex = dwarf.taskPriorityNormal.indexOf(draggedTaskId);
+            if (fromNormalIndex > -1) dwarf.taskPriorityNormal.splice(fromNormalIndex, 1);
+
+            let fromNoneIndex = dwarf.taskPriorityNone.indexOf(draggedTaskId);
+            if (fromNoneIndex > -1) dwarf.taskPriorityNone.splice(fromNoneIndex, 1);
 
             // Add to destination list only if not already present
-            if (droppedOnList === 'priority') {
-                if (!dwarf.taskPriority.includes(draggedTaskId)) {
-                    dwarf.taskPriority.push(draggedTaskId);
+            if (droppedOnList === 'high') {
+                if (!dwarf.taskPriorityHigh.includes(draggedTaskId)) {
+                    dwarf.taskPriorityHigh.push(draggedTaskId);
+                }
+            } else if (droppedOnList === 'normal') {
+                if (!dwarf.taskPriorityNormal.includes(draggedTaskId)) {
+                    dwarf.taskPriorityNormal.push(draggedTaskId);
                 }
             } else {
-                if (!dwarf.taskBlacklist.includes(draggedTaskId)) {
-                    dwarf.taskBlacklist.push(draggedTaskId);
+                if (!dwarf.taskPriorityNone.includes(draggedTaskId)) {
+                    dwarf.taskPriorityNone.push(draggedTaskId);
                 }
             }
 
@@ -491,8 +535,9 @@ function saveTaskPriorityChanges(dwarf) {
     // Find the actual dwarf in the main array
     const actualDwarf = dwarfs.find(d => d.name === dwarf.name);
     if (actualDwarf) {
-        actualDwarf.taskPriority = [...dwarf.taskPriority];
-        actualDwarf.taskBlacklist = [...dwarf.taskBlacklist];
+        actualDwarf.taskPriorityHigh = [...dwarf.taskPriorityHigh];
+        actualDwarf.taskPriorityNormal = [...dwarf.taskPriorityNormal];
+        actualDwarf.taskPriorityNone = [...dwarf.taskPriorityNone];
 
         // Sync with worker
         if (gameWorker && workerInitialized) {
@@ -506,8 +551,9 @@ function saveTaskPriorityChanges(dwarf) {
         saveGame();
 
         console.log(`Task priorities updated for ${dwarf.name}:`, {
-            priority: dwarf.taskPriority,
-            blacklist: dwarf.taskBlacklist
+            high: dwarf.taskPriorityHigh,
+            normal: dwarf.taskPriorityNormal,
+            none: dwarf.taskPriorityNone
         });
     }
 }
