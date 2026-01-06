@@ -421,7 +421,9 @@ function executeManagementTaskWrapper(task, taskDef) {
         managementTasks,
         pendingTransactions,
         startX,
-        RESEARCH_COST_MULTIPLIER
+        RESEARCH_COST_MULTIPLIER,
+        oneTimeInvestments,
+        nextInvestmentId
     };
 
     // Call the external function
@@ -430,6 +432,8 @@ function executeManagementTaskWrapper(task, taskDef) {
     // Update game state from returned context
     gold = updatedContext.gold;
     activeResearch = updatedContext.activeResearch;
+    oneTimeInvestments = updatedContext.oneTimeInvestments;
+    nextInvestmentId = updatedContext.nextInvestmentId;
     // Note: materials, materialsStock, gems, dwarfs, researchQueue are passed by reference and modified in place
 }
 
@@ -2054,7 +2058,9 @@ function checkManagementTaskActivationWrapper() {
         smelterTasksData,
         managementTasks,
         startX,
-        RESEARCH_COST_MULTIPLIER
+        RESEARCH_COST_MULTIPLIER,
+        oneTimeInvestments,
+        nextInvestmentId
     };
 
     // Call the external function

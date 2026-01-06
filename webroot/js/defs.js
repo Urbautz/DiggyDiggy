@@ -1663,18 +1663,19 @@ let managementTasks = {
     requires: {},
     cost: 75,
     hardness: 20,
-  },/*
+  },
   'auto-invest': {
-    name: 'Invest',
-    description: 'Automatically invest available one-time investment.',
+    name: 'Auto Invest',
+    description: 'Automatically create one-time investments.',
     values: {
-      minBankGold: {Description: 'Only when gold above', default: 3000000, type: 'number'},
-      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'}
+      minBankGold: {Description: 'Keep Gold in reserve', default: 3000000, type: 'number'},
+      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'},
+      maxActiveInvestments: {Description: 'Maximum active investments', default: 5, type: 'number'}
     },
     requires: {'one-time-investments': 1},
     cost: 50,
     hardness: 40,
-  },*/
+  },
 }
 
 let activeResearch = null; // Track which research is currently being researched

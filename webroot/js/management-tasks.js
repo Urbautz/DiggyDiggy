@@ -34,10 +34,8 @@ function executeManagementTask(task, taskDef, context) {
         case 'auto-research-cheapest':
             return executeAutoResearchCheapest(task, context);
 
-        // TODO: Implement other task types
         case 'auto-invest':
-            console.log(`[Management] Task type ${task.type} not yet implemented`);
-            return context;
+            return executeAutoInvest(task, context);
 
         default:
             console.log(`[Management] Unknown task type: ${task.type}`);
@@ -339,6 +337,64 @@ function findCheapestAvailableResearch(context) {
 }
 
 /**
+ * Execute auto-invest task
+ */
+function executeAutoInvest(task, context) {
+    const minBankGold = task.values.minBankGold || 0;
+    const amountToInvest = task.values.amountToInvest || 1000000;
+    const maxActiveInvestments = task.values.maxActiveInvestments || 5;
+
+    // Check if we have too many active investments
+    const activeInvestmentsCount = context.oneTimeInvestments ? context.oneTimeInvestments.length : 0;
+    if (activeInvestmentsCount >= maxActiveInvestments) {
+        console.log(`[Management] Max active investments (${maxActiveInvestments}) reached`);
+        return context;
+    }
+
+    // Check if we have enough gold after reserve and investment
+    const goldAfterInvestment = context.gold - amountToInvest;
+    if (goldAfterInvestment < minBankGold) {
+        console.log(`[Management] Not enough gold for investment (need ${amountToInvest}, have ${context.gold - minBankGold} after reserve)`);
+        return context;
+    }
+
+    // Create the investment
+    const payoutPerTick = amountToInvest / 100000; // 1 gold per 100k invested per tick
+    const ticksRequired = 120000; // 120,000 ticks (10 hours at 300ms per tick)
+
+    const investment = {
+        id: context.nextInvestmentId || 1,
+        amount: amountToInvest,
+        ticksRemaining: ticksRequired,
+        payoutPerTick: payoutPerTick,
+        startTick: Date.now()
+    };
+
+    // Add to investments array
+    if (!context.oneTimeInvestments) {
+        context.oneTimeInvestments = [];
+    }
+    context.oneTimeInvestments.push(investment);
+
+    // Increment investment ID
+    context.nextInvestmentId = (context.nextInvestmentId || 1) + 1;
+
+    // Deduct gold
+    context.gold -= amountToInvest;
+
+    // Log transaction
+    context.pendingTransactions.push({
+        type: 'expense',
+        amount: amountToInvest,
+        description: `[Auto] Investment #${investment.id} created`
+    });
+
+    console.log(`[Management] Created investment #${investment.id}: ${amountToInvest} gold, ${payoutPerTick} per tick for ${ticksRequired} ticks`);
+
+    return context;
+}
+
+/**
  * Check if management tasks should be activated based on current game state
  * @param {Array} activeManagementTasks - List of active tasks
  * @param {Object} context - Game state context
@@ -458,7 +514,17 @@ function checkAutoResearchActivation(task, context) {
  */
 function checkAutoInvestActivation(task, context) {
     const minBankGold = task.values.minBankGold || 0;
-    return context.gold > minBankGold;
+    const amountToInvest = task.values.amountToInvest || 1000000;
+    const maxActiveInvestments = task.values.maxActiveInvestments || 5;
+
+    // Check if we have room for more investments
+    const activeInvestmentsCount = context.oneTimeInvestments ? context.oneTimeInvestments.length : 0;
+    if (activeInvestmentsCount >= maxActiveInvestments) {
+        return false;
+    }
+
+    // Check if we have enough gold (reserve + investment amount)
+    return context.gold >= (minBankGold + amountToInvest);
 }
 
 // Note: calculateTradeBonus, getSmelterInputMaterials, and calculateNonCraftableMaterialsTotal
