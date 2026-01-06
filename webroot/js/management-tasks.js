@@ -31,8 +31,10 @@ function executeManagementTask(task, taskDef, context) {
         case 'cut-gems':
             return executeCutGems(task, context);
 
+        case 'auto-research-cheapest':
+            return executeAutoResearchCheapest(task, context);
+
         // TODO: Implement other task types
-        case 'auto-reserach-cheapest':
         case 'auto-invest':
             console.log(`[Management] Task type ${task.type} not yet implemented`);
             return context;
@@ -212,6 +214,131 @@ function executeCutGems(task, context) {
 }
 
 /**
+ * Execute auto-research-cheapest task
+ */
+function executeAutoResearchCheapest(task, context) {
+    const minBankGold = task.values.minBankGold || 0;
+    const minQueueSize = task.values.minQueueSize || 0;
+
+    // Check if we should queue more research
+    if (context.gold <= minBankGold || context.researchQueue.length > minQueueSize) {
+        return context;
+    }
+
+    // Find cheapest available endless research
+    const cheapestResearch = findCheapestAvailableResearch(context);
+
+    if (!cheapestResearch) {
+        console.log('[Management] No available research found');
+        return context;
+    }
+
+    const { id, goldCost, targetLevel } = cheapestResearch;
+    const researchItem = context.researchData[id];
+
+    // Check if we can afford it while maintaining reserve
+    if (context.gold - goldCost < minBankGold) {
+        console.log(`[Management] Not enough gold after reserve (need ${goldCost}, have ${context.gold - minBankGold} after reserve)`);
+        return context;
+    }
+
+    // Deduct gold
+    context.gold -= goldCost;
+
+    // Add to queue or start directly
+    if (context.activeResearch) {
+        // Add to queue
+        context.researchQueue.push({
+            id: id,
+            name: researchItem.name,
+            level: researchItem.level || 0,
+            targetLevel: targetLevel,
+            goldCost: goldCost
+        });
+        console.log(`[Management] Queued research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
+    } else {
+        // Start directly
+        context.activeResearch = {
+            ...researchItem,
+            id: id,
+            progress: researchItem.progress || 0
+        };
+        console.log(`[Management] Started research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
+    }
+
+    // Log transaction
+    context.pendingTransactions.push({
+        type: 'expense',
+        amount: goldCost,
+        description: `[Auto] Research: ${researchItem.name} (Level ${targetLevel})`
+    });
+
+    return context;
+}
+
+/**
+ * Find the cheapest available endless research
+ * @param {Object} context - Game state context
+ * @returns {Object|null} - { id, goldCost, targetLevel } or null if none available
+ */
+function findCheapestAvailableResearch(context) {
+    let cheapest = null;
+    let lowestCost = Infinity;
+
+    // Iterate through all research
+    for (const researchId of context.researchTree) {
+        const researchItem = context.researchData[researchId];
+        if (!researchItem) continue;
+
+        // Only consider endless research (no maxlevel or maxlevel === Infinity)
+        const maxLevel = researchItem.maxlevel || Infinity;
+        if (maxLevel !== Infinity) continue;
+
+        // Calculate effective level (current + active + queued)
+        const baseLevel = researchItem.level || 0;
+        const activeCount = (context.activeResearch && context.activeResearch.id === researchId) ? 1 : 0;
+        const queuedCount = context.researchQueue.filter(r => r.id === researchId).length;
+        const effectiveLevel = baseLevel + activeCount + queuedCount;
+
+        // Check if max level reached (shouldn't happen for endless, but safety check)
+        if (effectiveLevel >= maxLevel) continue;
+
+        // Check depth requirement
+        if (researchItem.min_depth && context.startX < researchItem.min_depth) {
+            continue;
+        }
+
+        // Check prerequisites
+        if (researchItem.requires && researchItem.requires.length > 0) {
+            let requirementsMet = true;
+            for (const req of researchItem.requires) {
+                for (const [reqId, reqLevel] of Object.entries(req)) {
+                    const requiredResearch = context.researchData[reqId];
+                    if (!requiredResearch || (requiredResearch.level || 0) < reqLevel) {
+                        requirementsMet = false;
+                        break;
+                    }
+                }
+                if (!requirementsMet) break;
+            }
+            if (!requirementsMet) continue;
+        }
+
+        // Calculate cost for next level
+        const targetLevel = effectiveLevel + 1;
+        const goldCost = Math.round(researchItem.goldCost * Math.pow(context.RESEARCH_COST_MULTIPLIER || 1.3, Math.max(0, targetLevel - 1)));
+
+        // Track cheapest
+        if (goldCost < lowestCost) {
+            lowestCost = goldCost;
+            cheapest = { id: researchId, goldCost, targetLevel };
+        }
+    }
+
+    return cheapest;
+}
+
+/**
  * Check if management tasks should be activated based on current game state
  * @param {Array} activeManagementTasks - List of active tasks
  * @param {Object} context - Game state context
@@ -244,7 +371,7 @@ function checkManagementTaskActivation(activeManagementTasks, context) {
                 shouldActivate = checkCutGemsActivation(task, context);
                 break;
 
-            case 'auto-reserach-cheapest':
+            case 'auto-research-cheapest':
                 shouldActivate = checkAutoResearchActivation(task, context);
                 break;
 

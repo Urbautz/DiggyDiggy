@@ -414,10 +414,14 @@ function executeManagementTaskWrapper(task, taskDef) {
         gems,
         dwarfs,
         researchData,
+        researchTree,
+        activeResearch,
+        researchQueue,
         smelterTasksData,
         managementTasks,
         pendingTransactions,
-        researchQueue
+        startX,
+        RESEARCH_COST_MULTIPLIER
     };
 
     // Call the external function
@@ -425,7 +429,8 @@ function executeManagementTaskWrapper(task, taskDef) {
 
     // Update game state from returned context
     gold = updatedContext.gold;
-    // Note: materials, materialsStock, gems, dwarfs are passed by reference and modified in place
+    activeResearch = updatedContext.activeResearch;
+    // Note: materials, materialsStock, gems, dwarfs, researchQueue are passed by reference and modified in place
 }
 
 // Find the first actionable smelter task
@@ -2043,9 +2048,13 @@ function checkManagementTaskActivationWrapper() {
         gems,
         dwarfs,
         researchData,
+        researchTree,
+        activeResearch,
+        researchQueue,
         smelterTasksData,
         managementTasks,
-        researchQueue
+        startX,
+        RESEARCH_COST_MULTIPLIER
     };
 
     // Call the external function

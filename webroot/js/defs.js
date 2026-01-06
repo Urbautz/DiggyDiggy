@@ -1652,18 +1652,18 @@ let managementTasks = {
     requires: {},
     cost: 50,
     hardness: 15,
-  }, /*
-  'auto-reserach-cheapest': {
+  }, 
+  'auto-research-cheapest': {
     name: 'Auto research cheapest endless research',
     description: 'Automatically queue the cheapest available research.',
     values: {
-      minBankGold: {Description: 'Only when gold above', default: 100000, type: 'number'},
-      minQueueSize: {Description: 'When research queue is at', default: 1, type: 'number'}
+      minBankGold: {Description: 'Keep Gold in reserve', default: 100000, type: 'number'},
+      minQueueSize: {Description: 'When research queue is shorter than', default: 1, type: 'number'}
     },
     requires: {},
     cost: 75,
     hardness: 20,
-  },
+  },/*
   'auto-invest': {
     name: 'Invest',
     description: 'Automatically invest available one-time investment.',
