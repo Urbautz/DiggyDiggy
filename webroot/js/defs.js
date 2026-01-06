@@ -592,7 +592,7 @@ const materials = {
   },
   'pig iron': {
     name: 'Pig Iron Ingot',
-    type: 'Ore Medium',
+    type: 'Ingot',
     hardness: 10,
     probability: 0,
     worth: 500,
