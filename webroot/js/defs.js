@@ -1630,18 +1630,29 @@ let managementTasks = {
     requires: {},
     cost: 100,
     hardness: 10,
-  }, /*
+  },
   'sell-gems': {
-    name: 'Sell Gems',
-    description: 'Automatically sell gems that you do not need.',
-    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-dropdown'},
+    name: 'Sell unpolishedGems',
+    description: 'Automatically sell unpolished gems.',
+    values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
              minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
              maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
             },
     requires: {},
-    cost: 25,
-    hardness: 10,
+    cost: 50,
+    hardness: 15,
   },
+    'cut-gems': {
+    name: 'Cut Gems',
+    description: 'Marc gems for cutting.',
+    values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
+             minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
+             mincarats: {Description: 'Minimum carats', default:1, type:'number'}
+            },
+    requires: {},
+    cost: 50,
+    hardness: 15,
+  }, /*
   'auto-reserach-cheapest': {
     name: 'Auto research cheapest endless research',
     description: 'Automatically queue the cheapest available research.',

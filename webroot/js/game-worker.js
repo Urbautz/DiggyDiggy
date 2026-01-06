@@ -2,8 +2,8 @@
 // This worker handles all the heavy computation for the game tick,
 // preventing UI blocking during dwarf actions and grid updates.
 
-// Import shared game constants and utilities
-importScripts('constants.js', 'utils.js');
+// Import shared game constants, utilities, and management tasks
+importScripts('constants.js', 'utils.js', 'management-tasks.js');
 
 const DEFAULT_LOOP_INTERVAL_MS = 400;
 
@@ -404,96 +404,28 @@ function findActiveManagementTask() {
     return activeManagementTasks.find(task => task.active);
 }
 
-// Execute a completed management task
-function executeManagementTask(task, taskDef) {
-    console.log(`[Management] Executing task: ${task.type}`);
+// Execute a completed management task (delegated to management-tasks.js)
+function executeManagementTaskWrapper(task, taskDef) {
+    // Build context object with all game state
+    const context = {
+        gold,
+        materials,
+        materialsStock,
+        gems,
+        dwarfs,
+        researchData,
+        smelterTasksData,
+        managementTasks,
+        pendingTransactions,
+        researchQueue
+    };
 
-    // Calculate trade bonus once (used by all selling tasks)
-    const totalTradeBonus = calculateTradeBonus(researchData, dwarfs);
+    // Call the external function
+    const updatedContext = executeManagementTask(task, taskDef, context);
 
-    switch (task.type) {
-        case 'sell-material': {
-            // Sell material down to keepQuantity
-            const materialId = task.values.material;
-            const keepQuantity = task.values.keepQuantity || 0;
-
-            const currentStock = materialsStock[materialId] || 0;
-            const amountToSell = Math.max(0, currentStock - keepQuantity);
-
-            if (amountToSell > 0) {
-                const material = materials[materialId];
-                if (material) {
-                    const goldEarned = Math.floor(amountToSell * material.worth * totalTradeBonus);
-
-                    // Update stock and gold
-                    materialsStock[materialId] = keepQuantity;
-                    gold += goldEarned;
-
-                    // Log transaction
-                    pendingTransactions.push({
-                        type: 'income',
-                        amount: goldEarned,
-                        description: `[Auto] Sold ${amountToSell}x ${material.name}`
-                    });
-
-                    console.log(`[Management] Sold ${amountToSell}x ${material.name} for ${goldEarned} gold (kept ${keepQuantity})`);
-                }
-            }
-            break;
-        }
-
-        case 'sell-non-craftables': {
-            // Sell all non-craftable materials (excludes smelter inputs, ingots, and gems)
-            const smelterInputMaterials = getSmelterInputMaterials();
-
-            let totalGold = 0;
-            let totalItems = 0;
-
-            for (const [id, m] of Object.entries(materials)) {
-                const materialType = m.type || '';
-
-                // Skip materials that are:
-                // - Used as smelter inputs
-                // - Ingots (used in forge)
-                // - Gems (have their own sell task)
-                if (smelterInputMaterials.has(id)) continue;
-                if (materialType.startsWith('Ingot')) continue;
-                if (materialType.startsWith('Gem')) continue;
-
-                const count = materialsStock[id] || 0;
-                if (count > 0) {
-                    const goldForThisMaterial = Math.floor(count * m.worth * totalTradeBonus);
-                    totalGold += goldForThisMaterial;
-                    totalItems += count;
-                    console.log(`[Management] Selling ${count}x ${m.name} for ${goldForThisMaterial} gold`);
-                    // Log individual material transaction
-                    pendingTransactions.push({
-                        type: 'income',
-                        amount: goldForThisMaterial,
-                        description: `[Auto] Sold ${count}x ${m.name}`
-                    });
-
-                    materialsStock[id] = 0;
-                }
-            }
-
-            if (totalItems > 0) {
-                gold += totalGold;
-                console.log(`[Management] Sold all non-craftable materials (${totalItems} items) for ${totalGold} gold`);
-            }
-            break;
-        }
-
-        // TODO: Implement other task types
-        case 'sell-gems':
-        case 'auto-reserach-cheapest':
-        case 'auto-invest':
-            console.log(`[Management] Task type ${task.type} not yet implemented`);
-            break;
-
-        default:
-            console.log(`[Management] Unknown task type: ${task.type}`);
-    }
+    // Update game state from returned context
+    gold = updatedContext.gold;
+    // Note: materials, materialsStock, gems, dwarfs are passed by reference and modified in place
 }
 
 // Find the first actionable smelter task
@@ -1504,7 +1436,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 dwarf.xp = (dwarf.xp || 0) + xpGain;
 
                 // Execute the task based on type
-                executeManagementTask(task, taskDef);
+                executeManagementTaskWrapper(task, taskDef);
 
                 // Deactivate the task
                 task.active = false;
@@ -2102,76 +2034,23 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 /**
  * Check management task activation conditions and update their active status
  */
-function checkManagementTaskActivation() {
-    if (!activeManagementTasks || activeManagementTasks.length === 0) return;
+function checkManagementTaskActivationWrapper() {
+    // Build context object with all game state
+    const context = {
+        gold,
+        materials,
+        materialsStock,
+        gems,
+        dwarfs,
+        researchData,
+        smelterTasksData,
+        managementTasks,
+        researchQueue
+    };
 
-    for (const task of activeManagementTasks) {
-        const taskDef = managementTasks[task.type];
-        if (!taskDef) continue;
-        if(task.active) continue;
-
-        let shouldActivate = false;
-
-        // Check activation condition based on task type
-        switch (task.type) {
-            case 'sell-material': {
-                // Activate when material stock exceeds minQuantity
-                const material = task.values.material;
-                const minQuantity = task.values.minQuantity || 0;
-                const currentStock = materialsStock[material] || 0;
-                shouldActivate = currentStock > minQuantity;
-                break;
-            }
-
-            case 'sell-non-craftables': {
-                // Activate when total non-craftable materials exceed minQuantity
-                const minQuantity = task.values.minQuantity || 0;
-                const totalNonCraftables = calculateNonCraftableMaterialsTotal(materialsStock);
-                shouldActivate = totalNonCraftables > minQuantity;
-                break;
-            }
-
-            case 'sell-gems': {
-                // Activate when gem count exceeds minQuantity
-                const gemtype = task.values.gemtype || 'all';
-                const minQuantity = task.values.minQuantity || 0;
-                const maxcarats = task.values.maxcarats || 1;
-
-                let matchingGemCount = 0;
-                for (const gem of gems) {
-                    if (gemtype === 'all' || gem.type === gemtype) {
-                        if (gem.carat <= maxcarats) {
-                            matchingGemCount++;
-                        }
-                    }
-                }
-                shouldActivate = matchingGemCount > minQuantity;
-                break;
-            }
-
-            case 'auto-reserach-cheapest': {
-                // Activate when gold is above threshold AND research queue size is below threshold
-                const minBankGold = task.values.minBankGold || 0;
-                const minQueueSize = task.values.minQueueSize || 0;
-                shouldActivate = gold > minBankGold && researchQueue.length <= minQueueSize;
-                break;
-            }
-
-            case 'auto-invest': {
-                // Activate when gold is above threshold
-                const minBankGold = task.values.minBankGold || 0;
-                shouldActivate = gold > minBankGold;
-                break;
-            }
-
-            default:
-                // Unknown task type, keep current state
-                continue;
-        }
-
-        // Update task active status
-        task.active = shouldActivate;
-    }
+    // Call the external function
+    checkManagementTaskActivation(activeManagementTasks, context);
+    // Note: activeManagementTasks is modified in place
 }
 
 function tick() {
@@ -2301,7 +2180,7 @@ function tick() {
         const shifted = checkAndShiftTopRows();
 
         // Check and update management task activation states
-        checkManagementTaskActivation();
+        checkManagementTaskActivationWrapper();
 
         // Send updated state back to main thread
         self.postMessage({
