@@ -299,10 +299,39 @@ function populateTaskPriorityLists(dwarf) {
     priorityNormalList.innerHTML = '';
     priorityNoneList.innerHTML = '';
 
-    // Ensure dwarf has task arrays
+    // Ensure dwarf has task arrays - use proper initialization to avoid duplicates
     if (!dwarf.taskPriorityHigh) dwarf.taskPriorityHigh = [];
-    if (!dwarf.taskPriorityNormal) dwarf.taskPriorityNormal = ['digging', 'research', 'smelting', 'managing'];
     if (!dwarf.taskPriorityNone) dwarf.taskPriorityNone = [];
+
+    // Initialize taskPriorityNormal with all tasks not in other lists
+    if (!dwarf.taskPriorityNormal) {
+        const allTasks = ['digging', 'research', 'smelting', 'managing'];
+        dwarf.taskPriorityNormal = allTasks.filter(task =>
+            !dwarf.taskPriorityHigh.includes(task) &&
+            !dwarf.taskPriorityNone.includes(task)
+        );
+    } else {
+        // Even if taskPriorityNormal exists, ensure no duplicates across lists
+        // Remove any tasks from normal that are in high or none
+        dwarf.taskPriorityNormal = dwarf.taskPriorityNormal.filter(task =>
+            !dwarf.taskPriorityHigh.includes(task) &&
+            !dwarf.taskPriorityNone.includes(task)
+        );
+
+        // Add any missing tasks to normal priority (tasks that aren't in any list)
+        const allTasks = ['digging', 'research', 'smelting', 'managing'];
+        const allAssignedTasks = [
+            ...dwarf.taskPriorityHigh,
+            ...dwarf.taskPriorityNormal,
+            ...dwarf.taskPriorityNone
+        ];
+
+        for (const task of allTasks) {
+            if (!allAssignedTasks.includes(task)) {
+                dwarf.taskPriorityNormal.push(task);
+            }
+        }
+    }
 
     // Populate high priority list
     dwarf.taskPriorityHigh.forEach((taskId, index) => {
