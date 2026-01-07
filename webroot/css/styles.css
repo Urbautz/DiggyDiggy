@@ -3272,6 +3272,13 @@ header, footer {
     flex-direction: column;
     gap: 4px;
     min-height: 60px;
+    transition: all 0.15s ease;
+}
+
+.task-priority-list.drag-over-list {
+    background: rgba(251, 191, 36, 0.08);
+    border: 2px dashed #fbbf24;
+    border-radius: 4px;
 }
 
 .task-priority-item {

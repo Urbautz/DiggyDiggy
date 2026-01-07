@@ -592,7 +592,7 @@ const materials = {
   },
   'pig iron': {
     name: 'Pig Iron Ingot',
-    type: 'Ore Medium',
+    type: 'Ingot',
     hardness: 10,
     probability: 0,
     worth: 500,
@@ -601,7 +601,7 @@ const materials = {
     weight: 40
   },
   'iron': {
-    name: 'Iron Ingot',
+    name: 'Iron',
     type: 'Ingot',
     hardness: 325,
     probability: 0,
@@ -667,13 +667,14 @@ const materials = {
     weight: 23
   },
   'platinum': {
-    name: 'Platinum Ingot',
+    name: 'Platinum Steel',
+    type: 'Ingot',
     type: 'Ingot',
     hardness: 700,
     probability: 0,
     worth: 2800,
     minlevel: 70000,
-    color: '#2d2121ff',
+    color: '#3b371dff',
     forge: 'Base',
     weight: 25
   },
@@ -856,59 +857,19 @@ const platingEffects = {
 };
 
 // ============================================================================
-// SMELTER TASKS REGISTRY
+// MASONRY TASKS REGISTRY
 // ============================================================================
-// Smelter tasks - object where id is the key, with ordered array tracking task priority
-const smelterTasksData = {
+// Masonry tasks - object where id is the key, with ordered array tracking task priority
+const masonryTasksData = {
   // ──────────────────────────────────────────────────────────────────────────
   // CONTROL TASKS
   // ──────────────────────────────────────────────────────────────────────────
   'do-nothing': {
     name: 'Do Nothing',
-    description: 'The smelter sits idle.',
+    description: 'The masonry sits idle.',
     input: null,
     output: null,
     type: 'none'
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // HEATING TASKS
-  // ──────────────────────────────────────────────────────────────────────────
-  'heat-furnace': {
-    name: 'Heat up furnace (Coal)',
-    description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).',
-    input: { material: 'coal', amount: 0.1 },
-    output: null,
-    type: 'heating',
-    heatGain: 100,
-    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'furnace',
-    hardness: 1
-  },
-  'heat-magma-furnace': {
-    name: 'Heat up furnace (Magma)',
-    description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.',
-    input: { material: 'magma', amount: 1 },
-    output: null,
-    type: 'heating',
-    heatGain: 'dynamic',
-    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'magma-furnace',
-    hardness: 1
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // GEM CUTTING
-  // ──────────────────────────────────────────────────────────────────────────
-  'cut-polish-gem': {
-    name: 'Cut and Polish Gem',
-    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
-    input: null,
-    output: null,
-    type: 'gem-cutting',
-    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
-    requires: 'gem-cutting',
-    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -991,6 +952,76 @@ const smelterTasksData = {
   },
 
   // ──────────────────────────────────────────────────────────────────────────
+  // GEM CUTTING
+  // ──────────────────────────────────────────────────────────────────────────
+  'cut-polish-gem': {
+    name: 'Cut and Polish Gem',
+    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
+    input: null,
+    output: null,
+    type: 'gem-cutting',
+    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
+    requires: 'gem-cutting',
+    hardness: 1
+  }
+};
+
+// Ordered array of masonry task IDs (determines task priority)
+let masonryTasks = [
+    'cut-polish-gem',
+    'dry-mud',
+    'sieve-loose-stone',
+    'do-nothing',
+    'grind-sandstone',
+    'grind-limestone',
+    'polish-marble',
+    'polish-granite',
+    'polish-obsidian'
+];
+
+// ============================================================================
+// SMELTER TASKS REGISTRY
+// ============================================================================
+// Smelter tasks - object where id is the key, with ordered array tracking task priority
+const smelterTasksData = {
+  // ──────────────────────────────────────────────────────────────────────────
+  // CONTROL TASKS
+  // ──────────────────────────────────────────────────────────────────────────
+  'do-nothing': {
+    name: 'Do Nothing',
+    description: 'The smelter sits idle.',
+    input: null,
+    output: null,
+    type: 'none'
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // HEATING TASKS
+  // ──────────────────────────────────────────────────────────────────────────
+  'heat-furnace': {
+    name: 'Heat up furnace (Coal)',
+    description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).',
+    input: { material: 'coal', amount: 0.1 },
+    output: null,
+    type: 'heating',
+    heatGain: 100,
+    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 1
+  },
+  'heat-magma-furnace': {
+    name: 'Heat up furnace (Magma)',
+    description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.',
+    input: { material: 'magma', amount: 1 },
+    output: null,
+    type: 'heating',
+    heatGain: 'dynamic',
+    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
+    requires: 'magma-furnace',
+    hardness: 1
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
   // SOFT METAL SMELTING
   // ──────────────────────────────────────────────────────────────────────────
   'smelt-bronce': {
@@ -1067,7 +1098,7 @@ const smelterTasksData = {
   'smelt-steel': {
     name: 'Smelt Steel',
     description: 'Smelt Steel.',
-    input: { material: 'iron', amount: 5 },
+    input: { material: 'iron', amount: 3 },
     output: { material: 'steel', amount: 1 },
     minTemp: 1350,
     ticksRequired: SMELTER_STEEL_TICKS_REQUIRED,
@@ -1077,7 +1108,10 @@ const smelterTasksData = {
   'smelt-steel-hardened': {
     name: 'Smelt Hardened Steel',
     description: 'Smelt hardened steel.',
-    input: { material: 'steel', amount: 5 },
+    inputs: [
+      { material: 'steel', amount: 1 },
+      { material: 'iron', amount: 3 }
+    ],
     output: { material: 'hardened steel', amount: 1 },
     minTemp: 1950,
     ticksRequired: SMELTER_HARDENED_STEEL_TICKS_REQUIRED,
@@ -1087,7 +1121,10 @@ const smelterTasksData = {
   'smelt-steel-dwarf': {
     name: 'Smelt Dwarfen Steel',
     description: 'Smelt dwarfen steel.',
-    input: { material: 'hardened steel', amount: 5 },
+    inputs: [
+      { material: 'hardened steel', amount: 1 },
+      { material: 'zinc', amount: 2 }
+    ],
     output: { material: 'dwarf steel', amount: 1 },
     minTemp: 2400,
     ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
@@ -1133,9 +1170,12 @@ const smelterTasksData = {
   // HARD METAL SMELTING
   // ──────────────────────────────────────────────────────────────────────────
   'smelt-platinum': {
-    name: 'Smelt Platinum',
-    description: 'Smelt platinum ore.',
-    input: { material: 'platinum ore', amount: 1 },
+    name: 'Platinum Steel',
+    description: 'Smelt Platinum steel',
+    inputs: [
+      { material: 'steel', amount: 1 },
+      { material: 'platinum ore', amount: 1 }
+    ],
     output: { material: 'platinum', amount: 1 },
     minTemp: 1768,
     ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
@@ -1145,7 +1185,7 @@ const smelterTasksData = {
   'smelt-titanium': {
     name: 'Smelt Titanium',
     description: 'Smelt titanium ore.',
-    input: { material: 'titanium ore', amount: 1 },
+    input: { material: 'titanium ore', amount: 5 },
     output: { material: 'titanium', amount: 1 },
     minTemp: 1668,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
@@ -1155,7 +1195,7 @@ const smelterTasksData = {
   'smelt-adamantine': {
     name: 'Smelt Adamantine',
     description: 'Smelt adamantine ore.',
-    input: { material: 'adamantine ore', amount: 1 },
+    input: { material: 'adamantine ore', amount: 10 },
     output: { material: 'adamantine', amount: 1 },
     minTemp: 2850,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
@@ -1258,15 +1298,7 @@ const smelterTasksData = {
 
 // Ordered array of smelter task IDs (determines task priority)
 let smelterTasks = [
-    'dry-mud',
-    'sieve-loose-stone',
     'do-nothing',
-    'grind-sandstone',
-    'grind-limestone',
-    'polish-marble',
-    'polish-granite',
-    'polish-obsidian',
-    'cut-polish-gem',
     'heat-furnace',
     'heat-magma-furnace',
     'smelt-bronce',
@@ -1410,7 +1442,7 @@ const researchData = {
     maxlevel: 1,
     hardness: 40,
     min_depth: 500,
-    description: 'Unlocks the grind task at the Smelter.'
+    description: 'Unlocks the grind task at the Masonry.'
   },
   'stone-polishing': {
     name: 'Stone Polishing',
@@ -1421,7 +1453,7 @@ const researchData = {
     hardness: 50,
     requires: [{'grinding-machine': 1}],
     min_depth: 4000,
-    description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).'
+    description: 'Unlocks stone polishing at the Masonry. Each level reduces break chance by 8% (from 50% base).'
   },
   'gem-cutting': {
     name: 'Gem Cutting',
@@ -1432,7 +1464,7 @@ const researchData = {
     hardness: 55,
     requires: [{'grinding-machine': 1}],
     min_depth: 5000,
-    description: 'Unlocks gem cutting at the smelter.'
+    description: 'Unlocks gem cutting at the masonry.'
   },
   'gem-setting': {
     name: 'Gem Setting',
@@ -1630,40 +1662,52 @@ let managementTasks = {
     requires: {},
     cost: 100,
     hardness: 10,
-  }, /*
+  },
   'sell-gems': {
-    name: 'Sell Gems',
-    description: 'Automatically sell gems that you do not need.',
-    values: {gemtype: {Description: 'Gem Type', default:'all', type:'gem-dropdown'},
+    name: 'Sell unpolishedGems',
+    description: 'Automatically sell unpolished gems.',
+    values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
              minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
              maxcarats: {Description: 'Up to carat (incl)', default:1, type:'number'}
             },
     requires: {},
-    cost: 25,
-    hardness: 10,
+    cost: 50,
+    hardness: 15,
   },
-  'auto-reserach-cheapest': {
+    'cut-gems': {
+    name: 'Cut Gems',
+    description: 'Mark gems for cutting.',
+    values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
+             minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
+             mincarats: {Description: 'Minimum carats', default:1, type:'number'}
+            },
+    requires: {},
+    cost: 50,
+    hardness: 15,
+  }, 
+  'auto-research-cheapest': {
     name: 'Auto research cheapest endless research',
     description: 'Automatically queue the cheapest available research.',
     values: {
-      minBankGold: {Description: 'Only when gold above', default: 100000, type: 'number'},
-      minQueueSize: {Description: 'When research queue is at', default: 1, type: 'number'}
+      minBankGold: {Description: 'Keep Gold in reserve', default: 100000, type: 'number'},
+      minQueueSize: {Description: 'When research queue is shorter than', default: 1, type: 'number'}
     },
     requires: {},
     cost: 75,
     hardness: 20,
   },
   'auto-invest': {
-    name: 'Invest',
-    description: 'Automatically invest available one-time investment.',
+    name: 'Auto Invest',
+    description: 'Automatically create one-time investments.',
     values: {
-      minBankGold: {Description: 'Only when gold above', default: 3000000, type: 'number'},
-      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'}
+      minBankGold: {Description: 'Keep Gold in reserve', default: 3000000, type: 'number'},
+      amountToInvest: {Description: 'Amount to invest', default: 1000000, type: 'number'},
+      maxActiveInvestments: {Description: 'Maximum active investments', default: 5, type: 'number'}
     },
     requires: {'one-time-investments': 1},
     cost: 50,
     hardness: 40,
-  },*/
+  },
 }
 
 let activeResearch = null; // Track which research is currently being researched
@@ -1686,7 +1730,7 @@ let dwarfs = [
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
     { name: "Shovelli",
       toolId: 2,
@@ -1696,7 +1740,7 @@ let dwarfs = [
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
     { name: "Diggmaster",
       toolId: 3,
@@ -1706,7 +1750,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "Burrower",
      toolId: 4,
@@ -1716,7 +1760,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "NevertiredMcPickaxemer",
      toolId: 5,
@@ -1726,7 +1770,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "SmartDigger",
      toolId: 6,
@@ -1736,7 +1780,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['managing', 'research', 'smelting', 'digging'],
+    taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
     taskPriorityNone: [] },
 ]
 
@@ -1762,17 +1806,18 @@ let nextGemId = 1;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Functions grid - 1x5 grid above the main digging grid (y = -1)
+// Functions grid - 1x6 grid above the main digging grid (y = -1)
 const functionsGridY = -1; // One row above the main grid
-const functionsGridWidth = 5;
+const functionsGridWidth = 6;
 
-// Function locations in the 1x5 grid above main grid
-// Order: House, Warehouse, Smelter, Research, Management
+// Function locations in the 1x6 grid above main grid
+// Order: House, Warehouse, Masonry, Smelter, Research, Management
 const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
 const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
-const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
-const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
-const management = { x: 4, y: functionsGridY };   // Fifth cell (Management)
+const masonry = { x: 2, y: functionsGridY };      // Third cell (Masonry)
+const smelter = { x: 3, y: functionsGridY };      // Fourth cell (Smelter)
+const research = { x: 4, y: functionsGridY };     // Fifth cell (Research)
+const management = { x: 5, y: functionsGridY };   // Sixth cell (Management)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)
 const dropGridStartX = gridWidth;

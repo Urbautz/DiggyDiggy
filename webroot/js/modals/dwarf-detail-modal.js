@@ -13,13 +13,19 @@ function getLocationName(x, y) {
     if (typeof dropOff === 'object' && dropOff !== null && x === dropOff.x && y === dropOff.y) {
         return '📦 Warehouse';
     }
-    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
-        return '🔬 Research Lab';
+    if (typeof masonry === 'object' && masonry !== null && x === masonry.x && y === masonry.y) {
+        return '🔨 Masonry';
     }
     if (typeof smelter === 'object' && smelter !== null && x === smelter.x && y === smelter.y) {
         return '🔥 Smelter';
     }
-    return '📍 (' + x + ' | ' + y + ')';
+    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
+        return '🔬 Research Lab';
+    }
+    if (typeof management === 'object' && management !== null && x === management.x && y === management.y) {
+        return '🏢 Management';
+    }
+    return '⛏️ Mining';
 }
 
 /**
@@ -42,6 +48,38 @@ function getDwarfCurrentActivity(dwarf) {
             return activeResearch.name;
         }
         return 'Researching';
+    } else if (dwarf.status === 'masonry') {
+        // Get the current masonry task - use same logic as worker's findActionableMasonryTask
+        if (typeof masonryTasks !== 'undefined' && Array.isArray(masonryTasks)) {
+            for (const taskId of masonryTasks) {
+                if (taskId === 'do-nothing') break;
+                const task = masonryTasksData[taskId];
+
+                // Check if task is unlocked (researched)
+                const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
+                if (!isUnlocked) continue;
+
+                // Check for single input (legacy format)
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return task.name;
+                    }
+                }
+
+                // Check for multiple inputs (alloy format)
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    const hasAllInputs = task.inputs.every(input => {
+                        const stockAmount = materialsStock[input.material] || 0;
+                        return stockAmount >= input.amount;
+                    });
+                    if (hasAllInputs) {
+                        return task.name;
+                    }
+                }
+            }
+        }
+        return 'Masonry';
     } else if (dwarf.status === 'smelting') {
         // Get the current smelter task - use same logic as worker's findActionableSmelterTask
         if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
@@ -280,6 +318,7 @@ function updateNextSkillpointButton(currentDwarfName) {
 const TASK_DEFINITIONS = {
     'digging': { icon: '⛏️', name: 'Digging' },
     'research': { icon: '🔬', name: 'Research' },
+    'masonry': { icon: '🔨', name: 'Masonry' },
     'smelting': { icon: '🔥', name: 'Smelter' },
     'managing': { icon: '🏢', name: 'Managing' }
 };
@@ -299,10 +338,39 @@ function populateTaskPriorityLists(dwarf) {
     priorityNormalList.innerHTML = '';
     priorityNoneList.innerHTML = '';
 
-    // Ensure dwarf has task arrays
+    // Ensure dwarf has task arrays - use proper initialization to avoid duplicates
     if (!dwarf.taskPriorityHigh) dwarf.taskPriorityHigh = [];
-    if (!dwarf.taskPriorityNormal) dwarf.taskPriorityNormal = ['digging', 'research', 'smelting', 'managing'];
     if (!dwarf.taskPriorityNone) dwarf.taskPriorityNone = [];
+
+    // Initialize taskPriorityNormal with all tasks not in other lists
+    if (!dwarf.taskPriorityNormal) {
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
+        dwarf.taskPriorityNormal = allTasks.filter(task =>
+            !dwarf.taskPriorityHigh.includes(task) &&
+            !dwarf.taskPriorityNone.includes(task)
+        );
+    } else {
+        // Even if taskPriorityNormal exists, ensure no duplicates across lists
+        // Remove any tasks from normal that are in high or none
+        dwarf.taskPriorityNormal = dwarf.taskPriorityNormal.filter(task =>
+            !dwarf.taskPriorityHigh.includes(task) &&
+            !dwarf.taskPriorityNone.includes(task)
+        );
+
+        // Add any missing tasks to normal priority (tasks that aren't in any list)
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
+        const allAssignedTasks = [
+            ...dwarf.taskPriorityHigh,
+            ...dwarf.taskPriorityNormal,
+            ...dwarf.taskPriorityNone
+        ];
+
+        for (const task of allTasks) {
+            if (!allAssignedTasks.includes(task)) {
+                dwarf.taskPriorityNormal.push(task);
+            }
+        }
+    }
 
     // Populate high priority list
     dwarf.taskPriorityHigh.forEach((taskId, index) => {
@@ -329,6 +397,23 @@ function populateTaskPriorityLists(dwarf) {
 
         const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'none');
         priorityNoneList.appendChild(item);
+    });
+
+    // Add drop handlers to the list containers themselves
+    // This allows dropping into empty areas of the lists
+    [priorityHighList, priorityNormalList, priorityNoneList].forEach(list => {
+        // Store dwarf name on the list for drop handler
+        list.dataset.dwarfName = dwarf.name;
+
+        // Remove old listeners if any
+        list.removeEventListener('dragover', handleListDragOver);
+        list.removeEventListener('drop', handleListDrop);
+        list.removeEventListener('dragleave', handleListDragLeave);
+
+        // Add new listeners
+        list.addEventListener('dragover', handleListDragOver);
+        list.addEventListener('drop', handleListDrop);
+        list.addEventListener('dragleave', handleListDragLeave);
     });
 }
 
@@ -448,6 +533,90 @@ function handleTaskDrop(e) {
             if (!dwarf.taskPriorityNone.includes(draggedTaskId)) {
                 dwarf.taskPriorityNone.push(draggedTaskId);
             }
+        }
+
+        // Save and refresh
+        saveTaskPriorityChanges(dwarf);
+        populateTaskPriorityLists(dwarf);
+    }
+
+    return false;
+}
+
+/**
+ * Handle dragover on list containers (for dropping into empty areas)
+ */
+function handleListDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Add visual indicator to the list container
+    this.classList.add('drag-over-list');
+
+    return false;
+}
+
+/**
+ * Handle dragleave on list containers
+ */
+function handleListDragLeave(e) {
+    // Only remove if we're actually leaving the list (not entering a child)
+    if (!this.contains(e.relatedTarget)) {
+        this.classList.remove('drag-over-list');
+    }
+}
+
+/**
+ * Handle drop on list containers (for dropping into empty areas)
+ */
+function handleListDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    this.classList.remove('drag-over-list');
+
+    // Only process if we're dropping on the list itself, not on a child item
+    if (e.target.classList.contains('task-priority-list')) {
+        const dwarfName = this.dataset.dwarfName;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (!dwarf || !draggedTask) return;
+
+        const draggedTaskId = draggedTask.dataset.taskId;
+
+        // Determine which list this was dropped on
+        let droppedOnList = 'normal';
+        if (this.id === 'task-priority-high-list') {
+            droppedOnList = 'high';
+        } else if (this.id === 'task-priority-normal-list') {
+            droppedOnList = 'normal';
+        } else if (this.id === 'task-priority-none-list') {
+            droppedOnList = 'none';
+        }
+
+        // Remove from all lists first to prevent duplicates
+        let fromHighIndex = dwarf.taskPriorityHigh.indexOf(draggedTaskId);
+        if (fromHighIndex > -1) dwarf.taskPriorityHigh.splice(fromHighIndex, 1);
+
+        let fromNormalIndex = dwarf.taskPriorityNormal.indexOf(draggedTaskId);
+        if (fromNormalIndex > -1) dwarf.taskPriorityNormal.splice(fromNormalIndex, 1);
+
+        let fromNoneIndex = dwarf.taskPriorityNone.indexOf(draggedTaskId);
+        if (fromNoneIndex > -1) dwarf.taskPriorityNone.splice(fromNoneIndex, 1);
+
+        // Add to destination list at the end
+        if (droppedOnList === 'high') {
+            dwarf.taskPriorityHigh.push(draggedTaskId);
+        } else if (droppedOnList === 'normal') {
+            dwarf.taskPriorityNormal.push(draggedTaskId);
+        } else {
+            dwarf.taskPriorityNone.push(draggedTaskId);
         }
 
         // Save and refresh

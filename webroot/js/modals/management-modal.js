@@ -172,10 +172,14 @@ function updateManagementTaskActivationStates() {
 function formatManagementValue(key, value, valueDef) {
     // Check type from valueDef if available
     if (valueDef && (valueDef.type === 'material-dropdown' || valueDef.type === 'gem-dropdown')) {
+        // Handle "any" special value for gem-dropdown
+        if (value === 'any') return 'Any Gem Type';
         const mat = getMaterialById(value);
         return mat ? mat.name : value;
     }
-    if (key === 'material' || key === 'gem') {
+    if (key === 'material' || key === 'gem' || key === 'gemtype') {
+        // Handle "any" special value
+        if (value === 'any') return 'Any Gem Type';
         const mat = getMaterialById(value);
         return mat ? mat.name : value;
     }
@@ -359,6 +363,13 @@ function updateTaskValueFields() {
             input = document.createElement('select');
             input.className = 'management-input';
             input.id = `task-value-${key}`;
+
+            // Add "Any" option first
+            const anyOption = document.createElement('option');
+            anyOption.value = 'any';
+            anyOption.textContent = 'Any Gem Type';
+            if (defaultValue === 'any') anyOption.selected = true;
+            input.appendChild(anyOption);
 
             // Populate with gems only
             for (const [matId, matData] of Object.entries(materials)) {
@@ -580,6 +591,13 @@ function populateEditTaskModal(task, taskDef) {
             input = document.createElement('select');
             input.className = 'management-input';
             input.id = `edit-task-value-${key}`;
+
+            // Add "Any" option first
+            const anyOption = document.createElement('option');
+            anyOption.value = 'any';
+            anyOption.textContent = 'Any Gem Type';
+            if (currentValue === 'any') anyOption.selected = true;
+            input.appendChild(anyOption);
 
             // Populate with gems only
             for (const [matId, matData] of Object.entries(materials)) {
