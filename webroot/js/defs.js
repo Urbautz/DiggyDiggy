@@ -1676,7 +1676,7 @@ let managementTasks = {
   },
     'cut-gems': {
     name: 'Cut Gems',
-    description: 'Marc gems for cutting.',
+    description: 'Mark gems for cutting.',
     values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
              minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
              mincarats: {Description: 'Minimum carats', default:1, type:'number'}
