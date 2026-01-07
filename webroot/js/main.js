@@ -2761,6 +2761,12 @@ function loadGame() {
         if (gameState.masonryTasks && Array.isArray(gameState.masonryTasks)) {
             // Filter out any that don't exist in masonryTasksData
             masonryTasks = gameState.masonryTasks.filter(id => masonryTasksData[id]);
+
+            // Migration: Add new tasks that were added in updates
+            // Check if 'cut-polish-gem' is missing and add it at the top (highest priority)
+            if (!masonryTasks.includes('cut-polish-gem') && masonryTasksData['cut-polish-gem']) {
+                masonryTasks.unshift('cut-polish-gem');
+            }
         }
         // Note: If masonryTasks is not in saved game, we'll use the default from defs.js
 

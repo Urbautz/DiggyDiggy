@@ -22,7 +22,10 @@ function getLocationName(x, y) {
     if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
         return '🔬 Research Lab';
     }
-    return '📍 (' + x + ' | ' + y + ')';
+    if (typeof management === 'object' && management !== null && x === management.x && y === management.y) {
+        return '🏢 Management';
+    }
+    return '⛏️ Mining';
 }
 
 /**
@@ -395,6 +398,23 @@ function populateTaskPriorityLists(dwarf) {
         const item = createTaskPriorityItem(taskId, taskDef, dwarf.name, 'none');
         priorityNoneList.appendChild(item);
     });
+
+    // Add drop handlers to the list containers themselves
+    // This allows dropping into empty areas of the lists
+    [priorityHighList, priorityNormalList, priorityNoneList].forEach(list => {
+        // Store dwarf name on the list for drop handler
+        list.dataset.dwarfName = dwarf.name;
+
+        // Remove old listeners if any
+        list.removeEventListener('dragover', handleListDragOver);
+        list.removeEventListener('drop', handleListDrop);
+        list.removeEventListener('dragleave', handleListDragLeave);
+
+        // Add new listeners
+        list.addEventListener('dragover', handleListDragOver);
+        list.addEventListener('drop', handleListDrop);
+        list.addEventListener('dragleave', handleListDragLeave);
+    });
 }
 
 /**
@@ -513,6 +533,90 @@ function handleTaskDrop(e) {
             if (!dwarf.taskPriorityNone.includes(draggedTaskId)) {
                 dwarf.taskPriorityNone.push(draggedTaskId);
             }
+        }
+
+        // Save and refresh
+        saveTaskPriorityChanges(dwarf);
+        populateTaskPriorityLists(dwarf);
+    }
+
+    return false;
+}
+
+/**
+ * Handle dragover on list containers (for dropping into empty areas)
+ */
+function handleListDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Add visual indicator to the list container
+    this.classList.add('drag-over-list');
+
+    return false;
+}
+
+/**
+ * Handle dragleave on list containers
+ */
+function handleListDragLeave(e) {
+    // Only remove if we're actually leaving the list (not entering a child)
+    if (!this.contains(e.relatedTarget)) {
+        this.classList.remove('drag-over-list');
+    }
+}
+
+/**
+ * Handle drop on list containers (for dropping into empty areas)
+ */
+function handleListDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+
+    this.classList.remove('drag-over-list');
+
+    // Only process if we're dropping on the list itself, not on a child item
+    if (e.target.classList.contains('task-priority-list')) {
+        const dwarfName = this.dataset.dwarfName;
+        const dwarf = dwarfs.find(d => d.name === dwarfName);
+        if (!dwarf || !draggedTask) return;
+
+        const draggedTaskId = draggedTask.dataset.taskId;
+
+        // Determine which list this was dropped on
+        let droppedOnList = 'normal';
+        if (this.id === 'task-priority-high-list') {
+            droppedOnList = 'high';
+        } else if (this.id === 'task-priority-normal-list') {
+            droppedOnList = 'normal';
+        } else if (this.id === 'task-priority-none-list') {
+            droppedOnList = 'none';
+        }
+
+        // Remove from all lists first to prevent duplicates
+        let fromHighIndex = dwarf.taskPriorityHigh.indexOf(draggedTaskId);
+        if (fromHighIndex > -1) dwarf.taskPriorityHigh.splice(fromHighIndex, 1);
+
+        let fromNormalIndex = dwarf.taskPriorityNormal.indexOf(draggedTaskId);
+        if (fromNormalIndex > -1) dwarf.taskPriorityNormal.splice(fromNormalIndex, 1);
+
+        let fromNoneIndex = dwarf.taskPriorityNone.indexOf(draggedTaskId);
+        if (fromNoneIndex > -1) dwarf.taskPriorityNone.splice(fromNoneIndex, 1);
+
+        // Add to destination list at the end
+        if (droppedOnList === 'high') {
+            dwarf.taskPriorityHigh.push(draggedTaskId);
+        } else if (droppedOnList === 'normal') {
+            dwarf.taskPriorityNormal.push(draggedTaskId);
+        } else {
+            dwarf.taskPriorityNone.push(draggedTaskId);
         }
 
         // Save and refresh

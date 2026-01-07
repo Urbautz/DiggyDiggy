@@ -629,6 +629,9 @@ function findActionableSmelterTask() {
 
 // Handle masonry task output production including break chance and bonus ore
 function handleMasonryTaskOutput(task, dwarf) {
+    // Skip if task has no output (e.g., gem cutting, control tasks)
+    if (!task.output) return;
+
     const outputMaterial = task.output.material;
     const outputAmount = task.output.amount;
 
@@ -1360,8 +1363,18 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                         if (runNumber > 20) break;
                         runNumber++;
                     }
+                } else if (task.type === 'gem-cutting') {
+                    // For gem cutting, only make progress if we have a gem assigned
+                    if (task.currentGemId) {
+                        totalProgressGained = 1;
+                    } else {
+                        // No gem available, reset task and abort
+                        task.progress = 0;
+                        dwarf.currentMasonryTask = null;
+                        return; // Skip the rest of this tick
+                    }
                 } else {
-                    // For tasks without output (gem cutting), just increment by 1
+                    // For other tasks without output, just increment by 1
                     totalProgressGained = 1;
                 }
 
@@ -1390,8 +1403,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                             gemToProcess.markedForCutting = false;
                             delete gemToProcess.cuttingProgress;
 
-                            // Increase value by GEM_POLISHING_VALUE_INCREASE
-                            gemToProcess.value = Math.round(gemToProcess.value * (1 + GEM_POLISHING_VALUE_INCREASE));
+                            // Increase value by GEM_CUTTING_VALUE_MULTIPLIER (1.8x = 80% increase)
+                            gemToProcess.value = Math.round(gemToProcess.value * GEM_CUTTING_VALUE_MULTIPLIER);
 
                             console.log(`Gem ${gemToProcess.id} polished! New value: ${gemToProcess.value}`);
                         }
@@ -1401,6 +1414,17 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     } else {
                         // Handle normal masonry task completion
                         handleMasonryTaskOutput(task, dwarf);
+
+                        // Consume input materials after task completion
+                        if (task.inputs && Array.isArray(task.inputs)) {
+                            task.inputs.forEach(input => {
+                                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                            });
+                        } else if (task.input && task.input.material && task.input.amount) {
+                            const inputMaterial = task.input.material;
+                            const inputAmount = task.input.amount;
+                            materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+                        }
 
                         // Reset task progress for next execution
                         task.progress = 0;

@@ -178,35 +178,50 @@ function populateMasonry() {
             const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
             taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
             taskRecipe.classList.add('recipe-ready');
+        } else if (task.type === 'gem-cutting') {
+            // Gem cutting task - show count of gems marked for cutting
+            const gemsMarkedForCutting = gems.filter(g => g.markedForCutting && !g.polished).length;
+            if (gemsMarkedForCutting > 0) {
+                taskRecipe.textContent = `${gemsMarkedForCutting} gem${gemsMarkedForCutting !== 1 ? 's' : ''} marked for cutting (${task.ticksRequired} ticks each)`;
+                taskRecipe.classList.add('recipe-ready');
+            } else {
+                taskRecipe.textContent = `No gems marked for cutting`;
+                taskRecipe.classList.add('recipe-blocked');
+            }
         } else if (task.inputs && Array.isArray(task.inputs)) {
-            // Multiple inputs (alloy format) - list all
+            // Multiple inputs (alloy format) - list all with stock counts
             const inputTexts = task.inputs.map(input => {
                 const mat = getMaterialById(input.material);
                 const matName = mat ? mat.name : input.material;
                 const stock = materialsStock[input.material] || 0;
                 const hasEnough = stock >= input.amount;
-                return `${input.amount}× ${matName}`;
+                return `${input.amount}× ${matName} (${stock})`;
             });
-            taskRecipe.textContent = inputTexts.join(' + ');
+            taskRecipe.textContent = inputTexts.join(' + ') + ` → ${task.output.amount}× ${getMaterialById(task.output.material)?.name || task.output.material}`;
             if (!isActionable && !isUnreachable) {
                 taskRecipe.classList.add('recipe-blocked');
             } else {
                 taskRecipe.classList.add('recipe-ready');
             }
         } else if (task.input && task.output) {
-            // Single input/output
+            // Single input/output with stock counts
             const inputMat = getMaterialById(task.input.material);
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
+            const stock = materialsStock[task.input.material] || 0;
 
-            taskRecipe.textContent = `${task.input.amount}× ${inputName} → ${task.output.amount}× ${outputName}`;
+            taskRecipe.textContent = `${task.input.amount}× ${inputName} (${stock}) → ${task.output.amount}× ${outputName}`;
 
             if (!isActionable && !isUnreachable) {
                 taskRecipe.classList.add('recipe-blocked');
             } else {
                 taskRecipe.classList.add('recipe-ready');
             }
+        } else if (task.type === 'none') {
+            // Do nothing task
+            taskRecipe.textContent = task.description;
+            taskRecipe.classList.add('recipe-ready');
         }
 
         // Task info container (with flex: 1 to push buttons right)
