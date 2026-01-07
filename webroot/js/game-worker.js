@@ -627,6 +627,303 @@ function findActionableSmelterTask() {
     return null;
 }
 
+/**
+ * Generic workshop task handler for masonry and smelter
+ * Handles the common logic for both workshop types
+ */
+function handleWorkshopTask(dwarf, workshopConfig) {
+    const {
+        workshopType,        // 'masonry' or 'smelting'
+        location,            // masonry or smelter object
+        reservedBy,          // masonryReservedBy or smelterReservedBy
+        setReservedBy,       // Function to set reservation
+        currentTaskField,    // 'currentMasonryTask' or 'currentSmelterTask'
+        findTaskFunction,    // findActionableMasonryTask or findActionableSmelterTask
+        handleOutputFunction, // handleMasonryTaskOutput or handleSmelterTaskOutput
+        tasksData,           // masonryTasksData or smelterTasksData
+        transactionPrefix    // 'Masonry' or 'Smelter'
+    } = workshopConfig;
+
+    // Check if at workshop location
+    if (typeof location !== 'object' || location === null || dwarf.x !== location.x || dwarf.y !== location.y) {
+        // Not at workshop location, release reservation and become idle
+        if (reservedBy === dwarf.name) setReservedBy(null);
+        if (workshopType === 'smelting' && managementReservedBy === dwarf.name) managementReservedBy = null;
+        dwarf.status = 'idle';
+        dwarf[currentTaskField] = null;
+        return;
+    }
+
+    // Check if dwarf has enough energy
+    if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+        // Don't reset progress when dwarf stops - allow continuation by next dwarf
+        if (reservedBy === dwarf.name) setReservedBy(null);
+        if (workshopType === 'smelting' && managementReservedBy === dwarf.name) managementReservedBy = null;
+        dwarf.status = 'idle';
+        dwarf[currentTaskField] = null;
+        return;
+    }
+
+    // Check if we can afford to pay the dwarf
+    const wage = calculateWage(dwarf);
+    if (gold < wage) {
+        // Not enough gold - strike chance reduced by union-busting research
+        const unionBusting = researchData['union-busting'];
+        const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
+        if (Math.random() > continueWorkChance) {
+            dwarf.status = 'striking';
+            return;
+        }
+    }
+
+    // Find an actionable task from the priority list
+    const taskResult = findTaskFunction();
+    if (!taskResult) {
+        // No work available, release workshop and become idle
+        // Don't reset progress - allow continuation when work becomes available
+        if (reservedBy === dwarf.name) setReservedBy(null);
+        if (workshopType === 'smelting' && managementReservedBy === dwarf.name) managementReservedBy = null;
+        dwarf.status = 'idle';
+        dwarf[currentTaskField] = null;
+        return;
+    }
+
+    const task = taskResult.task;
+    const taskId = taskResult.taskId;
+
+    // Check if this is a task that requires time (has ticksRequired property)
+    if (task.ticksRequired && task.ticksRequired > 0) {
+        // Initialize or validate task tracking
+        if (!dwarf[currentTaskField] || dwarf[currentTaskField] !== taskId) {
+            // Starting a new task or switching tasks
+            dwarf[currentTaskField] = taskId;
+
+            // For gem cutting, find the gem that's already being worked on or start a new one
+            if (task.type === 'gem-cutting') {
+                // First, try to find a gem that's already in progress
+                let gemToProcess = gems.find(g => g.markedForCutting && !g.polished && g.cuttingProgress > 0);
+
+                // If no gem in progress, find any gem marked for cutting
+                if (!gemToProcess) {
+                    gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                }
+
+                if (gemToProcess) {
+                    // Track which gem we're working on
+                    task.currentGemId = gemToProcess.id;
+
+                    // Initialize progress if needed
+                    if (!gemToProcess.cuttingProgress) {
+                        gemToProcess.cuttingProgress = 0;
+                    }
+
+                    // Restore progress from the gem to the task
+                    task.progress = gemToProcess.cuttingProgress;
+                }
+            }
+        }
+
+        // Always ensure progress is initialized
+        if (task.progress === undefined || isNaN(task.progress)) {
+            task.progress = 0;
+        }
+
+        // Implement wisdom-based difficulty system for output tasks
+        let totalProgressGained = 0;
+
+        // For tasks with output, use hardness-based difficulty
+        if (task.output && task.output.material && task.hardness !== undefined) {
+            const hardness = task.hardness;
+
+            // Calculate how many runs the dwarf gets based on wisdom
+            let currentWisdom = dwarf.wisdom || 0;
+            let runNumber = 1;
+
+            while (true) {
+                const smeltingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
+                const roll = Math.random() * hardness;
+
+                // Use minimum success chance if power is too low
+                const minChanceRoll = Math.random();
+                const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
+                const normalSuccess = roll <= smeltingPower;
+                const success = normalSuccess || minChanceSuccess;
+
+                if (!success) {
+                    break;
+                }
+
+                // Success! Gain 1 progress
+                totalProgressGained++;
+
+                // Halve wisdom for next run
+                if ((dwarf.wisdom || 0) > 0) {
+                    currentWisdom = Math.floor(currentWisdom / 2);
+                } else {
+                    break;
+                }
+
+                // Safety check
+                if (runNumber > 20) break;
+                runNumber++;
+            }
+        } else if (task.type === 'gem-cutting') {
+            // For gem cutting, only make progress if we have a gem assigned
+            if (task.currentGemId) {
+                totalProgressGained = 1;
+            } else {
+                // No gem available, reset task and abort
+                task.progress = 0;
+                dwarf[currentTaskField] = null;
+                return; // Skip the rest of this tick
+            }
+        } else if (task.type === 'heating') {
+            // Heating tasks always make progress
+            totalProgressGained = 1;
+        } else {
+            // For other tasks without output, just increment by 1
+            totalProgressGained = 1;
+        }
+
+        // Apply progress to the task
+        task.progress += totalProgressGained;
+
+        // For gem cutting, sync progress with the specific gem
+        if (task.type === 'gem-cutting' && task.currentGemId) {
+            const gemToProcess = gems.find(g => g.id === task.currentGemId);
+            if (gemToProcess) {
+                gemToProcess.cuttingProgress = task.progress;
+            }
+        }
+
+        // Check if task is complete
+        if (task.progress >= task.ticksRequired) {
+            task.progress = task.ticksRequired;
+
+            // Task complete! Process the result
+
+            // Handle gem cutting completion
+            if (task.type === 'gem-cutting' && task.currentGemId) {
+                const gemToProcess = gems.find(g => g.id === task.currentGemId);
+                if (gemToProcess) {
+                    gemToProcess.polished = true;
+                    gemToProcess.markedForCutting = false;
+                    delete gemToProcess.cuttingProgress;
+
+                    // Increase value by GEM_CUTTING_VALUE_MULTIPLIER (1.8x = 80% increase)
+                    gemToProcess.value = Math.round(gemToProcess.value * GEM_CUTTING_VALUE_MULTIPLIER);
+
+                    console.log(`Gem ${gemToProcess.id} polished! New value: ${gemToProcess.value}`);
+                }
+                delete task.currentGemId;
+                task.progress = 0;
+                dwarf[currentTaskField] = null;
+            }
+            // Handle heating task completion (smelter only)
+            else if (task.type === 'heating' && task.heatGain) {
+                const furnaceTemp = researchData['furnace-temperature'];
+                const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+                const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+                if (task.heatGain === 'dynamic') {
+                    smelterTemperature = maxTemp;
+                } else {
+                    const coalMaxTemp = 2000;
+                    smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
+                }
+
+                // Consume input materials for heating tasks
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    task.inputs.forEach(input => {
+                        materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                    });
+                } else if (task.input && task.input.material && task.input.amount) {
+                    materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - task.input.amount;
+                }
+
+                task.progress = 0;
+                dwarf[currentTaskField] = null;
+            }
+            else {
+                // Handle normal workshop task completion
+                handleOutputFunction(task, dwarf);
+
+                // Consume input materials after task completion
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    task.inputs.forEach(input => {
+                        materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                    });
+                } else if (task.input && task.input.material && task.input.amount) {
+                    const inputMaterial = task.input.material;
+                    const inputAmount = task.input.amount;
+                    materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+                }
+
+                // Reset task progress for next execution
+                task.progress = 0;
+                dwarf[currentTaskField] = null;
+            }
+        }
+
+        // Consume energy and pay wage
+        const energyCostPerTick = DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0);
+        dwarf.energy = Math.max(0, dwarf.energy - energyCostPerTick);
+
+        // Pay wage
+        gold -= wage;
+        pendingTransactions.push({
+            description: `${transactionPrefix}: ${task.name}`,
+            income: 0,
+            expense: wage
+        });
+
+        // Award XP for workshop work (based on task hardness)
+        const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));
+        dwarf.xp = (dwarf.xp || 0) + xpGain;
+
+    } else if (workshopType === 'smelting') {
+        // Immediate task (no ticksRequired) - only for smelter
+        // Consume input materials
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => {
+                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+            });
+        } else if (task.input && task.input.material && task.input.amount) {
+            materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - task.input.amount;
+        }
+
+        // Handle heating task
+        if (task.type === 'heating' && task.heatGain) {
+            const furnaceTemp = researchData['furnace-temperature'];
+            const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+            const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+
+            if (task.heatGain === 'dynamic') {
+                smelterTemperature = maxTemp;
+            } else {
+                const coalMaxTemp = 2000;
+                smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
+            }
+        } else if (task.output) {
+            handleOutputFunction(task, dwarf);
+        }
+
+        // Pay the dwarf, consume energy and award XP
+        gold = Math.max(0, gold - wage);
+        pendingTransactions.push({ type: 'expense', amount: wage, description: `${transactionPrefix} wage for ${dwarf.name}` });
+        applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
+        dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
+
+        return;
+    } else {
+        // Immediate task for masonry (should not happen) - release workshop and become idle
+        if (reservedBy === dwarf.name) setReservedBy(null);
+        if (workshopType === 'smelting' && managementReservedBy === dwarf.name) managementReservedBy = null;
+        dwarf.status = 'idle';
+        dwarf[currentTaskField] = null;
+    }
+}
+
 // Handle masonry task output production including break chance and bonus ore
 function handleMasonryTaskOutput(task, dwarf) {
     // Skip if task has no output (e.g., gem cutting, control tasks)
@@ -1250,482 +1547,34 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     // Masonry state
     if (dwarf.status === 'masonry') {
-        // Check if at masonry location
-        if (typeof masonry === 'object' && masonry !== null && dwarf.x === masonry.x && dwarf.y === masonry.y) {
-            // Check if dwarf has enough energy
-            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
-                // Don't reset progress when dwarf stops - allow continuation by next dwarf
-                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
-                dwarf.status = 'idle';
-                dwarf.currentMasonryTask = null;
-                return;
-            }
-
-            // Check if we can afford to pay the dwarf
-            const wage = calculateWage(dwarf);
-            if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
-                    dwarf.status = 'striking';
-                    return;
-                }
-            }
-
-            // Find an actionable task from the priority list
-            const taskResult = findActionableMasonryTask();
-            if (!taskResult) {
-                // No work available, release masonry and become idle
-                // Don't reset progress - allow continuation when work becomes available
-                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
-                dwarf.status = 'idle';
-                dwarf.currentMasonryTask = null;
-                return;
-            }
-
-            const task = taskResult.task;
-            const taskId = taskResult.taskId;
-
-            // Check if this is a task that requires time (has ticksRequired property)
-            if (task.ticksRequired && task.ticksRequired > 0) {
-                // Initialize or validate task tracking
-                if (!dwarf.currentMasonryTask || dwarf.currentMasonryTask !== taskId) {
-                    // Starting a new task or switching tasks
-                    dwarf.currentMasonryTask = taskId;
-
-                    // For gem cutting, find the gem that's already being worked on or start a new one
-                    if (task.type === 'gem-cutting') {
-                        // First, try to find a gem that's already in progress
-                        let gemToProcess = gems.find(g => g.markedForCutting && !g.polished && g.cuttingProgress > 0);
-
-                        // If no gem in progress, find any gem marked for cutting
-                        if (!gemToProcess) {
-                            gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-                        }
-
-                        if (gemToProcess) {
-                            // Track which gem we're working on
-                            task.currentGemId = gemToProcess.id;
-
-                            // Initialize progress if needed
-                            if (!gemToProcess.cuttingProgress) {
-                                gemToProcess.cuttingProgress = 0;
-                            }
-
-                            // Restore progress from the gem to the task
-                            task.progress = gemToProcess.cuttingProgress;
-                        }
-                    }
-                }
-
-                // Always ensure progress is initialized
-                if (task.progress === undefined || isNaN(task.progress)) {
-                    task.progress = 0;
-                }
-
-                // Implement wisdom-based difficulty system for output tasks
-                let totalProgressGained = 0;
-
-                // For tasks with output, use hardness-based difficulty
-                if (task.output && task.output.material && task.hardness !== undefined) {
-                    const hardness = task.hardness;
-
-                    // Calculate how many runs the dwarf gets based on wisdom
-                    let currentWisdom = dwarf.wisdom || 0;
-                    let runNumber = 1;
-
-                    while (true) {
-                        const smeltingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
-                        const roll = Math.random() * hardness;
-
-                        // Use minimum success chance if power is too low
-                        const minChanceRoll = Math.random();
-                        const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
-                        const normalSuccess = roll <= smeltingPower;
-                        const success = normalSuccess || minChanceSuccess;
-
-                        if (!success) {
-                            break;
-                        }
-
-                        // Success! Gain 1 progress
-                        totalProgressGained++;
-
-                        // Halve wisdom for next run
-                        if ((dwarf.wisdom || 0) > 0) {
-                            currentWisdom = Math.floor(currentWisdom / 2);
-                        } else {
-                            break;
-                        }
-
-                        // Safety check
-                        if (runNumber > 20) break;
-                        runNumber++;
-                    }
-                } else if (task.type === 'gem-cutting') {
-                    // For gem cutting, only make progress if we have a gem assigned
-                    if (task.currentGemId) {
-                        totalProgressGained = 1;
-                    } else {
-                        // No gem available, reset task and abort
-                        task.progress = 0;
-                        dwarf.currentMasonryTask = null;
-                        return; // Skip the rest of this tick
-                    }
-                } else {
-                    // For other tasks without output, just increment by 1
-                    totalProgressGained = 1;
-                }
-
-                // Apply progress to the task
-                task.progress += totalProgressGained;
-
-                // For gem cutting, sync progress with the specific gem
-                if (task.type === 'gem-cutting' && task.currentGemId) {
-                    const gemToProcess = gems.find(g => g.id === task.currentGemId);
-                    if (gemToProcess) {
-                        gemToProcess.cuttingProgress = task.progress;
-                    }
-                }
-
-                // Check if task is complete
-                if (task.progress >= task.ticksRequired) {
-                    task.progress = task.ticksRequired;
-
-                    // Task complete! Process the result
-
-                    // Handle gem cutting completion
-                    if (task.type === 'gem-cutting' && task.currentGemId) {
-                        const gemToProcess = gems.find(g => g.id === task.currentGemId);
-                        if (gemToProcess) {
-                            gemToProcess.polished = true;
-                            gemToProcess.markedForCutting = false;
-                            delete gemToProcess.cuttingProgress;
-
-                            // Increase value by GEM_CUTTING_VALUE_MULTIPLIER (1.8x = 80% increase)
-                            gemToProcess.value = Math.round(gemToProcess.value * GEM_CUTTING_VALUE_MULTIPLIER);
-
-                            console.log(`Gem ${gemToProcess.id} polished! New value: ${gemToProcess.value}`);
-                        }
-                        delete task.currentGemId;
-                        task.progress = 0;
-                        dwarf.currentMasonryTask = null;
-                    } else {
-                        // Handle normal masonry task completion
-                        handleMasonryTaskOutput(task, dwarf);
-
-                        // Consume input materials after task completion
-                        if (task.inputs && Array.isArray(task.inputs)) {
-                            task.inputs.forEach(input => {
-                                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
-                            });
-                        } else if (task.input && task.input.material && task.input.amount) {
-                            const inputMaterial = task.input.material;
-                            const inputAmount = task.input.amount;
-                            materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
-                        }
-
-                        // Reset task progress for next execution
-                        task.progress = 0;
-                        dwarf.currentMasonryTask = null;
-                    }
-                }
-
-                // Consume energy and pay wage
-                const energyCostPerTick = DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0);
-                dwarf.energy = Math.max(0, dwarf.energy - energyCostPerTick);
-
-                // Pay wage
-                gold -= wage;
-                pendingTransactions.push({
-                    description: `Masonry: ${task.name}`,
-                    income: 0,
-                    expense: wage
-                });
-
-                // Award XP for masonry work (based on task hardness)
-                const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));
-                dwarf.xp = (dwarf.xp || 0) + xpGain;
-
-            } else {
-                // Immediate task (no ticksRequired) - should not happen for masonry
-                // Release masonry and become idle
-                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
-                dwarf.status = 'idle';
-                dwarf.currentMasonryTask = null;
-            }
-            return;
-        } else {
-            // Not at masonry location, release reservation and become idle
-            if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
-            dwarf.status = 'idle';
-        }
+        handleWorkshopTask(dwarf, {
+            workshopType: 'masonry',
+            location: masonry,
+            reservedBy: masonryReservedBy,
+            setReservedBy: (val) => { masonryReservedBy = val; },
+            currentTaskField: 'currentMasonryTask',
+            findTaskFunction: findActionableMasonryTask,
+            handleOutputFunction: handleMasonryTaskOutput,
+            tasksData: masonryTasksData,
+            transactionPrefix: 'Masonry'
+        });
+        return;
     }
 
     // Smelting state
     if (dwarf.status === 'smelting') {
-        // Check if at smelter location
-        if (typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y) {
-            // Check if dwarf has enough energy
-            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
-                // Don't reset progress when dwarf stops - allow continuation by next dwarf
-                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
-                dwarf.status = 'idle';
-                dwarf.currentSmelterTask = null;
-                return;
-            }
-            
-            // Check if we can afford to pay the dwarf
-            const wage = calculateWage(dwarf);
-            if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
-                    dwarf.status = 'striking';
-                    return;
-                }
-            }
-            
-            // Find an actionable task from the priority list
-            const taskResult = findActionableSmelterTask();
-            if (!taskResult) {
-                // No work available, release smelter and become idle
-                // Don't reset progress - allow continuation when work becomes available
-                if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
-                dwarf.status = 'idle';
-                dwarf.currentSmelterTask = null;
-                return;
-            }
-
-            const task = taskResult.task;
-            const taskId = taskResult.taskId;
-
-            // Check if this is a task that requires time (has ticksRequired property)
-            if (task.ticksRequired && task.ticksRequired > 0) {
-                // Initialize or validate task tracking
-                if (!dwarf.currentSmelterTask || dwarf.currentSmelterTask !== taskId) {
-                    // Starting a new task or switching tasks
-                    dwarf.currentSmelterTask = taskId;
-
-                    // For gem cutting, find the gem that's already being worked on or start a new one
-                    if (task.type === 'gem-cutting') {
-                        // First, try to find a gem that's already in progress
-                        let gemToProcess = gems.find(g => g.markedForCutting && !g.polished && g.cuttingProgress > 0);
-
-                        // If no gem in progress, find any gem marked for cutting
-                        if (!gemToProcess) {
-                            gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-                        }
-
-                        if (gemToProcess) {
-                            // Track which gem we're working on
-                            task.currentGemId = gemToProcess.id;
-
-                            // Initialize progress if needed
-                            if (!gemToProcess.cuttingProgress) {
-                                gemToProcess.cuttingProgress = 0;
-                            }
-
-                            // Restore progress from the gem to the task
-                            task.progress = gemToProcess.cuttingProgress;
-                        }
-                    }
-                }
-
-                // Always ensure progress is initialized (not just when starting new task)
-                // This handles cases where task.progress might be NaN or undefined
-                if (task.progress === undefined || isNaN(task.progress)) {
-                    task.progress = 0;
-                }
-
-                // Implement wisdom-based difficulty system for output tasks (similar to research)
-                let totalProgressGained = 0;
-
-                // For tasks with output, use hardness-based difficulty
-                if (task.output && task.output.material && task.hardness !== undefined) {
-                    // Use the task's hardness property instead of the material's hardness
-                    const hardness = task.hardness;
-
-                    // Calculate how many runs the dwarf gets based on wisdom
-                    let currentWisdom = dwarf.wisdom || 0;
-                    let runNumber = 1;
-
-                    while (true) {
-                        // Calculate success chance: (wisdom * SMELTER_WISDOM_PROBABILITY_BONUS) vs hardness
-                        // Higher hardness materials are harder to smelt successfully
-                        const smeltingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
-                        const roll = Math.random() * hardness;
-
-                        // Use minimum success chance if smelting power is too low
-                        const minChanceRoll = Math.random();
-                        const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
-                        const normalSuccess = roll <= smeltingPower;
-                        const success = normalSuccess || minChanceSuccess;
-
-                        if (!success) {
-                            // Failed this run, stop
-                            break;
-                        }
-
-                        // Success! Gain 1 progress
-                        totalProgressGained++;
-
-                        // Halve wisdom for next run (rounded down), but only if actual wisdom > 0
-                        if ((dwarf.wisdom || 0) > 0) {
-                            currentWisdom = Math.floor(currentWisdom / 2);
-                        } else {
-                            // Dwarf has 0 wisdom, only gets 1 roll with minimum chance
-                            break;
-                        }
-
-                        // Safety check: prevent infinite loops
-                        if (runNumber > 20) break;
-                        runNumber++;
-                    }
-                } else {
-                    // For tasks without output (heating, gem cutting), just increment by 1
-                    totalProgressGained = 1;
-                }
-
-                // Apply progress to the task (not the dwarf)
-                task.progress += totalProgressGained;
-
-                // For gem cutting, sync progress with the specific gem being worked on
-                if (task.type === 'gem-cutting' && task.currentGemId) {
-                    const gemToProcess = gems.find(g => g.id === task.currentGemId);
-                    if (gemToProcess) {
-                        gemToProcess.cuttingProgress = task.progress;
-                    }
-                }
-
-                // Check if task is complete (cap progress at ticksRequired for display purposes)
-                if (task.progress >= task.ticksRequired) {
-                    // Cap progress at ticksRequired to avoid display issues
-                    task.progress = task.ticksRequired;
-
-                    // Task complete! Process the result
-
-                    // Handle gem cutting completion
-                    if (task.type === 'gem-cutting' && task.currentGemId) {
-                        const gemToProcess = gems.find(g => g.id === task.currentGemId);
-                        if (gemToProcess) {
-                            gemToProcess.polished = true;
-                            gemToProcess.markedForCutting = false;
-                            gemToProcess.cuttingProgress = 0;
-                            // Clear the tracked gem ID
-                            task.currentGemId = null;
-                        }
-                    }
-                    // Handle heating task completion
-                    else if (task.type === 'heating' && task.heatGain) {
-                        const furnaceTemp = researchData['furnace-temperature'];
-                        const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
-                        const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-
-                        if (task.heatGain === 'dynamic') {
-                            smelterTemperature = maxTemp;
-                        } else {
-                            const coalMaxTemp = 2000;
-                            smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
-                        }
-                    }
-                    // Handle regular smelting/processing with output
-                    else if (task.output) {
-                        handleSmelterTaskOutput(task, dwarf);
-                    }
-
-                    // Consume input materials after task completion
-                    if (task.inputs && Array.isArray(task.inputs)) {
-                        task.inputs.forEach(input => {
-                            materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
-                        });
-                    } else if (task.input && task.input.material && task.input.amount) {
-                        const inputMaterial = task.input.material;
-                        const inputAmount = task.input.amount;
-                        materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
-                    }
-
-                    // Reset progress on the task and clear dwarf's current task
-                    task.progress = 0;
-                    dwarf.currentSmelterTask = null;
-
-                    // Task completed! Keep dwarf as 'smelting' status
-                    // They will check for more work on the next tick
-                    // Don't release reservation or become idle - stay at smelter
-                    console.log(`[${dwarf.name}] ✅ Completed smelter task, staying at smelter for more work`);
-                }
-
-                // Pay the dwarf, consume energy and award XP for each tick
-                gold = Math.max(0, gold - wage);
-                pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-                applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
-
-                // Award XP based on successful attempts (ceiling of square root)
-                const successfulAttempts = Math.max(1, totalProgressGained); // At least 1 for the attempt
-                const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
-                dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
-
-                return;
-            }
-
-            // Perform the smelting action (instant tasks without ticksRequired)
-            // Consume input materials - support both single input and multiple inputs (for alloys)
-            if (task.inputs && Array.isArray(task.inputs)) {
-                // Multiple inputs (alloy format)
-                task.inputs.forEach(input => {
-                    materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
-                });
-            } else if (task.input && task.input.material && task.input.amount) {
-                // Single input (legacy format)
-                const inputMaterial = task.input.material;
-                const inputAmount = task.input.amount;
-                materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
-            }
-
-            // Handle heating task
-            if (task.type === 'heating' && task.heatGain) {
-                // Calculate max temperature based on furnace-temperature research
-                const furnaceTemp = researchData['furnace-temperature'];
-                const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
-                const maxTemp = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
-
-                if (task.heatGain === 'dynamic') {
-                    // Magma furnace: set temperature directly to max
-                    smelterTemperature = maxTemp;
-                    //console.log(`Dwarf ${dwarf.name} used magma to heat furnace to max ${Math.round(smelterTemperature)}°`);
-                } else {
-                    // Coal: add heat gain, capped at 2000°
-                    const coalMaxTemp = 2000;
-                    smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
-                    //console.log(`Dwarf ${dwarf.name} heated furnace by ${task.heatGain}° (now ${Math.round(smelterTemperature)}°, coal max: ${coalMaxTemp}°)`);
-                }
-            } else if (task.output) {
-                // Regular smelting task with output
-                handleSmelterTaskOutput(task, dwarf);
-            }
-            
-            // Pay the dwarf, consume energy and award XP
-            gold = Math.max(0, gold - wage);
-            pendingTransactions.push({ type: 'expense', amount: wage, description: 'Smelter wage for ' + dwarf.name });
-
-            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
-            dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
-            
-            //console.log(`Dwarf ${dwarf.name} performed smelting task`);
-            return;
-        } else {
-            // Not at smelter location, release reservation and become idle
-            // Don't reset progress - allow continuation by next dwarf
-            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
-            dwarf.status = 'idle';
-            dwarf.currentSmelterTask = null;
-        }
+        handleWorkshopTask(dwarf, {
+            workshopType: 'smelting',
+            location: smelter,
+            reservedBy: smelterReservedBy,
+            setReservedBy: (val) => { smelterReservedBy = val; },
+            currentTaskField: 'currentSmelterTask',
+            findTaskFunction: findActionableSmelterTask,
+            handleOutputFunction: handleSmelterTaskOutput,
+            tasksData: smelterTasksData,
+            transactionPrefix: 'Smelter'
+        });
+        return;
     }
 
     // Managing state
