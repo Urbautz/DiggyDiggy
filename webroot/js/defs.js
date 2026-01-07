@@ -667,13 +667,14 @@ const materials = {
     weight: 23
   },
   'platinum': {
-    name: 'Platinum Ingot',
+    name: 'Platinum harened steel ingot',
+    type: 'Ingot',
     type: 'Ingot',
     hardness: 700,
     probability: 0,
     worth: 2800,
     minlevel: 70000,
-    color: '#2d2121ff',
+    color: '#3b371dff',
     forge: 'Base',
     weight: 25
   },
@@ -1067,7 +1068,7 @@ const smelterTasksData = {
   'smelt-steel': {
     name: 'Smelt Steel',
     description: 'Smelt Steel.',
-    input: { material: 'iron', amount: 5 },
+    input: { material: 'iron', amount: 3 },
     output: { material: 'steel', amount: 1 },
     minTemp: 1350,
     ticksRequired: SMELTER_STEEL_TICKS_REQUIRED,
@@ -1077,7 +1078,10 @@ const smelterTasksData = {
   'smelt-steel-hardened': {
     name: 'Smelt Hardened Steel',
     description: 'Smelt hardened steel.',
-    input: { material: 'steel', amount: 5 },
+    inputs: [
+      { material: 'steel', amount: 1 },
+      { material: 'iron', amount: 3 }
+    ],
     output: { material: 'hardened steel', amount: 1 },
     minTemp: 1950,
     ticksRequired: SMELTER_HARDENED_STEEL_TICKS_REQUIRED,
@@ -1087,7 +1091,10 @@ const smelterTasksData = {
   'smelt-steel-dwarf': {
     name: 'Smelt Dwarfen Steel',
     description: 'Smelt dwarfen steel.',
-    input: { material: 'hardened steel', amount: 5 },
+    inputs: [
+      { material: 'hardened steel', amount: 1 },
+      { material: 'zinc', amount: 2 }
+    ],
     output: { material: 'dwarf steel', amount: 1 },
     minTemp: 2400,
     ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
@@ -1133,9 +1140,12 @@ const smelterTasksData = {
   // HARD METAL SMELTING
   // ──────────────────────────────────────────────────────────────────────────
   'smelt-platinum': {
-    name: 'Smelt Platinum',
-    description: 'Smelt platinum ore.',
-    input: { material: 'platinum ore', amount: 1 },
+    name: 'Platinum hardned steel',
+    description: 'Smelt Platinum hardned steel',
+    inputs: [
+      { material: 'steel', amount: 1 },
+      { material: 'platinum ore', amount: 1 }
+    ],
     output: { material: 'platinum', amount: 1 },
     minTemp: 1768,
     ticksRequired: SMELTER_DWARF_STEEL_TICKS_REQUIRED,
@@ -1145,7 +1155,7 @@ const smelterTasksData = {
   'smelt-titanium': {
     name: 'Smelt Titanium',
     description: 'Smelt titanium ore.',
-    input: { material: 'titanium ore', amount: 1 },
+    input: { material: 'titanium ore', amount: 5 },
     output: { material: 'titanium', amount: 1 },
     minTemp: 1668,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
@@ -1155,7 +1165,7 @@ const smelterTasksData = {
   'smelt-adamantine': {
     name: 'Smelt Adamantine',
     description: 'Smelt adamantine ore.',
-    input: { material: 'adamantine ore', amount: 1 },
+    input: { material: 'adamantine ore', amount: 10 },
     output: { material: 'adamantine', amount: 1 },
     minTemp: 2850,
     ticksRequired: SMELTER_PRECIOUS_METAL_TICKS_REQUIRED,
