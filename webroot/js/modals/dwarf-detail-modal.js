@@ -13,11 +13,14 @@ function getLocationName(x, y) {
     if (typeof dropOff === 'object' && dropOff !== null && x === dropOff.x && y === dropOff.y) {
         return '📦 Warehouse';
     }
-    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
-        return '🔬 Research Lab';
+    if (typeof masonry === 'object' && masonry !== null && x === masonry.x && y === masonry.y) {
+        return '🔨 Masonry';
     }
     if (typeof smelter === 'object' && smelter !== null && x === smelter.x && y === smelter.y) {
         return '🔥 Smelter';
+    }
+    if (typeof research === 'object' && research !== null && x === research.x && y === research.y) {
+        return '🔬 Research Lab';
     }
     return '📍 (' + x + ' | ' + y + ')';
 }
@@ -42,6 +45,38 @@ function getDwarfCurrentActivity(dwarf) {
             return activeResearch.name;
         }
         return 'Researching';
+    } else if (dwarf.status === 'masonry') {
+        // Get the current masonry task - use same logic as worker's findActionableMasonryTask
+        if (typeof masonryTasks !== 'undefined' && Array.isArray(masonryTasks)) {
+            for (const taskId of masonryTasks) {
+                if (taskId === 'do-nothing') break;
+                const task = masonryTasksData[taskId];
+
+                // Check if task is unlocked (researched)
+                const isUnlocked = !task.requires || (researchData[task.requires]?.level || 0) >= 1;
+                if (!isUnlocked) continue;
+
+                // Check for single input (legacy format)
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return task.name;
+                    }
+                }
+
+                // Check for multiple inputs (alloy format)
+                if (task.inputs && Array.isArray(task.inputs)) {
+                    const hasAllInputs = task.inputs.every(input => {
+                        const stockAmount = materialsStock[input.material] || 0;
+                        return stockAmount >= input.amount;
+                    });
+                    if (hasAllInputs) {
+                        return task.name;
+                    }
+                }
+            }
+        }
+        return 'Masonry';
     } else if (dwarf.status === 'smelting') {
         // Get the current smelter task - use same logic as worker's findActionableSmelterTask
         if (typeof smelterTasks !== 'undefined' && Array.isArray(smelterTasks)) {
@@ -280,6 +315,7 @@ function updateNextSkillpointButton(currentDwarfName) {
 const TASK_DEFINITIONS = {
     'digging': { icon: '⛏️', name: 'Digging' },
     'research': { icon: '🔬', name: 'Research' },
+    'masonry': { icon: '🔨', name: 'Masonry' },
     'smelting': { icon: '🔥', name: 'Smelter' },
     'managing': { icon: '🏢', name: 'Managing' }
 };
@@ -305,7 +341,7 @@ function populateTaskPriorityLists(dwarf) {
 
     // Initialize taskPriorityNormal with all tasks not in other lists
     if (!dwarf.taskPriorityNormal) {
-        const allTasks = ['digging', 'research', 'smelting', 'managing'];
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
         dwarf.taskPriorityNormal = allTasks.filter(task =>
             !dwarf.taskPriorityHigh.includes(task) &&
             !dwarf.taskPriorityNone.includes(task)
@@ -319,7 +355,7 @@ function populateTaskPriorityLists(dwarf) {
         );
 
         // Add any missing tasks to normal priority (tasks that aren't in any list)
-        const allTasks = ['digging', 'research', 'smelting', 'managing'];
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
         const allAssignedTasks = [
             ...dwarf.taskPriorityHigh,
             ...dwarf.taskPriorityNormal,

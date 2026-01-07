@@ -169,6 +169,41 @@ function countActionableSmelterTasks() {
     return count;
 }
 
+// Count how many masonry tasks are currently actionable
+function countActionableMasonryTasks() {
+    let count = 0;
+    for (const taskId of masonryTasks) {
+        if (taskId === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+        const task = masonryTasksData[taskId];
+        if (!isSmelterTaskUnlocked(task)) continue; // Reuse smelter unlock check (same logic)
+
+        // Check for single input (legacy format)
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                count++;
+            }
+        }
+
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stock = materialsStock[input.material] || 0;
+                return stock >= input.amount;
+            });
+            if (hasAllInputs) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+// Check if the masonry's top task is "do nothing"
+function isMasonryPaused() {
+    return masonryTasks.length > 0 && masonryTasks[0] === 'do-nothing';
+}
+
 // Check if the smelter's top task is "do nothing"
 function isSmelterPaused() {
     return smelterTasks.length > 0 && smelterTasks[0] === 'do-nothing';
@@ -485,12 +520,30 @@ function updateGridDisplay() {
                     }
                 }
 
+                if (typeof masonry === 'object' && masonry !== null && masonry.x === gx && masonry.y === gy) {
+                    cell.title = 'Masonry';
+                    cell.style.position = 'relative'; // Enable absolute positioning for badge
+                    const mas = document.createElement('span');
+                    mas.className = 'drop-off-marker';
+                    mas.textContent = '🔨';
+                    cell.appendChild(mas);
+
+                    // Add notification badge showing number of actionable tasks
+                    const actionableTasksCount = countActionableMasonryTasks();
+                    if (actionableTasksCount > 0) {
+                        const badge = document.createElement('div');
+                        badge.className = 'grid-badge';
+                        badge.textContent = actionableTasksCount;
+                        cell.appendChild(badge);
+                    }
+                }
+
                 if (typeof smelter === 'object' && smelter !== null && smelter.x === gx && smelter.y === gy) {
                     cell.title = 'Smelter';
                     cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const sm = document.createElement('span');
                     sm.className = 'drop-off-marker';
-                    sm.textContent = '♨️';
+                    sm.textContent = '🔥';
                     cell.appendChild(sm);
 
                     // Add notification badge showing number of actionable tasks
@@ -554,6 +607,11 @@ function updateGridDisplay() {
 
 // Gem modal code (openGemModal, populateGemModal, confirmGemSetting, unsetGem,
 // openGemsModal, populateGemsList, markGemsForCutting, sellGems) moved to modals/gem-modal.js
+
+function openMasonry() {
+    openModal('masonry-modal');
+    populateMasonry();
+}
 
 function openSmelter() {
     openModal('smelter-modal');
@@ -2376,8 +2434,11 @@ function initWorker() {
             dropOff,
             house,
             research,
+            masonry,
             smelter,
             management,
+            masonryTasks,
+            masonryTasksData,
             smelterTasks,
             smelterTasksData,
             dropGridStartX,
@@ -2452,6 +2513,7 @@ function saveGame() {
             transactionHistory: transactionHistory,
             currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
+            masonryTasks: masonryTasks,
             smelterTemperature: smelterTemperature,
             smelterCoalMinTemp: smelterCoalMinTemp,
             smelterCoalMaxTemp: smelterCoalMaxTemp,
@@ -2551,6 +2613,25 @@ function loadGame() {
             // Migration: Add 'managing' to existing task priorities if missing
             if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('managing')) {
                 dwarf.taskPriorityNormal.push('managing');
+            }
+
+            // Migration: Add 'masonry' to existing task priorities if missing
+            // Insert it at the same position as 'smelting' (just before smelting)
+            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('masonry')) {
+                const smeltingIndex = dwarf.taskPriorityNormal.indexOf('smelting');
+                if (smeltingIndex !== -1) {
+                    // Insert masonry just before smelting
+                    dwarf.taskPriorityNormal.splice(smeltingIndex, 0, 'masonry');
+                } else {
+                    // If smelting not found, just add at the end
+                    dwarf.taskPriorityNormal.push('masonry');
+                }
+            }
+
+            // Also add masonry to taskPriorityHigh if it has smelting there
+            if (dwarf.taskPriorityHigh && dwarf.taskPriorityHigh.includes('smelting') && !dwarf.taskPriorityHigh.includes('masonry')) {
+                const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
+                dwarf.taskPriorityHigh.splice(smeltingIndex, 0, 'masonry');
             }
         }
 
@@ -2675,7 +2756,14 @@ function loadGame() {
                 }
             }
         }
-        
+
+        // Restore masonry tasks order (backwards compatible - will be undefined in old saves)
+        if (gameState.masonryTasks && Array.isArray(gameState.masonryTasks)) {
+            // Filter out any that don't exist in masonryTasksData
+            masonryTasks = gameState.masonryTasks.filter(id => masonryTasksData[id]);
+        }
+        // Note: If masonryTasks is not in saved game, we'll use the default from defs.js
+
         // Restore smelter temperature state
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
         if (gameState.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = gameState.smelterCoalMinTemp;
@@ -2847,12 +2935,24 @@ function populateFunctionsList() {
     };
     list.appendChild(researchLink);
 
+    // Masonry function
+    const masonryLink = document.createElement('a');
+    masonryLink.href = '#';
+    masonryLink.className = 'function-link';
+    masonryLink.id = 'masonry-function-link'; // Add ID for easy updates
+    masonryLink.innerHTML = '<span class="icon">🔨</span><span>Masonry</span>';
+    masonryLink.onclick = (e) => {
+        e.preventDefault();
+        openMasonry();
+    };
+    list.appendChild(masonryLink);
+
     // Smelter function
     const smelterLink = document.createElement('a');
     smelterLink.href = '#';
     smelterLink.className = 'function-link';
     smelterLink.id = 'smelter-function-link'; // Add ID for easy updates
-    smelterLink.innerHTML = '<span class="icon">♨️</span><span>Smelter</span>';
+    smelterLink.innerHTML = '<span class="icon">🔥</span><span>Smelter</span>';
     smelterLink.onclick = (e) => {
         e.preventDefault();
         openSmelter();
@@ -2864,7 +2964,7 @@ function populateFunctionsList() {
     forgeLink.href = '#';
     forgeLink.className = 'function-link';
     forgeLink.id = 'forge-function-link'; // Add ID for easy updates
-    forgeLink.innerHTML = '<span class="icon">🔨</span><span>Forge</span>';
+    forgeLink.innerHTML = '<span class="icon">🛠️</span><span>Forge</span>';
     forgeLink.onclick = (e) => {
         e.preventDefault();
         openForge();

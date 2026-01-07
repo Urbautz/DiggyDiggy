@@ -12,6 +12,7 @@ class ModalManager {
             'gem-modal',
             'dwarf-detail-modal',
             'research-modal',
+            'masonry-modal',
             'smelter-modal',
             'task-details-modal',
             'transactions-modal',
