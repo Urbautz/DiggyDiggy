@@ -23,9 +23,12 @@ let dropOff = null;
 let house = null;
 let research = null;
 let smelter = null;
+let masonry = null;
 let management = null;
 let smelterTasks = [];
 let smelterTasksData = {};
+let masonryTasks = [];
+let masonryTasksData = {};
 let dropGridStartX = 10;
 let gold = 1000;
 let toolsInventory = [];
@@ -51,6 +54,7 @@ let smelterHeatingMode = false; // Track if we're currently in heating mode (for
 const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
 let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
+let masonryReservedBy = null; // Track which dwarf name has reserved the masonry
 let managementReservedBy = null; // Track which dwarf name has reserved the management cell
 
 // Stuck detection tracking
@@ -122,10 +126,11 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     const taskPriorityNone = dwarf.taskPriorityNone || [];
 
     // STEP 1: Find all tasks the dwarf can do
-    const allPossibleTasks = ['research', 'smelting', 'managing', 'digging'];
+    const allPossibleTasks = ['research', 'masonry', 'smelting', 'managing', 'digging'];
 
     const taskAvailability = {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
+        'masonry': masonryHasWork() && (!masonryReservedBy || masonryReservedBy === dwarf.name) && typeof masonry === 'object' && masonry !== null,
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
         'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
@@ -207,6 +212,24 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
             dwarf.status = 'moving';
             console.log(`[${dwarf.name}] 🚶 Moving to research at (${research.x}, ${research.y})`);
             return 'research';
+        }
+    } else if (taskId === 'masonry') {
+        // Check if already at masonry location
+        if (dwarf.x === masonry.x && dwarf.y === masonry.y) {
+            // Already at masonry - start masonry immediately
+            if (masonryReservedBy === dwarf.name || !masonryReservedBy) {
+                masonryReservedBy = dwarf.name;
+                dwarf.status = 'masonry';
+                console.log(`[${dwarf.name}] 🔨 Started masonry (already at location)`);
+                return 'masonry';
+            }
+        } else {
+            // Not at masonry - move there
+            masonryReservedBy = dwarf.name;
+            scheduleMove(dwarf, masonry.x, masonry.y);
+            dwarf.status = 'moving';
+            console.log(`[${dwarf.name}] 🚶 Moving to masonry at (${masonry.x}, ${masonry.y})`);
+            return 'masonry';
         }
     } else if (taskId === 'smelting') {
         // Check if already at smelter location
@@ -344,6 +367,56 @@ function handleBlockDestruction(cell, dwarf, x, y) {
     }
 }
 
+// Check if a masonry task is unlocked by research
+function isMasonryTaskUnlocked(task) {
+    if (!task || !task.requires) return true;
+    const research = researchData[task.requires];
+    return research && (research.level || 0) >= 1;
+}
+
+// Check if the masonry has any actionable work (not "do nothing" as first task, and has materials)
+function masonryHasWork() {
+    if (!masonryTasks || masonryTasks.length === 0) return false;
+
+    // Check each task in priority order
+    for (const taskId of masonryTasks) {
+        if (taskId === 'do-nothing') {
+            // If "do nothing" is encountered, stop checking
+            return false;
+        }
+        const task = masonryTasksData[taskId];
+        // Check if task is unlocked
+        if (!isMasonryTaskUnlocked(task)) {
+            continue; // Skip locked tasks
+        }
+        // For gem cutting tasks, check if there are any gems marked for cutting
+        if (task.type === 'gem-cutting') {
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            if (gemToProcess) {
+                return true;
+            }
+        }
+        // Check for single input (legacy format)
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return true; // Found a task with enough materials
+            }
+        }
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stockAmount = materialsStock[input.material] || 0;
+                return stockAmount >= input.amount;
+            });
+            if (hasAllInputs) {
+                return true; // Found a task with all required materials
+            }
+        }
+    }
+    return false;
+}
+
 // Check if a smelter task is unlocked by research
 // Note: isSmelterTaskUnlocked is now in utils.js
 
@@ -437,6 +510,50 @@ function executeManagementTaskWrapper(task, taskDef) {
     // Note: materials, materialsStock, gems, dwarfs, researchQueue are passed by reference and modified in place
 }
 
+// Find the first actionable masonry task
+function findActionableMasonryTask() {
+    if (!masonryTasks || masonryTasks.length === 0) return null;
+
+    for (const taskId of masonryTasks) {
+        if (taskId === 'do-nothing') {
+            return null; // Stop at "do nothing"
+        }
+        const task = masonryTasksData[taskId];
+        // Check if task is unlocked
+        if (!isMasonryTaskUnlocked(task)) {
+            continue; // Skip locked tasks
+        }
+
+        // For gem cutting tasks, check if there are any gems marked for cutting
+        if (task.type === 'gem-cutting') {
+            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+            if (gemToProcess) {
+                return { task: task, taskId: taskId };
+            }
+            continue; // No gems available, try next task
+        }
+
+        // Check for single input (legacy format)
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return { task: task, taskId: taskId };
+            }
+        }
+        // Check for multiple inputs (alloy format)
+        if (task.inputs && Array.isArray(task.inputs)) {
+            const hasAllInputs = task.inputs.every(input => {
+                const stockAmount = materialsStock[input.material] || 0;
+                return stockAmount >= input.amount;
+            });
+            if (hasAllInputs) {
+                return { task: task, taskId: taskId };
+            }
+        }
+    }
+    return null;
+}
+
 // Find the first actionable smelter task
 function findActionableSmelterTask() {
     if (!smelterTasks || smelterTasks.length === 0) return null;
@@ -508,6 +625,63 @@ function findActionableSmelterTask() {
         }
     }
     return null;
+}
+
+// Handle masonry task output production including break chance and bonus ore
+function handleMasonryTaskOutput(task, dwarf) {
+    // Skip if task has no output (e.g., gem cutting, control tasks)
+    if (!task.output) return;
+
+    const outputMaterial = task.output.material;
+    const outputAmount = task.output.amount;
+
+    // Check for break chance (for polishing tasks)
+    let success = true;
+    if (task.breakChance && task.breakChance > 0) {
+        const stonePolishing = researchData['stone-polishing'];
+        const polishingLevel = stonePolishing ? (stonePolishing.level || 0) : 0;
+        const breakReduction = polishingLevel * RESEARCH_STONE_POLISHING_BREAK_REDUCTION;
+        const actualBreakChance = Math.max(0, task.breakChance - breakReduction);
+        success = Math.random() >= actualBreakChance;
+    }
+
+    // Produce output materials only if successful
+    if (success) {
+        materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+
+        // Check for bonus ore (for sieve-loose-stone task)
+        if (task.bonusChance && task.bonusType === 'deep-ore' && task.bonusAmount) {
+            if (Math.random() < task.bonusChance) {
+                // Calculate current depth (deepest dug row)
+                const currentDepth = startX;
+                const targetDepth = currentDepth * 2;
+
+                // Find all ores that would appear at double the current depth
+                const availableOres = [];
+                for (const [materialId, materialData] of Object.entries(materials)) {
+                    // Only consider ore types
+                    if (materialData.type && materialData.type.includes('Ore')) {
+                        const minLevel = materialData.minlevel || 0;
+                        const maxLevel = materialData.maxlevel || Infinity;
+
+                        // Check if this ore appears at the target depth
+                        if (targetDepth >= minLevel && targetDepth <= maxLevel) {
+                            availableOres.push(materialId);
+                        }
+                    }
+                }
+
+                // If we found any ores, randomly select one and add it
+                if (availableOres.length > 0) {
+                    const randomOre = availableOres[Math.floor(Math.random() * availableOres.length)];
+                    materialsStock[randomOre] = (materialsStock[randomOre] || 0) + task.bonusAmount;
+                    console.log(`Dwarf ${dwarf.name} found bonus ${task.bonusAmount}x ${randomOre} while sieving (depth ${currentDepth}, target ${targetDepth})!`);
+                } else {
+                    console.log(`No ores available at target depth ${targetDepth} (current depth: ${currentDepth})`);
+                }
+            }
+        }
+    }
 }
 
 // Handle smelter task output production including break chance and bonus ore
@@ -823,6 +997,7 @@ function actForDwarf(dwarf) {
                         if (val === dwarf.name) reservedDigBy.delete(key);
                     }
                     if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                    if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
                     if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                     if (managementReservedBy === dwarf.name) managementReservedBy = null;
                     stuckTracking.delete(trackKey);
@@ -840,10 +1015,11 @@ function actForDwarf(dwarf) {
 
     //console.log(`Dwarf ${dwarf.name} is acting at (${dwarf.x}, ${dwarf.y}) status=${dwarf.status}`);
 
-    // Failsafe: Release smelter reservation if dwarf is at house and not actively working
+    // Failsafe: Release smelter and masonry reservation if dwarf is at house and not actively working
     if (typeof house === 'object' && house !== null && dwarf.x === house.x && dwarf.y === house.y) {
-        if (dwarf.status !== 'resting' && dwarf.status !== 'idle' && smelterReservedBy === dwarf.name) {
-            smelterReservedBy = null;
+        if (dwarf.status !== 'resting' && dwarf.status !== 'idle') {
+            if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
+            if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
         }
     }
 
@@ -858,8 +1034,8 @@ function actForDwarf(dwarf) {
             if (!dwarf.moveTarget || dwarf.moveTarget.x !== house.x || dwarf.moveTarget.y !== house.y) {
                 // Release reservations if dwarf was heading elsewhere
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 scheduleMove(dwarf, house.x, house.y);
                 dwarf.status = 'moving';
@@ -1068,6 +1244,221 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         } else {
             // Not at research location, release reservation and become idle
             if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            dwarf.status = 'idle';
+        }
+    }
+
+    // Masonry state
+    if (dwarf.status === 'masonry') {
+        // Check if at masonry location
+        if (typeof masonry === 'object' && masonry !== null && dwarf.x === masonry.x && dwarf.y === masonry.y) {
+            // Check if dwarf has enough energy
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+                // Don't reset progress when dwarf stops - allow continuation by next dwarf
+                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentMasonryTask = null;
+                return;
+            }
+
+            // Check if we can afford to pay the dwarf
+            const wage = calculateWage(dwarf);
+            if (gold < wage) {
+                // Not enough gold - strike chance reduced by union-busting research
+                const unionBusting = researchData['union-busting'];
+                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
+                if (Math.random() > continueWorkChance) {
+                    dwarf.status = 'striking';
+                    return;
+                }
+            }
+
+            // Find an actionable task from the priority list
+            const taskResult = findActionableMasonryTask();
+            if (!taskResult) {
+                // No work available, release masonry and become idle
+                // Don't reset progress - allow continuation when work becomes available
+                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentMasonryTask = null;
+                return;
+            }
+
+            const task = taskResult.task;
+            const taskId = taskResult.taskId;
+
+            // Check if this is a task that requires time (has ticksRequired property)
+            if (task.ticksRequired && task.ticksRequired > 0) {
+                // Initialize or validate task tracking
+                if (!dwarf.currentMasonryTask || dwarf.currentMasonryTask !== taskId) {
+                    // Starting a new task or switching tasks
+                    dwarf.currentMasonryTask = taskId;
+
+                    // For gem cutting, find the gem that's already being worked on or start a new one
+                    if (task.type === 'gem-cutting') {
+                        // First, try to find a gem that's already in progress
+                        let gemToProcess = gems.find(g => g.markedForCutting && !g.polished && g.cuttingProgress > 0);
+
+                        // If no gem in progress, find any gem marked for cutting
+                        if (!gemToProcess) {
+                            gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
+                        }
+
+                        if (gemToProcess) {
+                            // Track which gem we're working on
+                            task.currentGemId = gemToProcess.id;
+
+                            // Initialize progress if needed
+                            if (!gemToProcess.cuttingProgress) {
+                                gemToProcess.cuttingProgress = 0;
+                            }
+
+                            // Restore progress from the gem to the task
+                            task.progress = gemToProcess.cuttingProgress;
+                        }
+                    }
+                }
+
+                // Always ensure progress is initialized
+                if (task.progress === undefined || isNaN(task.progress)) {
+                    task.progress = 0;
+                }
+
+                // Implement wisdom-based difficulty system for output tasks
+                let totalProgressGained = 0;
+
+                // For tasks with output, use hardness-based difficulty
+                if (task.output && task.output.material && task.hardness !== undefined) {
+                    const hardness = task.hardness;
+
+                    // Calculate how many runs the dwarf gets based on wisdom
+                    let currentWisdom = dwarf.wisdom || 0;
+                    let runNumber = 1;
+
+                    while (true) {
+                        const smeltingPower = currentWisdom * SMELTER_WISDOM_PROBABILITY_BONUS;
+                        const roll = Math.random() * hardness;
+
+                        // Use minimum success chance if power is too low
+                        const minChanceRoll = Math.random();
+                        const minChanceSuccess = minChanceRoll < SMELTER_MIN_SUCCESS_CHANCE;
+                        const normalSuccess = roll <= smeltingPower;
+                        const success = normalSuccess || minChanceSuccess;
+
+                        if (!success) {
+                            break;
+                        }
+
+                        // Success! Gain 1 progress
+                        totalProgressGained++;
+
+                        // Halve wisdom for next run
+                        if ((dwarf.wisdom || 0) > 0) {
+                            currentWisdom = Math.floor(currentWisdom / 2);
+                        } else {
+                            break;
+                        }
+
+                        // Safety check
+                        if (runNumber > 20) break;
+                        runNumber++;
+                    }
+                } else if (task.type === 'gem-cutting') {
+                    // For gem cutting, only make progress if we have a gem assigned
+                    if (task.currentGemId) {
+                        totalProgressGained = 1;
+                    } else {
+                        // No gem available, reset task and abort
+                        task.progress = 0;
+                        dwarf.currentMasonryTask = null;
+                        return; // Skip the rest of this tick
+                    }
+                } else {
+                    // For other tasks without output, just increment by 1
+                    totalProgressGained = 1;
+                }
+
+                // Apply progress to the task
+                task.progress += totalProgressGained;
+
+                // For gem cutting, sync progress with the specific gem
+                if (task.type === 'gem-cutting' && task.currentGemId) {
+                    const gemToProcess = gems.find(g => g.id === task.currentGemId);
+                    if (gemToProcess) {
+                        gemToProcess.cuttingProgress = task.progress;
+                    }
+                }
+
+                // Check if task is complete
+                if (task.progress >= task.ticksRequired) {
+                    task.progress = task.ticksRequired;
+
+                    // Task complete! Process the result
+
+                    // Handle gem cutting completion
+                    if (task.type === 'gem-cutting' && task.currentGemId) {
+                        const gemToProcess = gems.find(g => g.id === task.currentGemId);
+                        if (gemToProcess) {
+                            gemToProcess.polished = true;
+                            gemToProcess.markedForCutting = false;
+                            delete gemToProcess.cuttingProgress;
+
+                            // Increase value by GEM_CUTTING_VALUE_MULTIPLIER (1.8x = 80% increase)
+                            gemToProcess.value = Math.round(gemToProcess.value * GEM_CUTTING_VALUE_MULTIPLIER);
+
+                            console.log(`Gem ${gemToProcess.id} polished! New value: ${gemToProcess.value}`);
+                        }
+                        delete task.currentGemId;
+                        task.progress = 0;
+                        dwarf.currentMasonryTask = null;
+                    } else {
+                        // Handle normal masonry task completion
+                        handleMasonryTaskOutput(task, dwarf);
+
+                        // Consume input materials after task completion
+                        if (task.inputs && Array.isArray(task.inputs)) {
+                            task.inputs.forEach(input => {
+                                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                            });
+                        } else if (task.input && task.input.material && task.input.amount) {
+                            const inputMaterial = task.input.material;
+                            const inputAmount = task.input.amount;
+                            materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
+                        }
+
+                        // Reset task progress for next execution
+                        task.progress = 0;
+                        dwarf.currentMasonryTask = null;
+                    }
+                }
+
+                // Consume energy and pay wage
+                const energyCostPerTick = DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0);
+                dwarf.energy = Math.max(0, dwarf.energy - energyCostPerTick);
+
+                // Pay wage
+                gold -= wage;
+                pendingTransactions.push({
+                    description: `Masonry: ${task.name}`,
+                    income: 0,
+                    expense: wage
+                });
+
+                // Award XP for masonry work (based on task hardness)
+                const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));
+                dwarf.xp = (dwarf.xp || 0) + xpGain;
+
+            } else {
+                // Immediate task (no ticksRequired) - should not happen for masonry
+                // Release masonry and become idle
+                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
+                dwarf.status = 'idle';
+                dwarf.currentMasonryTask = null;
+            }
+            return;
+        } else {
+            // Not at masonry location, release reservation and become idle
+            if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
             dwarf.status = 'idle';
         }
     }
@@ -1556,6 +1947,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (scheduled) {
                 // Release research reservation if dwarf was heading there
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
+                // Release masonry reservation if dwarf was heading there
+                if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
                 // Release smelter reservation if dwarf was heading there
                 if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
                 if (managementReservedBy === dwarf.name) managementReservedBy = null;
@@ -1602,8 +1995,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         if (assignedTask === null && house) {
             // Also release any reservations that might have been made, just in case
             if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+            if (managementReservedBy === dwarf.name) managementReservedBy = null;
             scheduleMove(dwarf, house.x, house.y);
         }
 
@@ -1737,8 +2131,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             dwarf.status = 'idle';
             // Release any reservations when movement fails
             if (researchReservedBy === dwarf.name) researchReservedBy = null;
+            if (masonryReservedBy === dwarf.name) masonryReservedBy = null;
             if (smelterReservedBy === dwarf.name) smelterReservedBy = null;
-                if (managementReservedBy === dwarf.name) managementReservedBy = null;
+            if (managementReservedBy === dwarf.name) managementReservedBy = null;
         } else {
             dwarf.x = nextX;
             dwarf.y = nextY;
@@ -2259,8 +2654,15 @@ self.addEventListener('message', (e) => {
             dropOff = data.dropOff;
             house = data.house;
             research = data.research;
+            masonry = data.masonry;
             smelter = data.smelter;
             management = data.management;
+            if (data.masonryTasks) {
+                masonryTasks = JSON.parse(JSON.stringify(data.masonryTasks));
+            }
+            if (data.masonryTasksData) {
+                masonryTasksData = JSON.parse(JSON.stringify(data.masonryTasksData));
+            }
             if (data.smelterTasks) {
                 smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
             }
@@ -2351,6 +2753,10 @@ self.addEventListener('message', (e) => {
                 if (data.researchTree) {
                     // Copy the researchTree array from main thread
                     researchTree = JSON.parse(JSON.stringify(data.researchTree));
+                }
+                if (data.masonryTasks) {
+                    // Copy the masonry tasks from main thread
+                    masonryTasks = JSON.parse(JSON.stringify(data.masonryTasks));
                 }
                 if (data.smelterTasks) {
                     // Copy the smelter tasks from main thread

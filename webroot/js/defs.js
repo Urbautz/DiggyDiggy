@@ -601,7 +601,7 @@ const materials = {
     weight: 40
   },
   'iron': {
-    name: 'Iron Ingot',
+    name: 'Iron',
     type: 'Ingot',
     hardness: 325,
     probability: 0,
@@ -667,7 +667,7 @@ const materials = {
     weight: 23
   },
   'platinum': {
-    name: 'Platinum harened steel ingot',
+    name: 'Platinum Steel',
     type: 'Ingot',
     type: 'Ingot',
     hardness: 700,
@@ -857,59 +857,19 @@ const platingEffects = {
 };
 
 // ============================================================================
-// SMELTER TASKS REGISTRY
+// MASONRY TASKS REGISTRY
 // ============================================================================
-// Smelter tasks - object where id is the key, with ordered array tracking task priority
-const smelterTasksData = {
+// Masonry tasks - object where id is the key, with ordered array tracking task priority
+const masonryTasksData = {
   // ──────────────────────────────────────────────────────────────────────────
   // CONTROL TASKS
   // ──────────────────────────────────────────────────────────────────────────
   'do-nothing': {
     name: 'Do Nothing',
-    description: 'The smelter sits idle.',
+    description: 'The masonry sits idle.',
     input: null,
     output: null,
     type: 'none'
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // HEATING TASKS
-  // ──────────────────────────────────────────────────────────────────────────
-  'heat-furnace': {
-    name: 'Heat up furnace (Coal)',
-    description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).',
-    input: { material: 'coal', amount: 0.1 },
-    output: null,
-    type: 'heating',
-    heatGain: 100,
-    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'furnace',
-    hardness: 1
-  },
-  'heat-magma-furnace': {
-    name: 'Heat up furnace (Magma)',
-    description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.',
-    input: { material: 'magma', amount: 1 },
-    output: null,
-    type: 'heating',
-    heatGain: 'dynamic',
-    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
-    requires: 'magma-furnace',
-    hardness: 1
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // GEM CUTTING
-  // ──────────────────────────────────────────────────────────────────────────
-  'cut-polish-gem': {
-    name: 'Cut and Polish Gem',
-    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
-    input: null,
-    output: null,
-    type: 'gem-cutting',
-    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
-    requires: 'gem-cutting',
-    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -989,6 +949,76 @@ const smelterTasksData = {
     ticksRequired: SMELTER_POLISHING_TICKS_REQUIRED,
     requires: 'stone-polishing',
     hardness: 15
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GEM CUTTING
+  // ──────────────────────────────────────────────────────────────────────────
+  'cut-polish-gem': {
+    name: 'Cut and Polish Gem',
+    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
+    input: null,
+    output: null,
+    type: 'gem-cutting',
+    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
+    requires: 'gem-cutting',
+    hardness: 1
+  }
+};
+
+// Ordered array of masonry task IDs (determines task priority)
+let masonryTasks = [
+    'cut-polish-gem',
+    'dry-mud',
+    'sieve-loose-stone',
+    'do-nothing',
+    'grind-sandstone',
+    'grind-limestone',
+    'polish-marble',
+    'polish-granite',
+    'polish-obsidian'
+];
+
+// ============================================================================
+// SMELTER TASKS REGISTRY
+// ============================================================================
+// Smelter tasks - object where id is the key, with ordered array tracking task priority
+const smelterTasksData = {
+  // ──────────────────────────────────────────────────────────────────────────
+  // CONTROL TASKS
+  // ──────────────────────────────────────────────────────────────────────────
+  'do-nothing': {
+    name: 'Do Nothing',
+    description: 'The smelter sits idle.',
+    input: null,
+    output: null,
+    type: 'none'
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // HEATING TASKS
+  // ──────────────────────────────────────────────────────────────────────────
+  'heat-furnace': {
+    name: 'Heat up furnace (Coal)',
+    description: 'Consume 1 coal to heat the furnace by 100° to a max of 2000° (with full research).',
+    input: { material: 'coal', amount: 0.1 },
+    output: null,
+    type: 'heating',
+    heatGain: 100,
+    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
+    requires: 'furnace',
+    hardness: 1
+  },
+  'heat-magma-furnace': {
+    name: 'Heat up furnace (Magma)',
+    description: 'Consume 1 magma to heat the furnace. The furnace will heat to max. temperature.',
+    input: { material: 'magma', amount: 1 },
+    output: null,
+    type: 'heating',
+    heatGain: 'dynamic',
+    ticksRequired: SMELTER_HEATING_TICKS_REQUIRED,
+    requires: 'magma-furnace',
+    hardness: 1
   },
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -1140,8 +1170,8 @@ const smelterTasksData = {
   // HARD METAL SMELTING
   // ──────────────────────────────────────────────────────────────────────────
   'smelt-platinum': {
-    name: 'Platinum hardned steel',
-    description: 'Smelt Platinum hardned steel',
+    name: 'Platinum Steel',
+    description: 'Smelt Platinum steel',
     inputs: [
       { material: 'steel', amount: 1 },
       { material: 'platinum ore', amount: 1 }
@@ -1268,15 +1298,7 @@ const smelterTasksData = {
 
 // Ordered array of smelter task IDs (determines task priority)
 let smelterTasks = [
-    'dry-mud',
-    'sieve-loose-stone',
     'do-nothing',
-    'grind-sandstone',
-    'grind-limestone',
-    'polish-marble',
-    'polish-granite',
-    'polish-obsidian',
-    'cut-polish-gem',
     'heat-furnace',
     'heat-magma-furnace',
     'smelt-bronce',
@@ -1420,7 +1442,7 @@ const researchData = {
     maxlevel: 1,
     hardness: 40,
     min_depth: 500,
-    description: 'Unlocks the grind task at the Smelter.'
+    description: 'Unlocks the grind task at the Masonry.'
   },
   'stone-polishing': {
     name: 'Stone Polishing',
@@ -1431,7 +1453,7 @@ const researchData = {
     hardness: 50,
     requires: [{'grinding-machine': 1}],
     min_depth: 4000,
-    description: 'Unlocks stone polishing at the Smelter. Each level reduces break chance by 8% (from 50% base).'
+    description: 'Unlocks stone polishing at the Masonry. Each level reduces break chance by 8% (from 50% base).'
   },
   'gem-cutting': {
     name: 'Gem Cutting',
@@ -1442,7 +1464,7 @@ const researchData = {
     hardness: 55,
     requires: [{'grinding-machine': 1}],
     min_depth: 5000,
-    description: 'Unlocks gem cutting at the smelter.'
+    description: 'Unlocks gem cutting at the masonry.'
   },
   'gem-setting': {
     name: 'Gem Setting',
@@ -1708,7 +1730,7 @@ let dwarfs = [
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
     { name: "Shovelli",
       toolId: 2,
@@ -1718,7 +1740,7 @@ let dwarfs = [
       status: 'idle', moveTarget: null,
       bucket: {}, energy: 100,
       taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
     { name: "Diggmaster",
       toolId: 3,
@@ -1728,7 +1750,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "Burrower",
      toolId: 4,
@@ -1738,7 +1760,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "NevertiredMcPickaxemer",
      toolId: 5,
@@ -1748,7 +1770,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'smelting', 'managing'],
+    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
     taskPriorityNone: [] },
     { name: "SmartDigger",
      toolId: 6,
@@ -1758,7 +1780,7 @@ let dwarfs = [
      status: 'idle', moveTarget: null,
     bucket: {}, energy: 100,
     taskPriorityHigh: [],
-    taskPriorityNormal: ['managing', 'research', 'smelting', 'digging'],
+    taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
     taskPriorityNone: [] },
 ]
 
@@ -1784,17 +1806,18 @@ let nextGemId = 1;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Functions grid - 1x5 grid above the main digging grid (y = -1)
+// Functions grid - 1x6 grid above the main digging grid (y = -1)
 const functionsGridY = -1; // One row above the main grid
-const functionsGridWidth = 5;
+const functionsGridWidth = 6;
 
-// Function locations in the 1x5 grid above main grid
-// Order: House, Warehouse, Smelter, Research, Management
+// Function locations in the 1x6 grid above main grid
+// Order: House, Warehouse, Masonry, Smelter, Research, Management
 const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
 const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
-const smelter = { x: 2, y: functionsGridY };      // Third cell (Smelter)
-const research = { x: 3, y: functionsGridY };     // Fourth cell (Research)
-const management = { x: 4, y: functionsGridY };   // Fifth cell (Management)
+const masonry = { x: 2, y: functionsGridY };      // Third cell (Masonry)
+const smelter = { x: 3, y: functionsGridY };      // Fourth cell (Smelter)
+const research = { x: 4, y: functionsGridY };     // Fifth cell (Research)
+const management = { x: 5, y: functionsGridY };   // Sixth cell (Management)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)
 const dropGridStartX = gridWidth;
