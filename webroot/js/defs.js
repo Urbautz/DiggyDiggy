@@ -859,6 +859,12 @@ const platingEffects = {
         description: '5× one-hit kill chance on critical hits',
         effect: 'oneHitMultiplier',
         value: 5.0
+    },
+    'nickel': {
+        name: 'Nickel Plating',
+        description: 'Regenerate 1 energy when moving (instead of consuming 1)',
+        effect: 'movementEnergyRegen',
+        value: 1
     }
 };
 

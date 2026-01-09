@@ -2025,8 +2025,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             dwarf.x = nextX;
             dwarf.y = nextY;
 
-            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
+            // Apply movement energy (consumes energy normally, or regenerates with Nickel plating)
+            applyMovementEnergy(dwarf, DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;

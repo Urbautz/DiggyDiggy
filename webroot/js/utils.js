@@ -808,6 +808,30 @@ function getUraniumPlatingOneHitMultiplier(dwarf) {
     return 1.0;
 }
 
+/**
+ * Get the energy regeneration amount from Nickel plating when moving
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Energy regeneration amount (default 0)
+ */
+function getNickelPlatingEnergyRegeneration(dwarf) {
+    if (!dwarf.toolId) return 0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 0;
+    }
+
+    // Check if the tool has Nickel plating
+    if (toolInstance.plating === 'nickel') {
+        // Nickel plating regenerates 1 energy when moving (as defined in defs.js platingEffects)
+        const energyRegen = 1
+        console.log(`[Nickel Plating] ${dwarf.name}'s tool has Nickel plating - regenerating ${energyRegen} energy from movement`);
+        return energyRegen;
+    }
+
+    return 0;
+}
+
 // ============================================================================
 // ENERGY CONSUMPTION UTILITIES
 // ============================================================================
@@ -825,6 +849,27 @@ function applyEnergyConsumption(dwarf, baseCost) {
         const zincReduction = getZincPlatingEnergyReduction(dwarf);
         const energyCost = Math.max(1, baseCost - zincReduction);
         dwarf.energy = Math.max(0, dwarf.energy - energyCost);
+    }
+}
+
+/**
+ * Apply energy change for movement, accounting for Nickel plating regeneration
+ * Nickel plating causes movement to regenerate energy instead of consuming it
+ * @param {Object} dwarf - The dwarf performing the movement
+ * @param {number} baseCost - Base energy cost for movement (from constants.js)
+ */
+function applyMovementEnergy(dwarf, baseCost) {
+    // Check for Nickel plating - regenerates energy instead of consuming
+    const nickelRegen = getNickelPlatingEnergyRegeneration(dwarf);
+
+    if (nickelRegen > 0) {
+        // Nickel plating: regenerate energy instead of consuming
+        // Cap at max energy (stored directly on dwarf object)
+        const maxEnergy = dwarf.maxEnergy || 100;
+        dwarf.energy = Math.min(maxEnergy, dwarf.energy + nickelRegen);
+    } else {
+        // Normal movement: consume energy (with Ruby gem prevention and Zinc plating reduction)
+        applyEnergyConsumption(dwarf, baseCost);
     }
 }
 
