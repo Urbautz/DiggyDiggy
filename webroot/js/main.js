@@ -79,10 +79,10 @@ function formatNumber(value, type = 'material') {
             return '-' + formatNumber(Math.abs(num), type);
         }
         if (num === 0) {
-            return num.toFixed(2);
+            return num.toFixed(2).toString();
         }
         if (num < 100) {
-            return num.toFixed(1);
+            return num.toFixed(2).toString();
         }
         if (num < 100000) {
             return Math.round(num).toString();
@@ -2495,8 +2495,13 @@ function togglePause() {
 function saveGame() {
     // Don't save when game is paused (e.g., settings modal is open)
     if (gamePaused) return;
-    
+
     try {
+        // Round materials to 2 decimal places (modify in-place to prevent precision accumulation)
+        for (const materialId in materialsStock) {
+            materialsStock[materialId] = Math.round(materialsStock[materialId] * 100) / 100;
+        }
+
         const gameState = {
             grid: grid,
             dwarfs: dwarfs,
