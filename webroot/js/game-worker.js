@@ -417,8 +417,6 @@ function masonryHasWork() {
     return false;
 }
 
-// Check if a smelter task is unlocked by research
-// Note: isSmelterTaskUnlocked is now in utils.js
 
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
@@ -431,17 +429,54 @@ function smelterHasWork() {
             return false;
         }
         const task = smelterTasksData[taskId];
+        if (!task) continue;
+
         // Check if task is unlocked
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
         }
-        // For gem cutting tasks, check if there are any gems marked for cutting
-        if (task.type === 'gem-cutting') {
-            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) {
+
+        // For heating tasks, use hysteresis: start heating when below min, stop when above max
+        if (task.type === 'heating') {
+            // For magma (dynamic), only activate when below min temp
+            // For coal, use hysteresis with min and max
+            if (task.heatGain === 'dynamic') {
+                // Magma: only heat when below magma min temp (it instantly goes to max)
+                if (smelterTemperature >= smelterMagmaMinTemp) {
+                    continue; // Skip magma heating if at or above magma min temp
+                }
+                // Magma heating is needed
                 return true;
+            } else {
+                // Coal: use hysteresis
+                // Update heating mode based on temperature
+                if (smelterTemperature < smelterCoalMinTemp) {
+                    smelterHeatingMode = true; // Start heating when below coal min
+                } else if (smelterTemperature >= smelterCoalMaxTemp) {
+                    smelterHeatingMode = false; // Stop heating when at/above coal max
+                }
+
+                // Skip heating if not in heating mode
+                if (!smelterHeatingMode) {
+                    continue;
+                }
+
+                // Check if we have coal
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return true; // Coal heating is available
+                    }
+                }
+                continue; // Coal heating not needed or no coal available
             }
         }
+
+        // For smelting tasks with temperature requirements, check if furnace is hot enough
+        if (task.minTemp && smelterTemperature < task.minTemp) {
+            continue; // Skip tasks that require higher temperature
+        }
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
@@ -595,15 +630,6 @@ function findActionableSmelterTask() {
         // For smelting tasks with temperature requirements, check if furnace is hot enough
         if (task.minTemp && smelterTemperature < task.minTemp) {
             continue; // Skip tasks that require higher temperature
-        }
-
-        // For gem cutting tasks, check if there are any gems marked for cutting
-        if (task.type === 'gem-cutting') {
-            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) {
-                return { task: task, taskId: taskId };
-            }
-            continue; // No gems available, try next task
         }
 
         // Check for single input (legacy format)
