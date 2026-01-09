@@ -1905,9 +1905,17 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
 
         // If 'digging' would be assigned, we continue to the digging logic below
-        // If null was returned, no valid task was available (all blacklisted) - dwarf should stay idle
+        // If null was returned, no valid task was available (all blacklisted or no work available)
         if (assignedTask === null) {
-            // All tasks blacklisted - do nothing
+            // No valid task available - if dwarf is at house and needs energy, set to resting
+            if (typeof house === 'object' && house !== null && dwarf.x === house.x && dwarf.y === house.y) {
+                const maxEnergy = dwarf.maxEnergy || 100;
+                if (dwarf.energy < maxEnergy) {
+                    console.log(`Dwarf ${dwarf.name} idle at house with low energy (${dwarf.energy}/${maxEnergy}) -> resting`);
+                    dwarf.status = 'resting';
+                }
+            }
+            // Otherwise dwarf stays idle (will keep checking each tick)
             return;
         }
     }
