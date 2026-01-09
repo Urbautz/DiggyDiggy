@@ -862,9 +862,15 @@ const platingEffects = {
     },
     'nickel': {
         name: 'Nickel Plating',
-        description: 'Regenerate 1 energy when moving (instead of consuming 1)',
+        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
         effect: 'movementEnergyRegen',
-        value: 1
+        value: 5
+    },
+    'wolfram': {
+        name: 'Wolfram Plating',
+        description: '25% chance for a second dig in the same tick (only one can crit)',
+        effect: 'doubleDigChance',
+        value: 0.25
     }
 };
 

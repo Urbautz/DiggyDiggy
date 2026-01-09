@@ -1993,6 +1993,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (curCell.hardness === 0) {
                 handleBlockDestruction(curCell, dwarf, dwarf.x, dwarf.y);
             }
+
+            // Check for Wolfram plating double dig (only if block still has hardness)
+            const wolframChance = getWolframPlatingDoubleDigChance(dwarf);
+            if (wolframChance > 0 && curCell.hardness > 0 && Math.random() < wolframChance) {
+                console.log(`⚡ WOLFRAM DOUBLE DIG! ${dwarf.name} digs a second time in the same tick`);
+                // Second dig is always non-critical (only one hit can crit)
+                const secondDigPower = power;
+                curCell.hardness = Math.max(0, curCell.hardness - secondDigPower);
+                if (curCell.hardness === 0) {
+                    handleBlockDestruction(curCell, dwarf, dwarf.x, dwarf.y);
+                }
+            }
+
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
                 if (reservedDigBy.get(curKey) === dwarf.name) reservedDigBy.delete(curKey);
@@ -2110,6 +2123,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (curCellDig.hardness === 0) {
                 handleBlockDestruction(curCellDig, dwarf, dwarf.x, dwarf.y);
             }
+
+            // Check for Wolfram plating double dig (only if block still has hardness)
+            const wolframChance = getWolframPlatingDoubleDigChance(dwarf);
+            if (wolframChance > 0 && curCellDig.hardness > 0 && Math.random() < wolframChance) {
+                console.log(`⚡ WOLFRAM DOUBLE DIG! ${dwarf.name} digs a second time in the same tick`);
+                // Second dig is always non-critical (only one hit can crit)
+                const secondDigPower = power;
+                curCellDig.hardness = Math.max(0, curCellDig.hardness - secondDigPower);
+                if (curCellDig.hardness === 0) {
+                    handleBlockDestruction(curCellDig, dwarf, dwarf.x, dwarf.y);
+                }
+            }
+
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
                 if (reservedDigBy.get(curKeyDig) === dwarf.name) reservedDigBy.delete(curKeyDig);

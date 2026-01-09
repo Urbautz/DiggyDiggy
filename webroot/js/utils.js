@@ -832,6 +832,30 @@ function getNickelPlatingEnergyRegeneration(dwarf) {
     return 0;
 }
 
+/**
+ * Get the double dig chance from Wolfram plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Double dig chance (default 0)
+ */
+function getWolframPlatingDoubleDigChance(dwarf) {
+    if (!dwarf.toolId) return 0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 0;
+    }
+
+    // Check if the tool has Wolfram plating
+    if (toolInstance.plating === 'wolfram') {
+        // Wolfram plating gives 25% chance for a second dig (as defined in defs.js platingEffects)
+        const doubleDigChance = 0.25;
+        //console.log(`[Wolfram Plating] ${dwarf.name}'s tool has Wolfram plating - ${doubleDigChance * 100}% chance for double dig`);
+        return doubleDigChance;
+    }
+
+    return 0;
+}
+
 // ============================================================================
 // ENERGY CONSUMPTION UTILITIES
 // ============================================================================
