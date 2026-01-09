@@ -1960,13 +1960,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
-                
+
                 const stoneExpertise = researchData['expertise-stone'];
                 const oreExpertise = researchData['expertise-ore'];
-                
+
                 let oneHitChance = 0;
                 let expertiseType = null;
-                
+
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
                     oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
@@ -1974,7 +1974,11 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
-                
+
+                // Apply Uranium plating multiplier to one-hit chance
+                const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
+                oneHitChance *= uraniumMultiplier;
+
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCell.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
@@ -2073,13 +2077,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
-                
+
                 const stoneExpertise = researchData['expertise-stone'];
                 const oreExpertise = researchData['expertise-ore'];
-                
+
                 let oneHitChance = 0;
                 let expertiseType = null;
-                
+
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
                     oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
@@ -2087,7 +2091,11 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
-                
+
+                // Apply Uranium plating multiplier to one-hit chance
+                const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
+                oneHitChance *= uraniumMultiplier;
+
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCellDig.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);

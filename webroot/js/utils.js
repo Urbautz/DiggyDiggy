@@ -784,6 +784,30 @@ function getGoldPlatingCritMultiplier(dwarf) {
     return 1.0;
 }
 
+/**
+ * Get the one-hit kill chance multiplier from Uranium plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} One-hit kill chance multiplier (default 1.0)
+ */
+function getUraniumPlatingOneHitMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Uranium plating
+    if (toolInstance.plating === 'uranium') {
+        // Uranium plating multiplies one-hit kill chance by 5x (as defined in defs.js platingEffects)
+        const oneHitMultiplier = 5.0;
+        console.log(`[Uranium Plating] ${dwarf.name}'s tool has Uranium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
+        return oneHitMultiplier;
+    }
+
+    return 1.0;
+}
+
 // ============================================================================
 // ENERGY CONSUMPTION UTILITIES
 // ============================================================================

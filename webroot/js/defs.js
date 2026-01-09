@@ -853,6 +853,12 @@ const platingEffects = {
         description: '+10% higher critical strike chance',
         effect: 'criticalStrike',
         value: 1.10
+    },
+    'uranium': {
+        name: 'Uranium Plating',
+        description: '5× one-hit kill chance on critical hits',
+        effect: 'oneHitMultiplier',
+        value: 5.0
     }
 };
 
