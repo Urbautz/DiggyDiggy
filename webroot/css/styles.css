@@ -248,6 +248,88 @@ main {
     100% { opacity: 0; transform: scale(1.4); }
 }
 
+/* Nuclear explosion animation - green radioactive blast */
+#digging-grid .cell.nuclear-explosion::after {
+    content: '☢️';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    background: radial-gradient(circle, rgba(53, 250, 0, 0.8) 0%, rgba(20, 200, 0, 0.6) 40%, transparent 80%);
+    opacity: 0;
+    animation: nuclearExplosion 0.6s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 15;
+    filter: drop-shadow(0 0 10px rgba(53, 250, 0, 0.8));
+}
+
+/* Nuclear radiation effect for weakened cells */
+#digging-grid .cell.nuclear-radiation-weakened::after {
+    content: '☢️';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(53, 250, 0, 0.4) 0%, rgba(20, 200, 0, 0.3) 50%, transparent 70%);
+    opacity: 0;
+    animation: radiationPulse 0.5s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Nuclear radiation effect for damaged cells (outer ring) */
+#digging-grid .cell.nuclear-radiation-damaged::after {
+    content: '☢️';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(53, 250, 0, 0.2) 0%, rgba(20, 200, 0, 0.15) 50%, transparent 70%);
+    opacity: 0;
+    animation: radiationPulse 0.5s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@keyframes nuclearExplosion {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+        filter: drop-shadow(0 0 10px rgba(53, 250, 0, 0.8));
+    }
+    20% {
+        opacity: 1;
+        transform: scale(0.7);
+        filter: drop-shadow(0 0 20px rgba(53, 250, 0, 1));
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.2);
+        filter: drop-shadow(0 0 30px rgba(53, 250, 0, 0.8));
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2.0);
+        filter: drop-shadow(0 0 5px rgba(53, 250, 0, 0.2));
+    }
+}
+
+@keyframes radiationPulse {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+}
+
 /* Gem spawn - no animation */
 #digging-grid .cell.gem-spawn::after {
     content: '';

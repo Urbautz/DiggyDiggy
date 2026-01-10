@@ -846,6 +846,54 @@ function triggerGemSpawnAnimation(x, y, gemName) {
     }, GEM_SPAWN_ANIMATION_DURATION);
 }
 
+function triggerNuclearExplosionAnimation(x, y) {
+    const NUCLEAR_EXPLOSION_ANIMATION_DURATION = 600;
+    const nuclearKey = `${x}:${y}:nuclear`;
+
+    console.log(`🎬 [Animation] Triggering nuclear explosion at (${x}, ${y})`);
+
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Nuclear explosion animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+
+    console.log(`✅ [Animation] Cell found, adding 'nuclear-explosion' class`);
+    // Add nuclear explosion animation class
+    cell.classList.add('nuclear-explosion');
+    console.log(`📋 [Animation] Cell classes:`, cell.className);
+
+    // Cleanup after animation
+    setTimeout(() => {
+        console.log(`🧹 [Animation] Removing 'nuclear-explosion' class from (${x}, ${y})`);
+        cell.classList.remove('nuclear-explosion');
+    }, NUCLEAR_EXPLOSION_ANIMATION_DURATION + 100);
+}
+
+function triggerRadiationAnimation(x, y, effect) {
+    const RADIATION_ANIMATION_DURATION = 500;
+
+    console.log(`🎬 [Animation] Triggering radiation (${effect}) at (${x}, ${y})`);
+
+    // Find the cell in the main grid
+    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
+    if (!cell) {
+        console.warn(`❌ Radiation animation failed: cell not found at (${x}, ${y})`);
+        return;
+    }
+
+    // Add appropriate radiation class based on effect type
+    const radiationClass = effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
+    console.log(`✅ [Animation] Cell found, adding '${radiationClass}' class`);
+    cell.classList.add(radiationClass);
+
+    // Cleanup after animation
+    setTimeout(() => {
+        cell.classList.remove(radiationClass);
+    }, RADIATION_ANIMATION_DURATION + 100);
+}
+
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
@@ -2237,6 +2285,7 @@ function initWorker() {
                 
                 // Process transactions from worker
                 if (data.transactions && Array.isArray(data.transactions)) {
+                    console.log(`📦 [Main] Received ${data.transactions.length} transactions from worker`);
                     for (const transaction of data.transactions) {
                         if (transaction.type === 'crit-hit') {
                             // Trigger critical hit animation
@@ -2245,6 +2294,29 @@ function initWorker() {
                             // Trigger one-hit animation (stronger effect)
                             console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
                             triggerCritAnimation(transaction.x, transaction.y, true);
+                        } else if (transaction.type === 'nuclear-explosion') {
+                            // Trigger nuclear explosion animation (center cell)
+                            console.log(`☢️ NUCLEAR EXPLOSION! ${transaction.dwarf}'s Plutonium plating detonated at (${transaction.x}, ${transaction.y}) - ${transaction.material} obliterated!`);
+                            console.log(`🔍 [Debug] About to call triggerNuclearExplosionAnimation`);
+                            console.log(`🔍 [Debug] Function exists:`, typeof triggerNuclearExplosionAnimation);
+                            try {
+                                triggerNuclearExplosionAnimation(transaction.x, transaction.y);
+                                console.log(`✅ [Debug] triggerNuclearExplosionAnimation called successfully`);
+                            } catch (error) {
+                                console.error(`❌ [Debug] Error calling triggerNuclearExplosionAnimation:`, error);
+                            }
+                        } else if (transaction.type === 'nuclear-radiation') {
+                            // Trigger radiation effects on surrounding cells
+                            console.log(`🔍 [Debug] Processing nuclear-radiation transaction with ${transaction.cells ? transaction.cells.length : 0} cells`);
+                            if (transaction.cells && Array.isArray(transaction.cells)) {
+                                for (const cell of transaction.cells) {
+                                    try {
+                                        triggerRadiationAnimation(cell.x, cell.y, cell.effect);
+                                    } catch (error) {
+                                        console.error(`❌ [Debug] Error calling triggerRadiationAnimation:`, error);
+                                    }
+                                }
+                            }
                         } else if (transaction.type === 'gem-spawn') {
                             // Trigger gem spawn animation
                             const caratText = transaction.carat ? ` (${transaction.carat.toFixed(2)}ct)` : '';

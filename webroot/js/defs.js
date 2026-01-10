@@ -871,6 +871,12 @@ const platingEffects = {
         description: '25% chance for a second dig in the same tick (only one can crit)',
         effect: 'doubleDigChance',
         value: 0.25
+    },
+    'plutonium': {
+        name: 'Plutonium Plating',
+        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
+        effect: 'nuclearExplosion',
+        value: 2.0
     }
 };
 

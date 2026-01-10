@@ -367,6 +367,87 @@ function handleBlockDestruction(cell, dwarf, x, y) {
     }
 }
 
+/**
+ * Apply nuclear explosion effects from Plutonium plating
+ * - Sets hardness of adjacent cells (8 surrounding) to 1
+ * - Halves hardness of cells 2 steps away
+ * - Sets energy of dwarfs in affected cells to 50%
+ * @param {number} centerX - X coordinate of explosion center
+ * @param {number} centerY - Y coordinate of explosion center
+ */
+function applyNuclearExplosion(centerX, centerY) {
+    const affectedCells = [];
+
+    // Process cells in a 5x5 grid centered on the explosion
+    for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+            // Skip center cell (already destroyed)
+            if (dx === 0 && dy === 0) continue;
+
+            const targetX = (centerX + dx + gridWidth) % gridWidth; // Wrap horizontally
+            const targetY = centerY + dy;
+
+            // Skip if out of vertical bounds
+            if (targetY < 0 || targetY >= grid.length) continue;
+
+            const distance = Math.max(Math.abs(dx), Math.abs(dy)); // Chebyshev distance
+
+            // Get the cell
+            const row = grid[targetY];
+            if (!row || !row[targetX]) continue;
+            const cell = row[targetX];
+
+            // Skip empty cells
+            if (!cell.materialId || cell.hardness === 0) continue;
+
+            let effect = null;
+
+            if (distance === 1) {
+                // Adjacent cells (8 surrounding): set hardness to 1
+                const originalHardness = cell.hardness;
+                cell.hardness = 1;
+                effect = 'weakened';
+                console.log(`☢️ Nuclear blast weakened cell at (${targetX},${targetY}) from ${originalHardness} to 1`);
+            } else if (distance === 2) {
+                // Cells 2 steps away: halve hardness
+                const originalHardness = cell.hardness;
+                cell.hardness = Math.ceil(cell.hardness / 2);
+                effect = 'damaged';
+                console.log(`☢️ Nuclear blast damaged cell at (${targetX},${targetY}) from ${originalHardness} to ${cell.hardness}`);
+            }
+
+            if (effect) {
+                affectedCells.push({ x: targetX, y: targetY, effect: effect });
+            }
+        }
+    }
+
+    // Affect dwarfs in the blast radius
+    for (const dwarf of dwarfs) {
+        const dx = Math.abs(dwarf.x - centerX);
+        const dy = Math.abs(dwarf.y - centerY);
+
+        // Wrap around horizontal distance
+        const wrappedDx = Math.min(dx, gridWidth - dx);
+        const distance = Math.max(wrappedDx, dy);
+
+        if (distance > 0 && distance <= 2) {
+            // Reduce dwarf energy to 50%
+            const originalEnergy = dwarf.energy;
+            dwarf.energy = Math.ceil(dwarf.energy * 0.5);
+            console.log(`☢️ Nuclear radiation affected ${dwarf.name} at (${dwarf.x},${dwarf.y}) - energy reduced from ${originalEnergy} to ${dwarf.energy}`);
+        }
+    }
+
+    // Add affected cells to transactions for animation
+    if (affectedCells.length > 0) {
+        pendingTransactions.push({
+            type: 'nuclear-radiation',
+            cells: affectedCells
+        });
+    }
+}
+
 // Check if a masonry task is unlocked by research
 function isMasonryTaskUnlocked(task) {
     if (!task || !task.requires) return true;
@@ -1975,14 +2056,42 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     expertiseType = 'Ore';
                 }
 
-                // Apply Uranium plating multiplier to one-hit chance
+                // Apply Uranium and Plutonium plating multipliers to one-hit chance
                 const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
-                oneHitChance *= uraniumMultiplier;
+                const plutoniumMultiplier = getPlutoniumPlatingOneHitMultiplier(dwarf);
+                const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
+                oneHitChance *= totalMultiplier;
+
+                if (totalMultiplier > 1) {
+                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCell.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
-                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+
+                    // Check for Plutonium nuclear explosion
+                    const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
+                    if (triggerExplosion) {
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        pendingTransactions.push({
+                            type: 'nuclear-explosion',
+                            x: dwarf.x,
+                            y: dwarf.y,
+                            dwarf: dwarf.name,
+                            material: mat ? mat.name : curCell.materialId
+                        });
+
+                        // Apply nuclear explosion effects to surrounding cells
+                        applyNuclearExplosion(dwarf.x, dwarf.y);
+                    } else {
+                        pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+                    }
                 } else {
                    // console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCell.materialId} (type: ${matType})`);
                     pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
@@ -2105,14 +2214,42 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     expertiseType = 'Ore';
                 }
 
-                // Apply Uranium plating multiplier to one-hit chance
+                // Apply Uranium and Plutonium plating multipliers to one-hit chance
                 const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
-                oneHitChance *= uraniumMultiplier;
+                const plutoniumMultiplier = getPlutoniumPlatingOneHitMultiplier(dwarf);
+                const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
+                oneHitChance *= totalMultiplier;
+
+                if (totalMultiplier > 1) {
+                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCellDig.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
-                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+
+                    // Check for Plutonium nuclear explosion
+                    const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
+                    if (triggerExplosion) {
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        pendingTransactions.push({
+                            type: 'nuclear-explosion',
+                            x: dwarf.x,
+                            y: dwarf.y,
+                            dwarf: dwarf.name,
+                            material: mat ? mat.name : curCellDig.materialId
+                        });
+
+                        // Apply nuclear explosion effects to surrounding cells
+                        applyNuclearExplosion(dwarf.x, dwarf.y);
+                    } else {
+                        pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+                    }
                 } else {
                     //console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCellDig.materialId} (type: ${matType})`);
                     pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });

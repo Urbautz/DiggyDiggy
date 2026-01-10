@@ -856,6 +856,55 @@ function getWolframPlatingDoubleDigChance(dwarf) {
     return 0;
 }
 
+/**
+ * Get the one-hit kill chance multiplier from Plutonium plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} One-hit kill chance multiplier (default 1.0)
+ */
+function getPlutoniumPlatingOneHitMultiplier(dwarf) {
+    if (!dwarf.toolId) return 1.0;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return 1.0;
+    }
+
+    // Check if the tool has Plutonium plating
+    if (toolInstance.plating === 'plutonium') {
+        // Plutonium plating multiplies one-hit kill chance by 2x (as defined in defs.js platingEffects)
+        const oneHitMultiplier = 2.0;
+        console.log(`[Plutonium Plating] ${dwarf.name}'s tool has Plutonium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
+        return oneHitMultiplier;
+    }
+
+    return 1.0;
+}
+
+/**
+ * Check if Plutonium plating should trigger a nuclear explosion
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if nuclear explosion should occur
+ */
+function shouldPlutoniumTriggerExplosion(dwarf) {
+    if (!dwarf.toolId) return false;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return false;
+    }
+
+    // Check if the tool has Plutonium plating
+    if (toolInstance.plating === 'plutonium') {
+        // 25% chance for nuclear explosion on one-hit kill
+        const roll = Math.random();
+        const triggered = roll < 0.25;
+        console.log(`☢️ [Plutonium] Nuclear explosion roll: ${(roll * 100).toFixed(1)}% ${triggered ? '✅ TRIGGERED!' : '❌ No explosion'}`);
+        return triggered;
+    }
+
+    return false;
+}
+
 // ============================================================================
 // ENERGY CONSUMPTION UTILITIES
 // ============================================================================
