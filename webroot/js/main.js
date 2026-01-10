@@ -898,6 +898,11 @@ function openModal(modalname) {
         }
     }
 
+    // Update backup restore buttons when opening settings
+    if (modalname === 'settings-modal') {
+        updateBackupRestoreUI();
+    }
+
     // Handle z-index stacking for modals that open on top of other modals
     // Task details modal should appear above the smelter modal
     if (modalname === 'task-details-modal') {
@@ -2650,6 +2655,7 @@ function saveGame() {
             materialsStock[materialId] = Math.round(materialsStock[materialId] * 100) / 100;
         }
 
+        const now = Date.now();
         const gameState = {
             grid: grid,
             dwarfs: dwarfs,
@@ -2677,10 +2683,33 @@ function saveGame() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             nextManagementTaskId: nextManagementTaskId || 1,
-            timestamp: Date.now(),
+            timestamp: now,
             version: gameversion
         };
-        localStorage.setItem('diggyDiggyGameState', JSON.stringify(gameState));
+
+        const gameStateJson = JSON.stringify(gameState);
+
+        // Save current game state
+        localStorage.setItem('diggyDiggyGameState', gameStateJson);
+
+        // Rotating backup system: hourly and daily saves
+        const lastHourlySave = localStorage.getItem('diggyDiggyLastHourlySave');
+        const lastDailySave = localStorage.getItem('diggyDiggyLastDailySave');
+
+        const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+        const oneDay = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+
+        // Save hourly backup if more than 1 hour has passed
+        if (!lastHourlySave || (now - parseInt(lastHourlySave)) >= oneHour) {
+            localStorage.setItem('diggyDiggyGameState_hourly', gameStateJson);
+            localStorage.setItem('diggyDiggyLastHourlySave', now.toString());
+        }
+
+        // Save daily backup if more than 1 day has passed
+        if (!lastDailySave || (now - parseInt(lastDailySave)) >= oneDay) {
+            localStorage.setItem('diggyDiggyGameState_daily', gameStateJson);
+            localStorage.setItem('diggyDiggyLastDailySave', now.toString());
+        }
     } catch (e) {
         console.error('Failed to save game:', e);
     }
@@ -2976,6 +3005,124 @@ window.deleteSave = function() {
             console.error('Failed to delete save:', e);
             alert('Failed to delete save.');
         }
+    }
+}
+
+/**
+ * Update the backup restore UI to show available backups and their timestamps
+ */
+window.updateBackupRestoreUI = function() {
+    const infoDiv = document.getElementById('backup-restore-info');
+    const hourlyBtn = document.getElementById('restore-hourly-btn');
+    const dailyBtn = document.getElementById('restore-daily-btn');
+
+    if (!infoDiv || !hourlyBtn || !dailyBtn) return;
+
+    try {
+        const hourlyBackup = localStorage.getItem('diggyDiggyGameState_hourly');
+        const dailyBackup = localStorage.getItem('diggyDiggyGameState_daily');
+
+        let infoText = '';
+
+        // Check hourly backup
+        if (hourlyBackup) {
+            try {
+                const data = JSON.parse(hourlyBackup);
+                const timestamp = data.timestamp ? new Date(data.timestamp) : null;
+                if (timestamp) {
+                    const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
+                    infoText += `🕐 Hourly: ${timeAgo} ago`;
+                    hourlyBtn.disabled = false;
+                } else {
+                    hourlyBtn.disabled = true;
+                }
+            } catch (e) {
+                hourlyBtn.disabled = true;
+            }
+        } else {
+            hourlyBtn.disabled = true;
+        }
+
+        // Check daily backup
+        if (dailyBackup) {
+            try {
+                const data = JSON.parse(dailyBackup);
+                const timestamp = data.timestamp ? new Date(data.timestamp) : null;
+                if (timestamp) {
+                    const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
+                    if (infoText) infoText += ' • ';
+                    infoText += `📅 Daily: ${timeAgo} ago`;
+                    dailyBtn.disabled = false;
+                } else {
+                    dailyBtn.disabled = true;
+                }
+            } catch (e) {
+                dailyBtn.disabled = true;
+            }
+        } else {
+            dailyBtn.disabled = true;
+        }
+
+        infoDiv.textContent = infoText || 'No backups available yet.';
+    } catch (e) {
+        console.error('Failed to update backup UI:', e);
+        infoDiv.textContent = 'Error loading backup information.';
+    }
+}
+
+/**
+ * Format milliseconds into a human-readable time ago string
+ */
+function formatTimeAgo(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+    if (minutes > 0) return `${minutes} min${minutes > 1 ? 's' : ''}`;
+    return 'just now';
+}
+
+/**
+ * Restore game from a backup (hourly or daily)
+ */
+window.restoreBackup = function(backupType) {
+    const backupKey = backupType === 'hourly' ? 'diggyDiggyGameState_hourly' : 'diggyDiggyGameState_daily';
+    const backupName = backupType === 'hourly' ? 'hourly' : 'daily';
+
+    const backup = localStorage.getItem(backupKey);
+    if (!backup) {
+        alert(`No ${backupName} backup found.`);
+        return;
+    }
+
+    // Parse backup to get timestamp
+    let backupTimestamp = 'unknown time';
+    try {
+        const data = JSON.parse(backup);
+        if (data.timestamp) {
+            const date = new Date(data.timestamp);
+            backupTimestamp = date.toLocaleString();
+        }
+    } catch (e) {
+        console.error('Failed to parse backup timestamp:', e);
+    }
+
+    const confirmMsg = `Are you sure you want to restore from the ${backupName} backup (${backupTimestamp})?\n\nYour current progress will be lost!`;
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        // Restore the backup to the main save slot
+        localStorage.setItem('diggyDiggyGameState', backup);
+        alert(`${backupName.charAt(0).toUpperCase() + backupName.slice(1)} backup restored! The page will reload.`);
+        location.reload();
+    } catch (e) {
+        console.error('Failed to restore backup:', e);
+        alert('Failed to restore backup.');
     }
 }
 
