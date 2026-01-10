@@ -270,7 +270,7 @@ main {
 #digging-grid .cell.nuclear-radiation-weakened::after {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle, rgba(53, 250, 0, 0.4) 0%, rgba(20, 200, 0, 0.3) 50%, transparent 70%);
+    background: radial-gradient(circle, rgb(54, 250, 0) 0%, rgba(20, 200, 0, 0.861) 50%, transparent 70%);
     opacity: 0;
     animation: radiationPulse 0.5s ease-out forwards;
     animation-iteration-count: 1;
