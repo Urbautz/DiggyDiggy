@@ -23,6 +23,8 @@ function updateDwarfsLevelUpBadge() {
 }
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
+const activeNuclearExplosions = new Map();
+const activeRadiation = new Map();
 
 // Note: randomMaterial and getMaterialById are now in utils.js
 
@@ -261,6 +263,16 @@ function updateGridDisplay() {
             activeCritFlashes.delete(key);
         }
     }
+    for (const [key, data] of activeNuclearExplosions) {
+        if (data.expiresAt <= now) {
+            activeNuclearExplosions.delete(key);
+        }
+    }
+    for (const [key, data] of activeRadiation) {
+        if (data.expiresAt <= now) {
+            activeRadiation.delete(key);
+        }
+    }
 
     // Render only visibleDepth rows, showing depth label as first column
     for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
@@ -288,6 +300,16 @@ function updateGridDisplay() {
             const critData = activeCritFlashes.get(critKey);
             if (critData) {
                 cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
+            }
+
+            const nuclearKey = `${c}:${r}`;
+            if (activeNuclearExplosions.has(nuclearKey)) {
+                cell.classList.add('nuclear-explosion');
+            }
+            const radiationData = activeRadiation.get(nuclearKey);
+            if (radiationData) {
+                const radiationClass = radiationData.effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
+                cell.classList.add(radiationClass);
             }
 
             // Show gem icon if this cell has a gem
@@ -848,50 +870,18 @@ function triggerGemSpawnAnimation(x, y, gemName) {
 
 function triggerNuclearExplosionAnimation(x, y) {
     const NUCLEAR_EXPLOSION_ANIMATION_DURATION = 600;
-    const nuclearKey = `${x}:${y}:nuclear`;
+    const nuclearKey = `${x}:${y}`;
 
-    console.log(`🎬 [Animation] Triggering nuclear explosion at (${x}, ${y})`);
-
-    // Find the cell in the main grid
-    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
-    if (!cell) {
-        console.warn(`❌ Nuclear explosion animation failed: cell not found at (${x}, ${y})`);
-        return;
-    }
-
-    console.log(`✅ [Animation] Cell found, adding 'nuclear-explosion' class`);
-    // Add nuclear explosion animation class
-    cell.classList.add('nuclear-explosion');
-    console.log(`📋 [Animation] Cell classes:`, cell.className);
-
-    // Cleanup after animation
-    setTimeout(() => {
-        console.log(`🧹 [Animation] Removing 'nuclear-explosion' class from (${x}, ${y})`);
-        cell.classList.remove('nuclear-explosion');
-    }, NUCLEAR_EXPLOSION_ANIMATION_DURATION + 100);
+    console.log(`🎬 [Animation] Scheduling nuclear explosion at (${x}, ${y})`);
+    activeNuclearExplosions.set(nuclearKey, { expiresAt: Date.now() + NUCLEAR_EXPLOSION_ANIMATION_DURATION });
 }
 
 function triggerRadiationAnimation(x, y, effect) {
     const RADIATION_ANIMATION_DURATION = 500;
+    const radiationKey = `${x}:${y}`;
 
-    console.log(`🎬 [Animation] Triggering radiation (${effect}) at (${x}, ${y})`);
-
-    // Find the cell in the main grid
-    const cell = document.querySelector(`#digging-grid .cell[data-col="${x}"][data-row="${y}"]`);
-    if (!cell) {
-        console.warn(`❌ Radiation animation failed: cell not found at (${x}, ${y})`);
-        return;
-    }
-
-    // Add appropriate radiation class based on effect type
-    const radiationClass = effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
-    console.log(`✅ [Animation] Cell found, adding '${radiationClass}' class`);
-    cell.classList.add(radiationClass);
-
-    // Cleanup after animation
-    setTimeout(() => {
-        cell.classList.remove(radiationClass);
-    }, RADIATION_ANIMATION_DURATION + 100);
+    console.log(`🎬 [Animation] Scheduling radiation (${effect}) at (${x}, ${y})`);
+    activeRadiation.set(radiationKey, { expiresAt: Date.now() + RADIATION_ANIMATION_DURATION, effect });
 }
 
 function openModal(modalname) {
