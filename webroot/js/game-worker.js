@@ -2868,4 +2868,42 @@ self.addEventListener('message', (e) => {
     }
 });
 
+// Global error handler for worker thread
+self.addEventListener('error', (event) => {
+    const errorMsg = event.message || 'Unknown worker error';
+    const errorFile = event.filename ? event.filename.split('/').pop() : 'unknown file';
+    const errorLine = event.lineno || '?';
+
+    console.error('=== WORKER CRITICAL ERROR ===');
+    console.error('Message:', errorMsg);
+    console.error('File:', errorFile);
+    console.error('Line:', errorLine);
+    console.error('=============================');
+
+    self.postMessage({
+        type: 'tick-error',
+        error: `${errorMsg} (${errorFile}:${errorLine})`
+    });
+
+    // Don't prevent default error handling
+    return false;
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason || 'Unknown promise rejection';
+    const message = reason.message || String(reason);
+
+    console.error('=== WORKER UNHANDLED REJECTION ===');
+    console.error('Reason:', message);
+    console.error('==================================');
+
+    self.postMessage({
+        type: 'tick-error',
+        error: `Promise rejection: ${message}`
+    });
+
+    // Don't prevent default error handling
+    return false;
+});
+
 console.log('Game worker loaded and ready');

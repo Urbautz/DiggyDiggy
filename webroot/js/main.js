@@ -2217,6 +2217,90 @@ let tickCounter = 0; // Track ticks for periodic updates
 let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
 
+/**
+ * Handle critical errors by pausing the game and showing an error notification
+ * @param {string} title - Error title
+ * @param {string} message - Error message
+ * @param {Error|object} errorObj - Optional error object for detailed logging
+ */
+function handleCriticalError(title, message, errorObj = null) {
+    // Auto-pause the game
+    if (!gamePaused) {
+        gamePaused = true;
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) pauseBtn.classList.add('paused');
+
+        // Notify worker of pause state
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({ type: 'set-pause', paused: true });
+        }
+    }
+
+    // Log the full error details
+    console.error('=== CRITICAL ERROR ===');
+    console.error('Title:', title);
+    console.error('Message:', message);
+    if (errorObj) {
+        console.error('Error Object:', errorObj);
+        if (errorObj.stack) {
+            console.error('Stack Trace:', errorObj.stack);
+        }
+    }
+    console.error('======================');
+
+    // Show error notification to user
+    showErrorNotification(title, message);
+}
+
+/**
+ * Display an error notification to the user
+ * @param {string} title - Error title
+ * @param {string} message - Error message
+ */
+function showErrorNotification(title, message) {
+    // Remove any existing error notifications
+    const existingNotif = document.getElementById('critical-error-notification');
+    if (existingNotif) {
+        existingNotif.remove();
+    }
+
+    // Create error notification element
+    const notification = document.createElement('div');
+    notification.id = 'critical-error-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 500px;
+        font-family: Arial, sans-serif;
+        border: 2px solid #b71c1c;
+    `;
+
+    notification.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="font-size: 24px; flex-shrink: 0;">⚠️</div>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${title}</div>
+                <div style="font-size: 14px; opacity: 0.95; margin-bottom: 8px;">${message}</div>
+                <div style="font-size: 12px; opacity: 0.85;">Game has been paused. Check the console for details.</div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()"
+                    style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+                           color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+                           font-size: 14px; flex-shrink: 0;">✕</button>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+}
+
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
     
@@ -2457,6 +2541,7 @@ function initWorker() {
                 
             case 'tick-error':
                 console.error('Worker tick error:', error);
+                handleCriticalError('Worker Error', error);
                 break;
 
             case 'investment-created':
@@ -2475,6 +2560,7 @@ function initWorker() {
     
     gameWorker.addEventListener('error', (e) => {
         console.error('Worker error:', e.message, e);
+        handleCriticalError('Worker Thread Error', e.message || 'Unknown worker error', e);
     });
     
     // Initialize worker with current game state
@@ -3260,6 +3346,36 @@ window.addEventListener('modalsLoaded', () => {
         if (cheatSection) cheatSection.classList.add('visible');
         if (cheatButton) cheatButton.classList.add('visible');
     }
+});
+
+// Global error handlers for main thread
+window.addEventListener('error', (event) => {
+    const errorMsg = event.message || 'Unknown JavaScript error';
+    const errorFile = event.filename ? event.filename.split('/').pop() : 'unknown file';
+    const errorLine = event.lineno || '?';
+
+    handleCriticalError(
+        'JavaScript Error',
+        `${errorMsg} (${errorFile}:${errorLine})`,
+        event.error
+    );
+
+    // Don't prevent default error handling
+    return false;
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason || 'Unknown promise rejection';
+    const message = reason.message || String(reason);
+
+    handleCriticalError(
+        'Unhandled Promise Rejection',
+        message,
+        reason
+    );
+
+    // Don't prevent default error handling
+    return false;
 });
 
 // Start the game
