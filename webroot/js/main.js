@@ -2689,20 +2689,44 @@ function saveGame() {
 
         const gameStateJson = JSON.stringify(gameState);
 
+        // Before overwriting, save the previous current save as "last save"
+        const previousSave = localStorage.getItem('diggyDiggyGameState');
+        if (previousSave) {
+            localStorage.setItem('diggyDiggyGameState_last', previousSave);
+        }
+
         // Save current game state
         localStorage.setItem('diggyDiggyGameState', gameStateJson);
 
-        // Rotating backup system: hourly and daily saves
-        const lastHourlySave = localStorage.getItem('diggyDiggyLastHourlySave');
+        // Rotating backup system: 3 hourly saves and 1 daily save
+        const lastHourlySave1 = localStorage.getItem('diggyDiggyLastHourlySave1');
+        const lastHourlySave2 = localStorage.getItem('diggyDiggyLastHourlySave2');
+        const lastHourlySave3 = localStorage.getItem('diggyDiggyLastHourlySave3');
         const lastDailySave = localStorage.getItem('diggyDiggyLastDailySave');
 
         const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
         const oneDay = 24 * 60 * 60 * 1000; // 1 day in milliseconds
 
-        // Save hourly backup if more than 1 hour has passed
-        if (!lastHourlySave || (now - parseInt(lastHourlySave)) >= oneHour) {
-            localStorage.setItem('diggyDiggyGameState_hourly', gameStateJson);
-            localStorage.setItem('diggyDiggyLastHourlySave', now.toString());
+        // Rotating hourly backups - keep 3 slots, rotate every hour
+        // Slot 1: 0-1 hours ago
+        // Slot 2: 1-2 hours ago
+        // Slot 3: 2-3 hours ago
+        if (!lastHourlySave1 || (now - parseInt(lastHourlySave1)) >= oneHour) {
+            // Rotate: slot1 -> slot2, slot2 -> slot3, new -> slot1
+            const save1 = localStorage.getItem('diggyDiggyGameState_hourly1');
+            const save2 = localStorage.getItem('diggyDiggyGameState_hourly2');
+
+            if (save2) {
+                localStorage.setItem('diggyDiggyGameState_hourly3', save2);
+                localStorage.setItem('diggyDiggyLastHourlySave3', lastHourlySave2 || now.toString());
+            }
+            if (save1) {
+                localStorage.setItem('diggyDiggyGameState_hourly2', save1);
+                localStorage.setItem('diggyDiggyLastHourlySave2', lastHourlySave1);
+            }
+
+            localStorage.setItem('diggyDiggyGameState_hourly1', gameStateJson);
+            localStorage.setItem('diggyDiggyLastHourlySave1', now.toString());
         }
 
         // Save daily backup if more than 1 day has passed
@@ -3013,57 +3037,69 @@ window.deleteSave = function() {
  */
 window.updateBackupRestoreUI = function() {
     const infoDiv = document.getElementById('backup-restore-info');
-    const hourlyBtn = document.getElementById('restore-hourly-btn');
+    const lastBtn = document.getElementById('restore-last-btn');
+    const hourly1Btn = document.getElementById('restore-hourly1-btn');
+    const hourly2Btn = document.getElementById('restore-hourly2-btn');
+    const hourly3Btn = document.getElementById('restore-hourly3-btn');
     const dailyBtn = document.getElementById('restore-daily-btn');
 
-    if (!infoDiv || !hourlyBtn || !dailyBtn) return;
+    if (!infoDiv) return;
 
     try {
-        const hourlyBackup = localStorage.getItem('diggyDiggyGameState_hourly');
-        const dailyBackup = localStorage.getItem('diggyDiggyGameState_daily');
+        const backups = {
+            last: localStorage.getItem('diggyDiggyGameState_last'),
+            hourly1: localStorage.getItem('diggyDiggyGameState_hourly1'),
+            hourly2: localStorage.getItem('diggyDiggyGameState_hourly2'),
+            hourly3: localStorage.getItem('diggyDiggyGameState_hourly3'),
+            daily: localStorage.getItem('diggyDiggyGameState_daily')
+        };
 
-        let infoText = '';
+        const buttons = {
+            last: lastBtn,
+            hourly1: hourly1Btn,
+            hourly2: hourly2Btn,
+            hourly3: hourly3Btn,
+            daily: dailyBtn
+        };
 
-        // Check hourly backup
-        if (hourlyBackup) {
-            try {
-                const data = JSON.parse(hourlyBackup);
-                const timestamp = data.timestamp ? new Date(data.timestamp) : null;
-                if (timestamp) {
-                    const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
-                    infoText += `🕐 Hourly: ${timeAgo} ago`;
-                    hourlyBtn.disabled = false;
-                } else {
-                    hourlyBtn.disabled = true;
+        let infoLines = [];
+        let backupCount = 0;
+
+        // Check each backup and update button state
+        for (const [type, backup] of Object.entries(backups)) {
+            const btn = buttons[type];
+            if (!btn) continue;
+
+            if (backup) {
+                try {
+                    const data = JSON.parse(backup);
+                    const timestamp = data.timestamp ? new Date(data.timestamp) : null;
+                    if (timestamp) {
+                        const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
+                        btn.disabled = false;
+                        backupCount++;
+
+                        // Add to info text
+                        const label = type === 'last' ? '⏪ Last' :
+                                     type === 'hourly1' ? '🕐 1h' :
+                                     type === 'hourly2' ? '🕑 2h' :
+                                     type === 'hourly3' ? '🕒 3h' :
+                                     '📅 Daily';
+                        infoLines.push(`${label}: ${timeAgo}`);
+                    } else {
+                        btn.disabled = true;
+                    }
+                } catch (e) {
+                    btn.disabled = true;
                 }
-            } catch (e) {
-                hourlyBtn.disabled = true;
+            } else {
+                btn.disabled = true;
             }
-        } else {
-            hourlyBtn.disabled = true;
         }
 
-        // Check daily backup
-        if (dailyBackup) {
-            try {
-                const data = JSON.parse(dailyBackup);
-                const timestamp = data.timestamp ? new Date(data.timestamp) : null;
-                if (timestamp) {
-                    const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
-                    if (infoText) infoText += ' • ';
-                    infoText += `📅 Daily: ${timeAgo} ago`;
-                    dailyBtn.disabled = false;
-                } else {
-                    dailyBtn.disabled = true;
-                }
-            } catch (e) {
-                dailyBtn.disabled = true;
-            }
-        } else {
-            dailyBtn.disabled = true;
-        }
-
-        infoDiv.textContent = infoText || 'No backups available yet.';
+        infoDiv.textContent = backupCount > 0 ?
+            `${backupCount} backup${backupCount > 1 ? 's' : ''} available: ${infoLines.join(' • ')}` :
+            'No backups available yet.';
     } catch (e) {
         console.error('Failed to update backup UI:', e);
         infoDiv.textContent = 'Error loading backup information.';
@@ -3086,15 +3122,26 @@ function formatTimeAgo(ms) {
 }
 
 /**
- * Restore game from a backup (hourly or daily)
+ * Restore game from a backup (last, hourly1-3, or daily)
  */
 window.restoreBackup = function(backupType) {
-    const backupKey = backupType === 'hourly' ? 'diggyDiggyGameState_hourly' : 'diggyDiggyGameState_daily';
-    const backupName = backupType === 'hourly' ? 'hourly' : 'daily';
+    const backupMap = {
+        'last': { key: 'diggyDiggyGameState_last', name: 'last save (before current)' },
+        'hourly1': { key: 'diggyDiggyGameState_hourly1', name: 'hourly backup (1h ago)' },
+        'hourly2': { key: 'diggyDiggyGameState_hourly2', name: 'hourly backup (2h ago)' },
+        'hourly3': { key: 'diggyDiggyGameState_hourly3', name: 'hourly backup (3h ago)' },
+        'daily': { key: 'diggyDiggyGameState_daily', name: 'daily backup' }
+    };
 
-    const backup = localStorage.getItem(backupKey);
+    const backupInfo = backupMap[backupType];
+    if (!backupInfo) {
+        alert('Invalid backup type.');
+        return;
+    }
+
+    const backup = localStorage.getItem(backupInfo.key);
     if (!backup) {
-        alert(`No ${backupName} backup found.`);
+        alert(`No ${backupInfo.name} found.`);
         return;
     }
 
@@ -3110,7 +3157,7 @@ window.restoreBackup = function(backupType) {
         console.error('Failed to parse backup timestamp:', e);
     }
 
-    const confirmMsg = `Are you sure you want to restore from the ${backupName} backup (${backupTimestamp})?\n\nYour current progress will be lost!`;
+    const confirmMsg = `Are you sure you want to restore from the ${backupInfo.name} (${backupTimestamp})?\n\nYour current progress will be lost!`;
     if (!confirm(confirmMsg)) {
         return;
     }
@@ -3118,7 +3165,7 @@ window.restoreBackup = function(backupType) {
     try {
         // Restore the backup to the main save slot
         localStorage.setItem('diggyDiggyGameState', backup);
-        alert(`${backupName.charAt(0).toUpperCase() + backupName.slice(1)} backup restored! The page will reload.`);
+        alert(`Backup restored! The page will reload.`);
         location.reload();
     } catch (e) {
         console.error('Failed to restore backup:', e);

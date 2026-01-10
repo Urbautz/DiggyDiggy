@@ -978,11 +978,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 
         // Pay wage
         gold -= wage;
-        pendingTransactions.push({
-            description: `${transactionPrefix}: ${task.name}`,
-            income: 0,
-            expense: wage
-        });
+        // Note: No transaction logged for masonry tasks - they just process existing materials
+        // Wage expense is already tracked separately in the wage transaction
 
         // Award XP for workshop work (based on task hardness)
         const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));

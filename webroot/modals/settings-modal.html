@@ -21,8 +21,11 @@
             <p style="margin-bottom: 1rem;">Restore from automatic backup saves. Useful if something goes wrong.</p>
             <div id="backup-restore-info" style="margin-bottom: 0.5rem; font-size: 0.9rem; color: #666;"></div>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                <button id="restore-hourly-btn" class="btn-secondary" onclick="restoreBackup('hourly')" disabled>🕐 Restore Hourly</button>
-                <button id="restore-daily-btn" class="btn-secondary" onclick="restoreBackup('daily')" disabled>📅 Restore Daily</button>
+                <button id="restore-last-btn" class="btn-secondary" onclick="restoreBackup('last')" disabled>⏪ Last Save</button>
+                <button id="restore-hourly1-btn" class="btn-secondary" onclick="restoreBackup('hourly1')" disabled>🕐 1h ago</button>
+                <button id="restore-hourly2-btn" class="btn-secondary" onclick="restoreBackup('hourly2')" disabled>🕑 2h ago</button>
+                <button id="restore-hourly3-btn" class="btn-secondary" onclick="restoreBackup('hourly3')" disabled>🕒 3h ago</button>
+                <button id="restore-daily-btn" class="btn-secondary" onclick="restoreBackup('daily')" disabled>📅 Daily</button>
             </div>
 
             <div id="settings-cheat-section" class="settings-cheat-section">
