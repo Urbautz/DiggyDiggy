@@ -256,7 +256,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 50px;
+    font-size: 150px;
     background: radial-gradient(circle, rgba(53, 250, 0, 0.8) 0%, rgba(20, 200, 0, 0.6) 40%, transparent 80%);
     opacity: 0;
     animation: nuclearExplosion 0.6s ease-out forwards;
@@ -268,7 +268,6 @@ main {
 
 /* Nuclear radiation effect for weakened cells */
 #digging-grid .cell.nuclear-radiation-weakened::after {
-    content: '☢️';
     position: absolute;
     inset: 0;
     background: radial-gradient(circle, rgba(53, 250, 0, 0.4) 0%, rgba(20, 200, 0, 0.3) 50%, transparent 70%);
@@ -281,7 +280,6 @@ main {
 
 /* Nuclear radiation effect for damaged cells (outer ring) */
 #digging-grid .cell.nuclear-radiation-damaged::after {
-    content: '☢️';
     position: absolute;
     inset: 0;
     background: radial-gradient(circle, rgba(53, 250, 0, 0.2) 0%, rgba(20, 200, 0, 0.15) 50%, transparent 70%);
