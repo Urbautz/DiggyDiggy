@@ -43,6 +43,55 @@ let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
 let managementTasks = {}; // Management task definitions
 
+// Plating effects - duplicated from defs.js (must be kept in sync)
+// NOTE: These values are the single source of truth defined in defs.js
+// They are duplicated here because workers cannot import ES modules
+const platingEffects = {
+    'zinc': {
+        name: 'Zinc Plating',
+        description: 'Digging consumes 2 less energy',
+        effect: 'energyReduction',
+        value: 2
+    },
+    'silver': {
+        name: 'Silver Plating',
+        description: '+40% gem probability',
+        effect: 'gemProbability',
+        value: 1.40
+    },
+    'gold': {
+        name: 'Gold Plating',
+        description: '+10% higher critical strike chance',
+        effect: 'criticalStrike',
+        value: 1.10
+    },
+    'uranium': {
+        name: 'Uranium Plating',
+        description: '5× one-hit kill chance on critical hits',
+        effect: 'oneHitMultiplier',
+        value: 5.0
+    },
+    'nickel': {
+        name: 'Nickel Plating',
+        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
+        effect: 'movementEnergyRegen',
+        value: 5
+    },
+    'wolfram': {
+        name: 'Wolfram Plating',
+        description: '25% chance for a second dig in the same tick (only one can crit)',
+        effect: 'doubleDigChance',
+        value: 0.25
+    },
+    'plutonium': {
+        name: 'Plutonium Plating',
+        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
+        effect: 'nuclearExplosion',
+        value: 2.0,
+        explosionChance: 0.25
+    }
+};
+
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
 let smelterCoalMinTemp = 25; // Minimum temperature for coal heating (user configurable)
@@ -367,6 +416,87 @@ function handleBlockDestruction(cell, dwarf, x, y) {
     }
 }
 
+/**
+ * Apply nuclear explosion effects from Plutonium plating
+ * - Sets hardness of adjacent cells (8 surrounding) to 1
+ * - Halves hardness of cells 2 steps away
+ * - Sets energy of dwarfs in affected cells to 50%
+ * @param {number} centerX - X coordinate of explosion center
+ * @param {number} centerY - Y coordinate of explosion center
+ */
+function applyNuclearExplosion(centerX, centerY) {
+    const affectedCells = [];
+
+    // Process cells in a 5x5 grid centered on the explosion
+    for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+            // Skip center cell (already destroyed)
+            if (dx === 0 && dy === 0) continue;
+
+            const targetX = (centerX + dx + gridWidth) % gridWidth; // Wrap horizontally
+            const targetY = centerY + dy;
+
+            // Skip if out of vertical bounds
+            if (targetY < 0 || targetY >= grid.length) continue;
+
+            const distance = Math.max(Math.abs(dx), Math.abs(dy)); // Chebyshev distance
+
+            // Get the cell
+            const row = grid[targetY];
+            if (!row || !row[targetX]) continue;
+            const cell = row[targetX];
+
+            // Skip empty cells
+            if (!cell.materialId || cell.hardness === 0) continue;
+
+            let effect = null;
+
+            if (distance === 1) {
+                // Adjacent cells (8 surrounding): set hardness to 1
+                const originalHardness = cell.hardness;
+                cell.hardness = 1;
+                effect = 'weakened';
+                console.log(`☢️ Nuclear blast weakened cell at (${targetX},${targetY}) from ${originalHardness} to 1`);
+            } else if (distance === 2) {
+                // Cells 2 steps away: halve hardness
+                const originalHardness = cell.hardness;
+                cell.hardness = Math.ceil(cell.hardness / 2);
+                effect = 'damaged';
+                console.log(`☢️ Nuclear blast damaged cell at (${targetX},${targetY}) from ${originalHardness} to ${cell.hardness}`);
+            }
+
+            if (effect) {
+                affectedCells.push({ x: targetX, y: targetY, effect: effect });
+            }
+        }
+    }
+
+    // Affect dwarfs in the blast radius
+    for (const dwarf of dwarfs) {
+        const dx = Math.abs(dwarf.x - centerX);
+        const dy = Math.abs(dwarf.y - centerY);
+
+        // Wrap around horizontal distance
+        const wrappedDx = Math.min(dx, gridWidth - dx);
+        const distance = Math.max(wrappedDx, dy);
+
+        if (distance > 0 && distance <= 2) {
+            // Reduce dwarf energy to 50%
+            const originalEnergy = dwarf.energy;
+            dwarf.energy = Math.ceil(dwarf.energy * 0.5);
+            console.log(`☢️ Nuclear radiation affected ${dwarf.name} at (${dwarf.x},${dwarf.y}) - energy reduced from ${originalEnergy} to ${dwarf.energy}`);
+        }
+    }
+
+    // Add affected cells to transactions for animation
+    if (affectedCells.length > 0) {
+        pendingTransactions.push({
+            type: 'nuclear-radiation',
+            cells: affectedCells
+        });
+    }
+}
+
 // Check if a masonry task is unlocked by research
 function isMasonryTaskUnlocked(task) {
     if (!task || !task.requires) return true;
@@ -417,8 +547,6 @@ function masonryHasWork() {
     return false;
 }
 
-// Check if a smelter task is unlocked by research
-// Note: isSmelterTaskUnlocked is now in utils.js
 
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
@@ -431,17 +559,54 @@ function smelterHasWork() {
             return false;
         }
         const task = smelterTasksData[taskId];
+        if (!task) continue;
+
         // Check if task is unlocked
         if (!isSmelterTaskUnlocked(task)) {
             continue; // Skip locked tasks
         }
-        // For gem cutting tasks, check if there are any gems marked for cutting
-        if (task.type === 'gem-cutting') {
-            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) {
+
+        // For heating tasks, use hysteresis: start heating when below min, stop when above max
+        if (task.type === 'heating') {
+            // For magma (dynamic), only activate when below min temp
+            // For coal, use hysteresis with min and max
+            if (task.heatGain === 'dynamic') {
+                // Magma: only heat when below magma min temp (it instantly goes to max)
+                if (smelterTemperature >= smelterMagmaMinTemp) {
+                    continue; // Skip magma heating if at or above magma min temp
+                }
+                // Magma heating is needed
                 return true;
+            } else {
+                // Coal: use hysteresis
+                // Update heating mode based on temperature
+                if (smelterTemperature < smelterCoalMinTemp) {
+                    smelterHeatingMode = true; // Start heating when below coal min
+                } else if (smelterTemperature >= smelterCoalMaxTemp) {
+                    smelterHeatingMode = false; // Stop heating when at/above coal max
+                }
+
+                // Skip heating if not in heating mode
+                if (!smelterHeatingMode) {
+                    continue;
+                }
+
+                // Check if we have coal
+                if (task.input && task.input.material && task.input.amount) {
+                    const stockAmount = materialsStock[task.input.material] || 0;
+                    if (stockAmount >= task.input.amount) {
+                        return true; // Coal heating is available
+                    }
+                }
+                continue; // Coal heating not needed or no coal available
             }
         }
+
+        // For smelting tasks with temperature requirements, check if furnace is hot enough
+        if (task.minTemp && smelterTemperature < task.minTemp) {
+            continue; // Skip tasks that require higher temperature
+        }
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
@@ -595,15 +760,6 @@ function findActionableSmelterTask() {
         // For smelting tasks with temperature requirements, check if furnace is hot enough
         if (task.minTemp && smelterTemperature < task.minTemp) {
             continue; // Skip tasks that require higher temperature
-        }
-
-        // For gem cutting tasks, check if there are any gems marked for cutting
-        if (task.type === 'gem-cutting') {
-            const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
-            if (gemToProcess) {
-                return { task: task, taskId: taskId };
-            }
-            continue; // No gems available, try next task
         }
 
         // Check for single input (legacy format)
@@ -871,11 +1027,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 
         // Pay wage
         gold -= wage;
-        pendingTransactions.push({
-            description: `${transactionPrefix}: ${task.name}`,
-            income: 0,
-            expense: wage
-        });
+        // Note: No transaction logged for masonry tasks - they just process existing materials
+        // Wage expense is already tracked separately in the wage transaction
 
         // Award XP for workshop work (based on task hardness)
         const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));
@@ -1879,9 +2032,17 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
         }
 
         // If 'digging' would be assigned, we continue to the digging logic below
-        // If null was returned, no valid task was available (all blacklisted) - dwarf should stay idle
+        // If null was returned, no valid task was available (all blacklisted or no work available)
         if (assignedTask === null) {
-            // All tasks blacklisted - do nothing
+            // No valid task available - if dwarf is at house and needs energy, set to resting
+            if (typeof house === 'object' && house !== null && dwarf.x === house.x && dwarf.y === house.y) {
+                const maxEnergy = dwarf.maxEnergy || 100;
+                if (dwarf.energy < maxEnergy) {
+                    console.log(`Dwarf ${dwarf.name} idle at house with low energy (${dwarf.energy}/${maxEnergy}) -> resting`);
+                    dwarf.status = 'resting';
+                }
+            }
+            // Otherwise dwarf stays idle (will keep checking each tick)
             return;
         }
     }
@@ -1926,13 +2087,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
-                
+
                 const stoneExpertise = researchData['expertise-stone'];
                 const oreExpertise = researchData['expertise-ore'];
-                
+
                 let oneHitChance = 0;
                 let expertiseType = null;
-                
+
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
                     oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
@@ -1940,11 +2101,43 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
-                
+
+                // Apply Uranium and Plutonium plating multipliers to one-hit chance
+                const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
+                const plutoniumMultiplier = getPlutoniumPlatingOneHitMultiplier(dwarf);
+                const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
+                oneHitChance *= totalMultiplier;
+
+                if (totalMultiplier > 1) {
+                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                }
+
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCell.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
-                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+
+                    // Check for Plutonium nuclear explosion
+                    const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
+                    if (triggerExplosion) {
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        pendingTransactions.push({
+                            type: 'nuclear-explosion',
+                            x: dwarf.x,
+                            y: dwarf.y,
+                            dwarf: dwarf.name,
+                            material: mat ? mat.name : curCell.materialId
+                        });
+
+                        // Apply nuclear explosion effects to surrounding cells
+                        applyNuclearExplosion(dwarf.x, dwarf.y);
+                    } else {
+                        pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCell.materialId });
+                    }
                 } else {
                    // console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCell.materialId} (type: ${matType})`);
                     pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
@@ -1955,6 +2148,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (curCell.hardness === 0) {
                 handleBlockDestruction(curCell, dwarf, dwarf.x, dwarf.y);
             }
+
+            // Check for Wolfram plating double dig (only if block still has hardness)
+            const wolframChance = getWolframPlatingDoubleDigChance(dwarf);
+            if (wolframChance > 0 && curCell.hardness > 0 && Math.random() < wolframChance) {
+                console.log(`⚡ WOLFRAM DOUBLE DIG! ${dwarf.name} digs a second time in the same tick`);
+                // Second dig is always non-critical (only one hit can crit)
+                const secondDigPower = power;
+                curCell.hardness = Math.max(0, curCell.hardness - secondDigPower);
+                if (curCell.hardness === 0) {
+                    handleBlockDestruction(curCell, dwarf, dwarf.x, dwarf.y);
+                }
+            }
+
             //console.log(`Dwarf ${dwarf.name} started digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCell.hardness}`);
             if (curCell.hardness === 0) {
                 if (reservedDigBy.get(curKey) === dwarf.name) reservedDigBy.delete(curKey);
@@ -1987,8 +2193,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             dwarf.x = nextX;
             dwarf.y = nextY;
 
-            // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_ENERGY_COST_PER_MOVE);
+            // Apply movement energy (consumes energy normally, or regenerates with Nickel plating)
+            applyMovementEnergy(dwarf, DWARF_ENERGY_COST_PER_MOVE);
             //console.log(`Dwarf ${dwarf.name} moved to (${dwarf.x},${dwarf.y})`);
             if (dwarf.x === tx && dwarf.y === ty) {
                 dwarf.moveTarget = null;
@@ -2039,13 +2245,13 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 const matType = mat ? mat.type : '';
                 const isStone = matType.startsWith('Stone');
                 const isOre = matType.startsWith('Ore');
-                
+
                 const stoneExpertise = researchData['expertise-stone'];
                 const oreExpertise = researchData['expertise-ore'];
-                
+
                 let oneHitChance = 0;
                 let expertiseType = null;
-                
+
                 if (isStone && stoneExpertise && stoneExpertise.level > 0) {
                     oneHitChance = stoneExpertise.level * STONE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Stone';
@@ -2053,11 +2259,43 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     oneHitChance = oreExpertise.level * ORE_EXPERTISE_ONE_HIT_CHANCE;
                     expertiseType = 'Ore';
                 }
-                
+
+                // Apply Uranium and Plutonium plating multipliers to one-hit chance
+                const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
+                const plutoniumMultiplier = getPlutoniumPlatingOneHitMultiplier(dwarf);
+                const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
+                oneHitChance *= totalMultiplier;
+
+                if (totalMultiplier > 1) {
+                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                }
+
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCellDig.hardness; // One-hit!
                     console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
-                    pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+
+                    // Check for Plutonium nuclear explosion
+                    const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
+                    if (triggerExplosion) {
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
+                        console.log(`☢️ ══════════════════════════════════════════`);
+                        pendingTransactions.push({
+                            type: 'nuclear-explosion',
+                            x: dwarf.x,
+                            y: dwarf.y,
+                            dwarf: dwarf.name,
+                            material: mat ? mat.name : curCellDig.materialId
+                        });
+
+                        // Apply nuclear explosion effects to surrounding cells
+                        applyNuclearExplosion(dwarf.x, dwarf.y);
+                    } else {
+                        pendingTransactions.push({ type: 'one-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name, material: mat ? mat.name : curCellDig.materialId });
+                    }
                 } else {
                     //console.log(`⚡ Critical hit by ${dwarf.name} on ${mat ? mat.name : curCellDig.materialId} (type: ${matType})`);
                     pendingTransactions.push({ type: 'crit-hit', x: dwarf.x, y: dwarf.y, dwarf: dwarf.name });
@@ -2068,6 +2306,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             if (curCellDig.hardness === 0) {
                 handleBlockDestruction(curCellDig, dwarf, dwarf.x, dwarf.y);
             }
+
+            // Check for Wolfram plating double dig (only if block still has hardness)
+            const wolframChance = getWolframPlatingDoubleDigChance(dwarf);
+            if (wolframChance > 0 && curCellDig.hardness > 0 && Math.random() < wolframChance) {
+                console.log(`⚡ WOLFRAM DOUBLE DIG! ${dwarf.name} digs a second time in the same tick`);
+                // Second dig is always non-critical (only one hit can crit)
+                const secondDigPower = power;
+                curCellDig.hardness = Math.max(0, curCellDig.hardness - secondDigPower);
+                if (curCellDig.hardness === 0) {
+                    handleBlockDestruction(curCellDig, dwarf, dwarf.x, dwarf.y);
+                }
+            }
+
             //console.log(`Dwarf ${dwarf.name} continues digging at (${dwarf.x},${dwarf.y}) ${prev} -> ${curCellDig.hardness}`);
             if (curCellDig.hardness === 0) {
                 if (reservedDigBy.get(curKeyDig) === dwarf.name) reservedDigBy.delete(curKeyDig);
@@ -2661,6 +2912,44 @@ self.addEventListener('message', (e) => {
         default:
             console.warn('Unknown message type:', type);
     }
+});
+
+// Global error handler for worker thread
+self.addEventListener('error', (event) => {
+    const errorMsg = event.message || 'Unknown worker error';
+    const errorFile = event.filename ? event.filename.split('/').pop() : 'unknown file';
+    const errorLine = event.lineno || '?';
+
+    console.error('=== WORKER CRITICAL ERROR ===');
+    console.error('Message:', errorMsg);
+    console.error('File:', errorFile);
+    console.error('Line:', errorLine);
+    console.error('=============================');
+
+    self.postMessage({
+        type: 'tick-error',
+        error: `${errorMsg} (${errorFile}:${errorLine})`
+    });
+
+    // Don't prevent default error handling
+    return false;
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason || 'Unknown promise rejection';
+    const message = reason.message || String(reason);
+
+    console.error('=== WORKER UNHANDLED REJECTION ===');
+    console.error('Reason:', message);
+    console.error('==================================');
+
+    self.postMessage({
+        type: 'tick-error',
+        error: `Promise rejection: ${message}`
+    });
+
+    // Don't prevent default error handling
+    return false;
 });
 
 console.log('Game worker loaded and ready');

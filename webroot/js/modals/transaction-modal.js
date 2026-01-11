@@ -81,11 +81,11 @@ function logTransaction(type, amount, description) {
         currentHourTimestamp = currentHour;
     }
 
-    // Limit transaction log to 10,000 entries to prevent storage issues
+    // Limit transaction log to 1,000 entries to prevent storage issues
     // Before deleting old transactions, ensure they're captured in hourly statistics
-    if (transactionLog.length > 10000) {
+    if (transactionLog.length > 1000) {
         // Get the oldest transactions that will be removed
-        const transactionsToRemove = transactionLog.slice(10000);
+        const transactionsToRemove = transactionLog.slice(1000);
 
         // Always aggregate removed transactions into hourly statistics
         if (transactionsToRemove.length > 0) {
@@ -140,8 +140,8 @@ function logTransaction(type, amount, description) {
             }
         }
 
-        // Now trim the transaction log to 10,000 entries
-        transactionLog = transactionLog.slice(0, 10000);
+        // Now trim the transaction log to 1,000 entries
+        transactionLog = transactionLog.slice(0, 1000);
     }
 }
 

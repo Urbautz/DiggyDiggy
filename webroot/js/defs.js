@@ -853,6 +853,31 @@ const platingEffects = {
         description: '+10% higher critical strike chance',
         effect: 'criticalStrike',
         value: 1.10
+    },
+    'uranium': {
+        name: 'Uranium Plating',
+        description: '5× one-hit kill chance on critical hits',
+        effect: 'oneHitMultiplier',
+        value: 5.0
+    },
+    'nickel': {
+        name: 'Nickel Plating',
+        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
+        effect: 'movementEnergyRegen',
+        value: 5
+    },
+    'wolfram': {
+        name: 'Wolfram Plating',
+        description: '25% chance for a second dig in the same tick (only one can crit)',
+        effect: 'doubleDigChance',
+        value: 0.25
+    },
+    'plutonium': {
+        name: 'Plutonium Plating',
+        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
+        effect: 'nuclearExplosion',
+        value: 2.0,
+        explosionChance: 0.25
     }
 };
 

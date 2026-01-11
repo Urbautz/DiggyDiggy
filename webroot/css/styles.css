@@ -211,9 +211,9 @@ main {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle, rgba(255, 219, 36, 0.2) 0%, rgba(255, 86, 86, 0.5) 50%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 219, 36, 0.2) 0%, rgba(255, 86, 86, 0.865) 50%, transparent 70%);
     opacity: 0;
-    animation: critHitFlash 0.2s ease-out forwards;
+    animation: critHitFlash 0.3s ease-out forwards;
     animation-iteration-count: 1;
     pointer-events: none;
     z-index: 2;
@@ -230,22 +230,108 @@ main {
     font-size: 50px;
       background: radial-gradient(circle, rgba(255, 186, 36, 0.6) 0%, rgba(255, 86, 86, 0.8) 50%, transparent 70%);
     opacity: 0;
-    animation: oneHitFlash 0.2s ease-out forwards;
+    animation: oneHitFlash 0.3s ease-out forwards;
     animation-iteration-count: 1;
     pointer-events: none;
     z-index: 10;
 }
 
 @keyframes oneHitFlash {
-    0% { opacity: 0; transform: scale(0.5); }
-    30% { opacity: 1; transform: scale(0.8); }
-    100% { opacity: 0; transform: scale(1.3); }
+    0% { opacity: 0; transform: scale(0.2); }
+    20% { opacity: 0.4; transform: scale(0.4); }
+    40% { opacity: 0.6; transform: scale(0.6); }
+    60% { opacity: 0.8; transform: scale(0.8); }
+    80% { opacity: 0.8; transform: scale(1.0); }
+    100% { opacity: 0.8; transform: scale(1.2); }
 }
 
 @keyframes critHitFlash {
-    0% { opacity: 0; transform: scale(0.5); }
-    30% { opacity: 1; transform: scale(0.8); }
-    100% { opacity: 0; transform: scale(1.4); }
+    0% { opacity: 0; transform: scale(0.2); }
+    20% { opacity: 0.4; transform: scale(0.4); }
+    40% { opacity: 0.6; transform: scale(0.6); }
+    60% { opacity: 0.8; transform: scale(0.8); }
+    80% { opacity: 0.8; transform: scale(1.0); }
+    100% { opacity: 0.8; transform: scale(1.2); }
+}
+
+/* Nuclear explosion animation - green radioactive blast */
+#digging-grid .cell.nuclear-explosion::after {
+    content: '☢️';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 150px;
+    background: radial-gradient(circle, rgba(53, 250, 0, 0.8) 0%, rgba(20, 200, 0, 0.6) 40%, transparent 80%);
+    opacity: 0.6;
+    animation: nuclearExplosion 0.3s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 15;
+    filter: drop-shadow(0 0 10px rgba(53, 250, 0, 0.8));
+}
+
+/* Nuclear radiation effect for weakened cells */
+#digging-grid .cell.nuclear-radiation-weakened::after {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgb(54, 250, 0) 0%, rgba(20, 200, 0, 0.861) 50%, transparent 70%);
+    opacity: 0.6;
+    animation: radiationPulse 0.3s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Nuclear radiation effect for damaged cells (outer ring) */
+#digging-grid .cell.nuclear-radiation-damaged::after {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(53, 250, 0, 0.2) 0%, rgba(20, 200, 0, 0.15) 50%, transparent 70%);
+    opacity: 0.6;
+    animation: radiationPulse 0.3s ease-out forwards;
+    animation-iteration-count: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@keyframes nuclearExplosion {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+        filter: drop-shadow(0 0 10px rgba(53, 250, 0, 0.8));
+    }
+    20% {
+        opacity: 1;
+        transform: scale(0.7);
+        filter: drop-shadow(0 0 20px rgba(53, 250, 0, 1));
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.2);
+        filter: drop-shadow(0 0 30px rgba(53, 250, 0, 0.8));
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2.0);
+        filter: drop-shadow(0 0 5px rgba(53, 250, 0, 0.2));
+    }
+}
+
+@keyframes radiationPulse {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
 }
 
 /* Gem spawn - no animation */

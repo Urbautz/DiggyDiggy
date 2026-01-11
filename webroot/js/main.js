@@ -23,6 +23,8 @@ function updateDwarfsLevelUpBadge() {
 }
 const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
+const activeNuclearExplosions = new Map();
+const activeRadiation = new Map();
 
 // Note: randomMaterial and getMaterialById are now in utils.js
 
@@ -79,10 +81,10 @@ function formatNumber(value, type = 'material') {
             return '-' + formatNumber(Math.abs(num), type);
         }
         if (num === 0) {
-            return num.toFixed(2);
+            return num.toFixed(2).toString();
         }
         if (num < 100) {
-            return num.toFixed(1);
+            return num.toFixed(2).toString();
         }
         if (num < 100000) {
             return Math.round(num).toString();
@@ -232,6 +234,9 @@ function getToolUpgradeCost(toolType, toolLevel = 1) {
 
 
 // Update the grid display in the UI (renders into #digging-grid tbody)
+// Track if we've done initial grid setup
+let gridInitialized = false;
+
 function updateGridDisplay() {
     const table = document.getElementById("digging-grid");
     if (!table) {
@@ -244,51 +249,124 @@ function updateGridDisplay() {
         table.appendChild(tbody);
     }
 
-    // Preserve the functions grid row when clearing
-    const functionsRow = document.getElementById('functions-grid-row');
-    const savedFunctionsRow = functionsRow ? functionsRow.cloneNode(true) : null;
-
-    tbody.innerHTML = '';
-
-    // Re-add the functions grid row if it existed
-    if (savedFunctionsRow) {
-        tbody.appendChild(savedFunctionsRow);
-    }
-
+    // Clean up expired animations
     const now = Date.now();
     for (const [key, expires] of activeCritFlashes) {
         if (expires <= now) {
             activeCritFlashes.delete(key);
         }
     }
+    for (const [key, data] of activeNuclearExplosions) {
+        if (data.expiresAt <= now) {
+            activeNuclearExplosions.delete(key);
+        }
+    }
+    for (const [key, data] of activeRadiation) {
+        if (data.expiresAt <= now) {
+            activeRadiation.delete(key);
+        }
+    }
 
-    // Render only visibleDepth rows, showing depth label as first column
+    // Check if we need a full rebuild (grid size changed or first render)
+    const existingRows = Array.from(tbody.querySelectorAll('tr:not(#functions-grid-row)'));
+    const expectedRows = Math.min(visibleDepth, grid.length);
+    const needsRebuild = !gridInitialized || existingRows.length !== expectedRows || existingRows.length === 0;
+
+    if (needsRebuild) {
+        // Full rebuild needed - grid size changed
+        const functionsRow = document.getElementById('functions-grid-row');
+        const savedFunctionsRow = functionsRow ? functionsRow.cloneNode(true) : null;
+
+        tbody.innerHTML = '';
+
+        if (savedFunctionsRow) {
+            tbody.appendChild(savedFunctionsRow);
+        }
+
+        // Build new rows
+        for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
+            const rowEl = document.createElement('tr');
+
+            // Depth label cell - MUST BE FIRST
+            const depthCell = document.createElement('td');
+            depthCell.className = 'depth-cell';
+            const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
+            depthCell.textContent = String(depthLabel);
+            depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
+            rowEl.appendChild(depthCell);
+
+            // Create grid cells
+            for (let c = 0; c < gridWidth; c++) {
+                const cell = document.createElement('td');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                rowEl.appendChild(cell);
+            }
+            tbody.appendChild(rowEl);
+        }
+        gridInitialized = true;
+    }
+
+    // Update existing cells in-place (or create if rebuild happened)
+    const hasFunctionsRow = tbody.querySelector('#functions-grid-row') ? 1 : 0;
     for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
-        const rowEl = document.createElement('tr');
+        // Get the row element - account for functions-grid-row being first
+        const rowEl = tbody.children[r + hasFunctionsRow];
+        if (!rowEl || rowEl.id === 'functions-grid-row') continue;
 
-        // first column = depth label (1-based depth for readability)
-        const depthCell = document.createElement('td');
-        depthCell.className = 'depth-cell';
-        // show depth offset using startX (startX + 1 = top visible level)
-        const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
-        depthCell.textContent = String(depthLabel);
-        depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
-        rowEl.appendChild(depthCell);
+        // Update depth label
+        const depthCell = rowEl.querySelector('.depth-cell');
+        if (depthCell) {
+            const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
+            depthCell.textContent = String(depthLabel);
+            depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
+        }
 
         for (let c = 0; c < gridWidth; c++) {
             const cellData = grid[r][c];
             const mat = getMaterialById(cellData.materialId);
 
-            const cell = document.createElement('td');
-            cell.className = 'cell';
-            cell.dataset.row = r;
-            cell.dataset.col = c;
+            // Get existing cell or skip if not found
+            const cell = rowEl.querySelector(`.cell[data-col="${c}"][data-row="${r}"]`);
+            if (!cell) continue;
 
+            // Preserve animation classes if they exist
+            const hasExistingCritAnim = cell.classList.contains('crit-hit') || cell.classList.contains('one-hit');
+            const hasExistingNuclearAnim = cell.classList.contains('nuclear-explosion');
+            const hasExistingRadiationAnim = cell.classList.contains('nuclear-radiation-weakened') || cell.classList.contains('nuclear-radiation-damaged');
+
+            // Reset cell state (but preserve animation classes)
+            cell.className = 'cell';
+
+            // Re-apply animation classes based on active animation tracking
             const critKey = `${c}:${r}`;
             const critData = activeCritFlashes.get(critKey);
             if (critData) {
-                cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
+                const animClass = critData.isOneHit ? 'one-hit' : 'crit-hit';
+                // Only add if not already present (prevents animation restart)
+                if (!hasExistingCritAnim || !cell.classList.contains(animClass)) {
+                    cell.classList.add(animClass);
+                }
             }
+
+            const nuclearKey = `${c}:${r}`;
+            if (activeNuclearExplosions.has(nuclearKey)) {
+                // Only add if not already present (prevents animation restart)
+                if (!hasExistingNuclearAnim) {
+                    cell.classList.add('nuclear-explosion');
+                }
+            }
+            const radiationData = activeRadiation.get(nuclearKey);
+            if (radiationData) {
+                const radiationClass = radiationData.effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
+                if (!hasExistingRadiationAnim || !cell.classList.contains(radiationClass)) {
+                    cell.classList.add(radiationClass);
+                }
+            }
+
+            // Clear cell content (but keep classes)
+            cell.innerHTML = '';
 
             // Show gem icon if this cell has a gem
             if (cellData.gemId) {
@@ -413,10 +491,7 @@ function updateGridDisplay() {
                     cell.appendChild(strike);
                 }
             }
-
-            rowEl.appendChild(cell);
         }
-        tbody.appendChild(rowEl);
     }
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
         // Update visible stock counts too
@@ -846,6 +921,22 @@ function triggerGemSpawnAnimation(x, y, gemName) {
     }, GEM_SPAWN_ANIMATION_DURATION);
 }
 
+function triggerNuclearExplosionAnimation(x, y) {
+    const NUCLEAR_EXPLOSION_ANIMATION_DURATION = 600;
+    const nuclearKey = `${x}:${y}`;
+
+    console.log(`🎬 [Animation] Scheduling nuclear explosion at (${x}, ${y})`);
+    activeNuclearExplosions.set(nuclearKey, { expiresAt: Date.now() + NUCLEAR_EXPLOSION_ANIMATION_DURATION });
+}
+
+function triggerRadiationAnimation(x, y, effect) {
+    const RADIATION_ANIMATION_DURATION = 500;
+    const radiationKey = `${x}:${y}`;
+
+    console.log(`🎬 [Animation] Scheduling radiation (${effect}) at (${x}, ${y})`);
+    activeRadiation.set(radiationKey, { expiresAt: Date.now() + RADIATION_ANIMATION_DURATION, effect });
+}
+
 function openModal(modalname) {
     const modal = document.getElementById(modalname);
     if (!modal) return;
@@ -858,6 +949,11 @@ function openModal(modalname) {
         if (gameWorker) {
             gameWorker.postMessage({ type: 'set-pause', paused: true });
         }
+    }
+
+    // Update backup restore buttons when opening settings
+    if (modalname === 'settings-modal') {
+        updateBackupRestoreUI();
     }
 
     // Handle z-index stacking for modals that open on top of other modals
@@ -2179,6 +2275,90 @@ let tickCounter = 0; // Track ticks for periodic updates
 let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
 
+/**
+ * Handle critical errors by pausing the game and showing an error notification
+ * @param {string} title - Error title
+ * @param {string} message - Error message
+ * @param {Error|object} errorObj - Optional error object for detailed logging
+ */
+function handleCriticalError(title, message, errorObj = null) {
+    // Auto-pause the game
+    if (!gamePaused) {
+        gamePaused = true;
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) pauseBtn.classList.add('paused');
+
+        // Notify worker of pause state
+        if (gameWorker && workerInitialized) {
+            gameWorker.postMessage({ type: 'set-pause', paused: true });
+        }
+    }
+
+    // Log the full error details
+    console.error('=== CRITICAL ERROR ===');
+    console.error('Title:', title);
+    console.error('Message:', message);
+    if (errorObj) {
+        console.error('Error Object:', errorObj);
+        if (errorObj.stack) {
+            console.error('Stack Trace:', errorObj.stack);
+        }
+    }
+    console.error('======================');
+
+    // Show error notification to user
+    showErrorNotification(title, message);
+}
+
+/**
+ * Display an error notification to the user
+ * @param {string} title - Error title
+ * @param {string} message - Error message
+ */
+function showErrorNotification(title, message) {
+    // Remove any existing error notifications
+    const existingNotif = document.getElementById('critical-error-notification');
+    if (existingNotif) {
+        existingNotif.remove();
+    }
+
+    // Create error notification element
+    const notification = document.createElement('div');
+    notification.id = 'critical-error-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 500px;
+        font-family: Arial, sans-serif;
+        border: 2px solid #b71c1c;
+    `;
+
+    notification.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="font-size: 24px; flex-shrink: 0;">⚠️</div>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${title}</div>
+                <div style="font-size: 14px; opacity: 0.95; margin-bottom: 8px;">${message}</div>
+                <div style="font-size: 12px; opacity: 0.85;">Game has been paused. Check the console for details.</div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()"
+                    style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+                           color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+                           font-size: 14px; flex-shrink: 0;">✕</button>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+}
+
 function initWorker() {
     gameWorker = new Worker('js/game-worker.js');
     
@@ -2243,12 +2423,19 @@ function initWorker() {
                             triggerCritAnimation(transaction.x, transaction.y, false);
                         } else if (transaction.type === 'one-hit') {
                             // Trigger one-hit animation (stronger effect)
-                            console.log(`⚡ ONE-HIT at (${transaction.x}, ${transaction.y}) - ${transaction.material} destroyed!`);
                             triggerCritAnimation(transaction.x, transaction.y, true);
+                        } else if (transaction.type === 'nuclear-explosion') {
+                            // Trigger nuclear explosion animation (center cell)
+                            triggerNuclearExplosionAnimation(transaction.x, transaction.y);
+                        } else if (transaction.type === 'nuclear-radiation') {
+                            // Trigger radiation effects on surrounding cells
+                            if (transaction.cells && Array.isArray(transaction.cells)) {
+                                for (const cell of transaction.cells) {
+                                    triggerRadiationAnimation(cell.x, cell.y, cell.effect);
+                                }
+                            }
                         } else if (transaction.type === 'gem-spawn') {
                             // Trigger gem spawn animation
-                            const caratText = transaction.carat ? ` (${transaction.carat.toFixed(2)}ct)` : '';
-                            console.log(`💎 GEM FOUND! ${transaction.dwarf} discovered a ${transaction.gem}${caratText} at (${transaction.x}, ${transaction.y})!`);
                             triggerGemSpawnAnimation(transaction.x, transaction.y, transaction.gem);
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
@@ -2395,6 +2582,7 @@ function initWorker() {
                 
             case 'tick-error':
                 console.error('Worker tick error:', error);
+                handleCriticalError('Worker Error', error);
                 break;
 
             case 'investment-created':
@@ -2413,6 +2601,7 @@ function initWorker() {
     
     gameWorker.addEventListener('error', (e) => {
         console.error('Worker error:', e.message, e);
+        handleCriticalError('Worker Thread Error', e.message || 'Unknown worker error', e);
     });
     
     // Initialize worker with current game state
@@ -2495,8 +2684,14 @@ function togglePause() {
 function saveGame() {
     // Don't save when game is paused (e.g., settings modal is open)
     if (gamePaused) return;
-    
+
     try {
+        // Round materials to 2 decimal places (modify in-place to prevent precision accumulation)
+        for (const materialId in materialsStock) {
+            materialsStock[materialId] = Math.round(materialsStock[materialId] * 100) / 100;
+        }
+
+        const now = Date.now();
         const gameState = {
             grid: grid,
             dwarfs: dwarfs,
@@ -2524,10 +2719,57 @@ function saveGame() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             nextManagementTaskId: nextManagementTaskId || 1,
-            timestamp: Date.now(),
+            timestamp: now,
             version: gameversion
         };
-        localStorage.setItem('diggyDiggyGameState', JSON.stringify(gameState));
+
+        const gameStateJson = JSON.stringify(gameState);
+
+        // Before overwriting, save the previous current save as "last save"
+        const previousSave = localStorage.getItem('diggyDiggyGameState');
+        if (previousSave) {
+            localStorage.setItem('diggyDiggyGameState_last', previousSave);
+        }
+
+        // Save current game state
+        localStorage.setItem('diggyDiggyGameState', gameStateJson);
+
+        // Rotating backup system: 3 hourly saves and 1 daily save
+        const lastHourlySave1 = localStorage.getItem('diggyDiggyLastHourlySave1');
+        const lastHourlySave2 = localStorage.getItem('diggyDiggyLastHourlySave2');
+        const lastHourlySave3 = localStorage.getItem('diggyDiggyLastHourlySave3');
+        const lastDailySave = localStorage.getItem('diggyDiggyLastDailySave');
+
+        const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+        const oneDay = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+
+        // Rotating hourly backups - keep 3 slots, rotate every hour
+        // Slot 1: 0-1 hours ago
+        // Slot 2: 1-2 hours ago
+        // Slot 3: 2-3 hours ago
+        if (!lastHourlySave1 || (now - parseInt(lastHourlySave1)) >= oneHour) {
+            // Rotate: slot1 -> slot2, slot2 -> slot3, new -> slot1
+            const save1 = localStorage.getItem('diggyDiggyGameState_hourly1');
+            const save2 = localStorage.getItem('diggyDiggyGameState_hourly2');
+
+            if (save2) {
+                localStorage.setItem('diggyDiggyGameState_hourly3', save2);
+                localStorage.setItem('diggyDiggyLastHourlySave3', lastHourlySave2 || now.toString());
+            }
+            if (save1) {
+                localStorage.setItem('diggyDiggyGameState_hourly2', save1);
+                localStorage.setItem('diggyDiggyLastHourlySave2', lastHourlySave1);
+            }
+
+            localStorage.setItem('diggyDiggyGameState_hourly1', gameStateJson);
+            localStorage.setItem('diggyDiggyLastHourlySave1', now.toString());
+        }
+
+        // Save daily backup if more than 1 day has passed
+        if (!lastDailySave || (now - parseInt(lastDailySave)) >= oneDay) {
+            localStorage.setItem('diggyDiggyGameState_daily', gameStateJson);
+            localStorage.setItem('diggyDiggyLastDailySave', now.toString());
+        }
     } catch (e) {
         console.error('Failed to save game:', e);
     }
@@ -2823,6 +3065,147 @@ window.deleteSave = function() {
             console.error('Failed to delete save:', e);
             alert('Failed to delete save.');
         }
+    }
+}
+
+/**
+ * Update the backup restore UI to show available backups and their timestamps
+ */
+window.updateBackupRestoreUI = function() {
+    const infoDiv = document.getElementById('backup-restore-info');
+    const lastBtn = document.getElementById('restore-last-btn');
+    const hourly1Btn = document.getElementById('restore-hourly1-btn');
+    const hourly2Btn = document.getElementById('restore-hourly2-btn');
+    const hourly3Btn = document.getElementById('restore-hourly3-btn');
+    const dailyBtn = document.getElementById('restore-daily-btn');
+
+    if (!infoDiv) return;
+
+    try {
+        const backups = {
+            last: localStorage.getItem('diggyDiggyGameState_last'),
+            hourly1: localStorage.getItem('diggyDiggyGameState_hourly1'),
+            hourly2: localStorage.getItem('diggyDiggyGameState_hourly2'),
+            hourly3: localStorage.getItem('diggyDiggyGameState_hourly3'),
+            daily: localStorage.getItem('diggyDiggyGameState_daily')
+        };
+
+        const buttons = {
+            last: lastBtn,
+            hourly1: hourly1Btn,
+            hourly2: hourly2Btn,
+            hourly3: hourly3Btn,
+            daily: dailyBtn
+        };
+
+        let infoLines = [];
+        let backupCount = 0;
+
+        // Check each backup and update button state
+        for (const [type, backup] of Object.entries(backups)) {
+            const btn = buttons[type];
+            if (!btn) continue;
+
+            if (backup) {
+                try {
+                    const data = JSON.parse(backup);
+                    const timestamp = data.timestamp ? new Date(data.timestamp) : null;
+                    if (timestamp) {
+                        const timeAgo = formatTimeAgo(Date.now() - timestamp.getTime());
+                        btn.disabled = false;
+                        backupCount++;
+
+                        // Add to info text
+                        const label = type === 'last' ? '⏪ Last' :
+                                     type === 'hourly1' ? '🕐 1h' :
+                                     type === 'hourly2' ? '🕑 2h' :
+                                     type === 'hourly3' ? '🕒 3h' :
+                                     '📅 Daily';
+                        infoLines.push(`${label}: ${timeAgo}`);
+                    } else {
+                        btn.disabled = true;
+                    }
+                } catch (e) {
+                    btn.disabled = true;
+                }
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        infoDiv.textContent = backupCount > 0 ?
+            `${backupCount} backup${backupCount > 1 ? 's' : ''} available: ${infoLines.join(' • ')}` :
+            'No backups available yet.';
+    } catch (e) {
+        console.error('Failed to update backup UI:', e);
+        infoDiv.textContent = 'Error loading backup information.';
+    }
+}
+
+/**
+ * Format milliseconds into a human-readable time ago string
+ */
+function formatTimeAgo(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+    if (minutes > 0) return `${minutes} min${minutes > 1 ? 's' : ''}`;
+    return 'just now';
+}
+
+/**
+ * Restore game from a backup (last, hourly1-3, or daily)
+ */
+window.restoreBackup = function(backupType) {
+    const backupMap = {
+        'last': { key: 'diggyDiggyGameState_last', name: 'last save (before current)' },
+        'hourly1': { key: 'diggyDiggyGameState_hourly1', name: 'hourly backup (1h ago)' },
+        'hourly2': { key: 'diggyDiggyGameState_hourly2', name: 'hourly backup (2h ago)' },
+        'hourly3': { key: 'diggyDiggyGameState_hourly3', name: 'hourly backup (3h ago)' },
+        'daily': { key: 'diggyDiggyGameState_daily', name: 'daily backup' }
+    };
+
+    const backupInfo = backupMap[backupType];
+    if (!backupInfo) {
+        alert('Invalid backup type.');
+        return;
+    }
+
+    const backup = localStorage.getItem(backupInfo.key);
+    if (!backup) {
+        alert(`No ${backupInfo.name} found.`);
+        return;
+    }
+
+    // Parse backup to get timestamp
+    let backupTimestamp = 'unknown time';
+    try {
+        const data = JSON.parse(backup);
+        if (data.timestamp) {
+            const date = new Date(data.timestamp);
+            backupTimestamp = date.toLocaleString();
+        }
+    } catch (e) {
+        console.error('Failed to parse backup timestamp:', e);
+    }
+
+    const confirmMsg = `Are you sure you want to restore from the ${backupInfo.name} (${backupTimestamp})?\n\nYour current progress will be lost!`;
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        // Restore the backup to the main save slot
+        localStorage.setItem('diggyDiggyGameState', backup);
+        alert(`Backup restored! The page will reload.`);
+        location.reload();
+    } catch (e) {
+        console.error('Failed to restore backup:', e);
+        alert('Failed to restore backup.');
     }
 }
 
@@ -3193,6 +3576,36 @@ window.addEventListener('modalsLoaded', () => {
         if (cheatSection) cheatSection.classList.add('visible');
         if (cheatButton) cheatButton.classList.add('visible');
     }
+});
+
+// Global error handlers for main thread
+window.addEventListener('error', (event) => {
+    const errorMsg = event.message || 'Unknown JavaScript error';
+    const errorFile = event.filename ? event.filename.split('/').pop() : 'unknown file';
+    const errorLine = event.lineno || '?';
+
+    handleCriticalError(
+        'JavaScript Error',
+        `${errorMsg} (${errorFile}:${errorLine})`,
+        event.error
+    );
+
+    // Don't prevent default error handling
+    return false;
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason || 'Unknown promise rejection';
+    const message = reason.message || String(reason);
+
+    handleCriticalError(
+        'Unhandled Promise Rejection',
+        message,
+        reason
+    );
+
+    // Don't prevent default error handling
+    return false;
 });
 
 // Start the game
