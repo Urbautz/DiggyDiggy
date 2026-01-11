@@ -234,6 +234,9 @@ function getToolUpgradeCost(toolType, toolLevel = 1) {
 
 
 // Update the grid display in the UI (renders into #digging-grid tbody)
+// Track if we've done initial grid setup
+let gridInitialized = false;
+
 function updateGridDisplay() {
     const table = document.getElementById("digging-grid");
     if (!table) {
@@ -246,17 +249,7 @@ function updateGridDisplay() {
         table.appendChild(tbody);
     }
 
-    // Preserve the functions grid row when clearing
-    const functionsRow = document.getElementById('functions-grid-row');
-    const savedFunctionsRow = functionsRow ? functionsRow.cloneNode(true) : null;
-
-    tbody.innerHTML = '';
-
-    // Re-add the functions grid row if it existed
-    if (savedFunctionsRow) {
-        tbody.appendChild(savedFunctionsRow);
-    }
-
+    // Clean up expired animations
     const now = Date.now();
     for (const [key, expires] of activeCritFlashes) {
         if (expires <= now) {
@@ -274,43 +267,111 @@ function updateGridDisplay() {
         }
     }
 
-    // Render only visibleDepth rows, showing depth label as first column
-    for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
-        const rowEl = document.createElement('tr');
+    // Check if we need a full rebuild (grid size changed or first render)
+    const existingRows = Array.from(tbody.querySelectorAll('tr:not(#functions-grid-row)'));
+    const expectedRows = Math.min(visibleDepth, grid.length);
+    const needsRebuild = !gridInitialized || existingRows.length !== expectedRows || existingRows.length === 0;
 
-        // first column = depth label (1-based depth for readability)
-        const depthCell = document.createElement('td');
-        depthCell.className = 'depth-cell';
-        // show depth offset using startX (startX + 1 = top visible level)
-        const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
-        depthCell.textContent = String(depthLabel);
-        depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
-        rowEl.appendChild(depthCell);
+    if (needsRebuild) {
+        // Full rebuild needed - grid size changed
+        console.log(`🔨 Rebuilding grid: ${existingRows.length} -> ${expectedRows} rows`);
+        const functionsRow = document.getElementById('functions-grid-row');
+        const savedFunctionsRow = functionsRow ? functionsRow.cloneNode(true) : null;
+
+        tbody.innerHTML = '';
+
+        if (savedFunctionsRow) {
+            tbody.appendChild(savedFunctionsRow);
+        }
+
+        // Build new rows
+        for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
+            const rowEl = document.createElement('tr');
+
+            // Depth label cell - MUST BE FIRST
+            const depthCell = document.createElement('td');
+            depthCell.className = 'depth-cell';
+            const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
+            depthCell.textContent = String(depthLabel);
+            depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
+            rowEl.appendChild(depthCell);
+
+            // Create grid cells
+            for (let c = 0; c < gridWidth; c++) {
+                const cell = document.createElement('td');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                rowEl.appendChild(cell);
+            }
+            tbody.appendChild(rowEl);
+        }
+        gridInitialized = true;
+        console.log(`✅ Grid rebuilt. Rows now: ${tbody.querySelectorAll('tr:not(#functions-grid-row)').length}. First row first cell:`, tbody.querySelector('tr:not(#functions-grid-row) td:first-child')?.className);
+    } else {
+        console.log(`⚡ Updating ${existingRows.length} existing rows in-place`);
+    }
+
+    // Update existing cells in-place (or create if rebuild happened)
+    const hasFunctionsRow = tbody.querySelector('#functions-grid-row') ? 1 : 0;
+    for (let r = 0; r < Math.min(visibleDepth, grid.length); r++) {
+        // Get the row element - account for functions-grid-row being first
+        const rowEl = tbody.children[r + hasFunctionsRow];
+        if (!rowEl || rowEl.id === 'functions-grid-row') continue;
+
+        // Update depth label
+        const depthCell = rowEl.querySelector('.depth-cell');
+        if (depthCell) {
+            const depthLabel = (typeof startX === 'number') ? (startX + r + 1) : (r + 1);
+            depthCell.textContent = String(depthLabel);
+            depthCell.setAttribute('aria-label', `Depth ${r + 1}`);
+        }
 
         for (let c = 0; c < gridWidth; c++) {
             const cellData = grid[r][c];
             const mat = getMaterialById(cellData.materialId);
 
-            const cell = document.createElement('td');
-            cell.className = 'cell';
-            cell.dataset.row = r;
-            cell.dataset.col = c;
+            // Get existing cell or skip if not found
+            const cell = rowEl.querySelector(`.cell[data-col="${c}"][data-row="${r}"]`);
+            if (!cell) continue;
 
+            // Preserve animation classes if they exist
+            const hasExistingCritAnim = cell.classList.contains('crit-hit') || cell.classList.contains('one-hit');
+            const hasExistingNuclearAnim = cell.classList.contains('nuclear-explosion');
+            const hasExistingRadiationAnim = cell.classList.contains('nuclear-radiation-weakened') || cell.classList.contains('nuclear-radiation-damaged');
+
+            // Reset cell state (but preserve animation classes)
+            cell.className = 'cell';
+
+            // Re-apply animation classes based on active animation tracking
             const critKey = `${c}:${r}`;
             const critData = activeCritFlashes.get(critKey);
             if (critData) {
-                cell.classList.add(critData.isOneHit ? 'one-hit' : 'crit-hit');
+                const animClass = critData.isOneHit ? 'one-hit' : 'crit-hit';
+                // Only add if not already present (prevents animation restart)
+                if (!hasExistingCritAnim || !cell.classList.contains(animClass)) {
+                    cell.classList.add(animClass);
+                }
             }
 
             const nuclearKey = `${c}:${r}`;
             if (activeNuclearExplosions.has(nuclearKey)) {
-                cell.classList.add('nuclear-explosion');
+                if (!hasExistingNuclearAnim) {
+                    cell.classList.add('nuclear-explosion');
+                } else {
+                    cell.classList.add('nuclear-explosion');
+                }
             }
             const radiationData = activeRadiation.get(nuclearKey);
             if (radiationData) {
                 const radiationClass = radiationData.effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
-                cell.classList.add(radiationClass);
+                if (!hasExistingRadiationAnim || !cell.classList.contains(radiationClass)) {
+                    cell.classList.add(radiationClass);
+                }
             }
+
+            // Clear cell content (but keep classes)
+            cell.innerHTML = '';
 
             // Show gem icon if this cell has a gem
             if (cellData.gemId) {
@@ -435,10 +496,7 @@ function updateGridDisplay() {
                     cell.appendChild(strike);
                 }
             }
-
-            rowEl.appendChild(cell);
         }
-        tbody.appendChild(rowEl);
     }
         // dwarf status cards removed from main view — status is available in the Dwarfs modal
         // Update visible stock counts too
