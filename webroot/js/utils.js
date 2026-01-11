@@ -727,8 +727,8 @@ function getZincPlatingEnergyReduction(dwarf) {
 
     // Check if the tool has Zinc plating
     if (toolInstance.plating === 'Zinc') {
-        // Zinc plating reduces energy consumption by 2 (as defined in defs.js platingEffects)
-        const energyReduction = 2;
+        // Get energy reduction from platingEffects definition
+        const energyReduction = platingEffects['zinc']?.value || 0;
         console.log(`[Zinc Plating] ${dwarf.name}'s tool has Zinc plating - reducing energy cost by ${energyReduction}`);
         return energyReduction;
     }
@@ -751,8 +751,8 @@ function getSilverPlatingGemMultiplier(dwarf) {
 
     // Check if the tool has Silver plating
     if (toolInstance.plating === 'Silver') {
-        // Silver plating increases gem probability by 1.4x (as defined in defs.js platingEffects)
-        const gemMultiplier = 1.40;
+        // Get gem probability multiplier from platingEffects definition
+        const gemMultiplier = platingEffects['silver']?.value || 1.0;
         console.log(`[Silver Plating] ${dwarf.name}'s tool has Silver plating - gem probability multiplied by ${gemMultiplier}x`);
         return gemMultiplier;
     }
@@ -775,8 +775,8 @@ function getGoldPlatingCritMultiplier(dwarf) {
 
     // Check if the tool has Gold plating
     if (toolInstance.plating === 'Gold') {
-        // Gold plating increases critical strike chance by 1.1x (as defined in defs.js platingEffects)
-        const critMultiplier = 1.10;
+        // Get critical strike multiplier from platingEffects definition
+        const critMultiplier = platingEffects['gold']?.value || 1.0;
         console.log(`[Gold Plating] ${dwarf.name}'s tool has Gold plating - critical strike chance multiplied by ${critMultiplier}x`);
         return critMultiplier;
     }
@@ -799,8 +799,8 @@ function getUraniumPlatingOneHitMultiplier(dwarf) {
 
     // Check if the tool has Uranium plating
     if (toolInstance.plating === 'uranium') {
-        // Uranium plating multiplies one-hit kill chance by 5x (as defined in defs.js platingEffects)
-        const oneHitMultiplier = 5.0;
+        // Get one-hit multiplier from platingEffects definition
+        const oneHitMultiplier = platingEffects['uranium']?.value || 1.0;
         console.log(`[Uranium Plating] ${dwarf.name}'s tool has Uranium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
         return oneHitMultiplier;
     }
@@ -823,8 +823,8 @@ function getNickelPlatingEnergyRegeneration(dwarf) {
 
     // Check if the tool has Nickel plating
     if (toolInstance.plating === 'nickel') {
-        // Nickel plating regenerates 1 energy when moving (as defined in defs.js platingEffects)
-        const energyRegen = 1
+        // Get energy regeneration from platingEffects definition
+        const energyRegen = platingEffects['nickel']?.value || 0;
         console.log(`[Nickel Plating] ${dwarf.name}'s tool has Nickel plating - regenerating ${energyRegen} energy from movement`);
         return energyRegen;
     }
@@ -847,8 +847,8 @@ function getWolframPlatingDoubleDigChance(dwarf) {
 
     // Check if the tool has Wolfram plating
     if (toolInstance.plating === 'wolfram') {
-        // Wolfram plating gives 25% chance for a second dig (as defined in defs.js platingEffects)
-        const doubleDigChance = 0.25;
+        // Get double dig chance from platingEffects definition
+        const doubleDigChance = platingEffects['wolfram']?.value || 0;
         //console.log(`[Wolfram Plating] ${dwarf.name}'s tool has Wolfram plating - ${doubleDigChance * 100}% chance for double dig`);
         return doubleDigChance;
     }
@@ -871,8 +871,8 @@ function getPlutoniumPlatingOneHitMultiplier(dwarf) {
 
     // Check if the tool has Plutonium plating
     if (toolInstance.plating === 'plutonium') {
-        // Plutonium plating multiplies one-hit kill chance by 2x (as defined in defs.js platingEffects)
-        const oneHitMultiplier = 2.0;
+        // Get one-hit multiplier from platingEffects definition
+        const oneHitMultiplier = platingEffects['plutonium']?.value || 1.0;
         console.log(`[Plutonium Plating] ${dwarf.name}'s tool has Plutonium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
         return oneHitMultiplier;
     }
@@ -895,9 +895,10 @@ function shouldPlutoniumTriggerExplosion(dwarf) {
 
     // Check if the tool has Plutonium plating
     if (toolInstance.plating === 'plutonium') {
-        // 25% chance for nuclear explosion on one-hit kill
+        // Get explosion chance from platingEffects definition
+        const explosionChance = platingEffects['plutonium']?.explosionChance || 0;
         const roll = Math.random();
-        const triggered = roll < 0.25;
+        const triggered = roll < explosionChance;
         console.log(`☢️ [Plutonium] Nuclear explosion roll: ${(roll * 100).toFixed(1)}% ${triggered ? '✅ TRIGGERED!' : '❌ No explosion'}`);
         return triggered;
     }

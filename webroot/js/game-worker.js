@@ -43,6 +43,55 @@ let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
 let managementTasks = {}; // Management task definitions
 
+// Plating effects - duplicated from defs.js (must be kept in sync)
+// NOTE: These values are the single source of truth defined in defs.js
+// They are duplicated here because workers cannot import ES modules
+const platingEffects = {
+    'zinc': {
+        name: 'Zinc Plating',
+        description: 'Digging consumes 2 less energy',
+        effect: 'energyReduction',
+        value: 2
+    },
+    'silver': {
+        name: 'Silver Plating',
+        description: '+40% gem probability',
+        effect: 'gemProbability',
+        value: 1.40
+    },
+    'gold': {
+        name: 'Gold Plating',
+        description: '+10% higher critical strike chance',
+        effect: 'criticalStrike',
+        value: 1.10
+    },
+    'uranium': {
+        name: 'Uranium Plating',
+        description: '5× one-hit kill chance on critical hits',
+        effect: 'oneHitMultiplier',
+        value: 5.0
+    },
+    'nickel': {
+        name: 'Nickel Plating',
+        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
+        effect: 'movementEnergyRegen',
+        value: 5
+    },
+    'wolfram': {
+        name: 'Wolfram Plating',
+        description: '25% chance for a second dig in the same tick (only one can crit)',
+        effect: 'doubleDigChance',
+        value: 0.25
+    },
+    'plutonium': {
+        name: 'Plutonium Plating',
+        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
+        effect: 'nuclearExplosion',
+        value: 2.0,
+        explosionChance: 0.25
+    }
+};
+
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
 let smelterCoalMinTemp = 25; // Minimum temperature for coal heating (user configurable)

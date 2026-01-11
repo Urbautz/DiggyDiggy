@@ -876,7 +876,8 @@ const platingEffects = {
         name: 'Plutonium Plating',
         description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
         effect: 'nuclearExplosion',
-        value: 2.0
+        value: 2.0,
+        explosionChance: 0.25
     }
 };
 
