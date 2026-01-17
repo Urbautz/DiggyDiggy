@@ -1772,6 +1772,30 @@ let managementTasks = {
     cost: 50,
     hardness: 40,
   },
+  'activate-furnace-heating': {
+    name: 'Activate Furnace Heating',
+    description: 'Automatically activate furnace heating when smelter input materials exceed threshold. Moves heating task to top priority and sets min temperature.',
+    values: {
+      useCoal: {Description: 'Use Coal', default: true, type: 'checkbox'},
+      useMagma: {Description: 'Use Magma', default: false, type: 'checkbox'},
+      minInputStock: {Description: 'Activate when total ore stock >', default: 10, type: 'number'}
+    },
+    requires: {'furnace': 1},
+    cost: 50,
+    hardness: 25,
+  },
+  'deactivate-furnace-heating': {
+    name: 'Deactivate Furnace Heating',
+    description: 'Automatically deactivate furnace heating when smelter input materials fall below threshold. Moves heating task to bottom priority.',
+    values: {
+      useCoal: {Description: 'Deactivate Coal', default: true, type: 'checkbox'},
+      useMagma: {Description: 'Deactivate Magma', default: false, type: 'checkbox'},
+      maxInputStock: {Description: 'Deactivate when all ore stock <', default: 5, type: 'number'}
+    },
+    requires: {'furnace': 1},
+    cost: 10,
+    hardness: 25,
+  },
 }
 
 let activeResearch = null; // Track which research is currently being researched

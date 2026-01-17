@@ -2496,6 +2496,11 @@ function initWorker() {
                     }
                 }
 
+                // Update smelter tasks order from worker (management automations can change order)
+                if (data.smelterTasks !== undefined) {
+                    smelterTasks = data.smelterTasks;
+                }
+
                 // Update one-time investments from worker
                 if (data.oneTimeInvestments !== undefined) {
                     oneTimeInvestments = data.oneTimeInvestments;

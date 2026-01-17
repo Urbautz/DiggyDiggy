@@ -697,7 +697,12 @@ function executeManagementTaskWrapper(task, taskDef) {
         researchTree,
         activeResearch,
         researchQueue,
+        smelterTasks,
         smelterTasksData,
+        smelterCoalMinTemp,
+        smelterCoalMaxTemp,
+        smelterMagmaMinTemp,
+        SMELTER_MAX_TEMPERATURE_LIMIT,
         managementTasks,
         pendingTransactions,
         startX,
@@ -714,7 +719,11 @@ function executeManagementTaskWrapper(task, taskDef) {
     activeResearch = updatedContext.activeResearch;
     oneTimeInvestments = updatedContext.oneTimeInvestments;
     nextInvestmentId = updatedContext.nextInvestmentId;
-    // Note: materials, materialsStock, gems, dwarfs, researchQueue are passed by reference and modified in place
+    // Update smelter state if furnace automations changed them
+    if (updatedContext.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = updatedContext.smelterCoalMinTemp;
+    if (updatedContext.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = updatedContext.smelterCoalMaxTemp;
+    if (updatedContext.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = updatedContext.smelterMagmaMinTemp;
+    // Note: materials, materialsStock, gems, dwarfs, researchQueue, smelterTasks are passed by reference and modified in place
 }
 
 // Find the first actionable masonry task
@@ -2597,6 +2606,7 @@ function checkManagementTaskActivationWrapper() {
         researchTree,
         activeResearch,
         researchQueue,
+        smelterTasks,
         smelterTasksData,
         managementTasks,
         startX,
@@ -2760,6 +2770,7 @@ function tick() {
                 smelterCoalMaxTemp,
                 smelterMagmaMinTemp,
                 smelterHeatingMode,
+                smelterTasks,
                 smelterTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,

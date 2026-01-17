@@ -2294,7 +2294,7 @@ header, footer {
 
 /* Custom width for the Smelter Modal */
 #smelter-modal .modal-dialog {
-    width: clamp(364px, 52vw, 650px);
+    width: clamp(437px, 62vw, 780px);
 }
 
 /* Dwarf Detail Modal Styles */
@@ -3651,6 +3651,16 @@ header, footer {
 .management-number-input[type=number] {
     -moz-appearance: textfield;
     appearance: textfield;
+}
+
+/* Checkbox styling for management tasks */
+.management-checkbox-input {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0;
+    cursor: pointer;
+    accent-color: #3b82f6;
 }
 
 /* Dropdown arrow styling for dark theme */
