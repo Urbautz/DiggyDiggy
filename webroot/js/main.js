@@ -127,11 +127,8 @@ function countActionableSmelterTasks() {
             }
 
             // Check if materials are available for heating
-            if (task.input && task.input.material && task.input.amount) {
-                const stockAmount = materialsStock[task.input.material] || 0;
-                if (stockAmount >= task.input.amount) {
-                    count++;
-                }
+            if (hasMaterialsForTask(task, materialsStock)) {
+                count++;
             }
             continue;
         }
@@ -150,23 +147,9 @@ function countActionableSmelterTasks() {
             continue;
         }
 
-        // Check for single input (legacy format)
-        if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                count++;
-            }
-        }
-
-        // Check for multiple inputs (alloy format)
-        if (task.inputs && Array.isArray(task.inputs)) {
-            const hasAllInputs = task.inputs.every(input => {
-                const stock = materialsStock[input.material] || 0;
-                return stock >= input.amount;
-            });
-            if (hasAllInputs) {
-                count++;
-            }
+        // Use shared helper to check material availability
+        if (hasMaterialsForTask(task, materialsStock)) {
+            count++;
         }
     }
     return count;
@@ -180,23 +163,9 @@ function countActionableMasonryTasks() {
         const task = masonryTasksData[taskId];
         if (!isSmelterTaskUnlocked(task)) continue; // Reuse smelter unlock check (same logic)
 
-        // Check for single input (legacy format)
-        if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                count++;
-            }
-        }
-
-        // Check for multiple inputs (alloy format)
-        if (task.inputs && Array.isArray(task.inputs)) {
-            const hasAllInputs = task.inputs.every(input => {
-                const stock = materialsStock[input.material] || 0;
-                return stock >= input.amount;
-            });
-            if (hasAllInputs) {
-                count++;
-            }
+        // Use shared helper to check material availability
+        if (hasMaterialsForTask(task, materialsStock)) {
+            count++;
         }
     }
     return count;

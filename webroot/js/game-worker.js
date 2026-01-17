@@ -196,77 +196,34 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
  * @returns {string} The task that was executed
  */
 function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
-    if (taskId === 'research') {
-        // Check if already at research location
-        if (dwarf.x === research.x && dwarf.y === research.y) {
-            // Already at research - start researching immediately
-            if (researchReservedBy === dwarf.name || !researchReservedBy) {
-                researchReservedBy = dwarf.name;
-                dwarf.status = 'researching';
-                console.log(`[${dwarf.name}] 🔬 Started researching (already at location)`);
-                return 'research';
+    // Task configuration for location-based tasks
+    const taskConfigs = {
+        'research': { location: research, status: 'researching', emoji: '🔬', getReserved: () => researchReservedBy, setReserved: (name) => { researchReservedBy = name; } },
+        'masonry': { location: masonry, status: 'masonry', emoji: '🔨', getReserved: () => masonryReservedBy, setReserved: (name) => { masonryReservedBy = name; } },
+        'smelting': { location: smelter, status: 'smelting', emoji: '🔥', getReserved: () => smelterReservedBy, setReserved: (name) => { smelterReservedBy = name; } },
+        'managing': { location: management, status: 'managing', emoji: '💼', getReserved: () => managementReservedBy, setReserved: (name) => { managementReservedBy = name; } }
+    };
+
+    const config = taskConfigs[taskId];
+    if (config) {
+        const { location, status, emoji, getReserved, setReserved } = config;
+        const reservedBy = getReserved();
+
+        if (dwarf.x === location.x && dwarf.y === location.y) {
+            // Already at location - start task immediately if not reserved by another
+            if (reservedBy === dwarf.name || !reservedBy) {
+                setReserved(dwarf.name);
+                dwarf.status = status;
+                console.log(`[${dwarf.name}] ${emoji} Started ${taskId} (already at location)`);
+                return taskId;
             }
         } else {
-            // Not at research - move there
-            researchReservedBy = dwarf.name;
-            scheduleMove(dwarf, research.x, research.y);
+            // Not at location - move there
+            setReserved(dwarf.name);
+            scheduleMove(dwarf, location.x, location.y);
             dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to research at (${research.x}, ${research.y})`);
-            return 'research';
-        }
-    } else if (taskId === 'masonry') {
-        // Check if already at masonry location
-        if (dwarf.x === masonry.x && dwarf.y === masonry.y) {
-            // Already at masonry - start masonry immediately
-            if (masonryReservedBy === dwarf.name || !masonryReservedBy) {
-                masonryReservedBy = dwarf.name;
-                dwarf.status = 'masonry';
-                console.log(`[${dwarf.name}] 🔨 Started masonry (already at location)`);
-                return 'masonry';
-            }
-        } else {
-            // Not at masonry - move there
-            masonryReservedBy = dwarf.name;
-            scheduleMove(dwarf, masonry.x, masonry.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to masonry at (${masonry.x}, ${masonry.y})`);
-            return 'masonry';
-        }
-    } else if (taskId === 'smelting') {
-        // Check if already at smelter location
-        if (dwarf.x === smelter.x && dwarf.y === smelter.y) {
-            // Already at smelter - start smelting immediately
-            if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
-                smelterReservedBy = dwarf.name;
-                dwarf.status = 'smelting';
-                console.log(`[${dwarf.name}] 🔥 Started smelting (already at location)`);
-                return 'smelting';
-            }
-        } else {
-            // Not at smelter - move there
-            smelterReservedBy = dwarf.name;
-            scheduleMove(dwarf, smelter.x, smelter.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to smelter at (${smelter.x}, ${smelter.y})`);
-            return 'smelting';
-        }
-    } else if (taskId === 'managing') {
-        // Check if already at management location
-        if (dwarf.x === management.x && dwarf.y === management.y) {
-            // Already at management - start managing immediately
-            if (managementReservedBy === dwarf.name || !managementReservedBy) {
-                managementReservedBy = dwarf.name;
-                dwarf.status = 'managing';
-                console.log(`[${dwarf.name}] 💼 Started managing (already at location)`);
-                return 'managing';
-            }
-        } else {
-            // Not at management - move there
-            managementReservedBy = dwarf.name;
-            scheduleMove(dwarf, management.x, management.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to management at (${management.x}, ${management.y})`);
-            return 'managing';
+            console.log(`[${dwarf.name}] 🚶 Moving to ${taskId} at (${location.x}, ${location.y})`);
+            return taskId;
         }
     } else if (taskId === 'digging') {
         // If digging coordinates provided, move there; otherwise just signal digging task
