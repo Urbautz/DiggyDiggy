@@ -980,11 +980,11 @@ const masonryTasksData = {
   // ──────────────────────────────────────────────────────────────────────────
   'cut-polish-gem': {
     name: 'Cut and Polish Gem',
-    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
+    description: 'Cut and polish a gem to make them usable in tools, increases value by 80%. Duration scales with gem size.',
     input: null,
     output: null,
     type: 'gem-cutting',
-    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
+    ticksRequired: GEM_CUTTING_BASE_TICKS,
     requires: 'gem-cutting',
     hardness: 1
   }

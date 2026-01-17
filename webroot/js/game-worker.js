@@ -868,6 +868,11 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                     // Track which gem we're working on
                     task.currentGemId = gemToProcess.id;
 
+                    // Calculate dynamic ticks required based on gem carats
+                    // Formula: base ticks + (2 × carats)
+                    const gemCarats = gemToProcess.carats || 1;
+                    task.ticksRequired = GEM_CUTTING_BASE_TICKS + (GEM_CUTTING_TICKS_PER_CARAT * gemCarats);
+
                     // Initialize progress if needed
                     if (!gemToProcess.cuttingProgress) {
                         gemToProcess.cuttingProgress = 0;
