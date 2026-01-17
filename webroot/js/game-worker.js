@@ -143,47 +143,47 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     });
 
     // STEP 2: Debug output - which tasks are possible
-    console.log(`[${dwarf.name}] Task Assignment:`, {
-        position: `(${dwarf.x}, ${dwarf.y})`,
-        allAvailability: taskAvailability,
-        possibleTasks: possibleTasks,
-        priorityHigh: taskPriorityHigh,
-        priorityNormal: taskPriorityNormal,
-        priorityNone: taskPriorityNone
-    });
+    //console.log(`[${dwarf.name}] Task Assignment:`, {
+    //    position: `(${dwarf.x}, ${dwarf.y})`,
+    //    allAvailability: taskAvailability,
+    //    possibleTasks: possibleTasks,
+    //    priorityHigh: taskPriorityHigh,
+    //    priorityNormal: taskPriorityNormal,
+    //    priorityNone: taskPriorityNone
+    //});
 
     // STEP 3: Check high priority tasks
     const possibleHighPriorityTasks = taskPriorityHigh.filter(taskId => possibleTasks.includes(taskId));
 
-    console.log(`[${dwarf.name}] High Priority Check:`, {
-        configured: taskPriorityHigh,
-        possible: possibleHighPriorityTasks
-    });
+    //console.log(`[${dwarf.name}] High Priority Check:`, {
+    //    configured: taskPriorityHigh,
+    //    possible: possibleHighPriorityTasks
+    //});
 
     if (possibleHighPriorityTasks.length > 0) {
         // Select random task from high priority
         const selectedTask = possibleHighPriorityTasks[Math.floor(Math.random() * possibleHighPriorityTasks.length)];
-        console.log(`[${dwarf.name}] ✅ Selected HIGH PRIORITY task: ${selectedTask}`);
+        //console.log(`[${dwarf.name}] ✅ Selected HIGH PRIORITY task: ${selectedTask}`);
         return executeTask(dwarf, selectedTask, diggingX, diggingY);
     }
 
     // STEP 4: Check normal priority tasks
     const possibleNormalPriorityTasks = taskPriorityNormal.filter(taskId => possibleTasks.includes(taskId));
 
-    console.log(`[${dwarf.name}] Normal Priority Check:`, {
-        configured: taskPriorityNormal,
-        possible: possibleNormalPriorityTasks
-    });
+    //console.log(`[${dwarf.name}] Normal Priority Check:`, {
+    //    configured: taskPriorityNormal,
+    //    possible: possibleNormalPriorityTasks
+    //});
 
     if (possibleNormalPriorityTasks.length > 0) {
         // Select random task from normal priority
         const selectedTask = possibleNormalPriorityTasks[Math.floor(Math.random() * possibleNormalPriorityTasks.length)];
-        console.log(`[${dwarf.name}] ✅ Selected NORMAL PRIORITY task: ${selectedTask}`);
+        //console.log(`[${dwarf.name}] ✅ Selected NORMAL PRIORITY task: ${selectedTask}`);
         return executeTask(dwarf, selectedTask, diggingX, diggingY);
     }
 
     // No task was assigned
-    console.log(`[${dwarf.name}] ❌ No task assigned (no possible tasks in high or normal priority)`);
+    //console.log(`[${dwarf.name}] ❌ No task assigned (no possible tasks in high or normal priority)`);
     return null;
 }
 
@@ -214,7 +214,7 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
             if (reservedBy === dwarf.name || !reservedBy) {
                 setReserved(dwarf.name);
                 dwarf.status = status;
-                console.log(`[${dwarf.name}] ${emoji} Started ${taskId} (already at location)`);
+                //console.log(`[${dwarf.name}] ${emoji} Started ${taskId} (already at location)`);
                 return taskId;
             }
         } else {
@@ -222,7 +222,7 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
             setReserved(dwarf.name);
             scheduleMove(dwarf, location.x, location.y);
             dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to ${taskId} at (${location.x}, ${location.y})`);
+            //console.log(`[${dwarf.name}] 🚶 Moving to ${taskId} at (${location.x}, ${location.y})`);
             return taskId;
         }
     } else if (taskId === 'digging') {
@@ -230,7 +230,7 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
         if (diggingX !== null && diggingY !== null) {
             scheduleMove(dwarf, diggingX, diggingY);
         }
-        console.log(`[${dwarf.name}] ⛏️ Assigned digging task`);
+        //console.log(`[${dwarf.name}] ⛏️ Assigned digging task`);
         return 'digging';
     }
 

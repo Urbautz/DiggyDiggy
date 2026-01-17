@@ -3236,7 +3236,62 @@ window.activateCheat = function activateCheat() {
     // Log transaction
     logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
-    // Set active research to 1 point before completion
+    // Complete all currently available researches (one level each)
+    let researchesCompleted = 0;
+    const completedThisRound = new Set();
+
+    // Keep iterating until no more researches can be completed
+    // (completing one research may unlock others)
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const researchId of researchTree) {
+            // Only complete each research once per cheat activation
+            if (completedThisRound.has(researchId)) continue;
+
+            const research = researchData[researchId];
+            if (!research) continue;
+
+            // Check if at max level
+            if (research.maxlevel !== undefined && (research.level || 0) >= research.maxlevel) {
+                continue;
+            }
+
+            // Check min_depth requirement
+            if (research.min_depth && startX < research.min_depth) {
+                continue;
+            }
+
+            // Check prerequisite requirements
+            let requirementsMet = true;
+            if (research.requires && research.requires.length > 0) {
+                for (const req of research.requires) {
+                    for (const [reqId, reqLevel] of Object.entries(req)) {
+                        const requiredResearch = researchData[reqId];
+                        if (!requiredResearch || (requiredResearch.level || 0) < reqLevel) {
+                            requirementsMet = false;
+                            break;
+                        }
+                    }
+                    if (!requirementsMet) break;
+                }
+            }
+
+            if (requirementsMet) {
+                // Complete one level of this research
+                research.level = (research.level || 0) + 1;
+                completedThisRound.add(researchId);
+                researchesCompleted++;
+                changed = true;
+            }
+        }
+    }
+
+    if (researchesCompleted > 0) {
+        console.log(`Cheat completed ${researchesCompleted} research levels`);
+    }
+
+    // Set active research to 1 point before completion (if any)
     if (activeResearch) {
         const currentLevel = activeResearch.level || 0;
         const targetLevel = currentLevel + 1;
@@ -3285,15 +3340,15 @@ window.activateCheat = function activateCheat() {
     updateGridDisplay();
     updateGoldDisplay();
     populateDwarfsInPanel();
-    updateStockPanel();
+    updateMaterialsPanel();
     populateResearch();
     populateToolsInPanel(); // Refresh tools panel to show removed enchantments
 
     // Save game
     saveGame();
 
-    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP, Enchantments removed: ${enchantmentsRemoved}`);
-    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus\nEnchantments removed from ${enchantmentsRemoved} tool(s)`);
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Researches completed: ${researchesCompleted}, Dwarfs: reset to home with XP, Enchantments removed: ${enchantmentsRemoved}`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nResearches completed: ${researchesCompleted}\nAll dwarfs reset to home with XP bonus\nEnchantments removed from ${enchantmentsRemoved} tool(s)`);
 }
 
 function initializeGame() {
