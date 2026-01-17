@@ -2671,7 +2671,8 @@ function initWorker() {
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
-            managementTasks: managementTasks || {}
+            managementTasks: managementTasks || {},
+            platingEffects
         }
     });
     

@@ -42,63 +42,7 @@ let oneTimeInvestments = []; // Array of active one-time investments {amount, ti
 let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
 let managementTasks = {}; // Management task definitions
-
-// Plating effects - duplicated from defs.js (must be kept in sync)
-// NOTE: These values are the single source of truth defined in defs.js
-// They are duplicated here because workers cannot import ES modules
-const platingEffects = {
-    'zinc': {
-        name: 'Zinc Plating',
-        description: 'Digging consumes 2 less energy',
-        effect: 'energyReduction',
-        value: 2
-    },
-    'silver': {
-        name: 'Silver Plating',
-        description: '+40% gem probability',
-        effect: 'gemProbability',
-        value: 1.40
-    },
-    'gold': {
-        name: 'Gold Plating',
-        description: '+10% higher critical strike chance',
-        effect: 'criticalStrike',
-        value: 1.10
-    },
-    'uranium': {
-        name: 'Uranium Plating',
-        description: '5× one-hit kill chance on critical hits',
-        effect: 'oneHitMultiplier',
-        value: 5.0
-    },
-    'nickel': {
-        name: 'Nickel Plating',
-        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
-        effect: 'movementEnergyRegen',
-        value: 5
-    },
-    'wolfram': {
-        name: 'Wolfram Plating',
-        description: '25% chance for a second dig in the same tick (only one can crit)',
-        effect: 'doubleDigChance',
-        value: 0.25
-    },
-    'plutonium': {
-        name: 'Plutonium Plating',
-        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
-        effect: 'nuclearExplosion',
-        value: 2.0,
-        explosionChance: 0.25
-    },
-    'randomium': {
-        name: 'Randomium Plating',
-        description: '5% chance to turn stone into random ore, 5% chance to turn ore into smelted material, 5% chance for random plating effect',
-        effect: 'randomTransmutation',
-        stoneToOreChance: 0.05,
-        oreToSmeltedChance: 0.05,
-        randomPlatingChance: 0.05
-    }
-};
+let platingEffects = {}; // Plating effects definitions (initialized from defs.js via main thread)
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -2940,6 +2884,8 @@ self.addEventListener('message', (e) => {
             // Initialize management tasks
             if (data.activeManagementTasks) activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
             if (data.managementTasks) managementTasks = JSON.parse(JSON.stringify(data.managementTasks));
+            // Initialize plating effects (from defs.js)
+            if (data.platingEffects) platingEffects = JSON.parse(JSON.stringify(data.platingEffects));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
