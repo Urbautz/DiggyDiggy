@@ -484,13 +484,23 @@ const materials = {
     color: '#184f48ff',
     weight: 35
   },
+  'randomium ore': {
+    name: 'Randomium Ore',
+    type: 'Ore Hard',
+    hardness: 5000,
+    probability: 20,
+    worth: 18000,
+    minlevel: 150000,
+    color: '#ff00ff',
+    weight: 30
+  },
   'plutonium ore': {
     name: 'Plutonium Ore',
     type: 'Ore Hard',
     hardness: 4000,
     probability: 22.5,
     worth: 12000,
-    minlevel: 135000,
+    minlevel: 175000,
     color: '#35fa00',
     weight: 25
   },
@@ -765,6 +775,17 @@ const materials = {
     forge: 'Plating',
     weight: 25
   },
+  'randomium': {
+    name: 'Enriched Randomium',
+    type: 'Ingot',
+    hardness: 1400,
+    probability: 0,
+    worth: 22500,
+    minlevel: 99999,
+    color: '#ff00ff',
+    forge: 'Plating',
+    weight: 30
+  },
   'ruby': {
     name: 'Ruby',
     type: 'Gem',
@@ -877,6 +898,14 @@ const platingEffects = {
         effect: 'nuclearExplosion',
         value: 2.0,
         explosionChance: 0.25
+    },
+    'randomium': {
+        name: 'Randomium Plating',
+        description: '5% chance to turn stone into random ore, 5% chance to turn ore into smelted material, 5% chance for random plating effect',
+        effect: 'randomTransmutation',
+        stoneToOreChance: 0.05,
+        oreToSmeltedChance: 0.05,
+        randomPlatingChance: 0.05
     }
 };
 
@@ -1293,7 +1322,7 @@ const smelterTasksData = {
     description: 'Enrich wolfram ore through advanced processing.',
     input: { material: 'wolfram ore', amount: 1 },
     output: { material: 'wolfram', amount: 1 },
-    minTemp: 3422,
+    minTemp: 2422,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 105
@@ -1303,7 +1332,7 @@ const smelterTasksData = {
     description: 'Enrich uranium ore through advanced processing.',
     input: { material: 'uranium ore', amount: 1 },
     output: { material: 'uranium', amount: 1 },
-    minTemp: 1135,
+    minTemp: 2535,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 110
@@ -1313,10 +1342,20 @@ const smelterTasksData = {
     description: 'Enrich plutonium ore through advanced processing.',
     input: { material: 'plutonium ore', amount: 1 },
     output: { material: 'plutonium', amount: 1 },
-    minTemp: 640,
+    minTemp: 2740,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 115
+  },
+  'enrich-randomium': {
+    name: 'Enrich Randomium',
+    description: 'Enrich randomium ore through chaotic processing.',
+    input: { material: 'randomium ore', amount: 1 },
+    output: { material: 'randomium', amount: 1 },
+    minTemp: 1337,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 120
   }
 };
 
@@ -1346,7 +1385,8 @@ let smelterTasks = [
     'smelt-thornless-silver',
     'enrich-wolfram',
     'enrich-uranium',
-    'enrich-plutonium'
+    'enrich-plutonium',
+    'enrich-randomium'
 ];
 
 // Smelter temperature system

@@ -89,6 +89,14 @@ const platingEffects = {
         effect: 'nuclearExplosion',
         value: 2.0,
         explosionChance: 0.25
+    },
+    'randomium': {
+        name: 'Randomium Plating',
+        description: '5% chance to turn stone into random ore, 5% chance to turn ore into smelted material, 5% chance for random plating effect',
+        effect: 'randomTransmutation',
+        stoneToOreChance: 0.05,
+        oreToSmeltedChance: 0.05,
+        randomPlatingChance: 0.05
     }
 };
 
@@ -340,6 +348,86 @@ function isReservedForDig(x, y) {
 // Note: getMaterialById and selectRandomGem are now in utils.js
 
 /**
+ * Check if dwarf has Randomium plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if dwarf has Randomium plating
+ */
+function hasRandomiumPlating(dwarf) {
+    if (!dwarf.toolId) return false;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return false;
+    }
+
+    return toolInstance.plating === 'randomium';
+}
+
+/**
+ * Get a random ore that can spawn at the given depth
+ * @param {number} depth - Current mining depth
+ * @returns {string|null} Material ID of a random ore, or null if none available
+ */
+function getRandomOreAtDepth(depth) {
+    const availableOres = [];
+    for (const [materialId, materialData] of Object.entries(materials)) {
+        if (materialData.type && materialData.type.includes('Ore')) {
+            const minLevel = materialData.minlevel || 0;
+            const maxLevel = materialData.maxlevel || 999999;
+            if (depth >= minLevel && depth <= maxLevel) {
+                availableOres.push(materialId);
+            }
+        }
+    }
+    if (availableOres.length === 0) return null;
+    return availableOres[Math.floor(Math.random() * availableOres.length)];
+}
+
+/**
+ * Get a smelted material output for a given ore (from unlocked smelter recipes)
+ * @param {string} oreId - The ore material ID
+ * @returns {string|null} Material ID of the smelted output, or null if no recipe unlocked
+ */
+function getSmeltedOutputForOre(oreId) {
+    // Search smelter tasks for recipes that use this ore as input
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task || !task.input || !task.output) continue;
+
+        // Check if task requires research and if it's unlocked
+        if (task.requires) {
+            const research = researchData[task.requires];
+            if (!research || research.level < 1) continue;
+        }
+
+        // Check if this task uses the ore as input
+        if (task.input.material === oreId) {
+            return task.output.material;
+        }
+    }
+    return null;
+}
+
+/**
+ * Apply a random other plating effect (excluding randomium)
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {Object} context - Context with cell, depth, etc.
+ * @returns {Object|null} Effect result or null
+ */
+function applyRandomPlatingEffect(dwarf, context) {
+    // Get all plating effects except randomium
+    const otherPlatings = Object.keys(platingEffects).filter(p => p !== 'randomium');
+    if (otherPlatings.length === 0) return null;
+
+    const randomPlating = otherPlatings[Math.floor(Math.random() * otherPlatings.length)];
+    const effect = platingEffects[randomPlating];
+
+    console.log(`🎲 [Randomium] Triggering random plating effect: ${effect.name}`);
+
+    return { plating: randomPlating, effect: effect };
+}
+
+/**
  * Handle block destruction logic including gem spawning and material collection
  * @param {Object} cell - The grid cell being destroyed
  * @param {Object} dwarf - The dwarf performing the destruction
@@ -406,7 +494,60 @@ function handleBlockDestruction(cell, dwarf, x, y) {
             delete cell.gemId;
         }
 
-        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+        // Apply Randomium plating transmutation effects
+        let finalMatId = matId;
+        if (hasRandomiumPlating(dwarf)) {
+            const randomiumEffect = platingEffects['randomium'];
+            const depth = (y + startX) || 0;
+            console.log(`🎲 [Randomium] ${dwarf.name} mining with Randomium plating at depth ${depth}, material: ${mat ? mat.name : matId} (type: ${mat ? mat.type : 'unknown'})`);
+
+            // Check stone → ore transformation (5% chance)
+            if (mat && mat.type && mat.type.startsWith('Stone')) {
+                const stoneRoll = Math.random();
+                console.log(`🎲 [Randomium] Stone check - roll: ${(stoneRoll * 100).toFixed(2)}% vs ${(randomiumEffect.stoneToOreChance * 100).toFixed(0)}% chance`);
+                if (stoneRoll < randomiumEffect.stoneToOreChance) {
+                    const randomOre = getRandomOreAtDepth(depth);
+                    console.log(`🎲 [Randomium] Stone → Ore triggered! Available ore at depth: ${randomOre || 'none'}`);
+                    if (randomOre) {
+                        finalMatId = randomOre;
+                        const oreMat = materials[randomOre];
+                        console.log(`🎲 [Randomium] ✅ Stone → Ore transmutation! ${mat.name} turned into ${oreMat ? oreMat.name : randomOre}`);
+                        pendingTransactions.push({ type: 'randomium-transmute', x: x, y: y, dwarf: dwarf.name, from: matId, to: finalMatId, transmutation: 'stone-to-ore' });
+                    }
+                }
+            }
+
+            // Check ore → smelted transformation (5% chance)
+            if (mat && mat.type && mat.type.includes('Ore')) {
+                const oreRoll = Math.random();
+                console.log(`🎲 [Randomium] Ore check - roll: ${(oreRoll * 100).toFixed(2)}% vs ${(randomiumEffect.oreToSmeltedChance * 100).toFixed(0)}% chance`);
+                if (oreRoll < randomiumEffect.oreToSmeltedChance) {
+                    const smeltedOutput = getSmeltedOutputForOre(matId);
+                    console.log(`🎲 [Randomium] Ore → Smelted triggered! Smelted output for ${matId}: ${smeltedOutput || 'none (recipe not unlocked)'}`);
+                    if (smeltedOutput) {
+                        finalMatId = smeltedOutput;
+                        const smeltedMat = materials[smeltedOutput];
+                        console.log(`🎲 [Randomium] ✅ Ore → Smelted transmutation! ${mat.name} turned into ${smeltedMat ? smeltedMat.name : smeltedOutput}`);
+                        pendingTransactions.push({ type: 'randomium-transmute', x: x, y: y, dwarf: dwarf.name, from: matId, to: finalMatId, transmutation: 'ore-to-smelted' });
+                    }
+                }
+            }
+
+            // Check for random other plating effect (5% chance)
+            const effectRoll = Math.random();
+            console.log(`🎲 [Randomium] Random effect check - roll: ${(effectRoll * 100).toFixed(2)}% vs ${(randomiumEffect.randomPlatingChance * 100).toFixed(0)}% chance`);
+            if (effectRoll < randomiumEffect.randomPlatingChance) {
+                const randomEffect = applyRandomPlatingEffect(dwarf, { cell, depth, x, y });
+                if (randomEffect) {
+                    console.log(`🎲 [Randomium] ✅ Random plating effect triggered: ${randomEffect.effect.name}`);
+                    pendingTransactions.push({ type: 'randomium-random-effect', x: x, y: y, dwarf: dwarf.name, effect: randomEffect.effect.name });
+                }
+            }
+
+            console.log(`🎲 [Randomium] Final material collected: ${finalMatId} (original: ${matId})`);
+        }
+
+        dwarf.bucket[finalMatId] = (dwarf.bucket[finalMatId] || 0) + 1;
 
         // Award XP only when material is destroyed
         if (mat && typeof mat.hardness === 'number') {

@@ -25,6 +25,7 @@ const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 const activeNuclearExplosions = new Map();
 const activeRadiation = new Map();
+const activeRandomiumTransmutes = new Map();
 
 // Note: randomMaterial and getMaterialById are now in utils.js
 
@@ -266,6 +267,11 @@ function updateGridDisplay() {
             activeRadiation.delete(key);
         }
     }
+    for (const [key, data] of activeRandomiumTransmutes) {
+        if (data.expiresAt <= now) {
+            activeRandomiumTransmutes.delete(key);
+        }
+    }
 
     // Check if we need a full rebuild (grid size changed or first render)
     const existingRows = Array.from(tbody.querySelectorAll('tr:not(#functions-grid-row)'));
@@ -335,6 +341,7 @@ function updateGridDisplay() {
             const hasExistingCritAnim = cell.classList.contains('crit-hit') || cell.classList.contains('one-hit');
             const hasExistingNuclearAnim = cell.classList.contains('nuclear-explosion');
             const hasExistingRadiationAnim = cell.classList.contains('nuclear-radiation-weakened') || cell.classList.contains('nuclear-radiation-damaged');
+            const hasExistingRandomiumAnim = cell.classList.contains('randomium-transmute');
 
             // Reset cell state (but preserve animation classes)
             cell.className = 'cell';
@@ -362,6 +369,12 @@ function updateGridDisplay() {
                 const radiationClass = radiationData.effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
                 if (!hasExistingRadiationAnim || !cell.classList.contains(radiationClass)) {
                     cell.classList.add(radiationClass);
+                }
+            }
+            const randomiumKey = `${c}:${r}`;
+            if (activeRandomiumTransmutes.has(randomiumKey)) {
+                if (!hasExistingRandomiumAnim) {
+                    cell.classList.add('randomium-transmute');
                 }
             }
 
@@ -935,6 +948,14 @@ function triggerRadiationAnimation(x, y, effect) {
 
     console.log(`🎬 [Animation] Scheduling radiation (${effect}) at (${x}, ${y})`);
     activeRadiation.set(radiationKey, { expiresAt: Date.now() + RADIATION_ANIMATION_DURATION, effect });
+}
+
+function triggerRandomiumTransmuteAnimation(x, y, transmutation) {
+    const RANDOMIUM_ANIMATION_DURATION = 700;
+    const randomiumKey = `${x}:${y}`;
+
+    console.log(`🎬 [Animation] Scheduling randomium transmute (${transmutation}) at (${x}, ${y})`);
+    activeRandomiumTransmutes.set(randomiumKey, { expiresAt: Date.now() + RANDOMIUM_ANIMATION_DURATION, transmutation });
 }
 
 function openModal(modalname) {
@@ -2437,6 +2458,12 @@ function initWorker() {
                         } else if (transaction.type === 'gem-spawn') {
                             // Trigger gem spawn animation
                             triggerGemSpawnAnimation(transaction.x, transaction.y, transaction.gem);
+                        } else if (transaction.type === 'randomium-transmute') {
+                            // Trigger randomium transmutation animation (rotating dice)
+                            triggerRandomiumTransmuteAnimation(transaction.x, transaction.y, transaction.transmutation);
+                        } else if (transaction.type === 'randomium-random-effect') {
+                            // Trigger randomium random effect animation (also rotating dice)
+                            triggerRandomiumTransmuteAnimation(transaction.x, transaction.y, 'random-effect');
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
                         }

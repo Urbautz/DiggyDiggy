@@ -906,6 +906,86 @@ function shouldPlutoniumTriggerExplosion(dwarf) {
     return false;
 }
 
+/**
+ * Check if dwarf has Randomium plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if dwarf has Randomium plating
+ */
+function hasRandomiumPlating(dwarf) {
+    if (!dwarf.toolId) return false;
+
+    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
+    if (!toolInstance || !toolInstance.plating) {
+        return false;
+    }
+
+    return toolInstance.plating === 'randomium';
+}
+
+/**
+ * Get a random ore that can spawn at the given depth
+ * @param {number} depth - Current mining depth
+ * @returns {string|null} Material ID of a random ore, or null if none available
+ */
+function getRandomOreAtDepth(depth) {
+    const availableOres = [];
+    for (const [materialId, materialData] of Object.entries(materials)) {
+        if (materialData.type && materialData.type.includes('Ore')) {
+            const minLevel = materialData.minlevel || 0;
+            const maxLevel = materialData.maxlevel || 999999;
+            if (depth >= minLevel && depth <= maxLevel) {
+                availableOres.push(materialId);
+            }
+        }
+    }
+    if (availableOres.length === 0) return null;
+    return availableOres[Math.floor(Math.random() * availableOres.length)];
+}
+
+/**
+ * Get a smelted material output for a given ore (from unlocked smelter recipes)
+ * @param {string} oreId - The ore material ID
+ * @returns {string|null} Material ID of the smelted output, or null if no recipe unlocked
+ */
+function getSmeltedOutputForOre(oreId) {
+    // Search smelter tasks for recipes that use this ore as input
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task || !task.input || !task.output) continue;
+
+        // Check if task requires research and if it's unlocked
+        if (task.requires) {
+            const research = researchData[task.requires];
+            if (!research || research.level < 1) continue;
+        }
+
+        // Check if this task uses the ore as input
+        if (task.input.material === oreId) {
+            return task.output.material;
+        }
+    }
+    return null;
+}
+
+/**
+ * Apply a random other plating effect (excluding randomium)
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {Object} context - Context with cell, depth, etc.
+ * @returns {Object|null} Effect result or null
+ */
+function applyRandomPlatingEffect(dwarf, context) {
+    // Get all plating effects except randomium
+    const otherPlatings = Object.keys(platingEffects).filter(p => p !== 'randomium');
+    if (otherPlatings.length === 0) return null;
+
+    const randomPlating = otherPlatings[Math.floor(Math.random() * otherPlatings.length)];
+    const effect = platingEffects[randomPlating];
+
+    console.log(`🎲 [Randomium] Triggering random plating effect: ${effect.name}`);
+
+    return { plating: randomPlating, effect: effect };
+}
+
 // ============================================================================
 // ENERGY CONSUMPTION UTILITIES
 // ============================================================================
