@@ -182,7 +182,7 @@ function populateMasonry() {
             // Gem cutting task - show count of gems marked for cutting
             const gemsMarkedForCutting = gems.filter(g => g.markedForCutting && !g.polished).length;
             if (gemsMarkedForCutting > 0) {
-                taskRecipe.textContent = `${gemsMarkedForCutting} gem${gemsMarkedForCutting !== 1 ? 's' : ''} marked for cutting (${task.ticksRequired} ticks each)`;
+                taskRecipe.textContent = `${gemsMarkedForCutting} gem${gemsMarkedForCutting !== 1 ? 's' : ''} marked for cutting (duration varies by carat)`;
                 taskRecipe.classList.add('recipe-ready');
             } else {
                 taskRecipe.textContent = `No gems marked for cutting`;

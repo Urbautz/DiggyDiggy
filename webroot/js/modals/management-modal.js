@@ -171,6 +171,9 @@ function updateManagementTaskActivationStates() {
 // Format management task values for display
 function formatManagementValue(key, value, valueDef) {
     // Check type from valueDef if available
+    if (valueDef && valueDef.type === 'checkbox') {
+        return value ? '✓' : '✗';
+    }
     if (valueDef && (valueDef.type === 'material-dropdown' || valueDef.type === 'gem-dropdown')) {
         // Handle "any" special value for gem-dropdown
         if (value === 'any') return 'Any Gem Type';
@@ -382,6 +385,13 @@ function updateTaskValueFields() {
                 if (matId === defaultValue) option.selected = true;
                 input.appendChild(option);
             }
+        } else if (fieldType === 'checkbox') {
+            // Checkbox input
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'management-input management-checkbox-input';
+            input.id = `task-value-${key}`;
+            input.checked = defaultValue === true;
         } else {
             // Number input
             input = document.createElement('input');
@@ -428,7 +438,13 @@ function confirmAddManagementTask() {
         const input = document.getElementById(`task-value-${key}`);
         console.log('[Management] Input for', key, ':', input);
         if (input) {
-            values[key] = input.type === 'number' ? parseFloat(input.value) : input.value;
+            if (input.type === 'checkbox') {
+                values[key] = input.checked;
+            } else if (input.type === 'number') {
+                values[key] = parseFloat(input.value);
+            } else {
+                values[key] = input.value;
+            }
         }
     }
     console.log('[Management] Collected values:', values);
@@ -609,6 +625,13 @@ function populateEditTaskModal(task, taskDef) {
                 if (matId === currentValue) option.selected = true;
                 input.appendChild(option);
             }
+        } else if (fieldType === 'checkbox') {
+            // Checkbox input
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'management-input management-checkbox-input';
+            input.id = `edit-task-value-${key}`;
+            input.checked = currentValue === true;
         } else {
             // Number input
             input = document.createElement('input');
@@ -660,7 +683,13 @@ function confirmEditManagementTask() {
         const input = document.getElementById(`edit-task-value-${key}`);
         console.log('[Management] Edit input for', key, ':', input);
         if (input) {
-            values[key] = input.type === 'number' ? parseFloat(input.value) : input.value;
+            if (input.type === 'checkbox') {
+                values[key] = input.checked;
+            } else if (input.type === 'number') {
+                values[key] = parseFloat(input.value);
+            } else {
+                values[key] = input.value;
+            }
         }
     }
     console.log('[Management] Collected edit values:', values);

@@ -349,7 +349,10 @@ function updateGemsCuttingProgress() {
 
         if (cuttingGem && cuttingGem.cuttingProgress !== undefined) {
             const progress = cuttingGem.cuttingProgress || 0;
-            badge.textContent = `Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}`;
+            // Calculate dynamic ticks required based on gem carats
+            const gemCarats = cuttingGem.carats || carat || 1;
+            const ticksRequired = GEM_CUTTING_BASE_TICKS + (GEM_CUTTING_TICKS_PER_CARAT * gemCarats);
+            badge.textContent = `Cutting ${progress}/${ticksRequired}`;
         }
     });
 }
@@ -487,8 +490,12 @@ function populateGemsList() {
                 const cuttingGem = group.gems.find(g => g.markedForCutting);
                 const progress = cuttingGem && cuttingGem.cuttingProgress ? cuttingGem.cuttingProgress : 0;
 
+                // Calculate dynamic ticks required based on gem carats
+                const gemCarats = group.carat || 1;
+                const ticksRequired = GEM_CUTTING_BASE_TICKS + (GEM_CUTTING_TICKS_PER_CARAT * gemCarats);
+
                 // Cutting badge with progress + rough badge
-                statusSection = `<span class="gem-cutting-progress">Cutting ${progress}/${GEM_CUTTING_TICKS_REQUIRED}</span><span class="gem-unpolished-badge">Rough</span>`;
+                statusSection = `<span class="gem-cutting-progress">Cutting ${progress}/${ticksRequired}</span><span class="gem-unpolished-badge">Rough</span>`;
             } else {
                 // Just rough badge
                 statusSection = '<span class="gem-unpolished-badge">Rough</span>';

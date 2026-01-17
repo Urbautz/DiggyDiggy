@@ -25,6 +25,7 @@ const GAME_LOOP_INTERVAL_MS = 300;
 const activeCritFlashes = new Map();
 const activeNuclearExplosions = new Map();
 const activeRadiation = new Map();
+const activeRandomiumTransmutes = new Map();
 
 // Note: randomMaterial and getMaterialById are now in utils.js
 
@@ -126,11 +127,8 @@ function countActionableSmelterTasks() {
             }
 
             // Check if materials are available for heating
-            if (task.input && task.input.material && task.input.amount) {
-                const stockAmount = materialsStock[task.input.material] || 0;
-                if (stockAmount >= task.input.amount) {
-                    count++;
-                }
+            if (hasMaterialsForTask(task, materialsStock)) {
+                count++;
             }
             continue;
         }
@@ -149,23 +147,9 @@ function countActionableSmelterTasks() {
             continue;
         }
 
-        // Check for single input (legacy format)
-        if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                count++;
-            }
-        }
-
-        // Check for multiple inputs (alloy format)
-        if (task.inputs && Array.isArray(task.inputs)) {
-            const hasAllInputs = task.inputs.every(input => {
-                const stock = materialsStock[input.material] || 0;
-                return stock >= input.amount;
-            });
-            if (hasAllInputs) {
-                count++;
-            }
+        // Use shared helper to check material availability
+        if (hasMaterialsForTask(task, materialsStock)) {
+            count++;
         }
     }
     return count;
@@ -179,23 +163,9 @@ function countActionableMasonryTasks() {
         const task = masonryTasksData[taskId];
         if (!isSmelterTaskUnlocked(task)) continue; // Reuse smelter unlock check (same logic)
 
-        // Check for single input (legacy format)
-        if (task.input && task.input.material && task.input.amount) {
-            const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                count++;
-            }
-        }
-
-        // Check for multiple inputs (alloy format)
-        if (task.inputs && Array.isArray(task.inputs)) {
-            const hasAllInputs = task.inputs.every(input => {
-                const stock = materialsStock[input.material] || 0;
-                return stock >= input.amount;
-            });
-            if (hasAllInputs) {
-                count++;
-            }
+        // Use shared helper to check material availability
+        if (hasMaterialsForTask(task, materialsStock)) {
+            count++;
         }
     }
     return count;
@@ -264,6 +234,11 @@ function updateGridDisplay() {
     for (const [key, data] of activeRadiation) {
         if (data.expiresAt <= now) {
             activeRadiation.delete(key);
+        }
+    }
+    for (const [key, data] of activeRandomiumTransmutes) {
+        if (data.expiresAt <= now) {
+            activeRandomiumTransmutes.delete(key);
         }
     }
 
@@ -335,6 +310,7 @@ function updateGridDisplay() {
             const hasExistingCritAnim = cell.classList.contains('crit-hit') || cell.classList.contains('one-hit');
             const hasExistingNuclearAnim = cell.classList.contains('nuclear-explosion');
             const hasExistingRadiationAnim = cell.classList.contains('nuclear-radiation-weakened') || cell.classList.contains('nuclear-radiation-damaged');
+            const hasExistingRandomiumAnim = cell.classList.contains('randomium-transmute');
 
             // Reset cell state (but preserve animation classes)
             cell.className = 'cell';
@@ -362,6 +338,12 @@ function updateGridDisplay() {
                 const radiationClass = radiationData.effect === 'weakened' ? 'nuclear-radiation-weakened' : 'nuclear-radiation-damaged';
                 if (!hasExistingRadiationAnim || !cell.classList.contains(radiationClass)) {
                     cell.classList.add(radiationClass);
+                }
+            }
+            const randomiumKey = `${c}:${r}`;
+            if (activeRandomiumTransmutes.has(randomiumKey)) {
+                if (!hasExistingRandomiumAnim) {
+                    cell.classList.add('randomium-transmute');
                 }
             }
 
@@ -935,6 +917,14 @@ function triggerRadiationAnimation(x, y, effect) {
 
     console.log(`🎬 [Animation] Scheduling radiation (${effect}) at (${x}, ${y})`);
     activeRadiation.set(radiationKey, { expiresAt: Date.now() + RADIATION_ANIMATION_DURATION, effect });
+}
+
+function triggerRandomiumTransmuteAnimation(x, y, transmutation) {
+    const RANDOMIUM_ANIMATION_DURATION = 700;
+    const randomiumKey = `${x}:${y}`;
+
+    console.log(`🎬 [Animation] Scheduling randomium transmute (${transmutation}) at (${x}, ${y})`);
+    activeRandomiumTransmutes.set(randomiumKey, { expiresAt: Date.now() + RANDOMIUM_ANIMATION_DURATION, transmutation });
 }
 
 function openModal(modalname) {
@@ -2437,6 +2427,12 @@ function initWorker() {
                         } else if (transaction.type === 'gem-spawn') {
                             // Trigger gem spawn animation
                             triggerGemSpawnAnimation(transaction.x, transaction.y, transaction.gem);
+                        } else if (transaction.type === 'randomium-transmute') {
+                            // Trigger randomium transmutation animation (rotating dice)
+                            triggerRandomiumTransmuteAnimation(transaction.x, transaction.y, transaction.transmutation);
+                        } else if (transaction.type === 'randomium-random-effect') {
+                            // Trigger randomium random effect animation (also rotating dice)
+                            triggerRandomiumTransmuteAnimation(transaction.x, transaction.y, 'random-effect');
                         } else {
                             logTransaction(transaction.type, transaction.amount, transaction.description);
                         }
@@ -2498,6 +2494,11 @@ function initWorker() {
                             smelterTasksData[taskId].progress = data.smelterTasksData[taskId].progress;
                         }
                     }
+                }
+
+                // Update smelter tasks order from worker (management automations can change order)
+                if (data.smelterTasks !== undefined) {
+                    smelterTasks = data.smelterTasks;
                 }
 
                 // Update one-time investments from worker
@@ -2644,7 +2645,8 @@ function initWorker() {
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
-            managementTasks: managementTasks || {}
+            managementTasks: managementTasks || {},
+            platingEffects
         }
     });
     
@@ -3239,7 +3241,62 @@ window.activateCheat = function activateCheat() {
     // Log transaction
     logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
-    // Set active research to 1 point before completion
+    // Complete all currently available researches (one level each)
+    let researchesCompleted = 0;
+    const completedThisRound = new Set();
+
+    // Keep iterating until no more researches can be completed
+    // (completing one research may unlock others)
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const researchId of researchTree) {
+            // Only complete each research once per cheat activation
+            if (completedThisRound.has(researchId)) continue;
+
+            const research = researchData[researchId];
+            if (!research) continue;
+
+            // Check if at max level
+            if (research.maxlevel !== undefined && (research.level || 0) >= research.maxlevel) {
+                continue;
+            }
+
+            // Check min_depth requirement
+            if (research.min_depth && startX < research.min_depth) {
+                continue;
+            }
+
+            // Check prerequisite requirements
+            let requirementsMet = true;
+            if (research.requires && research.requires.length > 0) {
+                for (const req of research.requires) {
+                    for (const [reqId, reqLevel] of Object.entries(req)) {
+                        const requiredResearch = researchData[reqId];
+                        if (!requiredResearch || (requiredResearch.level || 0) < reqLevel) {
+                            requirementsMet = false;
+                            break;
+                        }
+                    }
+                    if (!requirementsMet) break;
+                }
+            }
+
+            if (requirementsMet) {
+                // Complete one level of this research
+                research.level = (research.level || 0) + 1;
+                completedThisRound.add(researchId);
+                researchesCompleted++;
+                changed = true;
+            }
+        }
+    }
+
+    if (researchesCompleted > 0) {
+        console.log(`Cheat completed ${researchesCompleted} research levels`);
+    }
+
+    // Set active research to 1 point before completion (if any)
     if (activeResearch) {
         const currentLevel = activeResearch.level || 0;
         const targetLevel = currentLevel + 1;
@@ -3288,15 +3345,15 @@ window.activateCheat = function activateCheat() {
     updateGridDisplay();
     updateGoldDisplay();
     populateDwarfsInPanel();
-    updateStockPanel();
+    updateMaterialsPanel();
     populateResearch();
     populateToolsInPanel(); // Refresh tools panel to show removed enchantments
 
     // Save game
     saveGame();
 
-    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Dwarfs: reset to home with XP, Enchantments removed: ${enchantmentsRemoved}`);
-    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nActive research near completion\nAll dwarfs reset to home with XP bonus\nEnchantments removed from ${enchantmentsRemoved} tool(s)`);
+    console.log(`Cheat activated! Depth: ${startX}, Gold: +5000, Materials: +5 each, Researches completed: ${researchesCompleted}, Dwarfs: reset to home with XP, Enchantments removed: ${enchantmentsRemoved}`);
+    alert(`Cheat activated!\n\nDepth doubled to: ${startX}\nGold +5000\n+5 of each material\nResearches completed: ${researchesCompleted}\nAll dwarfs reset to home with XP bonus\nEnchantments removed from ${enchantmentsRemoved} tool(s)`);
 }
 
 function initializeGame() {

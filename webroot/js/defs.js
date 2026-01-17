@@ -161,7 +161,7 @@ const materials = {
     type: 'Processed',
     hardness: 0,
     probability: 0,
-    worth: 8.0,
+    worth: 1.04,
     minlevel: 1200,
     color: '#e8f4f0ff',
     weight: 3
@@ -484,13 +484,23 @@ const materials = {
     color: '#184f48ff',
     weight: 35
   },
+  'randomium ore': {
+    name: 'Randomium Ore',
+    type: 'Ore Hard',
+    hardness: 5000,
+    probability: 20,
+    worth: 18000,
+    minlevel: 150000,
+    color: '#ff00ff',
+    weight: 30
+  },
   'plutonium ore': {
     name: 'Plutonium Ore',
     type: 'Ore Hard',
     hardness: 4000,
     probability: 22.5,
     worth: 12000,
-    minlevel: 135000,
+    minlevel: 175000,
     color: '#35fa00',
     weight: 25
   },
@@ -499,7 +509,7 @@ const materials = {
     type: 'Processed',
     hardness: 250,
     probability: 0,
-    worth: 140,
+    worth: 36.25,
     minlevel: 99999,
     color: '#c8c0beff',
     weight: 20
@@ -509,7 +519,7 @@ const materials = {
     type: 'Processed',
     hardness: 250,
     probability: 0,
-    worth: 250,
+    worth: 38.75,
     minlevel: 99999,
     color: '#4a1828ff',
     weight: 30
@@ -519,7 +529,7 @@ const materials = {
     type: 'Processed',
     hardness: 250,
     probability: 0,
-    worth: 290,
+    worth: 56.25,
     minlevel: 99999,
     color: '#2a6f68ff',
     weight: 30
@@ -529,7 +539,7 @@ const materials = {
     type: 'Ingot',
     hardness: 100,
     probability: 0,
-    worth: 175,
+    worth: 47.5,
     minlevel: 99999,
     color: '#cd7f32ff',
     forge: 'Base',
@@ -540,7 +550,7 @@ const materials = {
     type: 'Ingot',
     hardness: 175,
     probability: 0,
-    worth: 300,
+    worth: 75,
     minlevel: 99999,
     color: '#962c0cff',
     forge: 'Base',
@@ -551,7 +561,7 @@ const materials = {
     type: 'Ingot',
     hardness: 300,
     probability: 0,
-    worth: 450,
+    worth: 250,
     minlevel: 99999,
     color: '#3e6b4eff',
     forge: 'Plating',
@@ -562,7 +572,7 @@ const materials = {
     type: 'Ingot',
     hardness: 250,
     probability: 0,
-    worth: 950,
+    worth: 212.5,
     minlevel: 99999,
     color: '#fbd86eff',
     forge: 'Base',
@@ -573,7 +583,7 @@ const materials = {
     type: 'Ingot',
     hardness: 35,
     probability: 0,
-    worth: 2600,
+    worth: 1500,
     minlevel: 99999,
     color: '#c0c0c0ff',
     forge: 'Plating',
@@ -584,7 +594,7 @@ const materials = {
     type: 'Ingot',
     hardness: 40,
     probability: 0,
-    worth: 5500,
+    worth: 3750,
     minlevel: 99999,
     color: '#ffd700ff',
     forge: 'Plating',
@@ -605,7 +615,7 @@ const materials = {
     type: 'Ingot',
     hardness: 325,
     probability: 0,
-    worth: 600,
+    worth: 625,
     minlevel: 99999,
     color: '#4a4a4aff',
     forge: 'Base',
@@ -616,7 +626,7 @@ const materials = {
     type: 'Ingot',
     hardness: 400,
     probability: 0,
-    worth: 700,
+    worth: 2344,
     minlevel: 99999,
     color: '#3f3939ff',
     forge: 'Base',
@@ -627,7 +637,7 @@ const materials = {
     type: 'Ingot',
     hardness: 450,
     probability: 0,
-    worth: 720,
+    worth: 5274,
     minlevel: 99999,
     color: '#2d2121ff',
     forge: 'Base',
@@ -638,7 +648,7 @@ const materials = {
     type: 'Ingot',
     hardness: 500,
     probability: 0,
-    worth: 800,
+    worth: 7218,
     minlevel: 99999,
     color: '#2d2121ff',
     forge: 'Base',
@@ -649,7 +659,7 @@ const materials = {
     type: 'Ingot',
     hardness: 300,
     probability: 0,
-    worth: 550,
+    worth: 437.5,
     minlevel: 99999,
     color: '#979726ff',
     forge: 'Plating',
@@ -660,7 +670,7 @@ const materials = {
     type: 'Ingot',
     hardness: 600,
     probability: 0,
-    worth: 2550,
+    worth: 9569,
     minlevel: 40000,
     color: '#e03607ff',
     forge: 'Base',
@@ -669,10 +679,9 @@ const materials = {
   'platinum': {
     name: 'Platinum Steel',
     type: 'Ingot',
-    type: 'Ingot',
     hardness: 700,
     probability: 0,
-    worth: 2800,
+    worth: 6055,
     minlevel: 70000,
     color: '#3b371dff',
     forge: 'Base',
@@ -683,7 +692,7 @@ const materials = {
     type: 'Ingot',
     hardness: 800,
     probability: 0,
-    worth: 6000,
+    worth: 17115,
     minlevel: 70000,
     color: '#73bfe5ff',
     forge: 'Base',
@@ -694,7 +703,7 @@ const materials = {
     type: 'Ingot',
     hardness: 900,
     probability: 0,
-    worth: 2800,
+    worth: 18750,
     minlevel: 105000,
     color: '#2d2121ff',
     forge: 'Base',
@@ -705,7 +714,7 @@ const materials = {
     type: 'Ingot',
     hardness: 1000,
     probability: 0,
-    worth: 7500,
+    worth: 70860,
     minlevel: 105000,
     color: '#9a2fa4ff',
     forge: 'Base',
@@ -716,7 +725,7 @@ const materials = {
     type: 'Ingot',
     hardness: 1200,
     probability: 0,
-    worth: 7500,
+    worth: 87500,
     minlevel: 99999,
     color: '#2d2121ff',
     forge: 'Base',
@@ -727,7 +736,7 @@ const materials = {
     type: 'Ingot',
     hardness: 1500,
     probability: 0,
-    worth: 10000,
+    worth: 247422,
     minlevel: 99999,
     color: '#be0d0dff',
     forge: 'Base',
@@ -738,7 +747,7 @@ const materials = {
     type: 'Ingot',
     hardness: 1000,
     probability: 0,
-    worth: 9000,
+    worth: 10000,
     minlevel: 99999,
     color: '#b1c41cff',
     forge: 'Plating',
@@ -749,7 +758,7 @@ const materials = {
     type: 'Ingot',
     hardness: 800,
     probability: 0,
-    worth: 7000,
+    worth: 7500,
     minlevel: 99999,
     color: '#13cb7fff',
     forge: 'Plating',
@@ -760,11 +769,22 @@ const materials = {
     type: 'Ingot',
     hardness: 1100,
     probability: 0,
-    worth: 13000,
+    worth: 15000,
     minlevel: 99999,
     color: '#35fa00',
     forge: 'Plating',
     weight: 25
+  },
+  'randomium': {
+    name: 'Enriched Randomium',
+    type: 'Ingot',
+    hardness: 1400,
+    probability: 0,
+    worth: 22500,
+    minlevel: 99999,
+    color: '#ff00ff',
+    forge: 'Plating',
+    weight: 30
   },
   'ruby': {
     name: 'Ruby',
@@ -878,6 +898,14 @@ const platingEffects = {
         effect: 'nuclearExplosion',
         value: 2.0,
         explosionChance: 0.25
+    },
+    'randomium': {
+        name: 'Randomium Plating',
+        description: '5% chance to turn stone into random ore, 5% chance to turn ore into smelted material, 5% chance for random plating effect',
+        effect: 'randomTransmutation',
+        stoneToOreChance: 0.05,
+        oreToSmeltedChance: 0.05,
+        randomPlatingChance: 0.05
     }
 };
 
@@ -981,11 +1009,11 @@ const masonryTasksData = {
   // ──────────────────────────────────────────────────────────────────────────
   'cut-polish-gem': {
     name: 'Cut and Polish Gem',
-    description: 'Cut and polish a gem to make them usable in tools, increases value by 50%).',
+    description: 'Cut and polish a gem to make them usable in tools, increases value by 80%. Duration scales with gem size.',
     input: null,
     output: null,
     type: 'gem-cutting',
-    ticksRequired: GEM_CUTTING_TICKS_REQUIRED,
+    ticksRequired: GEM_CUTTING_BASE_TICKS,
     requires: 'gem-cutting',
     hardness: 1
   }
@@ -1294,7 +1322,7 @@ const smelterTasksData = {
     description: 'Enrich wolfram ore through advanced processing.',
     input: { material: 'wolfram ore', amount: 1 },
     output: { material: 'wolfram', amount: 1 },
-    minTemp: 3422,
+    minTemp: 2422,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 105
@@ -1304,7 +1332,7 @@ const smelterTasksData = {
     description: 'Enrich uranium ore through advanced processing.',
     input: { material: 'uranium ore', amount: 1 },
     output: { material: 'uranium', amount: 1 },
-    minTemp: 1135,
+    minTemp: 2535,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 110
@@ -1314,10 +1342,20 @@ const smelterTasksData = {
     description: 'Enrich plutonium ore through advanced processing.',
     input: { material: 'plutonium ore', amount: 1 },
     output: { material: 'plutonium', amount: 1 },
-    minTemp: 640,
+    minTemp: 2740,
     ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
     requires: 'ore-enrichment',
     hardness: 115
+  },
+  'enrich-randomium': {
+    name: 'Enrich Randomium',
+    description: 'Enrich randomium ore through chaotic processing.',
+    input: { material: 'randomium ore', amount: 1 },
+    output: { material: 'randomium', amount: 1 },
+    minTemp: 1337,
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    requires: 'ore-enrichment',
+    hardness: 120
   }
 };
 
@@ -1347,7 +1385,8 @@ let smelterTasks = [
     'smelt-thornless-silver',
     'enrich-wolfram',
     'enrich-uranium',
-    'enrich-plutonium'
+    'enrich-plutonium',
+    'enrich-randomium'
 ];
 
 // Smelter temperature system
@@ -1732,6 +1771,30 @@ let managementTasks = {
     requires: {'one-time-investments': 1},
     cost: 50,
     hardness: 40,
+  },
+  'activate-furnace-heating': {
+    name: 'Activate Furnace Heating',
+    description: 'Automatically activate furnace heating when smelter input materials exceed threshold. Moves heating task to top priority and sets min temperature.',
+    values: {
+      useCoal: {Description: 'Use Coal', default: true, type: 'checkbox'},
+      useMagma: {Description: 'Use Magma', default: false, type: 'checkbox'},
+      minInputStock: {Description: 'Activate when total ore stock >', default: 10, type: 'number'}
+    },
+    requires: {'furnace': 1},
+    cost: 50,
+    hardness: 25,
+  },
+  'deactivate-furnace-heating': {
+    name: 'Deactivate Furnace Heating',
+    description: 'Automatically deactivate furnace heating when smelter input materials fall below threshold. Moves heating task to bottom priority.',
+    values: {
+      useCoal: {Description: 'Deactivate Coal', default: true, type: 'checkbox'},
+      useMagma: {Description: 'Deactivate Magma', default: false, type: 'checkbox'},
+      maxInputStock: {Description: 'Deactivate when all ore stock <', default: 5, type: 'number'}
+    },
+    requires: {'furnace': 1},
+    cost: 10,
+    hardness: 25,
   },
 }
 

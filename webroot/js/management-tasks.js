@@ -5,6 +5,9 @@
 // to keep game-worker.js clean and maintainable.
 // ============================================================================
 
+// Set to true to enable debug logging for management tasks
+const MANAGEMENT_DEBUG = false;
+
 /**
  * Execute a completed management task
  * @param {Object} task - The task to execute
@@ -13,7 +16,7 @@
  * @returns {Object} - Updated context after task execution
  */
 function executeManagementTask(task, taskDef, context) {
-    console.log(`[Management] Executing task: ${task.type}`);
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Executing task: ${task.type}`);
 
     // Calculate trade bonus once (used by all selling tasks)
     const totalTradeBonus = calculateTradeBonus(context.researchData, context.dwarfs);
@@ -37,8 +40,14 @@ function executeManagementTask(task, taskDef, context) {
         case 'auto-invest':
             return executeAutoInvest(task, context);
 
+        case 'activate-furnace-heating':
+            return executeActivateFurnaceHeating(task, context);
+
+        case 'deactivate-furnace-heating':
+            return executeDeactivateFurnaceHeating(task, context);
+
         default:
-            console.log(`[Management] Unknown task type: ${task.type}`);
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Unknown task type: ${task.type}`);
             return context;
     }
 }
@@ -67,7 +76,7 @@ function executeSellMaterial(task, context, totalTradeBonus) {
                 description: `[Auto] Sold ${amountToSell}x ${material.name}`
             });
 
-            console.log(`[Management] Sold ${amountToSell}x ${material.name} for ${goldEarned} gold (kept ${keepQuantity})`);
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Sold ${amountToSell}x ${material.name} for ${goldEarned} gold (kept ${keepQuantity})`);
         }
     }
 
@@ -99,7 +108,7 @@ function executeSellNonCraftables(task, context, totalTradeBonus) {
             const goldForThisMaterial = Math.floor(count * m.worth * totalTradeBonus);
             totalGold += goldForThisMaterial;
             totalItems += count;
-            console.log(`[Management] Selling ${count}x ${m.name} for ${goldForThisMaterial} gold`);
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Selling ${count}x ${m.name} for ${goldForThisMaterial} gold`);
 
             // Log individual material transaction
             context.pendingTransactions.push({
@@ -114,7 +123,7 @@ function executeSellNonCraftables(task, context, totalTradeBonus) {
 
     if (totalItems > 0) {
         context.gold += totalGold;
-        console.log(`[Management] Sold all non-craftable materials (${totalItems} items) for ${totalGold} gold`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Sold all non-craftable materials (${totalItems} items) for ${totalGold} gold`);
     }
 
     return context;
@@ -173,10 +182,10 @@ function executeSellGems(task, context, totalTradeBonus) {
                 amount: data.gold,
                 description: `[Auto] Sold ${data.count}x ${gemMaterial.name}`
             });
-            console.log(`[Management] Sold ${data.count}x ${gemMaterial.name} for ${data.gold} gold`);
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Sold ${data.count}x ${gemMaterial.name} for ${data.gold} gold`);
         }
 
-        console.log(`[Management] Sold ${soldCount} gems for ${totalGold} gold total`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Sold ${soldCount} gems for ${totalGold} gold total`);
     }
 
     return context;
@@ -205,7 +214,7 @@ function executeCutGems(task, context) {
             gem.cuttingProgress = 0;
             markedCount++;
         }
-        console.log(`[Management] Marked ${markedCount} gems for cutting (type: ${gemtype}, min carats: ${mincarats})`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Marked ${markedCount} gems for cutting (type: ${gemtype}, min carats: ${mincarats})`);
     }
 
     return context;
@@ -227,7 +236,7 @@ function executeAutoResearchCheapest(task, context) {
     const cheapestResearch = findCheapestAvailableResearch(context);
 
     if (!cheapestResearch) {
-        console.log('[Management] No available research found');
+        if (MANAGEMENT_DEBUG) console.log('[Management] No available research found');
         return context;
     }
 
@@ -236,7 +245,7 @@ function executeAutoResearchCheapest(task, context) {
 
     // Check if we can afford it while maintaining reserve
     if (context.gold - goldCost < minBankGold) {
-        console.log(`[Management] Not enough gold after reserve (need ${goldCost}, have ${context.gold - minBankGold} after reserve)`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Not enough gold after reserve (need ${goldCost}, have ${context.gold - minBankGold} after reserve)`);
         return context;
     }
 
@@ -253,7 +262,7 @@ function executeAutoResearchCheapest(task, context) {
             targetLevel: targetLevel,
             goldCost: goldCost
         });
-        console.log(`[Management] Queued research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Queued research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
     } else {
         // Start directly
         context.activeResearch = {
@@ -261,7 +270,7 @@ function executeAutoResearchCheapest(task, context) {
             id: id,
             progress: researchItem.progress || 0
         };
-        console.log(`[Management] Started research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Started research: ${researchItem.name} (Level ${targetLevel}) for ${goldCost} gold`);
     }
 
     // Log transaction
@@ -347,14 +356,14 @@ function executeAutoInvest(task, context) {
     // Check if we have too many active investments
     const activeInvestmentsCount = context.oneTimeInvestments ? context.oneTimeInvestments.length : 0;
     if (activeInvestmentsCount >= maxActiveInvestments) {
-        console.log(`[Management] Max active investments (${maxActiveInvestments}) reached`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Max active investments (${maxActiveInvestments}) reached`);
         return context;
     }
 
     // Check if we have enough gold after reserve and investment
     const goldAfterInvestment = context.gold - amountToInvest;
     if (goldAfterInvestment < minBankGold) {
-        console.log(`[Management] Not enough gold for investment (need ${amountToInvest}, have ${context.gold - minBankGold} after reserve)`);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Not enough gold for investment (need ${amountToInvest}, have ${context.gold - minBankGold} after reserve)`);
         return context;
     }
 
@@ -389,7 +398,7 @@ function executeAutoInvest(task, context) {
         description: `[Auto] Investment #${investment.id} created`
     });
 
-    console.log(`[Management] Created investment #${investment.id}: ${amountToInvest} gold, ${payoutPerTick} per tick for ${ticksRequired} ticks`);
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Created investment #${investment.id}: ${amountToInvest} gold, ${payoutPerTick} per tick for ${ticksRequired} ticks`);
 
     return context;
 }
@@ -433,6 +442,14 @@ function checkManagementTaskActivation(activeManagementTasks, context) {
 
             case 'auto-invest':
                 shouldActivate = checkAutoInvestActivation(task, context);
+                break;
+
+            case 'activate-furnace-heating':
+                shouldActivate = checkActivateFurnaceHeatingActivation(task, context);
+                break;
+
+            case 'deactivate-furnace-heating':
+                shouldActivate = checkDeactivateFurnaceHeatingActivation(task, context);
                 break;
 
             default:
@@ -527,6 +544,344 @@ function checkAutoInvestActivation(task, context) {
     return context.gold >= (minBankGold + amountToInvest);
 }
 
+/**
+ * Check if activate-furnace-heating task should activate
+ * Activates when total smelter ore input materials exceed the threshold
+ * and heating is not already active (above do-nothing)
+ */
+function checkActivateFurnaceHeatingActivation(task, context) {
+    const minInputStock = task.values.minInputStock || 10;
+    const useCoal = task.values.useCoal !== false;
+    const useMagma = task.values.useMagma === true;
+
+    // At least one heating method must be selected
+    if (!useCoal && !useMagma) return false;
+
+    // Check if heating tasks are already active (above do-nothing)
+    const doNothingIndex = context.smelterTasks.indexOf('do-nothing');
+    const coalIndex = context.smelterTasks.indexOf('heat-furnace');
+    const magmaIndex = context.smelterTasks.indexOf('heat-magma-furnace');
+
+    // Heating is "active" if it's above do-nothing (or do-nothing doesn't exist and heating exists)
+    const coalIsActive = coalIndex >= 0 && (doNothingIndex === -1 || coalIndex < doNothingIndex);
+    const magmaIsActive = magmaIndex >= 0 && (doNothingIndex === -1 || magmaIndex < doNothingIndex);
+
+    // If the selected heating methods are already active, don't activate again
+    if (useCoal && !useMagma && coalIsActive) return false;
+    if (!useCoal && useMagma && magmaIsActive) return false;
+    if (useCoal && useMagma && coalIsActive && magmaIsActive) return false;
+
+    // Get smelter ore input materials (ores that can be smelted)
+    const smelterOreInputs = getSmelterOreInputMaterials(context);
+
+    // Calculate total ore stock
+    let totalOreStock = 0;
+    for (const materialId of smelterOreInputs) {
+        totalOreStock += context.materialsStock[materialId] || 0;
+    }
+
+    // Activate if total ore stock exceeds threshold
+    return totalOreStock > minInputStock;
+}
+
+/**
+ * Check if deactivate-furnace-heating task should activate
+ * Activates when total smelter ore input materials fall below the threshold
+ */
+function checkDeactivateFurnaceHeatingActivation(task, context) {
+    const maxInputStock = task.values.maxInputStock || 5;
+    const useCoal = task.values.useCoal !== false;
+    const useMagma = task.values.useMagma === true;
+
+    // At least one heating method must be selected
+    if (!useCoal && !useMagma) {
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: no heating method selected`);
+        return false;
+    }
+
+    // Check if heating tasks are already at low priority (below do-nothing)
+    const doNothingIndex = context.smelterTasks.indexOf('do-nothing');
+    const coalIndex = context.smelterTasks.indexOf('heat-furnace');
+    const magmaIndex = context.smelterTasks.indexOf('heat-magma-furnace');
+
+    // If tasks are already below do-nothing, don't need to deactivate
+    const coalIsLow = coalIndex === -1 || (doNothingIndex >= 0 && coalIndex > doNothingIndex);
+    const magmaIsLow = magmaIndex === -1 || (doNothingIndex >= 0 && magmaIndex > doNothingIndex);
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: doNothingIndex=${doNothingIndex}, coalIndex=${coalIndex}, magmaIndex=${magmaIndex}, coalIsLow=${coalIsLow}, magmaIsLow=${magmaIsLow}`);
+
+    // Only skip if the selected heating methods are already deactivated
+    if (useCoal && !useMagma && coalIsLow) {
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: coal already low, skipping`);
+        return false;
+    }
+    if (!useCoal && useMagma && magmaIsLow) {
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: magma already low, skipping`);
+        return false;
+    }
+    if (useCoal && useMagma && coalIsLow && magmaIsLow) {
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: both already low, skipping`);
+        return false;
+    }
+
+    // Get smelter ore input materials (only from active tasks above do-nothing)
+    const smelterOreInputs = getSmelterOreInputMaterials(context);
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: found ${smelterOreInputs.size} ore input types: ${Array.from(smelterOreInputs).join(', ')}`);
+
+    // If no active smelting tasks, don't deactivate (nothing to check against)
+    if (smelterOreInputs.size === 0) {
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: no active smelting tasks, skipping`);
+        return false;
+    }
+
+    // Calculate total ore stock (same as activation check)
+    let totalOreStock = 0;
+    for (const materialId of smelterOreInputs) {
+        const stock = context.materialsStock[materialId] || 0;
+        totalOreStock += stock;
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: ${materialId} stock = ${stock}`);
+    }
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivate check: totalOreStock=${totalOreStock}, threshold=${maxInputStock}, shouldDeactivate=${totalOreStock < maxInputStock}`);
+
+    // Deactivate if total ore stock falls below threshold
+    return totalOreStock < maxInputStock;
+}
+
+/**
+ * Get smelter ore input materials (only ores/ingots, not coal/magma)
+ * Only checks activated smelter tasks (above do-nothing) that have all required materials
+ * For alloy tasks, only includes materials if ALL inputs are available
+ * @param {Object} context - Game context
+ * @returns {Set<string>} Set of material IDs that are ore inputs for smelting
+ */
+function getSmelterOreInputMaterials(context) {
+    const oreInputs = new Set();
+
+    // Find do-nothing position - only check tasks above it (activated tasks)
+    const doNothingIndex = context.smelterTasks.indexOf('do-nothing');
+    const activeEndIndex = doNothingIndex >= 0 ? doNothingIndex : context.smelterTasks.length;
+
+    for (let i = 0; i < activeEndIndex; i++) {
+        const taskId = context.smelterTasks[i];
+        const task = context.smelterTasksData[taskId];
+        if (!task) continue;
+
+        // Skip heating tasks - we want smelting input ores, not fuel
+        if (task.type === 'heating') continue;
+
+        // Skip tasks without temperature requirements (not smelting)
+        if (!task.minTemp) continue;
+
+        // For tasks with multiple inputs (alloys), only add materials if ALL inputs are available
+        if (task.inputs && Array.isArray(task.inputs)) {
+            // Check if all inputs have at least some stock
+            const allInputsAvailable = task.inputs.every(input => {
+                const stock = context.materialsStock[input.material] || 0;
+                return stock > 0;
+            });
+
+            if (allInputsAvailable) {
+                for (const input of task.inputs) {
+                    const material = context.materials[input.material];
+                    if (material && (material.type?.includes('Ore') || material.type?.includes('Ingot'))) {
+                        oreInputs.add(input.material);
+                    }
+                }
+            }
+        }
+        // For single input tasks, add if it's an ore/ingot type
+        else if (task.input && task.input.material) {
+            const material = context.materials[task.input.material];
+            if (material && (material.type?.includes('Ore') || material.type?.includes('Ingot'))) {
+                oreInputs.add(task.input.material);
+            }
+        }
+    }
+
+    return oreInputs;
+}
+
+/**
+ * Execute activate-furnace-heating task
+ * Moves heating tasks to top priority, reorders smelter tasks by temperature (highest to lowest),
+ * and sets temperature thresholds
+ */
+function executeActivateFurnaceHeating(task, context) {
+    const useCoal = task.values.useCoal !== false;
+    const useMagma = task.values.useMagma === true;
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Activating furnace heating (Coal: ${useCoal}, Magma: ${useMagma})`);
+
+    // Find the do-nothing position - only reorder tasks above it
+    const doNothingIndex = context.smelterTasks.indexOf('do-nothing');
+    const activeEndIndex = doNothingIndex >= 0 ? doNothingIndex : context.smelterTasks.length;
+
+    // Collect tasks above do-nothing that have temperature requirements and materials
+    const tasksWithTemp = [];
+    const tasksWithoutTemp = [];
+
+    for (let i = 0; i < activeEndIndex; i++) {
+        const taskId = context.smelterTasks[i];
+        const smelterTask = context.smelterTasksData[taskId];
+
+        // Skip heating tasks - we'll handle them separately
+        if (taskId === 'heat-furnace' || taskId === 'heat-magma-furnace') {
+            continue;
+        }
+
+        if (smelterTask && smelterTask.minTemp) {
+            tasksWithTemp.push({
+                id: taskId,
+                minTemp: smelterTask.minTemp
+            });
+        } else {
+            tasksWithoutTemp.push(taskId);
+        }
+    }
+
+    // Sort tasks by temperature (highest to lowest)
+    tasksWithTemp.sort((a, b) => b.minTemp - a.minTemp);
+
+    // Find the lowest required temperature among tasks that have materials
+    let lowestRequiredTemp = Infinity;
+    for (const taskInfo of tasksWithTemp) {
+        const smelterTask = context.smelterTasksData[taskInfo.id];
+        const hasMaterials = hasMaterialsForSmelterTask(smelterTask, context);
+        if (hasMaterials && taskInfo.minTemp < lowestRequiredTemp) {
+            lowestRequiredTemp = taskInfo.minTemp;
+        }
+    }
+
+    // If no valid tasks found, use a default minimum
+    if (lowestRequiredTemp === Infinity) {
+        lowestRequiredTemp = 420; // Zinc temperature as fallback
+    }
+
+    // Check if heating tasks exist anywhere in the array (they might be below do-nothing)
+    const hasCoalHeating = context.smelterTasks.includes('heat-furnace');
+    const hasMagmaHeating = context.smelterTasks.includes('heat-magma-furnace');
+
+    // Rebuild the smelter tasks array
+    // Order: heating tasks (selected ones first) -> tasks with temp (high to low) -> tasks without temp -> do-nothing -> rest (excluding moved heating tasks)
+    const newOrder = [];
+
+    // Add heating tasks at top (if selected and exists)
+    if (useCoal && hasCoalHeating) {
+        newOrder.push('heat-furnace');
+    }
+    if (useMagma && hasMagmaHeating) {
+        newOrder.push('heat-magma-furnace');
+    }
+
+    // Add temperature-based tasks (highest to lowest)
+    for (const taskInfo of tasksWithTemp) {
+        newOrder.push(taskInfo.id);
+    }
+
+    // Add tasks without temperature requirements
+    for (const taskId of tasksWithoutTemp) {
+        newOrder.push(taskId);
+    }
+
+    // Add do-nothing and everything after it (excluding heating tasks we already moved)
+    for (let i = activeEndIndex; i < context.smelterTasks.length; i++) {
+        const taskId = context.smelterTasks[i];
+        // Skip heating tasks that we've already added at the top
+        if ((taskId === 'heat-furnace' && useCoal && hasCoalHeating) ||
+            (taskId === 'heat-magma-furnace' && useMagma && hasMagmaHeating)) {
+            continue;
+        }
+        newOrder.push(taskId);
+    }
+
+    // Replace smelter tasks array
+    context.smelterTasks.length = 0;
+    for (const taskId of newOrder) {
+        context.smelterTasks.push(taskId);
+    }
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Reordered smelter tasks by temperature (highest to lowest)`);
+
+    // Calculate max temperature based on furnace research
+    const furnaceTemp = context.researchData['furnace-temperature'];
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = (context.SMELTER_MAX_TEMPERATURE_LIMIT || 1500) + (furnaceTempLevel * 100);
+
+    // Set temperature thresholds
+    if (useMagma) {
+        context.smelterMagmaMinTemp = lowestRequiredTemp;
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Set magma min temp to ${lowestRequiredTemp}°`);
+    }
+
+    if (useCoal) {
+        context.smelterCoalMinTemp = lowestRequiredTemp;
+        context.smelterCoalMaxTemp = Math.min(2000, maxTempLimit);
+        if (MANAGEMENT_DEBUG) console.log(`[Management] Set coal min temp to ${lowestRequiredTemp}°, max to ${context.smelterCoalMaxTemp}°`);
+    }
+
+    return context;
+}
+
+/**
+ * Execute deactivate-furnace-heating task
+ * Moves heating tasks below do-nothing (to bottom priority)
+ */
+function executeDeactivateFurnaceHeating(task, context) {
+    const useCoal = task.values.useCoal !== false;
+    const useMagma = task.values.useMagma === true;
+
+    if (MANAGEMENT_DEBUG) console.log(`[Management] Deactivating furnace heating (Coal: ${useCoal}, Magma: ${useMagma})`);
+
+    // Find do-nothing position - move heating tasks after it
+    const doNothingIndex = context.smelterTasks.indexOf('do-nothing');
+
+    if (useCoal) {
+        const coalIndex = context.smelterTasks.indexOf('heat-furnace');
+        if (coalIndex >= 0 && (doNothingIndex === -1 || coalIndex < doNothingIndex)) {
+            // Move coal heating to end of array
+            context.smelterTasks.splice(coalIndex, 1);
+            context.smelterTasks.push('heat-furnace');
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Moved coal heating to bottom priority`);
+        }
+    }
+
+    if (useMagma) {
+        const magmaIndex = context.smelterTasks.indexOf('heat-magma-furnace');
+        if (magmaIndex >= 0 && (doNothingIndex === -1 || magmaIndex < doNothingIndex)) {
+            // Move magma heating to end of array
+            context.smelterTasks.splice(magmaIndex, 1);
+            context.smelterTasks.push('heat-magma-furnace');
+            if (MANAGEMENT_DEBUG) console.log(`[Management] Moved magma heating to bottom priority`);
+        }
+    }
+
+    return context;
+}
+
+/**
+ * Check if a smelter task has the required materials
+ * @param {Object} smelterTask - The smelter task definition
+ * @param {Object} context - Game context
+ * @returns {boolean} True if materials are available
+ */
+function hasMaterialsForSmelterTask(smelterTask, context) {
+    if (smelterTask.inputs && Array.isArray(smelterTask.inputs)) {
+        return smelterTask.inputs.every(input => {
+            const stock = context.materialsStock[input.material] || 0;
+            return stock >= input.amount;
+        });
+    }
+
+    if (smelterTask.input && smelterTask.input.material) {
+        const stock = context.materialsStock[smelterTask.input.material] || 0;
+        return stock >= smelterTask.input.amount;
+    }
+
+    return false;
+}
+
 // Note: calculateTradeBonus, getSmelterInputMaterials, and calculateNonCraftableMaterialsTotal
 // are already defined in utils.js and available via importScripts
 
@@ -538,6 +893,7 @@ if (typeof module !== 'undefined' && module.exports) {
         checkManagementTaskActivation,
         calculateTradeBonus,
         getSmelterInputMaterials,
-        calculateNonCraftableMaterialsTotal
+        calculateNonCraftableMaterialsTotal,
+        getSmelterOreInputMaterials
     };
 }

@@ -42,55 +42,7 @@ let oneTimeInvestments = []; // Array of active one-time investments {amount, ti
 let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
 let managementTasks = {}; // Management task definitions
-
-// Plating effects - duplicated from defs.js (must be kept in sync)
-// NOTE: These values are the single source of truth defined in defs.js
-// They are duplicated here because workers cannot import ES modules
-const platingEffects = {
-    'zinc': {
-        name: 'Zinc Plating',
-        description: 'Digging consumes 2 less energy',
-        effect: 'energyReduction',
-        value: 2
-    },
-    'silver': {
-        name: 'Silver Plating',
-        description: '+40% gem probability',
-        effect: 'gemProbability',
-        value: 1.40
-    },
-    'gold': {
-        name: 'Gold Plating',
-        description: '+10% higher critical strike chance',
-        effect: 'criticalStrike',
-        value: 1.10
-    },
-    'uranium': {
-        name: 'Uranium Plating',
-        description: '5× one-hit kill chance on critical hits',
-        effect: 'oneHitMultiplier',
-        value: 5.0
-    },
-    'nickel': {
-        name: 'Nickel Plating',
-        description: 'Regenerate 5 energy when moving (instead of consuming 1)',
-        effect: 'movementEnergyRegen',
-        value: 5
-    },
-    'wolfram': {
-        name: 'Wolfram Plating',
-        description: '25% chance for a second dig in the same tick (only one can crit)',
-        effect: 'doubleDigChance',
-        value: 0.25
-    },
-    'plutonium': {
-        name: 'Plutonium Plating',
-        description: '2× one-hit kill chance, 25% chance for nuclear explosion on one-hit (weakens surrounding cells)',
-        effect: 'nuclearExplosion',
-        value: 2.0,
-        explosionChance: 0.25
-    }
-};
+let platingEffects = {}; // Plating effects definitions (initialized from defs.js via main thread)
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -191,47 +143,47 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     });
 
     // STEP 2: Debug output - which tasks are possible
-    console.log(`[${dwarf.name}] Task Assignment:`, {
-        position: `(${dwarf.x}, ${dwarf.y})`,
-        allAvailability: taskAvailability,
-        possibleTasks: possibleTasks,
-        priorityHigh: taskPriorityHigh,
-        priorityNormal: taskPriorityNormal,
-        priorityNone: taskPriorityNone
-    });
+    //console.log(`[${dwarf.name}] Task Assignment:`, {
+    //    position: `(${dwarf.x}, ${dwarf.y})`,
+    //    allAvailability: taskAvailability,
+    //    possibleTasks: possibleTasks,
+    //    priorityHigh: taskPriorityHigh,
+    //    priorityNormal: taskPriorityNormal,
+    //    priorityNone: taskPriorityNone
+    //});
 
     // STEP 3: Check high priority tasks
     const possibleHighPriorityTasks = taskPriorityHigh.filter(taskId => possibleTasks.includes(taskId));
 
-    console.log(`[${dwarf.name}] High Priority Check:`, {
-        configured: taskPriorityHigh,
-        possible: possibleHighPriorityTasks
-    });
+    //console.log(`[${dwarf.name}] High Priority Check:`, {
+    //    configured: taskPriorityHigh,
+    //    possible: possibleHighPriorityTasks
+    //});
 
     if (possibleHighPriorityTasks.length > 0) {
         // Select random task from high priority
         const selectedTask = possibleHighPriorityTasks[Math.floor(Math.random() * possibleHighPriorityTasks.length)];
-        console.log(`[${dwarf.name}] ✅ Selected HIGH PRIORITY task: ${selectedTask}`);
+        //console.log(`[${dwarf.name}] ✅ Selected HIGH PRIORITY task: ${selectedTask}`);
         return executeTask(dwarf, selectedTask, diggingX, diggingY);
     }
 
     // STEP 4: Check normal priority tasks
     const possibleNormalPriorityTasks = taskPriorityNormal.filter(taskId => possibleTasks.includes(taskId));
 
-    console.log(`[${dwarf.name}] Normal Priority Check:`, {
-        configured: taskPriorityNormal,
-        possible: possibleNormalPriorityTasks
-    });
+    //console.log(`[${dwarf.name}] Normal Priority Check:`, {
+    //    configured: taskPriorityNormal,
+    //    possible: possibleNormalPriorityTasks
+    //});
 
     if (possibleNormalPriorityTasks.length > 0) {
         // Select random task from normal priority
         const selectedTask = possibleNormalPriorityTasks[Math.floor(Math.random() * possibleNormalPriorityTasks.length)];
-        console.log(`[${dwarf.name}] ✅ Selected NORMAL PRIORITY task: ${selectedTask}`);
+        //console.log(`[${dwarf.name}] ✅ Selected NORMAL PRIORITY task: ${selectedTask}`);
         return executeTask(dwarf, selectedTask, diggingX, diggingY);
     }
 
     // No task was assigned
-    console.log(`[${dwarf.name}] ❌ No task assigned (no possible tasks in high or normal priority)`);
+    //console.log(`[${dwarf.name}] ❌ No task assigned (no possible tasks in high or normal priority)`);
     return null;
 }
 
@@ -244,84 +196,41 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
  * @returns {string} The task that was executed
  */
 function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
-    if (taskId === 'research') {
-        // Check if already at research location
-        if (dwarf.x === research.x && dwarf.y === research.y) {
-            // Already at research - start researching immediately
-            if (researchReservedBy === dwarf.name || !researchReservedBy) {
-                researchReservedBy = dwarf.name;
-                dwarf.status = 'researching';
-                console.log(`[${dwarf.name}] 🔬 Started researching (already at location)`);
-                return 'research';
+    // Task configuration for location-based tasks
+    const taskConfigs = {
+        'research': { location: research, status: 'researching', emoji: '🔬', getReserved: () => researchReservedBy, setReserved: (name) => { researchReservedBy = name; } },
+        'masonry': { location: masonry, status: 'masonry', emoji: '🔨', getReserved: () => masonryReservedBy, setReserved: (name) => { masonryReservedBy = name; } },
+        'smelting': { location: smelter, status: 'smelting', emoji: '🔥', getReserved: () => smelterReservedBy, setReserved: (name) => { smelterReservedBy = name; } },
+        'managing': { location: management, status: 'managing', emoji: '💼', getReserved: () => managementReservedBy, setReserved: (name) => { managementReservedBy = name; } }
+    };
+
+    const config = taskConfigs[taskId];
+    if (config) {
+        const { location, status, emoji, getReserved, setReserved } = config;
+        const reservedBy = getReserved();
+
+        if (dwarf.x === location.x && dwarf.y === location.y) {
+            // Already at location - start task immediately if not reserved by another
+            if (reservedBy === dwarf.name || !reservedBy) {
+                setReserved(dwarf.name);
+                dwarf.status = status;
+                //console.log(`[${dwarf.name}] ${emoji} Started ${taskId} (already at location)`);
+                return taskId;
             }
         } else {
-            // Not at research - move there
-            researchReservedBy = dwarf.name;
-            scheduleMove(dwarf, research.x, research.y);
+            // Not at location - move there
+            setReserved(dwarf.name);
+            scheduleMove(dwarf, location.x, location.y);
             dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to research at (${research.x}, ${research.y})`);
-            return 'research';
-        }
-    } else if (taskId === 'masonry') {
-        // Check if already at masonry location
-        if (dwarf.x === masonry.x && dwarf.y === masonry.y) {
-            // Already at masonry - start masonry immediately
-            if (masonryReservedBy === dwarf.name || !masonryReservedBy) {
-                masonryReservedBy = dwarf.name;
-                dwarf.status = 'masonry';
-                console.log(`[${dwarf.name}] 🔨 Started masonry (already at location)`);
-                return 'masonry';
-            }
-        } else {
-            // Not at masonry - move there
-            masonryReservedBy = dwarf.name;
-            scheduleMove(dwarf, masonry.x, masonry.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to masonry at (${masonry.x}, ${masonry.y})`);
-            return 'masonry';
-        }
-    } else if (taskId === 'smelting') {
-        // Check if already at smelter location
-        if (dwarf.x === smelter.x && dwarf.y === smelter.y) {
-            // Already at smelter - start smelting immediately
-            if (smelterReservedBy === dwarf.name || !smelterReservedBy) {
-                smelterReservedBy = dwarf.name;
-                dwarf.status = 'smelting';
-                console.log(`[${dwarf.name}] 🔥 Started smelting (already at location)`);
-                return 'smelting';
-            }
-        } else {
-            // Not at smelter - move there
-            smelterReservedBy = dwarf.name;
-            scheduleMove(dwarf, smelter.x, smelter.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to smelter at (${smelter.x}, ${smelter.y})`);
-            return 'smelting';
-        }
-    } else if (taskId === 'managing') {
-        // Check if already at management location
-        if (dwarf.x === management.x && dwarf.y === management.y) {
-            // Already at management - start managing immediately
-            if (managementReservedBy === dwarf.name || !managementReservedBy) {
-                managementReservedBy = dwarf.name;
-                dwarf.status = 'managing';
-                console.log(`[${dwarf.name}] 💼 Started managing (already at location)`);
-                return 'managing';
-            }
-        } else {
-            // Not at management - move there
-            managementReservedBy = dwarf.name;
-            scheduleMove(dwarf, management.x, management.y);
-            dwarf.status = 'moving';
-            console.log(`[${dwarf.name}] 🚶 Moving to management at (${management.x}, ${management.y})`);
-            return 'managing';
+            //console.log(`[${dwarf.name}] 🚶 Moving to ${taskId} at (${location.x}, ${location.y})`);
+            return taskId;
         }
     } else if (taskId === 'digging') {
         // If digging coordinates provided, move there; otherwise just signal digging task
         if (diggingX !== null && diggingY !== null) {
             scheduleMove(dwarf, diggingX, diggingY);
         }
-        console.log(`[${dwarf.name}] ⛏️ Assigned digging task`);
+        //console.log(`[${dwarf.name}] ⛏️ Assigned digging task`);
         return 'digging';
     }
 
@@ -337,7 +246,8 @@ function isReservedForDig(x, y) {
     return reservedDigBy.has(coordKey(x, y));
 }
 
-// Note: getMaterialById and selectRandomGem are now in utils.js
+// Note: getMaterialById, selectRandomGem, hasRandomiumPlating, getRandomOreAtDepth,
+// getSmeltedOutputForOre, and applyRandomPlatingEffect are now in utils.js
 
 /**
  * Handle block destruction logic including gem spawning and material collection
@@ -406,7 +316,60 @@ function handleBlockDestruction(cell, dwarf, x, y) {
             delete cell.gemId;
         }
 
-        dwarf.bucket[matId] = (dwarf.bucket[matId] || 0) + 1;
+        // Apply Randomium plating transmutation effects
+        let finalMatId = matId;
+        if (hasRandomiumPlating(dwarf)) {
+            const randomiumEffect = platingEffects['randomium'];
+            const depth = (y + startX) || 0;
+            console.log(`🎲 [Randomium] ${dwarf.name} mining with Randomium plating at depth ${depth}, material: ${mat ? mat.name : matId} (type: ${mat ? mat.type : 'unknown'})`);
+
+            // Check stone → ore transformation (5% chance)
+            if (mat && mat.type && mat.type.startsWith('Stone')) {
+                const stoneRoll = Math.random();
+                console.log(`🎲 [Randomium] Stone check - roll: ${(stoneRoll * 100).toFixed(2)}% vs ${(randomiumEffect.stoneToOreChance * 100).toFixed(0)}% chance`);
+                if (stoneRoll < randomiumEffect.stoneToOreChance) {
+                    const randomOre = getRandomOreAtDepth(depth);
+                    console.log(`🎲 [Randomium] Stone → Ore triggered! Available ore at depth: ${randomOre || 'none'}`);
+                    if (randomOre) {
+                        finalMatId = randomOre;
+                        const oreMat = materials[randomOre];
+                        console.log(`🎲 [Randomium] ✅ Stone → Ore transmutation! ${mat.name} turned into ${oreMat ? oreMat.name : randomOre}`);
+                        pendingTransactions.push({ type: 'randomium-transmute', x: x, y: y, dwarf: dwarf.name, from: matId, to: finalMatId, transmutation: 'stone-to-ore' });
+                    }
+                }
+            }
+
+            // Check ore → smelted transformation (5% chance)
+            if (mat && mat.type && mat.type.includes('Ore')) {
+                const oreRoll = Math.random();
+                console.log(`🎲 [Randomium] Ore check - roll: ${(oreRoll * 100).toFixed(2)}% vs ${(randomiumEffect.oreToSmeltedChance * 100).toFixed(0)}% chance`);
+                if (oreRoll < randomiumEffect.oreToSmeltedChance) {
+                    const smeltedOutput = getSmeltedOutputForOre(matId);
+                    console.log(`🎲 [Randomium] Ore → Smelted triggered! Smelted output for ${matId}: ${smeltedOutput || 'none (recipe not unlocked)'}`);
+                    if (smeltedOutput) {
+                        finalMatId = smeltedOutput;
+                        const smeltedMat = materials[smeltedOutput];
+                        console.log(`🎲 [Randomium] ✅ Ore → Smelted transmutation! ${mat.name} turned into ${smeltedMat ? smeltedMat.name : smeltedOutput}`);
+                        pendingTransactions.push({ type: 'randomium-transmute', x: x, y: y, dwarf: dwarf.name, from: matId, to: finalMatId, transmutation: 'ore-to-smelted' });
+                    }
+                }
+            }
+
+            // Check for random other plating effect (5% chance)
+            const effectRoll = Math.random();
+            console.log(`🎲 [Randomium] Random effect check - roll: ${(effectRoll * 100).toFixed(2)}% vs ${(randomiumEffect.randomPlatingChance * 100).toFixed(0)}% chance`);
+            if (effectRoll < randomiumEffect.randomPlatingChance) {
+                const randomEffect = applyRandomPlatingEffect(dwarf, { cell, depth, x, y });
+                if (randomEffect) {
+                    console.log(`🎲 [Randomium] ✅ Random plating effect triggered: ${randomEffect.effect.name}`);
+                    pendingTransactions.push({ type: 'randomium-random-effect', x: x, y: y, dwarf: dwarf.name, effect: randomEffect.effect.name });
+                }
+            }
+
+            console.log(`🎲 [Randomium] Final material collected: ${finalMatId} (original: ${matId})`);
+        }
+
+        dwarf.bucket[finalMatId] = (dwarf.bucket[finalMatId] || 0) + 1;
 
         // Award XP only when material is destroyed
         if (mat && typeof mat.hardness === 'number') {
@@ -655,7 +618,12 @@ function executeManagementTaskWrapper(task, taskDef) {
         researchTree,
         activeResearch,
         researchQueue,
+        smelterTasks,
         smelterTasksData,
+        smelterCoalMinTemp,
+        smelterCoalMaxTemp,
+        smelterMagmaMinTemp,
+        SMELTER_MAX_TEMPERATURE_LIMIT,
         managementTasks,
         pendingTransactions,
         startX,
@@ -672,7 +640,11 @@ function executeManagementTaskWrapper(task, taskDef) {
     activeResearch = updatedContext.activeResearch;
     oneTimeInvestments = updatedContext.oneTimeInvestments;
     nextInvestmentId = updatedContext.nextInvestmentId;
-    // Note: materials, materialsStock, gems, dwarfs, researchQueue are passed by reference and modified in place
+    // Update smelter state if furnace automations changed them
+    if (updatedContext.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = updatedContext.smelterCoalMinTemp;
+    if (updatedContext.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = updatedContext.smelterCoalMaxTemp;
+    if (updatedContext.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = updatedContext.smelterMagmaMinTemp;
+    // Note: materials, materialsStock, gems, dwarfs, researchQueue, smelterTasks are passed by reference and modified in place
 }
 
 // Find the first actionable masonry task
@@ -867,6 +839,11 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 if (gemToProcess) {
                     // Track which gem we're working on
                     task.currentGemId = gemToProcess.id;
+
+                    // Calculate dynamic ticks required based on gem carats
+                    // Formula: base ticks + (2 × carats)
+                    const gemCarats = gemToProcess.carats || 1;
+                    task.ticksRequired = GEM_CUTTING_BASE_TICKS + (GEM_CUTTING_TICKS_PER_CARAT * gemCarats);
 
                     // Initialize progress if needed
                     if (!gemToProcess.cuttingProgress) {
@@ -2550,6 +2527,7 @@ function checkManagementTaskActivationWrapper() {
         researchTree,
         activeResearch,
         researchQueue,
+        smelterTasks,
         smelterTasksData,
         managementTasks,
         startX,
@@ -2713,6 +2691,7 @@ function tick() {
                 smelterCoalMaxTemp,
                 smelterMagmaMinTemp,
                 smelterHeatingMode,
+                smelterTasks,
                 smelterTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,
@@ -2794,6 +2773,8 @@ self.addEventListener('message', (e) => {
             // Initialize management tasks
             if (data.activeManagementTasks) activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
             if (data.managementTasks) managementTasks = JSON.parse(JSON.stringify(data.managementTasks));
+            // Initialize plating effects (from defs.js)
+            if (data.platingEffects) platingEffects = JSON.parse(JSON.stringify(data.platingEffects));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;

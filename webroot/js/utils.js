@@ -88,6 +88,71 @@ function extractMaterialBaseName(name) {
 // ============================================================================
 
 /**
+ * Get the dwarf's equipped tool instance
+ * @param {Object} dwarf - The dwarf object
+ * @returns {Object|null} Tool instance or null if no tool equipped
+ */
+function getDwarfToolInstance(dwarf) {
+    if (!dwarf.toolId) return null;
+    return toolsInventory.find(t => t.id === dwarf.toolId) || null;
+}
+
+/**
+ * Get total carat value for a specific gem type from a dwarf's tool
+ * @param {Object} dwarf - The dwarf object
+ * @param {string} gemType - The gem type to sum (e.g., 'ruby', 'emerald')
+ * @returns {number} Total carat value for that gem type
+ */
+function getGemCaratTotal(dwarf, gemType) {
+    const toolInstance = getDwarfToolInstance(dwarf);
+    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
+        return 0;
+    }
+    return toolInstance.gems
+        .filter(gem => gem.type === gemType)
+        .reduce((sum, gem) => sum + gem.carat, 0);
+}
+
+/**
+ * Calculate a logarithmic bonus with diminishing returns
+ * @param {number} value - The input value (e.g., carat)
+ * @param {number} minResult - Minimum result value
+ * @param {number} maxResult - Maximum result value
+ * @param {number} normalizer - Normalizer constant for scaling
+ * @param {number} maxValue - Maximum input value for scaling
+ * @returns {number} Calculated bonus clamped to [minResult, maxResult]
+ */
+function calculateLogarithmicBonus(value, minResult, maxResult, normalizer, maxValue) {
+    if (value <= 0) return 0;
+    const normalizedValue = value / normalizer;
+    const maxNormalizedValue = maxValue / normalizer;
+    const logFactor = Math.log(1 + normalizedValue) / Math.log(1 + maxNormalizedValue);
+    const result = minResult + (maxResult - minResult) * logFactor;
+    return Math.min(maxResult, Math.max(minResult, result));
+}
+
+/**
+ * Get a plating effect value from a dwarf's tool
+ * @param {Object} dwarf - The dwarf object
+ * @param {string} platingName - The plating type (e.g., 'zinc', 'silver')
+ * @param {number} defaultValue - Default value if no matching plating
+ * @param {string} [effectKey='value'] - The key in platingEffects to retrieve
+ * @returns {number} The plating effect value or default
+ */
+function getPlatingEffectValue(dwarf, platingName, defaultValue, effectKey = 'value') {
+    const toolInstance = getDwarfToolInstance(dwarf);
+    if (!toolInstance || !toolInstance.plating) {
+        return defaultValue;
+    }
+    // Normalize plating name comparison (handle case variations)
+    const toolPlating = toolInstance.plating.toLowerCase();
+    if (toolPlating === platingName.toLowerCase()) {
+        return platingEffects[platingName]?.[effectKey] ?? defaultValue;
+    }
+    return defaultValue;
+}
+
+/**
  * Randomly select a gem from the available gems defined in materials
  * @returns {string|null} Gem material ID or null if no gems available
  */
@@ -104,28 +169,12 @@ function selectRandomGem() {
 
 /**
  * Calculate the probability that a Ruby gem prevents energy consumption
- * Formula uses logarithmic diminishing returns:
- * - Carat 1: ~5%
- * - Carat 25: ~10%
- * - Carat 100: ~50%
- * - Carat 1000: ~75%
- * - Carat 10000: ~79%
- * - Max: 80%
+ * Uses logarithmic diminishing returns (see calculateLogarithmicBonus)
  * @param {number} carat - Total carat value of Ruby gems
  * @returns {number} Probability (0-80) as percentage
  */
 function calculateRubyEnergyPreventionChance(carat) {
-    if (carat <= 0) return 0;
-
-    // Logarithmic formula with diminishing returns
-    // probability = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
-    const normalizedCarat = carat / RUBY_ENERGY_CARAT_NORMALIZER;
-    const maxNormalizedCarat = RUBY_ENERGY_MAX_CARAT / RUBY_ENERGY_CARAT_NORMALIZER;
-    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
-    const probability = RUBY_ENERGY_MIN_CHANCE + (RUBY_ENERGY_MAX_CHANCE - RUBY_ENERGY_MIN_CHANCE) * logFactor;
-
-    // Clamp to range [MIN, MAX]
-    return Math.min(RUBY_ENERGY_MAX_CHANCE, Math.max(RUBY_ENERGY_MIN_CHANCE, probability));
+    return calculateLogarithmicBonus(carat, RUBY_ENERGY_MIN_CHANCE, RUBY_ENERGY_MAX_CHANCE, RUBY_ENERGY_CARAT_NORMALIZER, RUBY_ENERGY_MAX_CARAT);
 }
 
 /**
@@ -134,55 +183,21 @@ function calculateRubyEnergyPreventionChance(carat) {
  * @returns {boolean} True if energy consumption should be prevented
  */
 function shouldRubyPreventEnergyConsumption(dwarf) {
-    if (!dwarf.toolId) return false;
+    const totalRubyCarat = getGemCaratTotal(dwarf, 'ruby');
+    if (totalRubyCarat <= 0) return false;
 
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return false;
-    }
-
-    // Sum up all Ruby carat values
-    const totalRubyCarat = toolInstance.gems
-        .filter(gem => gem.type == 'ruby')
-        .reduce((sum, gem) => sum + gem.carat, 0);
-
-    if (totalRubyCarat <= 0) {
-        return false;
-    }
-
-
-    // Calculate prevention chance and roll
     const chance = calculateRubyEnergyPreventionChance(totalRubyCarat);
-    const roll = Math.random() * 100;
-    const prevented = roll < chance;
-
-    return prevented;
+    return Math.random() * 100 < chance;
 }
 
 /**
  * Calculate the critical strike chance multiplier from Emerald gems
- * Formula uses logarithmic diminishing returns:
- * - Carat 1: ~0.5 (50% increase)
- * - Carat 25: ~1.0 (100% increase)
- * - Carat 100: ~10.0 (1000% increase)
- * - Carat 1000: ~30.0 (3000% increase)
- * - Carat 10000: ~39.5 (3950% increase)
- * - Max: 40.0 (4000% increase)
+ * Uses logarithmic diminishing returns (see calculateLogarithmicBonus)
  * @param {number} carat - Total carat value of Emerald gems
  * @returns {number} Multiplier for critical strike chance (0.5-40.0)
  */
 function calculateEmeraldCritMultiplier(carat) {
-    if (carat <= 0) return 0;
-
-    // Logarithmic formula with diminishing returns
-    // multiplier = MIN + (MAX - MIN) * (log(1 + carat/NORM) / log(1 + MAX_CARAT/NORM))
-    const normalizedCarat = carat / EMERALD_CRIT_CARAT_NORMALIZER;
-    const maxNormalizedCarat = EMERALD_CRIT_MAX_CARAT / EMERALD_CRIT_CARAT_NORMALIZER;
-    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
-    const multiplier = EMERALD_CRIT_MIN_MULTIPLIER + (EMERALD_CRIT_MAX_MULTIPLIER - EMERALD_CRIT_MIN_MULTIPLIER) * logFactor;
-
-    // Clamp to range [MIN, MAX]
-    return Math.min(EMERALD_CRIT_MAX_MULTIPLIER, Math.max(EMERALD_CRIT_MIN_MULTIPLIER, multiplier));
+    return calculateLogarithmicBonus(carat, EMERALD_CRIT_MIN_MULTIPLIER, EMERALD_CRIT_MAX_MULTIPLIER, EMERALD_CRIT_CARAT_NORMALIZER, EMERALD_CRIT_MAX_CARAT);
 }
 
 /**
@@ -192,39 +207,21 @@ function calculateEmeraldCritMultiplier(carat) {
  * @returns {number} Modified critical strike chance with Emerald bonus (0-1)
  */
 function getEmeraldModifiedCritChance(dwarf, baseCritChance) {
-    if (!dwarf.toolId) return baseCritChance;
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return baseCritChance;
-    }
-    // Sum up all Emerald carat values
-    const totalEmeraldCarat = toolInstance.gems
-        .filter(gem => gem.type == 'emerald')
-        .reduce((sum, gem) => sum + gem.carat, 0);
-    if (totalEmeraldCarat <= 0) {
-        return baseCritChance;
-    }
-    // Calculate the multiplier and apply it
-    const multiplier = Math.max(1,calculateEmeraldCritMultiplier(totalEmeraldCarat)) / 100;
-    return  baseCritChance * (1+multiplier);
+    const totalEmeraldCarat = getGemCaratTotal(dwarf, 'emerald');
+    if (totalEmeraldCarat <= 0) return baseCritChance;
+
+    const multiplier = Math.max(1, calculateEmeraldCritMultiplier(totalEmeraldCarat)) / 100;
+    return baseCritChance * (1 + multiplier);
 }
 
 /**
  * Calculate the strength bonus percentage from Sapphire gems
- * Formula uses logarithmic diminishing returns (1% to 50%)
+ * Uses logarithmic diminishing returns (see calculateLogarithmicBonus)
  * @param {number} carat - Total carat value of Sapphire gems
  * @returns {number} Bonus percentage (1-50)
  */
 function calculateSapphireStrengthBonus(carat) {
-    if (carat <= 0) return 0;
-
-    // Logarithmic formula with diminishing returns
-    const normalizedCarat = carat / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
-    const maxNormalizedCarat = SAPPHIRE_STRENGTH_MAX_CARAT / SAPPHIRE_STRENGTH_CARAT_NORMALIZER;
-    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
-    const bonus = SAPPHIRE_STRENGTH_MIN_BONUS + (SAPPHIRE_STRENGTH_MAX_BONUS - SAPPHIRE_STRENGTH_MIN_BONUS) * logFactor;
-
-    return Math.min(SAPPHIRE_STRENGTH_MAX_BONUS, Math.max(SAPPHIRE_STRENGTH_MIN_BONUS, bonus));
+    return calculateLogarithmicBonus(carat, SAPPHIRE_STRENGTH_MIN_BONUS, SAPPHIRE_STRENGTH_MAX_BONUS, SAPPHIRE_STRENGTH_CARAT_NORMALIZER, SAPPHIRE_STRENGTH_MAX_CARAT);
 }
 
 /**
@@ -234,21 +231,9 @@ function calculateSapphireStrengthBonus(carat) {
  * @returns {number} Modified strength with Sapphire bonus
  */
 function getSapphireModifiedStrength(dwarf, baseStrength) {
-    if (!dwarf.toolId) return baseStrength;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return baseStrength;
-    }
-
-    // Sum up all Sapphire carat values
-    const totalSapphireCarat = toolInstance.gems
-        .filter(gem => gem.type === 'sapphire')
-        .reduce((sum, gem) => sum + gem.carat, 0);
-
+    const totalSapphireCarat = getGemCaratTotal(dwarf, 'sapphire');
     if (totalSapphireCarat <= 0) return baseStrength;
 
-    // Calculate bonus and apply it
     const bonusPercent = calculateSapphireStrengthBonus(totalSapphireCarat);
     const modifiedStrength = baseStrength * (1 + bonusPercent / 100);
 
@@ -262,20 +247,12 @@ function getSapphireModifiedStrength(dwarf, baseStrength) {
 
 /**
  * Calculate the dig power bonus percentage from Diamond gems
- * Formula uses logarithmic diminishing returns (1% to 50%)
+ * Uses logarithmic diminishing returns (see calculateLogarithmicBonus)
  * @param {number} carat - Total carat value of Diamond gems
  * @returns {number} Bonus percentage (1-50)
  */
 function calculateDiamondDigPowerBonus(carat) {
-    if (carat <= 0) return 0;
-
-    // Logarithmic formula with diminishing returns
-    const normalizedCarat = carat / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
-    const maxNormalizedCarat = DIAMOND_DIGPOWER_MAX_CARAT / DIAMOND_DIGPOWER_CARAT_NORMALIZER;
-    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
-    const bonus = DIAMOND_DIGPOWER_MIN_BONUS + (DIAMOND_DIGPOWER_MAX_BONUS - DIAMOND_DIGPOWER_MIN_BONUS) * logFactor;
-
-    return Math.min(DIAMOND_DIGPOWER_MAX_BONUS, Math.max(DIAMOND_DIGPOWER_MIN_BONUS, bonus));
+    return calculateLogarithmicBonus(carat, DIAMOND_DIGPOWER_MIN_BONUS, DIAMOND_DIGPOWER_MAX_BONUS, DIAMOND_DIGPOWER_CARAT_NORMALIZER, DIAMOND_DIGPOWER_MAX_CARAT);
 }
 
 /**
@@ -285,21 +262,9 @@ function calculateDiamondDigPowerBonus(carat) {
  * @returns {number} Modified dig power with Diamond bonus
  */
 function getDiamondModifiedDigPower(dwarf, basePower) {
-    if (!dwarf.toolId) return basePower;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return basePower;
-    }
-
-    // Sum up all Diamond carat values
-    const totalDiamondCarat = toolInstance.gems
-        .filter(gem => gem.type === 'diamond')
-        .reduce((sum, gem) => sum + gem.carat, 0);
-
+    const totalDiamondCarat = getGemCaratTotal(dwarf, 'diamond');
     if (totalDiamondCarat <= 0) return basePower;
 
-    // Calculate bonus and apply it
     const bonusPercent = calculateDiamondDigPowerBonus(totalDiamondCarat);
     const modifiedPower = basePower * (1 + bonusPercent / 100);
 
@@ -313,20 +278,12 @@ function getDiamondModifiedDigPower(dwarf, basePower) {
 
 /**
  * Calculate the research bonus percentage from Amethyst gems
- * Formula uses logarithmic diminishing returns (1% to 50%)
+ * Uses logarithmic diminishing returns (see calculateLogarithmicBonus)
  * @param {number} carat - Total carat value of Amethyst gems
  * @returns {number} Bonus percentage (1-50)
  */
 function calculateAmethystResearchBonus(carat) {
-    if (carat <= 0) return 0;
-
-    // Logarithmic formula with diminishing returns
-    const normalizedCarat = carat / AMETHYST_RESEARCH_CARAT_NORMALIZER;
-    const maxNormalizedCarat = AMETHYST_RESEARCH_MAX_CARAT / AMETHYST_RESEARCH_CARAT_NORMALIZER;
-    const logFactor = Math.log(1 + normalizedCarat) / Math.log(1 + maxNormalizedCarat);
-    const bonus = AMETHYST_RESEARCH_MIN_BONUS + (AMETHYST_RESEARCH_MAX_BONUS - AMETHYST_RESEARCH_MIN_BONUS) * logFactor;
-
-    return Math.min(AMETHYST_RESEARCH_MAX_BONUS, Math.max(AMETHYST_RESEARCH_MIN_BONUS, bonus));
+    return calculateLogarithmicBonus(carat, AMETHYST_RESEARCH_MIN_BONUS, AMETHYST_RESEARCH_MAX_BONUS, AMETHYST_RESEARCH_CARAT_NORMALIZER, AMETHYST_RESEARCH_MAX_CARAT);
 }
 
 /**
@@ -335,18 +292,7 @@ function calculateAmethystResearchBonus(carat) {
  * @returns {number} Hardness reduction from Amethyst gems
  */
 function getAmethystHardnessReduction(dwarf) {
-    if (!dwarf.toolId) return 0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.gems || toolInstance.gems.length === 0) {
-        return 0;
-    }
-
-    // Sum up all Amethyst carat values
-    const totalAmethystCarat = toolInstance.gems
-        .filter(gem => gem.type === 'amethyst')
-        .reduce((sum, gem) => sum + gem.carat, 0);
-
+    const totalAmethystCarat = getGemCaratTotal(dwarf, 'amethyst');
     if (totalAmethystCarat <= 0) return 0;
 
     // Hardness reduction: carat / 100
@@ -718,22 +664,7 @@ function countActionableSmelterTasks() {
  * @returns {number} Energy cost reduction amount (default 0)
  */
 function getZincPlatingEnergyReduction(dwarf) {
-    if (!dwarf.toolId) return 0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 0;
-    }
-
-    // Check if the tool has Zinc plating
-    if (toolInstance.plating === 'Zinc') {
-        // Get energy reduction from platingEffects definition
-        const energyReduction = platingEffects['zinc']?.value || 0;
-        console.log(`[Zinc Plating] ${dwarf.name}'s tool has Zinc plating - reducing energy cost by ${energyReduction}`);
-        return energyReduction;
-    }
-
-    return 0;
+    return getPlatingEffectValue(dwarf, 'zinc', 0);
 }
 
 /**
@@ -742,22 +673,7 @@ function getZincPlatingEnergyReduction(dwarf) {
  * @returns {number} Gem probability multiplier (default 1.0)
  */
 function getSilverPlatingGemMultiplier(dwarf) {
-    if (!dwarf.toolId) return 1.0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 1.0;
-    }
-
-    // Check if the tool has Silver plating
-    if (toolInstance.plating === 'Silver') {
-        // Get gem probability multiplier from platingEffects definition
-        const gemMultiplier = platingEffects['silver']?.value || 1.0;
-        console.log(`[Silver Plating] ${dwarf.name}'s tool has Silver plating - gem probability multiplied by ${gemMultiplier}x`);
-        return gemMultiplier;
-    }
-
-    return 1.0;
+    return getPlatingEffectValue(dwarf, 'silver', 1.0);
 }
 
 /**
@@ -766,22 +682,7 @@ function getSilverPlatingGemMultiplier(dwarf) {
  * @returns {number} Critical strike multiplier (default 1.0)
  */
 function getGoldPlatingCritMultiplier(dwarf) {
-    if (!dwarf.toolId) return 1.0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 1.0;
-    }
-
-    // Check if the tool has Gold plating
-    if (toolInstance.plating === 'Gold') {
-        // Get critical strike multiplier from platingEffects definition
-        const critMultiplier = platingEffects['gold']?.value || 1.0;
-        console.log(`[Gold Plating] ${dwarf.name}'s tool has Gold plating - critical strike chance multiplied by ${critMultiplier}x`);
-        return critMultiplier;
-    }
-
-    return 1.0;
+    return getPlatingEffectValue(dwarf, 'gold', 1.0);
 }
 
 /**
@@ -790,22 +691,7 @@ function getGoldPlatingCritMultiplier(dwarf) {
  * @returns {number} One-hit kill chance multiplier (default 1.0)
  */
 function getUraniumPlatingOneHitMultiplier(dwarf) {
-    if (!dwarf.toolId) return 1.0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 1.0;
-    }
-
-    // Check if the tool has Uranium plating
-    if (toolInstance.plating === 'uranium') {
-        // Get one-hit multiplier from platingEffects definition
-        const oneHitMultiplier = platingEffects['uranium']?.value || 1.0;
-        console.log(`[Uranium Plating] ${dwarf.name}'s tool has Uranium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
-        return oneHitMultiplier;
-    }
-
-    return 1.0;
+    return getPlatingEffectValue(dwarf, 'uranium', 1.0);
 }
 
 /**
@@ -814,22 +700,7 @@ function getUraniumPlatingOneHitMultiplier(dwarf) {
  * @returns {number} Energy regeneration amount (default 0)
  */
 function getNickelPlatingEnergyRegeneration(dwarf) {
-    if (!dwarf.toolId) return 0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 0;
-    }
-
-    // Check if the tool has Nickel plating
-    if (toolInstance.plating === 'nickel') {
-        // Get energy regeneration from platingEffects definition
-        const energyRegen = platingEffects['nickel']?.value || 0;
-        console.log(`[Nickel Plating] ${dwarf.name}'s tool has Nickel plating - regenerating ${energyRegen} energy from movement`);
-        return energyRegen;
-    }
-
-    return 0;
+    return getPlatingEffectValue(dwarf, 'nickel', 0);
 }
 
 /**
@@ -838,22 +709,7 @@ function getNickelPlatingEnergyRegeneration(dwarf) {
  * @returns {number} Double dig chance (default 0)
  */
 function getWolframPlatingDoubleDigChance(dwarf) {
-    if (!dwarf.toolId) return 0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 0;
-    }
-
-    // Check if the tool has Wolfram plating
-    if (toolInstance.plating === 'wolfram') {
-        // Get double dig chance from platingEffects definition
-        const doubleDigChance = platingEffects['wolfram']?.value || 0;
-        //console.log(`[Wolfram Plating] ${dwarf.name}'s tool has Wolfram plating - ${doubleDigChance * 100}% chance for double dig`);
-        return doubleDigChance;
-    }
-
-    return 0;
+    return getPlatingEffectValue(dwarf, 'wolfram', 0);
 }
 
 /**
@@ -862,22 +718,7 @@ function getWolframPlatingDoubleDigChance(dwarf) {
  * @returns {number} One-hit kill chance multiplier (default 1.0)
  */
 function getPlutoniumPlatingOneHitMultiplier(dwarf) {
-    if (!dwarf.toolId) return 1.0;
-
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return 1.0;
-    }
-
-    // Check if the tool has Plutonium plating
-    if (toolInstance.plating === 'plutonium') {
-        // Get one-hit multiplier from platingEffects definition
-        const oneHitMultiplier = platingEffects['plutonium']?.value || 1.0;
-        console.log(`[Plutonium Plating] ${dwarf.name}'s tool has Plutonium plating - one-hit kill chance multiplied by ${oneHitMultiplier}x`);
-        return oneHitMultiplier;
-    }
-
-    return 1.0;
+    return getPlatingEffectValue(dwarf, 'plutonium', 1.0);
 }
 
 /**
@@ -886,24 +727,87 @@ function getPlutoniumPlatingOneHitMultiplier(dwarf) {
  * @returns {boolean} True if nuclear explosion should occur
  */
 function shouldPlutoniumTriggerExplosion(dwarf) {
-    if (!dwarf.toolId) return false;
+    const explosionChance = getPlatingEffectValue(dwarf, 'plutonium', 0, 'explosionChance');
+    if (explosionChance <= 0) return false;
 
-    const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance || !toolInstance.plating) {
-        return false;
+    const roll = Math.random();
+    const triggered = roll < explosionChance;
+    console.log(`☢️ [Plutonium] Nuclear explosion roll: ${(roll * 100).toFixed(1)}% ${triggered ? '✅ TRIGGERED!' : '❌ No explosion'}`);
+    return triggered;
+}
+
+/**
+ * Check if dwarf has Randomium plating
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {boolean} True if dwarf has Randomium plating
+ */
+function hasRandomiumPlating(dwarf) {
+    const toolInstance = getDwarfToolInstance(dwarf);
+    return toolInstance?.plating?.toLowerCase() === 'randomium';
+}
+
+/**
+ * Get a random ore that can spawn at the given depth
+ * @param {number} depth - Current mining depth
+ * @returns {string|null} Material ID of a random ore, or null if none available
+ */
+function getRandomOreAtDepth(depth) {
+    const availableOres = [];
+    for (const [materialId, materialData] of Object.entries(materials)) {
+        if (materialData.type && materialData.type.includes('Ore')) {
+            const minLevel = materialData.minlevel || 0;
+            const maxLevel = materialData.maxlevel || 999999;
+            if (depth >= minLevel && depth <= maxLevel) {
+                availableOres.push(materialId);
+            }
+        }
     }
+    if (availableOres.length === 0) return null;
+    return availableOres[Math.floor(Math.random() * availableOres.length)];
+}
 
-    // Check if the tool has Plutonium plating
-    if (toolInstance.plating === 'plutonium') {
-        // Get explosion chance from platingEffects definition
-        const explosionChance = platingEffects['plutonium']?.explosionChance || 0;
-        const roll = Math.random();
-        const triggered = roll < explosionChance;
-        console.log(`☢️ [Plutonium] Nuclear explosion roll: ${(roll * 100).toFixed(1)}% ${triggered ? '✅ TRIGGERED!' : '❌ No explosion'}`);
-        return triggered;
+/**
+ * Get a smelted material output for a given ore (from unlocked smelter recipes)
+ * @param {string} oreId - The ore material ID
+ * @returns {string|null} Material ID of the smelted output, or null if no recipe unlocked
+ */
+function getSmeltedOutputForOre(oreId) {
+    // Search smelter tasks for recipes that use this ore as input
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task || !task.input || !task.output) continue;
+
+        // Check if task requires research and if it's unlocked
+        if (task.requires) {
+            const research = researchData[task.requires];
+            if (!research || research.level < 1) continue;
+        }
+
+        // Check if this task uses the ore as input
+        if (task.input.material === oreId) {
+            return task.output.material;
+        }
     }
+    return null;
+}
 
-    return false;
+/**
+ * Apply a random other plating effect (excluding randomium)
+ * @param {Object} dwarf - The dwarf performing the action
+ * @param {Object} context - Context with cell, depth, etc.
+ * @returns {Object|null} Effect result or null
+ */
+function applyRandomPlatingEffect(dwarf, context) {
+    // Get all plating effects except randomium
+    const otherPlatings = Object.keys(platingEffects).filter(p => p !== 'randomium');
+    if (otherPlatings.length === 0) return null;
+
+    const randomPlating = otherPlatings[Math.floor(Math.random() * otherPlatings.length)];
+    const effect = platingEffects[randomPlating];
+
+    console.log(`🎲 [Randomium] Triggering random plating effect: ${effect.name}`);
+
+    return { plating: randomPlating, effect: effect };
 }
 
 // ============================================================================
