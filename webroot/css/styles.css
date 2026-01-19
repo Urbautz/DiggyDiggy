@@ -105,7 +105,7 @@ main {
 /* Functions list with clickable links (5 per row grid layout) */
 .functions-list {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 6px;
     padding: 0px;
     flex: 0 0 auto;

@@ -3667,7 +3667,7 @@ function populateFunctionsList() {
     constructionLink.href = '#';
     constructionLink.className = 'function-link';
     constructionLink.id = 'construction-function-link';
-    constructionLink.innerHTML = '<span class="icon">🏗️</span><span>Construction</span>';
+    constructionLink.innerHTML = '<span class="icon">🏠</span><span>Construction</span>';
     constructionLink.onclick = (e) => {
         e.preventDefault();
         openConstruction();
