@@ -1798,6 +1798,176 @@ let managementTasks = {
   },
 }
 
+// ============================================================================
+// CONSTRUCTION / FURNITURE REGISTRY
+// ============================================================================
+// Furniture definitions for common room and individual dwarf rooms
+
+const furnitureData = {
+  // ──────────────────────────────────────────────────────────────────────────
+  // COMMON ROOM FURNITURE
+  // ──────────────────────────────────────────────────────────────────────────
+  'seating-bench': {
+    name: 'Seating Bench',
+    icon: '🪑',
+    room: 'common',
+    effect: {restBonus: 0.015},
+    description: 'A sturdy wooden bench for dwarfs to rest their tired legs.',
+    level: 0
+  },
+  'feasting-table': {
+    name: 'Feasting Table',
+    icon: '🍽️',
+    room: 'common',
+    description: 'A long table for communal meals and celebrations.',
+    level: 0
+  },
+  'gaming-table': {
+    name: 'Gaming Table',
+    icon: '🎲',
+    room: 'common',
+    description: 'A table for card games, dice, and friendly wagers.',
+    level: 0
+  },
+  'bar-with-barstools': {
+    name: 'Bar with Barstools',
+    icon: '🍺',
+    room: 'common',
+    description: 'A proper dwarven bar with comfortable stools.',
+    level: 0
+  },
+  'ale-barrel-rack': {
+    name: 'Ale Barrel Rack',
+    icon: '⚱️',
+    room: 'common',
+    description: 'Stores barrels of the finest dwarven ale.',
+    level: 0
+  },
+  'banner': {
+    name: 'Banner',
+    icon: '🚩',
+    room: 'common',
+    description: 'A decorative banner displaying clan colors.',
+    level: 0
+  },
+  'shrine': {
+    name: 'Shrine',
+    icon: '⛩️',
+    room: 'common',
+    description: 'A sacred shrine made from medium stone.',
+    level: 0
+  },
+  'dwarfen-statue': {
+    name: 'Dwarfen Statue',
+    icon: '🗿',
+    room: 'common',
+    description: 'A magnificent statue of a legendary dwarf.',
+    level: 0
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // INDIVIDUAL ROOM FURNITURE
+  // ──────────────────────────────────────────────────────────────────────────
+  'bed': {
+    name: 'Bed',
+    icon: '🛏️',
+    room: 'individual',
+    description: 'A comfortable bed for a good night\'s rest.',
+    level: 0
+  },
+  'rocking-chair': {
+    name: 'Rocking Chair',
+    icon: '🪑',
+    room: 'individual',
+    description: 'A relaxing rocking chair for quiet moments.',
+    level: 0
+  },
+  'tools-rack': {
+    name: 'Tools Rack',
+    icon: '🪓',
+    room: 'individual',
+    description: 'A rack to organize and store personal tools.',
+    level: 0
+  },
+  'desk-with-stool': {
+    name: 'Desk with Stool',
+    icon: '📝',
+    room: 'individual',
+    description: 'A workspace for writing and planning.',
+    level: 0
+  },
+  'cabinet': {
+    name: 'Cabinet',
+    icon: '🧥',
+    room: 'individual',
+    description: 'Storage for personal belongings and treasures.',
+    level: 0
+  },
+  'bookshelf': {
+    name: 'Bookshelf',
+    icon: '📖',
+    room: 'individual',
+    description: 'Holds books, scrolls, and mining manuals.',
+    level: 0
+  },
+  'small-ale-barrel': {
+    name: 'Small Ale Barrel',
+    icon: '🍺',
+    room: 'individual',
+    description: 'A personal stash of ale for private enjoyment.',
+    level: 0
+  },
+  'potted-mushroom': {
+    name: 'Potted Mushroom',
+    icon: '🍄',
+    room: 'individual',
+    description: 'A decorative glowing mushroom plant.',
+    level: 0
+  }
+};
+
+// Ordered arrays for display order
+const commonRoomFurniture = [
+  'seating-bench',
+  'feasting-table',
+  'gaming-table',
+  'bar-with-barstools',
+  'ale-barrel-rack',
+  'banner',
+  'shrine',
+  'dwarfen-statue'
+];
+
+const individualRoomFurniture = [
+  'bed',
+  'cabinet',
+  'rocking-chair',
+  'tools-rack',
+  'desk-with-stool',
+  'bookshelf',
+  'small-ale-barrel',
+  'potted-mushroom'
+];
+
+// Common room - shared by all dwarfs
+// Furniture levels initialized in main.js (initializeFurniture)
+const commonRoom = {
+  name: 'Common Room',
+  furniture: {}
+};
+
+// Individual rooms - keyed by room ID
+// Each dwarf has a roomId property linking them to their room
+// Furniture levels initialized in main.js (initializeFurniture)
+const individualRooms = {
+  'room-1': { name: 'Room 1', furniture: {} },
+  'room-2': { name: 'Room 2', furniture: {} },
+  'room-3': { name: 'Room 3', furniture: {} },
+  'room-4': { name: 'Room 4', furniture: {} },
+  'room-5': { name: 'Room 5', furniture: {} },
+  'room-6': { name: 'Room 6', furniture: {} }
+};
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
 
@@ -1812,6 +1982,7 @@ let nextInvestmentId = 1; // Next investment ID to assign
 let dwarfs = [
     { name: "Diggingston",
       toolId: 1,
+      roomId: 'room-1',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
@@ -1822,6 +1993,7 @@ let dwarfs = [
       taskPriorityNone: [] },
     { name: "Shovelli",
       toolId: 2,
+      roomId: 'room-2',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
@@ -1832,44 +2004,48 @@ let dwarfs = [
       taskPriorityNone: [] },
     { name: "Diggmaster",
       toolId: 3,
+      roomId: 'room-3',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "Burrower",
-     toolId: 4,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      toolId: 4,
+      roomId: 'room-4',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "NevertiredMcPickaxemer",
-     toolId: 5,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      toolId: 5,
+      roomId: 'room-5',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "SmartDigger",
-     toolId: 6,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
-    taskPriorityNone: [] },
+      toolId: 6,
+      roomId: 'room-6',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
+      taskPriorityNone: [] },
 ]
 
 // Transaction log - keeps detailed transactions from the current hour

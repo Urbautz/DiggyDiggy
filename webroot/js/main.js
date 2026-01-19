@@ -675,6 +675,211 @@ function openSmelter() {
     populateSmelter();
 }
 
+function openConstruction() {
+    openModal('construction-modal');
+    populateConstruction();
+}
+
+// Populate the construction modal with furniture items
+function populateConstruction() {
+    const commonRoomContainer = document.getElementById('common-room-furniture');
+    const individualRoomsContainer = document.getElementById('individual-rooms-container');
+
+    if (!commonRoomContainer || !individualRoomsContainer) return;
+
+    // Clear existing content
+    commonRoomContainer.innerHTML = '';
+    individualRoomsContainer.innerHTML = '';
+
+    // Populate common room furniture
+    commonRoomFurniture.forEach(furnitureId => {
+        const furniture = furnitureData[furnitureId];
+        if (!furniture) return;
+
+        const level = commonRoom.furniture[furnitureId]?.level || 0;
+        const furnitureCard = createFurnitureCard(furnitureId, furniture, level, 'common', null);
+        commonRoomContainer.appendChild(furnitureCard);
+    });
+
+    // Populate individual rooms (collapsible)
+    Object.keys(individualRooms).forEach(roomId => {
+        const room = individualRooms[roomId];
+        const roomSection = createIndividualRoomSection(roomId, room);
+        individualRoomsContainer.appendChild(roomSection);
+    });
+}
+
+// Create a collapsible individual room section
+function createIndividualRoomSection(roomId, room) {
+    const section = document.createElement('div');
+    section.className = 'construction-section collapsible individual-room collapsed';
+    section.dataset.roomId = roomId;
+
+    // Find the dwarf assigned to this room
+    const assignedDwarf = dwarfs.find(d => d.roomId === roomId);
+    const dwarfName = assignedDwarf ? assignedDwarf.name : 'Unassigned';
+
+    // Calculate total furniture level for room summary
+    const totalLevel = Object.values(room.furniture).reduce((sum, f) => sum + (f.level || 0), 0);
+
+    section.innerHTML = `
+        <div class="construction-section-header" onclick="toggleConstructionSection(this)">
+            <span class="collapse-icon">▶</span>
+            <h3 class="construction-section-title">🚪 ${room.name}</h3>
+            <span class="room-dwarf">👷 ${dwarfName}</span>
+            <span class="room-summary">Total Level: ${totalLevel}</span>
+        </div>
+        <div class="construction-section-content">
+            <div class="furniture-grid room-furniture-grid" id="furniture-${roomId}">
+            </div>
+        </div>
+    `;
+
+    // Populate furniture for this room
+    const furnitureGrid = section.querySelector('.furniture-grid');
+    individualRoomFurniture.forEach(furnitureId => {
+        const furniture = furnitureData[furnitureId];
+        if (!furniture) return;
+
+        const level = room.furniture[furnitureId]?.level || 0;
+        const furnitureCard = createFurnitureCard(furnitureId, furniture, level, 'individual', roomId);
+        furnitureGrid.appendChild(furnitureCard);
+    });
+
+    return section;
+}
+
+// Toggle collapsible construction section
+function toggleConstructionSection(header) {
+    const section = header.closest('.collapsible');
+    if (!section) return;
+
+    const isCollapsed = section.classList.contains('collapsed');
+    const icon = header.querySelector('.collapse-icon');
+
+    if (isCollapsed) {
+        section.classList.remove('collapsed');
+        if (icon) icon.textContent = '▼';
+    } else {
+        section.classList.add('collapsed');
+        if (icon) icon.textContent = '▶';
+    }
+}
+
+// Get the maximum furniture level allowed (based on Better Housing research)
+function getMaxFurnitureLevel() {
+    const betterHousing = researchData['better-housing'];
+    return betterHousing ? (betterHousing.level || 0) : 0;
+}
+
+// Get the cost to level up furniture to the next level
+function getFurnitureLevelUpCost(currentLevel) {
+    const nextLevel = currentLevel + 1;
+    return 10000 * nextLevel;
+}
+
+// Create a furniture card element
+function createFurnitureCard(furnitureId, furniture, level, roomType, roomId) {
+    const card = document.createElement('div');
+    card.className = 'furniture-card';
+    card.dataset.furnitureId = furnitureId;
+    if (roomId) card.dataset.roomId = roomId;
+
+    const maxLevel = getMaxFurnitureLevel();
+    const isMaxed = level >= maxLevel;
+    const cost = getFurnitureLevelUpCost(level);
+    const canAfford = gold >= cost;
+
+    const levelUpArgs = roomType === 'common'
+        ? `'${furnitureId}', 'common', null`
+        : `'${furnitureId}', 'individual', '${roomId}'`;
+
+    // Determine button state and text
+    let buttonHtml;
+    if (maxLevel === 0) {
+        buttonHtml = `<button class="btn-levelup disabled" disabled title="Requires Better Housing research">
+            Locked
+        </button>`;
+    } else if (isMaxed) {
+        buttonHtml = `<button class="btn-levelup disabled" disabled title="Maximum level reached (Better Housing Lv ${maxLevel})">
+            Max Level
+        </button>`;
+    } else {
+        const btnClass = canAfford ? 'btn-levelup' : 'btn-levelup cannot-afford';
+        const costFormatted = cost.toLocaleString();
+        buttonHtml = `<button class="${btnClass}" onclick="levelUpFurniture(${levelUpArgs})" title="Cost: ${costFormatted} gold">
+            Level Up<br><span class="levelup-cost">${costFormatted} G</span>
+        </button>`;
+    }
+
+    card.innerHTML = `
+        <div class="furniture-icon">${furniture.icon}</div>
+        <div class="furniture-info">
+            <div class="furniture-name">${furniture.name}</div>
+            <div class="furniture-description">${furniture.description}</div>
+            <div class="furniture-level">
+                <span class="level-label">Level:</span>
+                <span class="level-value">${level}</span>
+                <span class="level-max">/ ${maxLevel}</span>
+            </div>
+        </div>
+        <div class="furniture-actions">
+            ${buttonHtml}
+        </div>
+    `;
+
+    return card;
+}
+
+// Level up furniture
+function levelUpFurniture(furnitureId, roomType, roomId) {
+    const furniture = furnitureData[furnitureId];
+    if (!furniture) return;
+
+    // Get current level based on room type
+    let currentLevel;
+    if (roomType === 'common') {
+        currentLevel = commonRoom.furniture[furnitureId]?.level || 0;
+    } else {
+        const room = individualRooms[roomId];
+        if (!room) return;
+        currentLevel = room.furniture[furnitureId]?.level || 0;
+    }
+
+    // Check max level cap (Better Housing research)
+    const maxLevel = getMaxFurnitureLevel();
+    if (currentLevel >= maxLevel) {
+        alert(`Maximum level reached! Research "Better Housing" to increase the cap.`);
+        return;
+    }
+
+    // Check cost
+    const cost = getFurnitureLevelUpCost(currentLevel);
+    if (gold < cost) {
+        alert(`Not enough gold! You need ${cost.toLocaleString()} gold.`);
+        return;
+    }
+
+    // Deduct gold and increase level
+    gold -= cost;
+
+    if (roomType === 'common') {
+        commonRoom.furniture[furnitureId].level = currentLevel + 1;
+    } else {
+        individualRooms[roomId].furniture[furnitureId].level = currentLevel + 1;
+    }
+
+    // Log transaction
+    if (typeof logTransaction === 'function') {
+        logTransaction(`Furniture: ${furniture.name}`, 0, cost);
+    }
+
+    // Update UI
+    updateGoldDisplay();
+    populateConstruction();
+    saveGame();
+}
+
 // Transaction/Finances modal UI functions (openTransactions, populateTransactions, logTransaction, etc.) moved to modals/transaction-modal.js
 
 // Smelter and Task Details UI functions (populateSmelter, openTaskDetailsModal, etc.) moved to modals/smelter-modal.js
@@ -2721,6 +2926,8 @@ function saveGame() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             nextManagementTaskId: nextManagementTaskId || 1,
+            commonRoom: commonRoom,
+            individualRooms: individualRooms,
             timestamp: now,
             version: gameversion
         };
@@ -3048,7 +3255,34 @@ function loadGame() {
         if (gameState.smelterMaxTemp !== undefined && gameState.smelterCoalMaxTemp === undefined) {
             smelterCoalMaxTemp = gameState.smelterMaxTemp;
         }
-        
+
+        // Restore furniture levels
+        if (gameState.commonRoom && gameState.commonRoom.furniture) {
+            for (const furnitureId in gameState.commonRoom.furniture) {
+                if (commonRoom.furniture[furnitureId] !== undefined) {
+                    commonRoom.furniture[furnitureId] = gameState.commonRoom.furniture[furnitureId];
+                }
+            }
+        }
+        if (gameState.individualRooms) {
+            for (const roomId in gameState.individualRooms) {
+                if (individualRooms[roomId] && gameState.individualRooms[roomId].furniture) {
+                    for (const furnitureId in gameState.individualRooms[roomId].furniture) {
+                        if (individualRooms[roomId].furniture[furnitureId] !== undefined) {
+                            individualRooms[roomId].furniture[furnitureId] = gameState.individualRooms[roomId].furniture[furnitureId];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Migration: Add roomId to dwarfs if missing (for saves before construction feature)
+        dwarfs.forEach((dwarf, index) => {
+            if (!dwarf.roomId) {
+                dwarf.roomId = `room-${index + 1}`;
+            }
+        });
+
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;
     } catch (e) {
@@ -3428,6 +3662,18 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
+    // Construction function
+    const constructionLink = document.createElement('a');
+    constructionLink.href = '#';
+    constructionLink.className = 'function-link';
+    constructionLink.id = 'construction-function-link';
+    constructionLink.innerHTML = '<span class="icon">🏗️</span><span>Construction</span>';
+    constructionLink.onclick = (e) => {
+        e.preventDefault();
+        openConstruction();
+    };
+    list.appendChild(constructionLink);
+
     // Management function - last position
     const managementLink = document.createElement('a');
     managementLink.href = '#';
@@ -3592,16 +3838,40 @@ function switchMaterialsTab(tab) {
     }
 }
 
+// Initialize furniture levels for common room and individual rooms
+// Called on both new games and when loading saves (to ensure all furniture exists)
+function initializeFurniture() {
+    // Initialize common room furniture (ensure all furniture types exist)
+    commonRoomFurniture.forEach(furnitureId => {
+        if (!commonRoom.furniture[furnitureId]) {
+            commonRoom.furniture[furnitureId] = { level: 0 };
+        }
+    });
+
+    // Initialize individual room furniture (ensure all furniture types exist in each room)
+    Object.keys(individualRooms).forEach(roomId => {
+        const room = individualRooms[roomId];
+        individualRoomFurniture.forEach(furnitureId => {
+            if (!room.furniture[furnitureId]) {
+                room.furniture[furnitureId] = { level: 0 };
+            }
+        });
+    });
+}
+
 // Initialize the game state
 function initGame() {
     // Try to load saved game first
     const loaded = loadGame();
-    
+
     if (!loaded) {
         // No saved game, generate new grid
         generateGrid();
     }
-    
+
+    // Initialize furniture (handles both new games and migrations)
+    initializeFurniture();
+
     updateGridDisplay();
     updateGoldDisplay();
     updateMaterialsPanel(); // Initialize materials panel on load
