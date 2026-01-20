@@ -3307,20 +3307,19 @@ function loadGame() {
         }
 
         // Restore furniture levels
+        // Note: We copy directly without checking if furniture exists in current definitions,
+        // because commonRoom.furniture and individualRooms[x].furniture start as empty objects.
+        // initializeFurniture() runs after loadGame() and will fill in any missing furniture.
         if (gameState.commonRoom && gameState.commonRoom.furniture) {
             for (const furnitureId in gameState.commonRoom.furniture) {
-                if (commonRoom.furniture[furnitureId] !== undefined) {
-                    commonRoom.furniture[furnitureId] = gameState.commonRoom.furniture[furnitureId];
-                }
+                commonRoom.furniture[furnitureId] = gameState.commonRoom.furniture[furnitureId];
             }
         }
         if (gameState.individualRooms) {
             for (const roomId in gameState.individualRooms) {
                 if (individualRooms[roomId] && gameState.individualRooms[roomId].furniture) {
                     for (const furnitureId in gameState.individualRooms[roomId].furniture) {
-                        if (individualRooms[roomId].furniture[furnitureId] !== undefined) {
-                            individualRooms[roomId].furniture[furnitureId] = gameState.individualRooms[roomId].furniture[furnitureId];
-                        }
+                        individualRooms[roomId].furniture[furnitureId] = gameState.individualRooms[roomId].furniture[furnitureId];
                     }
                 }
             }
