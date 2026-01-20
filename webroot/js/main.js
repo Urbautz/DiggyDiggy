@@ -928,6 +928,14 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
     updateGoldDisplay();
     populateHousing();
     saveGame();
+
+    // Send updated furniture data to worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { commonRoom, individualRooms, gold }
+        });
+    }
 }
 
 // Transaction/Finances modal UI functions (openTransactions, populateTransactions, logTransaction, etc.) moved to modals/transaction-modal.js
@@ -2901,7 +2909,10 @@ function initWorker() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             managementTasks: managementTasks || {},
-            platingEffects
+            platingEffects,
+            furnitureData,
+            commonRoom,
+            individualRooms
         }
     });
     
