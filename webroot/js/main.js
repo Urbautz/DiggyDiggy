@@ -687,6 +687,18 @@ function populateHousing() {
 
     if (!commonRoomContainer || !individualRoomsContainer) return;
 
+    // Save expanded/collapsed state before clearing
+    const expandedRooms = new Set();
+    const commonRoomSection = commonRoomContainer.closest('.housing-section.collapsible');
+    const isCommonRoomExpanded = commonRoomSection && !commonRoomSection.classList.contains('collapsed');
+
+    individualRoomsContainer.querySelectorAll('.individual-room').forEach(section => {
+        const roomId = section.dataset.roomId;
+        if (roomId && !section.classList.contains('collapsed')) {
+            expandedRooms.add(roomId);
+        }
+    });
+
     // Clear existing content
     commonRoomContainer.innerHTML = '';
     individualRoomsContainer.innerHTML = '';
@@ -701,18 +713,29 @@ function populateHousing() {
         commonRoomContainer.appendChild(furnitureCard);
     });
 
+    // Restore common room collapsed state if it was collapsed
+    if (commonRoomSection && !isCommonRoomExpanded) {
+        commonRoomSection.classList.add('collapsed');
+        const icon = commonRoomSection.querySelector('.collapse-icon');
+        if (icon) icon.textContent = '▶';
+    } else if (commonRoomSection && isCommonRoomExpanded) {
+        commonRoomSection.classList.remove('collapsed');
+        const icon = commonRoomSection.querySelector('.collapse-icon');
+        if (icon) icon.textContent = '▼';
+    }
+
     // Populate individual rooms (collapsible)
     Object.keys(individualRooms).forEach(roomId => {
         const room = individualRooms[roomId];
-        const roomSection = createIndividualRoomSection(roomId, room);
+        const roomSection = createIndividualRoomSection(roomId, room, expandedRooms.has(roomId));
         individualRoomsContainer.appendChild(roomSection);
     });
 }
 
 // Create a collapsible individual room section
-function createIndividualRoomSection(roomId, room) {
+function createIndividualRoomSection(roomId, room, isExpanded = false) {
     const section = document.createElement('div');
-    section.className = 'housing-section collapsible individual-room collapsed';
+    section.className = 'housing-section collapsible individual-room' + (isExpanded ? '' : ' collapsed');
     section.dataset.roomId = roomId;
 
     // Find the dwarf assigned to this room
@@ -724,7 +747,7 @@ function createIndividualRoomSection(roomId, room) {
 
     section.innerHTML = `
         <div class="housing-section-header" onclick="toggleHousingSection(this)">
-            <span class="collapse-icon">▶</span>
+            <span class="collapse-icon">${isExpanded ? '▼' : '▶'}</span>
             <h3 class="housing-section-title">🚪 ${room.name}</h3>
             <span class="room-dwarf">👷 ${dwarfName}</span>
             <span class="room-summary">Total Level: ${totalLevel}</span>
