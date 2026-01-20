@@ -1,21 +1,21 @@
-<!-- Construction modal -->
-<div id="construction-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Construction dialog">
+<!-- Housing modal -->
+<div id="housing-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Housing dialog">
     <div class="modal-backdrop" data-action="close-modal"></div>
     <div class="modal-dialog modal-dialog-wide" role="document">
         <header class="modal-header">
-            <h2>🏗️ Construction</h2>
-            <button class="modal-close" aria-label="Close construction" data-action="close-modal">×</button>
+            <h2>🏠 Housing</h2>
+            <button class="modal-close" aria-label="Close housing" data-action="close-modal">×</button>
         </header>
         <div class="modal-body">
             <p>Build and upgrade furniture for your dwarfs!</p>
 
             <!-- Common Room Section (collapsible) -->
-            <div class="construction-section collapsible">
-                <div class="construction-section-header" onclick="toggleConstructionSection(this)">
+            <div class="housing-section collapsible">
+                <div class="housing-section-header" onclick="toggleHousingSection(this)">
                     <span class="collapse-icon">▼</span>
-                    <h3 class="construction-section-title">🏠 Common Room</h3>
+                    <h3 class="housing-section-title">🏠 Common Room</h3>
                 </div>
-                <div class="construction-section-content">
+                <div class="housing-section-content">
                     <div id="common-room-furniture" class="furniture-grid">
                         <!-- Common room furniture will be populated here -->
                     </div>
@@ -23,8 +23,8 @@
             </div>
 
             <!-- Individual Rooms Section -->
-            <div class="construction-section">
-                <h3 class="construction-section-title" style="margin-bottom: 12px;">🛏️ Individual Rooms</h3>
+            <div class="housing-section">
+                <h3 class="housing-section-title" style="margin-bottom: 12px;">🛏️ Individual Rooms</h3>
                 <div id="individual-rooms-container">
                     <!-- Individual rooms will be populated here dynamically -->
                 </div>

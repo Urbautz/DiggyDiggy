@@ -675,13 +675,13 @@ function openSmelter() {
     populateSmelter();
 }
 
-function openConstruction() {
-    openModal('construction-modal');
-    populateConstruction();
+function openHousing() {
+    openModal('housing-modal');
+    populateHousing();
 }
 
-// Populate the construction modal with furniture items
-function populateConstruction() {
+// Populate the housing modal with furniture items
+function populateHousing() {
     const commonRoomContainer = document.getElementById('common-room-furniture');
     const individualRoomsContainer = document.getElementById('individual-rooms-container');
 
@@ -712,7 +712,7 @@ function populateConstruction() {
 // Create a collapsible individual room section
 function createIndividualRoomSection(roomId, room) {
     const section = document.createElement('div');
-    section.className = 'construction-section collapsible individual-room collapsed';
+    section.className = 'housing-section collapsible individual-room collapsed';
     section.dataset.roomId = roomId;
 
     // Find the dwarf assigned to this room
@@ -723,13 +723,13 @@ function createIndividualRoomSection(roomId, room) {
     const totalLevel = Object.values(room.furniture).reduce((sum, f) => sum + (f.level || 0), 0);
 
     section.innerHTML = `
-        <div class="construction-section-header" onclick="toggleConstructionSection(this)">
+        <div class="housing-section-header" onclick="toggleHousingSection(this)">
             <span class="collapse-icon">▶</span>
-            <h3 class="construction-section-title">🚪 ${room.name}</h3>
+            <h3 class="housing-section-title">🚪 ${room.name}</h3>
             <span class="room-dwarf">👷 ${dwarfName}</span>
             <span class="room-summary">Total Level: ${totalLevel}</span>
         </div>
-        <div class="construction-section-content">
+        <div class="housing-section-content">
             <div class="furniture-grid room-furniture-grid" id="furniture-${roomId}">
             </div>
         </div>
@@ -749,8 +749,8 @@ function createIndividualRoomSection(roomId, room) {
     return section;
 }
 
-// Toggle collapsible construction section
-function toggleConstructionSection(header) {
+// Toggle collapsible housing section
+function toggleHousingSection(header) {
     const section = header.closest('.collapsible');
     if (!section) return;
 
@@ -766,16 +766,36 @@ function toggleConstructionSection(header) {
     }
 }
 
-// Get the maximum furniture level allowed (based on Better Housing research)
-function getMaxFurnitureLevel() {
-    const betterHousing = researchData['better-housing'];
-    return betterHousing ? (betterHousing.level || 0) : 0;
+// Check if furniture is unlocked (research and depth requirements)
+function isFurnitureUnlocked(furnitureId) {
+    const furniture = furnitureData[furnitureId];
+    if (!furniture) return false;
+
+    // Check depth requirement
+    if (furniture.minDepth && startX < furniture.minDepth) {
+        return { unlocked: false, reason: 'depth', required: furniture.minDepth };
+    }
+
+    // Check research requirement
+    if (furniture.requires) {
+        const research = researchData[furniture.requires];
+        if (!research || (research.level || 0) < 1) {
+            return { unlocked: false, reason: 'research', required: furniture.requires };
+        }
+    }
+
+    return { unlocked: true };
 }
 
-// Get the cost to level up furniture to the next level
-function getFurnitureLevelUpCost(currentLevel) {
+// Get the cost to level up furniture to the next level (based on furniture baseCost)
+function getFurnitureLevelUpCost(furnitureId, currentLevel) {
+    const furniture = furnitureData[furnitureId];
+    if (!furniture) return Infinity;
+
+    const baseCost = furniture.baseCost || 10000;
     const nextLevel = currentLevel + 1;
-    return 10000 * nextLevel;
+    // Cost scales: baseCost * nextLevel * (1.15 ^ nextLevel) for exponential growth
+    return Math.round(baseCost * nextLevel * Math.pow(1.15, nextLevel));
 }
 
 // Create a furniture card element
@@ -785,30 +805,54 @@ function createFurnitureCard(furnitureId, furniture, level, roomType, roomId) {
     card.dataset.furnitureId = furnitureId;
     if (roomId) card.dataset.roomId = roomId;
 
-    const maxLevel = getMaxFurnitureLevel();
-    const isMaxed = level >= maxLevel;
-    const cost = getFurnitureLevelUpCost(level);
+    const unlockStatus = isFurnitureUnlocked(furnitureId);
+    const cost = getFurnitureLevelUpCost(furnitureId, level);
     const canAfford = gold >= cost;
 
     const levelUpArgs = roomType === 'common'
         ? `'${furnitureId}', 'common', null`
         : `'${furnitureId}', 'individual', '${roomId}'`;
 
+    // Format cost with gold icon
+    const costFormatted = formatNumber(cost, 'gold');
+
+    // Build effect description
+    let effectHtml = '';
+    if (furniture.effect) {
+        const effects = [];
+        if (furniture.effect.restBonus) effects.push(`+${(furniture.effect.restBonus * 100).toFixed(1)}% rest`);
+        if (furniture.effect.maxEnergyBonus) effects.push(`+${furniture.effect.maxEnergyBonus} max energy`);
+        if (furniture.effect.digPowerBonus) effects.push(`+${(furniture.effect.digPowerBonus * 100).toFixed(1)}% dig power`);
+        if (furniture.effect.critChanceBonus) effects.push(`+${(furniture.effect.critChanceBonus * 100).toFixed(1)}% crit`);
+        if (furniture.effect.strengthBonus) effects.push(`+${furniture.effect.strengthBonus} strength`);
+        if (furniture.effect.wisdomBonus) effects.push(`+${furniture.effect.wisdomBonus} wisdom`);
+        if (effects.length > 0) {
+            effectHtml = `<div class="furniture-effect">Per level: ${effects.join(', ')}</div>`;
+        }
+    }
+
     // Determine button state and text
     let buttonHtml;
-    if (maxLevel === 0) {
-        buttonHtml = `<button class="btn-levelup disabled" disabled title="Requires Better Housing research">
-            Locked
-        </button>`;
-    } else if (isMaxed) {
-        buttonHtml = `<button class="btn-levelup disabled" disabled title="Maximum level reached (Better Housing Lv ${maxLevel})">
-            Max Level
-        </button>`;
+    let lockReasonHtml = '';
+
+    if (!unlockStatus.unlocked) {
+        card.classList.add('locked');
+        if (unlockStatus.reason === 'depth') {
+            lockReasonHtml = `<div class="furniture-lock-reason">🔒 Requires depth ${formatNumber(unlockStatus.required, 'material')}</div>`;
+            buttonHtml = `<button class="btn-levelup disabled" disabled title="Requires depth ${unlockStatus.required}">
+                Locked
+            </button>`;
+        } else if (unlockStatus.reason === 'research') {
+            const researchName = researchData[unlockStatus.required]?.name || unlockStatus.required;
+            lockReasonHtml = `<div class="furniture-lock-reason">🔒 Requires: ${researchName}</div>`;
+            buttonHtml = `<button class="btn-levelup disabled" disabled title="Requires ${researchName} research">
+                Locked
+            </button>`;
+        }
     } else {
         const btnClass = canAfford ? 'btn-levelup' : 'btn-levelup cannot-afford';
-        const costFormatted = cost.toLocaleString();
-        buttonHtml = `<button class="${btnClass}" onclick="levelUpFurniture(${levelUpArgs})" title="Cost: ${costFormatted} gold">
-            Level Up<br><span class="levelup-cost">${costFormatted} G</span>
+        buttonHtml = `<button class="${btnClass}" onclick="levelUpFurniture(${levelUpArgs})" title="Cost: ${cost.toLocaleString()} gold">
+            Level Up<br><span class="levelup-cost">💰 ${costFormatted}</span>
         </button>`;
     }
 
@@ -817,10 +861,11 @@ function createFurnitureCard(furnitureId, furniture, level, roomType, roomId) {
         <div class="furniture-info">
             <div class="furniture-name">${furniture.name}</div>
             <div class="furniture-description">${furniture.description}</div>
+            ${effectHtml}
+            ${lockReasonHtml}
             <div class="furniture-level">
                 <span class="level-label">Level:</span>
                 <span class="level-value">${level}</span>
-                <span class="level-max">/ ${maxLevel}</span>
             </div>
         </div>
         <div class="furniture-actions">
@@ -836,6 +881,18 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
     const furniture = furnitureData[furnitureId];
     if (!furniture) return;
 
+    // Check if furniture is unlocked
+    const unlockStatus = isFurnitureUnlocked(furnitureId);
+    if (!unlockStatus.unlocked) {
+        if (unlockStatus.reason === 'depth') {
+            alert(`This furniture requires reaching depth ${unlockStatus.required} first!`);
+        } else if (unlockStatus.reason === 'research') {
+            const researchName = researchData[unlockStatus.required]?.name || unlockStatus.required;
+            alert(`This furniture requires the "${researchName}" research!`);
+        }
+        return;
+    }
+
     // Get current level based on room type
     let currentLevel;
     if (roomType === 'common') {
@@ -846,15 +903,8 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
         currentLevel = room.furniture[furnitureId]?.level || 0;
     }
 
-    // Check max level cap (Better Housing research)
-    const maxLevel = getMaxFurnitureLevel();
-    if (currentLevel >= maxLevel) {
-        alert(`Maximum level reached! Research "Better Housing" to increase the cap.`);
-        return;
-    }
-
     // Check cost
-    const cost = getFurnitureLevelUpCost(currentLevel);
+    const cost = getFurnitureLevelUpCost(furnitureId, currentLevel);
     if (gold < cost) {
         alert(`Not enough gold! You need ${cost.toLocaleString()} gold.`);
         return;
@@ -876,7 +926,7 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
 
     // Update UI
     updateGoldDisplay();
-    populateConstruction();
+    populateHousing();
     saveGame();
 }
 
@@ -3662,17 +3712,17 @@ function populateFunctionsList() {
 
     list.appendChild(forgeLink);
 
-    // Construction function
-    const constructionLink = document.createElement('a');
-    constructionLink.href = '#';
-    constructionLink.className = 'function-link';
-    constructionLink.id = 'construction-function-link';
-    constructionLink.innerHTML = '<span class="icon">🏠</span><span>Construction</span>';
-    constructionLink.onclick = (e) => {
+    // Housing function
+    const housingLink = document.createElement('a');
+    housingLink.href = '#';
+    housingLink.className = 'function-link';
+    housingLink.id = 'housing-function-link';
+    housingLink.innerHTML = '<span class="icon">🏠</span><span>Housing</span>';
+    housingLink.onclick = (e) => {
         e.preventDefault();
-        openConstruction();
+        openHousing();
     };
-    list.appendChild(constructionLink);
+    list.appendChild(housingLink);
 
     // Management function - last position
     const managementLink = document.createElement('a');

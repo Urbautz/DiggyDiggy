@@ -3824,14 +3824,14 @@ header, footer {
 }
 
 /* ============================================================================
-   CONSTRUCTION MODAL STYLES
+   HOUSING MODAL STYLES
    ============================================================================ */
 
-.construction-section {
+.housing-section {
     margin-bottom: 24px;
 }
 
-.construction-section-title {
+.housing-section-title {
     font-size: 16px;
     font-weight: 600;
     color: #ffa726;
@@ -3891,6 +3891,39 @@ header, footer {
     color: #9fbfe0;
     line-height: 1.4;
     margin-bottom: 6px;
+}
+
+.furniture-effect {
+    font-size: 10px;
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+.furniture-lock-reason {
+    font-size: 10px;
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.furniture-card.locked {
+    opacity: 0.6;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.furniture-card.locked:hover {
+    opacity: 0.75;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.furniture-card.locked .furniture-icon {
+    filter: grayscale(0.5);
 }
 
 .furniture-level {
@@ -3973,13 +4006,13 @@ header, footer {
 }
 
 /* Collapsible section styles */
-.construction-section.collapsible {
+.housing-section.collapsible {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     overflow: hidden;
 }
 
-.construction-section-header {
+.housing-section-header {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -3990,11 +4023,11 @@ header, footer {
     user-select: none;
 }
 
-.construction-section-header:hover {
+.housing-section-header:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.construction-section-header .construction-section-title {
+.housing-section-header .housing-section-title {
     margin: 0;
     padding: 0;
     border: none;
@@ -4026,14 +4059,14 @@ header, footer {
     border-radius: 12px;
 }
 
-.construction-section-content {
+.housing-section-content {
     padding: 16px;
     transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.2s ease;
     max-height: 2000px;
     opacity: 1;
 }
 
-.construction-section.collapsed .construction-section-content {
+.housing-section.collapsed .housing-section-content {
     max-height: 0;
     padding: 0 16px;
     opacity: 0;
@@ -4049,7 +4082,7 @@ header, footer {
     margin-bottom: 0;
 }
 
-.individual-room .construction-section-title {
+.individual-room .housing-section-title {
     font-size: 14px;
     color: #dbeafe;
 }

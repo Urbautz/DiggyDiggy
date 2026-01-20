@@ -1410,7 +1410,7 @@ const researchData = {
     description: 'Dwarfs dig 1% harder.'
   },
   'better-housing': {
-    name: 'Better Housing',
+    name: 'Housing',
     cost: 100,
     goldCost: 10,
     level: 0,
@@ -1673,6 +1673,98 @@ const researchData = {
     description: 'Unlocks dwarf self management to make your life eaiser. Dwarfs will do certain stuff for you.'
   },
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // FURNITURE / CONSTRUCTION RESEARCHES
+  // ──────────────────────────────────────────────────────────────────────────
+  'comfort': {
+    name: 'Comfort',
+    cost: 200,
+    goldCost: 2000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 25,
+    requires: [{'better-housing': 1}],
+    min_depth: 2000,
+    description: 'Unlocks comfortable furniture like rocking chairs.'
+  },
+  'entertainment': {
+    name: 'Entertainment',
+    cost: 400,
+    goldCost: 8000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 35,
+    requires: [{'better-housing': 2}],
+    min_depth: 5000,
+    description: 'Unlocks entertainment furniture like gaming tables and bars.'
+  },
+  'organization': {
+    name: 'Organization',
+    cost: 500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 40,
+    requires: [{'better-housing': 2}],
+    min_depth: 5000,
+    description: 'Unlocks organizational furniture like tools racks and desks.'
+  },
+  'brewing': {
+    name: 'Brewing',
+    cost: 800,
+    goldCost: 15000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 50,
+    requires: [{'better-housing': 3}],
+    min_depth: 15000,
+    description: 'Unlocks brewing-related furniture like ale barrel racks.'
+  },
+  'knowledge': {
+    name: 'Knowledge',
+    cost: 1000,
+    goldCost: 20000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 55,
+    requires: [{'better-housing': 3}],
+    min_depth: 25000,
+    description: 'Unlocks knowledge furniture like bookshelves.'
+  },
+  'decoration': {
+    name: 'Decoration',
+    cost: 1500,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 65,
+    requires: [{'better-housing': 5}],
+    min_depth: 50000,
+    description: 'Unlocks decorative furniture like banners and potted mushrooms.'
+  },
+  'religion': {
+    name: 'Religion',
+    cost: 2000,
+    goldCost: 100000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 80,
+    requires: [{'better-housing': 7}],
+    min_depth: 100000,
+    description: 'Unlocks religious furniture like shrines.'
+  },
+  'artistry': {
+    name: 'Artistry',
+    cost: 3000,
+    goldCost: 250000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 95,
+    requires: [{'better-housing': 10}],
+    min_depth: 250000,
+    description: 'Unlocks artistic furniture like dwarfen statues.'
+  },
+
 };
 
 // Ordered array of research IDs (determines display order)
@@ -1701,6 +1793,14 @@ let researchTree = [
   'ore-enrichment',
   'improved-digging',
   'better-housing',
+  'comfort',
+  'entertainment',
+  'organization',
+  'brewing',
+  'knowledge',
+  'decoration',
+  'religion',
+  'artistry',
   'trading',
   'buckets',
   'union-busting',
@@ -1805,124 +1905,171 @@ let managementTasks = {
 
 const furnitureData = {
   // ──────────────────────────────────────────────────────────────────────────
-  // COMMON ROOM FURNITURE
+  // COMMON ROOM FURNITURE (more expensive, shared benefits)
   // ──────────────────────────────────────────────────────────────────────────
   'seating-bench': {
     name: 'Seating Bench',
     icon: '🪑',
     room: 'common',
-    effect: {restBonus: 0.015},
-    description: 'A sturdy wooden bench for dwarfs to rest their tired legs.',
-    level: 0
+    baseCost: 5000,
+    minDepth: 500,
+    requires: null,
+    effect: { restBonus: 0.015 },
+    description: 'A sturdy wooden bench. +1.5% rest recovery per level.'
   },
   'feasting-table': {
     name: 'Feasting Table',
     icon: '🍽️',
     room: 'common',
-    description: 'A long table for communal meals and celebrations.',
-    level: 0
+    baseCost: 8000,
+    minDepth: 500,
+    requires: null,
+    effect: { maxEnergyBonus: 2 },
+    description: 'A long table for communal meals. +2 max energy per level.'
   },
   'gaming-table': {
     name: 'Gaming Table',
     icon: '🎲',
     room: 'common',
-    description: 'A table for card games, dice, and friendly wagers.',
-    level: 0
+    baseCost: 15000,
+    minDepth: 5000,
+    requires: 'entertainment',
+    effect: { restBonus: 0.02 },
+    description: 'For card games and dice. +2% rest recovery per level.'
   },
   'bar-with-barstools': {
     name: 'Bar with Barstools',
     icon: '🍺',
     room: 'common',
-    description: 'A proper dwarven bar with comfortable stools.',
-    level: 0
+    baseCost: 20000,
+    minDepth: 10000,
+    requires: 'entertainment',
+    effect: { maxEnergyBonus: 5 },
+    description: 'A proper dwarven bar. +5 max energy per level.'
   },
   'ale-barrel-rack': {
     name: 'Ale Barrel Rack',
     icon: '⚱️',
     room: 'common',
-    description: 'Stores barrels of the finest dwarven ale.',
-    level: 0
+    baseCost: 25000,
+    minDepth: 15000,
+    requires: 'brewing',
+    effect: { restBonus: 0.025 },
+    description: 'Stores the finest ale. +2.5% rest recovery per level.'
   },
   'banner': {
     name: 'Banner',
     icon: '🚩',
     room: 'common',
-    description: 'A decorative banner displaying clan colors.',
-    level: 0
+    baseCost: 50000,
+    minDepth: 50000,
+    requires: 'decoration',
+    effect: { digPowerBonus: 0.01 },
+    description: 'Displays clan colors proudly. +1% dig power per level.'
   },
   'shrine': {
     name: 'Shrine',
     icon: '⛩️',
     room: 'common',
-    description: 'A sacred shrine made from medium stone.',
-    level: 0
+    baseCost: 100000,
+    minDepth: 100000,
+    requires: 'religion',
+    effect: { critChanceBonus: 0.005 },
+    description: 'A sacred shrine for worship. +0.5% critical hit chance per level.'
   },
   'dwarfen-statue': {
     name: 'Dwarfen Statue',
     icon: '🗿',
     room: 'common',
-    description: 'A magnificent statue of a legendary dwarf.',
-    level: 0
+    baseCost: 250000,
+    minDepth: 250000,
+    requires: 'artistry',
+    effect: { strengthBonus: 1, digPowerBonus: 0.02 },
+    description: 'A magnificent statue. +1 strength and +2% dig power per level.'
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // INDIVIDUAL ROOM FURNITURE
+  // INDIVIDUAL ROOM FURNITURE (cheaper, benefits specific dwarf)
   // ──────────────────────────────────────────────────────────────────────────
   'bed': {
     name: 'Bed',
     icon: '🛏️',
     room: 'individual',
-    description: 'A comfortable bed for a good night\'s rest.',
-    level: 0
-  },
-  'rocking-chair': {
-    name: 'Rocking Chair',
-    icon: '🪑',
-    room: 'individual',
-    description: 'A relaxing rocking chair for quiet moments.',
-    level: 0
-  },
-  'tools-rack': {
-    name: 'Tools Rack',
-    icon: '🪓',
-    room: 'individual',
-    description: 'A rack to organize and store personal tools.',
-    level: 0
-  },
-  'desk-with-stool': {
-    name: 'Desk with Stool',
-    icon: '📝',
-    room: 'individual',
-    description: 'A workspace for writing and planning.',
-    level: 0
+    baseCost: 2000,
+    minDepth: 500,
+    requires: null,
+    effect: { restBonus: 0.03 },
+    description: 'A comfortable bed. +3% rest recovery per level.'
   },
   'cabinet': {
     name: 'Cabinet',
     icon: '🧥',
     room: 'individual',
-    description: 'Storage for personal belongings and treasures.',
-    level: 0
+    baseCost: 3000,
+    minDepth: 500,
+    requires: null,
+    effect: { maxEnergyBonus: 3 },
+    description: 'Storage for belongings. +3 max energy per level.'
+  },
+  'rocking-chair': {
+    name: 'Rocking Chair',
+    icon: '🪑',
+    room: 'individual',
+    baseCost: 5000,
+    minDepth: 2000,
+    requires: 'comfort',
+    effect: { restBonus: 0.02 },
+    description: 'A relaxing chair. +2% rest recovery per level.'
+  },
+  'tools-rack': {
+    name: 'Tools Rack',
+    icon: '🪓',
+    room: 'individual',
+    baseCost: 8000,
+    minDepth: 5000,
+    requires: 'organization',
+    effect: { digPowerBonus: 0.015 },
+    description: 'Organized tool storage. +1.5% dig power per level.'
+  },
+  'desk-with-stool': {
+    name: 'Desk with Stool',
+    icon: '📝',
+    room: 'individual',
+    baseCost: 12000,
+    minDepth: 10000,
+    requires: 'organization',
+    effect: { wisdomBonus: 1 },
+    description: 'A workspace for planning. +1 wisdom per level.'
   },
   'bookshelf': {
     name: 'Bookshelf',
     icon: '📖',
     room: 'individual',
-    description: 'Holds books, scrolls, and mining manuals.',
-    level: 0
+    baseCost: 20000,
+    minDepth: 25000,
+    requires: 'knowledge',
+    effect: { wisdomBonus: 2 },
+    description: 'Mining manuals and scrolls. +2 wisdom per level.'
   },
   'small-ale-barrel': {
     name: 'Small Ale Barrel',
     icon: '🍺',
     room: 'individual',
-    description: 'A personal stash of ale for private enjoyment.',
-    level: 0
+    baseCost: 35000,
+    minDepth: 75000,
+    requires: 'brewing',
+    effect: { maxEnergyBonus: 5, restBonus: 0.01 },
+    description: 'Personal ale stash. +5 max energy and +1% rest per level.'
   },
   'potted-mushroom': {
     name: 'Potted Mushroom',
     icon: '🍄',
     room: 'individual',
-    description: 'A decorative glowing mushroom plant.',
-    level: 0
+    baseCost: 75000,
+    minDepth: 150000,
+    requires: 'decoration',
+    effect: { critChanceBonus: 0.003, restBonus: 0.01 },
+    description: 'A glowing mushroom. +0.3% crit chance and +1% rest per level.'
   }
 };
 
