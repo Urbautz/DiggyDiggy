@@ -671,6 +671,14 @@ function openMasonry() {
 }
 
 function openSmelter() {
+    // Check if furnace research is unlocked
+    const furnaceResearch = researchData['furnace'];
+    const isFurnaceUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (!isFurnaceUnlocked) {
+        return;
+    }
+
     openModal('smelter-modal');
     populateSmelter();
 }
@@ -2857,10 +2865,12 @@ function initWorker() {
                     }
                 }
 
-                // Update forge and management function links when research state changes
+                // Update function links when research state changes
                 if (researchStateChanged) {
                     updateForgeFunctionLink();
                     updateManagementFunctionLink();
+                    updateSmelterFunctionLink();
+                    updateHousingFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -3269,8 +3279,15 @@ function loadGame() {
         // Restore transaction history
         if (gameState.transactionHistory) {
             transactionHistory = gameState.transactionHistory;
+            // Prune old entries to keep only the last TRANSACTION_HISTORY_MAX_HOURS hours
+            const cutoffTime = Date.now() - (TRANSACTION_HISTORY_MAX_HOURS * 60 * 60 * 1000);
+            const originalLength = transactionHistory.length;
+            transactionHistory = transactionHistory.filter(entry => entry.hour >= cutoffTime);
+            if (transactionHistory.length < originalLength) {
+                console.log(`Pruned ${originalLength - transactionHistory.length} old transaction history entries on load`);
+            }
         }
-        
+
         // Restore current hour timestamp
         if (gameState.currentHourTimestamp) {
             currentHourTimestamp = gameState.currentHourTimestamp;
@@ -3720,6 +3737,17 @@ function populateFunctionsList() {
         e.preventDefault();
         openSmelter();
     };
+
+    // Check if smelter is unlocked (requires Furnace research)
+    const furnaceResearch = researchData['furnace'];
+    const isSmelterUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (!isSmelterUnlocked) {
+        smelterLink.style.opacity = '0.5';
+        smelterLink.style.cursor = 'not-allowed';
+        smelterLink.title = 'Requires Furnace research';
+    }
+
     list.appendChild(smelterLink);
 
     // Forge function
@@ -3755,6 +3783,17 @@ function populateFunctionsList() {
         e.preventDefault();
         openHousing();
     };
+
+    // Check if housing is unlocked (requires Housing research)
+    const housingResearch = researchData['better-housing'];
+    const isHousingUnlocked = housingResearch && (housingResearch.level || 0) >= 1;
+
+    if (!isHousingUnlocked) {
+        housingLink.style.opacity = '0.5';
+        housingLink.style.cursor = 'not-allowed';
+        housingLink.title = 'Requires Housing research';
+    }
+
     list.appendChild(housingLink);
 
     // Management function - last position
@@ -3829,6 +3868,58 @@ function updateManagementFunctionLink() {
             managementLink.style.opacity = '0.5';
             managementLink.style.cursor = 'not-allowed';
             managementLink.title = 'Requires Management research';
+        }
+    }
+}
+
+// Update smelter function link state without rebuilding the entire list
+function updateSmelterFunctionLink() {
+    const smelterLink = document.getElementById('smelter-function-link');
+    if (!smelterLink) return;
+
+    // Check if smelter is unlocked (requires Furnace research)
+    const furnaceResearch = researchData['furnace'];
+    const isSmelterUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (isSmelterUnlocked) {
+        // Only update if state actually changed
+        if (smelterLink.style.opacity === '0.5') {
+            smelterLink.style.opacity = '1';
+            smelterLink.style.cursor = 'pointer';
+            smelterLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (smelterLink.style.opacity !== '0.5') {
+            smelterLink.style.opacity = '0.5';
+            smelterLink.style.cursor = 'not-allowed';
+            smelterLink.title = 'Requires Furnace research';
+        }
+    }
+}
+
+// Update housing function link state without rebuilding the entire list
+function updateHousingFunctionLink() {
+    const housingLink = document.getElementById('housing-function-link');
+    if (!housingLink) return;
+
+    // Check if housing is unlocked (requires Housing research)
+    const housingResearch = researchData['better-housing'];
+    const isHousingUnlocked = housingResearch && (housingResearch.level || 0) >= 1;
+
+    if (isHousingUnlocked) {
+        // Only update if state actually changed
+        if (housingLink.style.opacity === '0.5') {
+            housingLink.style.opacity = '1';
+            housingLink.style.cursor = 'pointer';
+            housingLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (housingLink.style.opacity !== '0.5') {
+            housingLink.style.opacity = '0.5';
+            housingLink.style.cursor = 'not-allowed';
+            housingLink.title = 'Requires Housing research';
         }
     }
 }

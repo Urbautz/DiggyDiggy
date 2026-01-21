@@ -10,14 +10,11 @@ let currentEditingTaskId = null;
 
 // Open the management modal
 function openManagement() {
-    console.log('[Management] openManagement called');
     // Check if management research is completed
     const managementResearch = researchData['management'];
     const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
-    console.log('[Management] Research unlocked:', isManagementUnlocked);
 
     if (!isManagementUnlocked) {
-        alert('Management requires the "Management" research to be completed first!');
         return;
     }
 

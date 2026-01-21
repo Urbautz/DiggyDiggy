@@ -1414,6 +1414,7 @@ const researchData = {
     cost: 100,
     goldCost: 10,
     level: 0,
+    min_depth: 300,
     hardness: 20,
     description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.'
   },
@@ -1478,15 +1479,6 @@ const researchData = {
     maxlevel: 10,
     hardness: 30,
     description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).'
-  },
-  'union-busting': {
-    name: 'Union Busting',
-    cost: 500,
-    goldCost: 500,
-    level: 0,
-    maxlevel: 15,
-    hardness: 40,
-    description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.'
   },
   'tool-enchanting': {
     name: 'Tool Enchanting',
@@ -1803,7 +1795,6 @@ let researchTree = [
   'artistry',
   'trading',
   'buckets',
-  'union-busting',
 ];
 
 let managementTasks = {
@@ -2107,12 +2098,12 @@ const commonRoom = {
 // Each dwarf has a roomId property linking them to their room
 // Furniture levels initialized in main.js (initializeFurniture)
 const individualRooms = {
-  'room-1': { name: 'Room 1', furniture: {} },
-  'room-2': { name: 'Room 2', furniture: {} },
-  'room-3': { name: 'Room 3', furniture: {} },
-  'room-4': { name: 'Room 4', furniture: {} },
-  'room-5': { name: 'Room 5', furniture: {} },
-  'room-6': { name: 'Room 6', furniture: {} }
+  'room-1': { name: "Diggingston's Room", furniture: {} },
+  'room-2': { name: "Shovelli's Room", furniture: {} },
+  'room-3': { name: "Diggmaster's Room", furniture: {} },
+  'room-4': { name: "Burrower's Room", furniture: {} },
+  'room-5': { name: "NevertiredMcPickaxemer's Room", furniture: {} },
+  'room-6': { name: "SmartDigger's Room", furniture: {} }
 };
 
 let activeResearch = null; // Track which research is currently being researched

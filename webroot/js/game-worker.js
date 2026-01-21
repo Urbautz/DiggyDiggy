@@ -798,10 +798,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
     // Check if we can afford to pay the dwarf
     const wage = calculateWage(dwarf);
     if (gold < wage) {
-        // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchData['union-busting'];
-        const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-        if (Math.random() > continueWorkChance) {
+        // Not enough gold - check if dwarf will strike
+        if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
             dwarf.status = 'striking';
             return;
         }
@@ -1657,15 +1655,13 @@ function actForDwarf(dwarf) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
             }
-            
+
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
@@ -1852,10 +1848,8 @@ function actForDwarf(dwarf) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -2164,10 +2158,8 @@ function actForDwarf(dwarf) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -2324,10 +2316,8 @@ function actForDwarf(dwarf) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -2604,10 +2594,8 @@ function actForDwarf(dwarf) {
     // Check if we can afford to pay the dwarf
     const wage = calculateWage(dwarf);
     if (gold < wage) {
-        // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchData['union-busting'];
-        const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
-        if (Math.random() > continueWorkChance) {
+        // Not enough gold - check if dwarf will strike
+        if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
             dwarf.status = 'striking';
             return;
         }
@@ -2762,6 +2750,22 @@ function tick() {
             }
 
             oneTimeInvestments = activeInvestments;
+        }
+
+        // Ensure only one dwarf is researching at a time
+        const researchingDwarfs = dwarfs.filter(d => d.status === 'researching');
+        if (researchingDwarfs.length > 1) {
+            // Keep the first one researching, reset the others to idle and send home
+            for (let i = 1; i < researchingDwarfs.length; i++) {
+                const dwarf = researchingDwarfs[i];
+                console.warn(`[Research Conflict] Multiple dwarfs researching. Resetting ${dwarf.name} to idle.`);
+                dwarf.status = 'idle';
+                if (house) {
+                    scheduleMove(dwarf, house.x, house.y);
+                }
+            }
+            // Ensure reservation is held by the remaining researcher
+            researchReservedBy = researchingDwarfs[0].name;
         }
 
         for (const d of dwarfs) {

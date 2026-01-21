@@ -455,10 +455,7 @@ function checkCanAffordWageOrStrike(dwarf, currentGold) {
     }
 
     // Can't afford - check strike chance
-    const unionBusting = getResearchLevel('union-busting');
-    const strikeReduction = unionBusting * RESEARCH_UNION_BUSTING_BONUS;
-    const strikeChance = Math.max(0, DWARF_STRIKE_BASE_CHANCE - strikeReduction);
-    const willStrike = Math.random() > strikeChance;
+    const willStrike = Math.random() > DWARF_STRIKE_BASE_CHANCE;
 
     return { canPay: false, willStrike, wage };
 }
