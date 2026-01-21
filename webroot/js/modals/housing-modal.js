@@ -121,7 +121,7 @@ function toggleHousingSection(header) {
 // Check if furniture is unlocked (research and depth requirements)
 function isFurnitureUnlocked(furnitureId) {
     const furniture = furnitureData[furnitureId];
-    if (!furniture) return false;
+    if (!furniture) return { unlocked: false, reason: 'invalid', required: null };
 
     // Check depth requirement
     if (furniture.minDepth && startX < furniture.minDepth) {
