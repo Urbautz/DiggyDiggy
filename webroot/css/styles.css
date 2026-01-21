@@ -2607,6 +2607,133 @@ header, footer {
     gap: 8px;
 }
 
+/* Stat Card Styles */
+.dwarf-stat-card {
+    padding: 10px;
+}
+
+.dwarf-stat-card-header {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+}
+
+.dwarf-stat-card-points {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 6px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dwarf-stat-card-desc {
+    font-size: 13px;
+    opacity: 0.8;
+    margin: 0;
+    white-space: pre-line;
+}
+
+.dwarf-stat-upgrade-btn {
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 0;
+    min-width: auto;
+    background: linear-gradient(135deg, #ffd700, #ffa726);
+    border-color: #ffa726;
+}
+
+/* Dig Power Calculation Details */
+.dwarf-digpower-enchant {
+    color: #b19cd9;
+}
+
+.dwarf-digpower-diamond {
+    color: #66ccff;
+    margin-left: 10px;
+    cursor: help;
+}
+
+/* Tool Badge Styles */
+.dwarf-tool-badge {
+    margin-right: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.dwarf-tool-badge-enchant {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    color: #dda0ff;
+}
+
+.dwarf-tool-badge-gem {
+    background: rgba(102, 204, 255, 0.15);
+    border: 1px solid rgba(102, 204, 255, 0.4);
+    color: #66ccff;
+}
+
+.dwarf-tool-badge-plating {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    cursor: help;
+}
+
+/* Bucket Grid in Refresh Modal */
+.dwarf-bucket-refresh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 4px;
+}
+
+.dwarf-bucket-refresh-item {
+    padding: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    text-align: center;
+}
+
+.dwarf-bucket-refresh-item-name {
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-refresh-item-count {
+    font-size: 12px;
+    margin-top: 1px;
+}
+
+.dwarf-bucket-refresh-empty {
+    opacity: 0.6;
+    text-align: center;
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+/* Move Target Activity */
+.dwarf-move-target-activity {
+    font-size: 1vw;
+}
+
+/* Task Priority Section Title */
+.dwarf-task-priority-title {
+    margin-bottom: 10px;
+}
+
+/* Reset Button Compact Style */
+.dwarf-reset-btn-compact {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Hidden by default (for next skillpoint button) */
+.hidden {
+    display: none;
+}
+
 /* Gold Display */
 .gold-display {
     cursor: pointer;

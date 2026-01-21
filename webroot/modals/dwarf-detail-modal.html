@@ -111,7 +111,7 @@
 
                 <!-- Task Priority section -->
                 <div class="dwarf-task-priority-container">
-                    <h4 class="dwarf-section-title" style="margin-bottom: 10px;">📋 Task Priority</h4>
+                    <h4 class="dwarf-section-title dwarf-task-priority-title">📋 Task Priority</h4>
                     <div class="task-priority-layout-three">
                         <div class="task-priority-box">
                             <div class="task-priority-box-header">High Priority</div>
@@ -139,7 +139,7 @@
                     <div class="dwarf-rename-form">
                         <input type="text" id="dwarf-rename-input" maxlength="25" placeholder="Enter new name" class="dwarf-rename-input">
                         <button id="dwarf-rename-btn" data-action="rename-dwarf" class="dwarf-rename-btn">Rename</button>
-                        <button id="dwarf-reset-btn" data-action="reset-dwarf" class="btn-danger" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;">🔄 Reset (<span id="dwarf-reset-cost">0</span>💰)</button>
+                        <button id="dwarf-reset-btn" data-action="reset-dwarf" class="btn-danger dwarf-reset-btn-compact">🔄 Reset (<span id="dwarf-reset-cost">0</span>💰)</button>
                     </div>
                 </div>
             </div>
@@ -149,7 +149,7 @@
                 <select id="dwarf-switcher" class="dwarf-switcher">
                     <option value="">Switch to...</option>
                 </select>
-                <button id="next-skillpoint-dwarf-btn" class="btn-next-skillpoint" style="display: none;">⭐ Next</button>
+                <button id="next-skillpoint-dwarf-btn" class="btn-next-skillpoint hidden">⭐ Next</button>
             </div>
             <button class="btn-secondary" data-action="close-modal">Close</button>
         </footer>
