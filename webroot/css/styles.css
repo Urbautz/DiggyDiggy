@@ -4143,3 +4143,132 @@ header, footer {
 .individual-room .furniture-description {
     font-size: 10px;
 }
+
+/* ============================================
+   Critical Error Notification
+   ============================================ */
+#critical-error-notification {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    max-width: 500px;
+    font-family: Arial, sans-serif;
+    border: 2px solid #b71c1c;
+}
+
+#critical-error-notification .error-content {
+    display: flex;
+    align-items: start;
+    gap: 12px;
+}
+
+#critical-error-notification .error-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+#critical-error-notification .error-body {
+    flex: 1;
+}
+
+#critical-error-notification .error-title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+#critical-error-notification .error-message {
+    font-size: 14px;
+    opacity: 0.95;
+    margin-bottom: 8px;
+}
+
+#critical-error-notification .error-hint {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+#critical-error-notification .error-close {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+#critical-error-notification .error-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* ============================================
+   Tool Badges (Plating, Enchant, Gems)
+   ============================================ */
+.tool-badge {
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.tool-badge-plating {
+    color: #ffffff;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+    cursor: help;
+}
+
+.tool-badge-enchant {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    color: #dda0ff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.tool-badge-gems {
+    background: rgba(102, 204, 255, 0.2);
+    border: 1px solid rgba(102, 204, 255, 0.4);
+    color: #66ccff;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   Function Bar Progress Bars
+   ============================================ */
+.function-progress-container {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    height: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.function-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.research-progress-bar {
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+}
+
+.smelter-temp-bar {
+    background: linear-gradient(90deg, #ff4500, #ff8c00);
+}

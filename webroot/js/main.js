@@ -1178,7 +1178,9 @@ function populateToolsInPanel() {
             const platingColor = platingMaterial ? platingMaterial.color : '#888888';
 
             const platingInfo = document.createElement('span');
-            platingInfo.style.cssText = `padding: 4px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 11px; white-space: nowrap; text-shadow: 0 2px 3px rgba(0,0,0,0.5); cursor: help; line-height: 1;`;
+            platingInfo.className = 'tool-badge tool-badge-plating';
+            platingInfo.style.background = platingColor;
+            platingInfo.style.borderColor = platingColor;
             platingInfo.textContent = platingEffect.name;
             platingInfo.title = platingEffect.description;
             actions.appendChild(platingInfo);
@@ -1192,7 +1194,7 @@ function populateToolsInPanel() {
         if (isEnchanted) {
             // Show enchantment level instead of button
             const enchantInfo = document.createElement('span');
-            enchantInfo.style.cssText = 'padding: 4px 8px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 4px; color: #dda0ff; font-size: 10px; font-weight: bold; white-space: nowrap; line-height: 1;';
+            enchantInfo.className = 'tool-badge tool-badge-enchant';
             enchantInfo.textContent = `✨ Enchant +${tool.enchantLevel}`;
             enchantInfo.title = `Enchanted to level ${tool.enchantLevel}`;
             actions.appendChild(enchantInfo);
@@ -1221,11 +1223,10 @@ function populateToolsInPanel() {
         if (hasGems) {
             // Show gem info instead of button
             const gemInfo = document.createElement('button');
-            gemInfo.style.cssText = 'padding: 4px 8px; background: rgba(102, 204, 255, 0.2); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 4px; color: #66ccff; font-size: 10px; ';
+            gemInfo.className = 'tool-badge tool-badge-gems';
             gemInfo.textContent = `💎 ${tool.gems.length} Gem${tool.gems.length > 1 ? 's' : ''}`;
             gemInfo.title = `${tool.gems.length} gem${tool.gems.length > 1 ? 's' : ''} set`;
             gemInfo.style.cursor = 'pointer';
-            gemInfo.className = 'btn-secondary btn-tiny';
             gemInfo.onclick = () => openGemModal(tool.id);
             actions.appendChild(gemInfo);
         } else {
@@ -2325,34 +2326,16 @@ function showErrorNotification(title, message) {
     // Create error notification element
     const notification = document.createElement('div');
     notification.id = 'critical-error-notification';
-    notification.style.cssText = `
-        position: fixed;
-        top: 60px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
-        color: white;
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        max-width: 500px;
-        font-family: Arial, sans-serif;
-        border: 2px solid #b71c1c;
-    `;
 
     notification.innerHTML = `
-        <div style="display: flex; align-items: start; gap: 12px;">
-            <div style="font-size: 24px; flex-shrink: 0;">⚠️</div>
-            <div style="flex: 1;">
-                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${title}</div>
-                <div style="font-size: 14px; opacity: 0.95; margin-bottom: 8px;">${message}</div>
-                <div style="font-size: 12px; opacity: 0.85;">Game has been paused. Check the console for details.</div>
+        <div class="error-content">
+            <div class="error-icon">⚠️</div>
+            <div class="error-body">
+                <div class="error-title">${title}</div>
+                <div class="error-message">${message}</div>
+                <div class="error-hint">Game has been paused. Check the console for details.</div>
             </div>
-            <button onclick="this.parentElement.parentElement.remove()"
-                    style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-                           color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer;
-                           font-size: 14px; flex-shrink: 0;">✕</button>
+            <button class="error-close" onclick="this.parentElement.parentElement.remove()">✕</button>
         </div>
     `;
 
@@ -3657,19 +3640,18 @@ function updateFunctionLinks() {
 
             if (!progressContainer) {
                 progressContainer = document.createElement('div');
-                progressContainer.className = 'research-progress-container';
-                progressContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+                progressContainer.className = 'function-progress-container research-progress-container';
                 researchLink.appendChild(progressContainer);
             }
 
             let progressBar = progressContainer.querySelector('.research-progress-bar');
             if (!progressBar) {
                 progressBar = document.createElement('div');
-                progressBar.className = 'research-progress-bar';
+                progressBar.className = 'function-progress-bar research-progress-bar';
                 progressContainer.appendChild(progressBar);
             }
 
-            progressBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); width: ${progressPercent}%; transition: width 0.3s ease;`;
+            progressBar.style.width = `${progressPercent}%`;
         } else if (progressContainer) {
             // Remove progress bar if no active research
             progressContainer.remove();
@@ -3690,19 +3672,18 @@ function updateFunctionLinks() {
 
         if (!tempContainer) {
             tempContainer = document.createElement('div');
-            tempContainer.className = 'smelter-temp-container';
-            tempContainer.style.cssText = 'position: absolute; bottom: 2px; left: 2px; right: 2px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;';
+            tempContainer.className = 'function-progress-container smelter-temp-container';
             smelterLink.appendChild(tempContainer);
         }
 
         let tempBar = tempContainer.querySelector('.smelter-temp-bar');
         if (!tempBar) {
             tempBar = document.createElement('div');
-            tempBar.className = 'smelter-temp-bar';
+            tempBar.className = 'function-progress-bar smelter-temp-bar';
             tempContainer.appendChild(tempBar);
         }
 
-        tempBar.style.cssText = `height: 100%; background: linear-gradient(90deg, #ff4500, #ff8c00); width: ${tempPercent}%; transition: width 0.3s ease;`;
+        tempBar.style.width = `${tempPercent}%`;
     }
 }
 
