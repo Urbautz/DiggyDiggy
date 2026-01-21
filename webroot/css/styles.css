@@ -3980,7 +3980,9 @@ header, footer {
 .furniture-actions {
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 6px;
 }
 
 .furniture-level .level-max {
