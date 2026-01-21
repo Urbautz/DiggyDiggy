@@ -1135,6 +1135,10 @@ header, footer {
     border-color: rgba(251, 191, 36, 0.2);
 }
 
+.dwarf-row.dwarf-clickable {
+    cursor: pointer;
+}
+
 .dwarf-row.dwarf-clickable:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.15);
@@ -4271,4 +4275,26 @@ header, footer {
 
 .smelter-temp-bar {
     background: linear-gradient(90deg, #ff4500, #ff8c00);
+}
+
+/* ============================================
+   Disabled/Locked UI State
+   ============================================ */
+.ui-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Dwarf XP Display States
+   ============================================ */
+.dwarf-xp-display.can-level {
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.dwarf-xp-display.in-progress {
+    font-size: 10px;
+    color: #9fbfe0;
+    opacity: 0.7;
 }

@@ -618,10 +618,7 @@ function updateGridDisplay() {
                     cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
                     cell.style.position = 'relative'; // Enable absolute positioning for badge
                     const mgmt = document.createElement('span');
-                    mgmt.className = 'drop-off-marker';
-                    if (!hasManagement) {
-                        mgmt.style.opacity = '0.5';
-                    }
+                    mgmt.className = 'drop-off-marker' + (hasManagement ? '' : ' ui-disabled');
                     mgmt.textContent = '🏢';
                     cell.appendChild(mgmt);
 
@@ -691,6 +688,79 @@ function openSmelter() {
 
 // Forge UI functions (populateForge, createForgeInterface, setupForgeListeners, updateForgeState) moved to modals/forge-modal.js
 
+/**
+ * Create a tool card element for the inventory display
+ * @param {Object} tool - The tool object
+ * @returns {HTMLElement} The tool card element
+ */
+function createToolCard(tool) {
+    const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
+    const isAssigned = !!assignedDwarf;
+
+    // Header section
+    const header = createElement('div', {
+        className: 'tool-header',
+        children: [
+            createElement('h4', { text: `${tool.type} #${tool.id}` }),
+            createElement('span', { className: 'tool-power', text: `⚒️ ${tool.power || tool.level}` })
+        ]
+    });
+
+    // Details section
+    const detailsContent = isAssigned
+        ? createElement('div', { className: 'tool-assigned', html: `📌 Assigned to: <strong>${assignedDwarf.name}</strong>` })
+        : createElement('div', { className: 'tool-unassigned', text: '🔓 Not assigned' });
+
+    const details = createElement('div', {
+        className: 'tool-details',
+        children: [detailsContent]
+    });
+
+    // Actions section
+    const actions = createElement('div', { className: 'tool-actions' });
+
+    if (isAssigned) {
+        actions.appendChild(createElement('div', {
+            className: 'tool-assigned-note',
+            text: 'Tool is equipped and in use'
+        }));
+    } else {
+        // Dwarf assignment select
+        const select = createElement('select', {
+            className: 'assign-select',
+            attrs: { id: `assign-select-${tool.id}` }
+        });
+        select.appendChild(createElement('option', { attrs: { value: '' }, text: '-- Assign to Dwarf --' }));
+        dwarfs.forEach(d => {
+            select.appendChild(createElement('option', { attrs: { value: d.name }, text: d.name }));
+        });
+        actions.appendChild(select);
+
+        // Assign button
+        const assignBtn = createElement('button', {
+            className: 'btn-primary btn-small',
+            text: 'Assign'
+        });
+        assignBtn.onclick = () => assignToolToDwarf(tool.id);
+        actions.appendChild(assignBtn);
+    }
+
+    // Scrap button
+    const scrapBtn = createElement('button', {
+        className: 'btn-danger btn-small',
+        text: '🗑️ Scrap',
+        attrs: isAssigned ? { disabled: 'disabled', title: 'Cannot scrap assigned tool' } : {}
+    });
+    scrapBtn.onclick = () => scrapTool(tool.id);
+    actions.appendChild(scrapBtn);
+
+    // Assemble tool card
+    return createElement('div', {
+        className: 'tool-card',
+        children: [header, details, actions]
+    });
+}
+
 function createInventoryInterface(container) {
     container.innerHTML = '';
     
@@ -708,37 +778,7 @@ function createInventoryInterface(container) {
         });
         
         sortedTools.forEach(tool => {
-            const toolCard = document.createElement('div');
-            toolCard.className = 'tool-card';
-            
-            // Check if tool is assigned to a dwarf
-            const assignedDwarf = dwarfs.find(d => d.toolId === tool.id);
-            const isAssigned = !!assignedDwarf;
-            
-            toolCard.innerHTML = `
-                <div class="tool-header">
-                    <h4>${tool.type} #${tool.id}</h4>
-                    <span class="tool-power">⚒️ ${tool.power || tool.level}</span>
-                </div>
-                <div class="tool-details">
-                    ${isAssigned 
-                        ? `<div class="tool-assigned">📌 Assigned to: <strong>${assignedDwarf.name}</strong></div>`
-                        : `<div class="tool-unassigned">🔓 Not assigned</div>`
-                    }
-                </div>
-                <div class="tool-actions">
-                    ${isAssigned 
-                        ? `<div class="tool-assigned-note">Tool is equipped and in use</div>`
-                        : `<select id="assign-select-${tool.id}" class="assign-select">
-                            <option value="">-- Assign to Dwarf --</option>
-                            ${dwarfs.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}
-                        </select>
-                        <button class="btn-primary btn-small" onclick="assignToolToDwarf(${tool.id})">Assign</button>`
-                    }
-                    <button class="btn-danger btn-small" onclick="scrapTool(${tool.id})" ${isAssigned ? 'disabled title="Cannot scrap assigned tool"' : ''}>🗑️ Scrap</button>
-                </div>
-            `;
-            
+            const toolCard = createToolCard(tool);
             inventoryList.appendChild(toolCard);
         });
     }
@@ -1208,8 +1248,7 @@ function populateToolsInPanel() {
                 enchantBtn.onclick = () => openEnchantModal(tool.id);
             } else {
                 enchantBtn.title = 'Have your tool enchanted by a wizard';
-                enchantBtn.style.opacity = '0.5';
-                enchantBtn.style.cursor = 'not-allowed';
+                enchantBtn.classList.add('ui-disabled');
                 enchantBtn.disabled = true;
             }
             actions.appendChild(enchantBtn);
@@ -1239,8 +1278,7 @@ function populateToolsInPanel() {
                 gemsBtn.onclick = () => openGemModal(tool.id);
             } else {
                 gemsBtn.title = 'Requires Gem Setting research';
-                gemsBtn.style.opacity = '0.5';
-                gemsBtn.style.cursor = 'not-allowed';
+                gemsBtn.classList.add('ui-disabled');
                 gemsBtn.disabled = true;
             }
             actions.appendChild(gemsBtn);
@@ -1707,19 +1745,15 @@ function populateDwarfsInPanel() {
 
         // Add star icon or XP display
         const xpDisplay = document.createElement('div');
-        xpDisplay.className = 'dwarf-xp-display';
         if (canLevelUp) {
             // Show star when ready to level up
+            xpDisplay.className = 'dwarf-xp-display can-level';
             xpDisplay.textContent = '⭐';
             xpDisplay.title = `Ready to level up! (${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
-            xpDisplay.style.cursor = 'pointer';
-            xpDisplay.style.fontSize = '16px';
         } else {
             // Show XP progress
+            xpDisplay.className = 'dwarf-xp-display in-progress';
             xpDisplay.textContent = `(${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP)`;
-            xpDisplay.style.fontSize = '10px';
-            xpDisplay.style.color = '#9fbfe0';
-            xpDisplay.style.opacity = '0.7';
         }
         header.appendChild(xpDisplay);
 
@@ -1763,13 +1797,6 @@ function populateDwarfsInPanel() {
             return tool ? (tool.name || tool.type) : 'None';
         })() : 'None';
 
-        const info = document.createElement('div');
-        info.className = 'dwarf-info';
-        info.id = `dwarf-info-${d.name}`;
-
-        // Create level display with XP tooltip
-        const levelSpan = `<span title="${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP">⭐ ${currentLevel}</span>`;
-
         // Calculate wage using same logic as game-worker.js
         const wageOptimization = researchData['wage-optimization'];
         const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
@@ -1778,13 +1805,27 @@ function populateDwarfsInPanel() {
         const dwarfLevel = (currentLevel || 1) - 1;
         const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
 
-        info.innerHTML = `${levelSpan} | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}<br>🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}<br>⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`;
+        // Build dwarf info using DOM elements
+        const info = createElement('div', {
+            className: 'dwarf-info',
+            attrs: { id: `dwarf-info-${d.name}` },
+            children: [
+                createElement('span', {
+                    text: `⭐ ${currentLevel}`,
+                    attrs: { title: `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')} XP` }
+                }),
+                document.createTextNode(` | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}`),
+                document.createElement('br'),
+                document.createTextNode(`🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}`),
+                document.createElement('br'),
+                document.createTextNode(`⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`)
+            ]
+        });
 
         row.appendChild(header);
         row.appendChild(info);
 
         // Make row clickable to open dwarf detail modal
-        row.style.cursor = 'pointer';
         row.dataset.dwarfName = d.name;
         row.classList.add('dwarf-clickable');
 
@@ -1897,19 +1938,19 @@ function initMaterialsPanel() {
     }
     
     // Create container and header
-    const container = document.createElement('div');
-    container.className = 'warehouse-table-container';
-    
-    const tableHeader = document.createElement('div');
-    tableHeader.className = 'warehouse-table-header';
-    tableHeader.innerHTML = `
-        <span class="wh-col-name">MATERIAL</span>
-        <span class="wh-col-icons"></span>
-        <span class="wh-col-price">PRICE</span>
-        <span class="wh-col-count">STOCK</span>
-        <span class="wh-col-total">VALUE</span>
-        <span class="wh-col-actions">SELL</span>
-    `;
+    const container = createElement('div', { className: 'warehouse-table-container' });
+
+    const tableHeader = createElement('div', {
+        className: 'warehouse-table-header',
+        children: [
+            createElement('span', { className: 'wh-col-name', text: 'MATERIAL' }),
+            createElement('span', { className: 'wh-col-icons' }),
+            createElement('span', { className: 'wh-col-price', text: 'PRICE' }),
+            createElement('span', { className: 'wh-col-count', text: 'STOCK' }),
+            createElement('span', { className: 'wh-col-total', text: 'VALUE' }),
+            createElement('span', { className: 'wh-col-actions', text: 'SELL' })
+        ]
+    });
     container.appendChild(tableHeader);
     
     // Sort materials by worth (high to low) for consistent display order
@@ -3442,8 +3483,7 @@ function populateFunctionsList() {
     const isSmelterUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
 
     if (!isSmelterUnlocked) {
-        smelterLink.style.opacity = '0.5';
-        smelterLink.style.cursor = 'not-allowed';
+        smelterLink.classList.add('ui-disabled');
         smelterLink.title = 'Requires Furnace research';
     }
 
@@ -3465,8 +3505,7 @@ function populateFunctionsList() {
     const isForgeUnlocked = forgeResearch && (forgeResearch.level || 0) >= 1;
 
     if (!isForgeUnlocked) {
-        forgeLink.style.opacity = '0.5';
-        forgeLink.style.cursor = 'not-allowed';
+        forgeLink.classList.add('ui-disabled');
         forgeLink.title = 'Requires Forge research';
     }
 
@@ -3488,8 +3527,7 @@ function populateFunctionsList() {
     const isHousingUnlocked = housingResearch && (housingResearch.level || 0) >= 1;
 
     if (!isHousingUnlocked) {
-        housingLink.style.opacity = '0.5';
-        housingLink.style.cursor = 'not-allowed';
+        housingLink.classList.add('ui-disabled');
         housingLink.title = 'Requires Housing research';
     }
 
@@ -3511,8 +3549,7 @@ function populateFunctionsList() {
     const isManagementUnlocked = managementResearch && (managementResearch.level || 0) >= 1;
 
     if (!isManagementUnlocked) {
-        managementLink.style.opacity = '0.5';
-        managementLink.style.cursor = 'not-allowed';
+        managementLink.classList.add('ui-disabled');
         managementLink.title = 'Requires Management research';
     }
 
@@ -3530,16 +3567,14 @@ function updateForgeFunctionLink() {
 
     if (isForgeUnlocked) {
         // Only update if state actually changed
-        if (forgeLink.style.opacity === '0.5') {
-            forgeLink.style.opacity = '1';
-            forgeLink.style.cursor = 'pointer';
+        if (forgeLink.classList.contains('ui-disabled')) {
+            forgeLink.classList.remove('ui-disabled');
             forgeLink.title = '';
         }
     } else {
         // Only update if state actually changed
-        if (forgeLink.style.opacity !== '0.5') {
-            forgeLink.style.opacity = '0.5';
-            forgeLink.style.cursor = 'not-allowed';
+        if (!forgeLink.classList.contains('ui-disabled')) {
+            forgeLink.classList.add('ui-disabled');
             forgeLink.title = 'Requires Forge research';
         }
     }
@@ -3556,16 +3591,14 @@ function updateManagementFunctionLink() {
 
     if (isManagementUnlocked) {
         // Only update if state actually changed
-        if (managementLink.style.opacity === '0.5') {
-            managementLink.style.opacity = '1';
-            managementLink.style.cursor = 'pointer';
+        if (managementLink.classList.contains('ui-disabled')) {
+            managementLink.classList.remove('ui-disabled');
             managementLink.title = '';
         }
     } else {
         // Only update if state actually changed
-        if (managementLink.style.opacity !== '0.5') {
-            managementLink.style.opacity = '0.5';
-            managementLink.style.cursor = 'not-allowed';
+        if (!managementLink.classList.contains('ui-disabled')) {
+            managementLink.classList.add('ui-disabled');
             managementLink.title = 'Requires Management research';
         }
     }
@@ -3582,16 +3615,14 @@ function updateSmelterFunctionLink() {
 
     if (isSmelterUnlocked) {
         // Only update if state actually changed
-        if (smelterLink.style.opacity === '0.5') {
-            smelterLink.style.opacity = '1';
-            smelterLink.style.cursor = 'pointer';
+        if (smelterLink.classList.contains('ui-disabled')) {
+            smelterLink.classList.remove('ui-disabled');
             smelterLink.title = '';
         }
     } else {
         // Only update if state actually changed
-        if (smelterLink.style.opacity !== '0.5') {
-            smelterLink.style.opacity = '0.5';
-            smelterLink.style.cursor = 'not-allowed';
+        if (!smelterLink.classList.contains('ui-disabled')) {
+            smelterLink.classList.add('ui-disabled');
             smelterLink.title = 'Requires Furnace research';
         }
     }
@@ -3608,16 +3639,14 @@ function updateHousingFunctionLink() {
 
     if (isHousingUnlocked) {
         // Only update if state actually changed
-        if (housingLink.style.opacity === '0.5') {
-            housingLink.style.opacity = '1';
-            housingLink.style.cursor = 'pointer';
+        if (housingLink.classList.contains('ui-disabled')) {
+            housingLink.classList.remove('ui-disabled');
             housingLink.title = '';
         }
     } else {
         // Only update if state actually changed
-        if (housingLink.style.opacity !== '0.5') {
-            housingLink.style.opacity = '0.5';
-            housingLink.style.cursor = 'not-allowed';
+        if (!housingLink.classList.contains('ui-disabled')) {
+            housingLink.classList.add('ui-disabled');
             housingLink.title = 'Requires Housing research';
         }
     }

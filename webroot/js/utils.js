@@ -1020,3 +1020,56 @@ function calculateCritChanceWithFurniture(dwarf) {
 
     return critChance;
 }
+
+// ============================================================================
+// DOM HELPER UTILITIES
+// ============================================================================
+
+/**
+ * Create an element with optional class, text content, and attributes
+ * @param {string} tag - HTML tag name
+ * @param {Object} options - Options object
+ * @param {string} [options.className] - CSS class(es) to add
+ * @param {string} [options.text] - Text content
+ * @param {string} [options.html] - HTML content (use sparingly, prefer text)
+ * @param {Object} [options.attrs] - Attributes to set (e.g., { title: 'Help', id: 'my-id' })
+ * @param {Object} [options.data] - Data attributes (e.g., { action: 'close' } becomes data-action="close")
+ * @param {Object} [options.style] - Inline styles (e.g., { color: 'red' })
+ * @param {Array} [options.children] - Child elements to append
+ * @returns {HTMLElement} The created element
+ */
+function createElement(tag, options = {}) {
+    const el = document.createElement(tag);
+
+    if (options.className) el.className = options.className;
+    if (options.text) el.textContent = options.text;
+    if (options.html) el.innerHTML = options.html;
+
+    if (options.attrs) {
+        for (const [key, value] of Object.entries(options.attrs)) {
+            if (value !== undefined && value !== null) {
+                el.setAttribute(key, value);
+            }
+        }
+    }
+
+    if (options.data) {
+        for (const [key, value] of Object.entries(options.data)) {
+            el.dataset[key] = value;
+        }
+    }
+
+    if (options.style) {
+        for (const [key, value] of Object.entries(options.style)) {
+            el.style[key] = value;
+        }
+    }
+
+    if (options.children) {
+        for (const child of options.children) {
+            if (child) el.appendChild(child);
+        }
+    }
+
+    return el;
+}
