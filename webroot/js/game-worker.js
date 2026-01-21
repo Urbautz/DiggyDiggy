@@ -43,6 +43,9 @@ let nextInvestmentId = 1; // Next investment ID to assign
 let activeManagementTasks = []; // Array of active management tasks
 let managementTasks = {}; // Management task definitions
 let platingEffects = {}; // Plating effects definitions (initialized from defs.js via main thread)
+let furnitureData = {}; // Furniture definitions (from defs.js via main thread)
+let commonRoom = { furniture: {} }; // Common room furniture levels
+let individualRooms = {}; // Individual room furniture levels (keyed by room ID)
 
 // Smelter temperature system
 let smelterTemperature = 25; // Current temperature in degrees
@@ -782,8 +785,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
         return;
     }
 
-    // Check if dwarf has enough energy
-    if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+    // Check if dwarf has enough energy (energy cost scales with wisdom including furniture bonus)
+    if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf))) {
         // Don't reset progress when dwarf stops - allow continuation by next dwarf
         if (reservedBy === dwarf.name) setReservedBy(null);
         if (workshopType === 'smelting' && managementReservedBy === dwarf.name) managementReservedBy = null;
@@ -795,10 +798,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
     // Check if we can afford to pay the dwarf
     const wage = calculateWage(dwarf);
     if (gold < wage) {
-        // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchData['union-busting'];
-        const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-        if (Math.random() > continueWorkChance) {
+        // Not enough gold - check if dwarf will strike
+        if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
             dwarf.status = 'striking';
             return;
         }
@@ -868,8 +869,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
         if (task.output && task.output.material && task.hardness !== undefined) {
             const hardness = task.hardness;
 
-            // Calculate how many runs the dwarf gets based on wisdom
-            let currentWisdom = dwarf.wisdom || 0;
+            // Calculate how many runs the dwarf gets based on wisdom (including furniture bonus)
+            let currentWisdom = getEffectiveWisdom(dwarf);
             let runNumber = 1;
 
             while (true) {
@@ -890,7 +891,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 totalProgressGained++;
 
                 // Halve wisdom for next run
-                if ((dwarf.wisdom || 0) > 0) {
+                if (getEffectiveWisdom(dwarf) > 0) {
                     currentWisdom = Math.floor(currentWisdom / 2);
                 } else {
                     break;
@@ -998,8 +999,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
             }
         }
 
-        // Consume energy and pay wage
-        const energyCostPerTick = DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0);
+        // Consume energy and pay wage (energy cost scales with wisdom including furniture bonus)
+        const energyCostPerTick = DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf);
         dwarf.energy = Math.max(0, dwarf.energy - energyCostPerTick);
 
         // Pay wage
@@ -1041,7 +1042,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
         // Pay the dwarf, consume energy and award XP
         gold = Math.max(0, gold - wage);
         pendingTransactions.push({ type: 'expense', amount: wage, description: `${transactionPrefix} wage for ${dwarf.name}` });
-        applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
+        applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf));
         dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
 
         return;
@@ -1168,20 +1169,79 @@ function handleSmelterTaskOutput(task, dwarf) {
     }
 }
 
+/**
+ * Calculate total furniture bonuses for a dwarf based on common room and their individual room
+ * @param {Object} dwarf - The dwarf to calculate bonuses for
+ * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus)
+ */
+function calculateFurnitureBonuses(dwarf) {
+    const bonuses = {
+        restBonus: 0,           // Additive percentage bonus to rest recovery
+        maxEnergyBonus: 0,      // Flat bonus to max energy
+        digPowerBonus: 0,       // Additive percentage bonus to dig power
+        critChanceBonus: 0,     // Additive bonus to crit chance
+        strengthBonus: 0,       // Flat bonus to strength
+        wisdomBonus: 0          // Flat bonus to wisdom
+    };
+
+    // Add bonuses from common room furniture (applies to all dwarfs)
+    if (commonRoom && commonRoom.furniture) {
+        for (const furnitureId in commonRoom.furniture) {
+            const furnitureLevel = commonRoom.furniture[furnitureId]?.level || 0;
+            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
+                const effect = furnitureData[furnitureId].effect;
+                if (effect) {
+                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
+                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
+                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
+                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
+                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
+                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                }
+            }
+        }
+    }
+
+    // Add bonuses from dwarf's individual room
+    const roomId = dwarf.roomId;
+    if (roomId && individualRooms[roomId] && individualRooms[roomId].furniture) {
+        for (const furnitureId in individualRooms[roomId].furniture) {
+            const furnitureLevel = individualRooms[roomId].furniture[furnitureId]?.level || 0;
+            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
+                const effect = furnitureData[furnitureId].effect;
+                if (effect) {
+                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
+                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
+                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
+                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
+                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
+                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                }
+            }
+        }
+    }
+
+    return bonuses;
+}
+
 function getDwarfToolPower(dwarf) {
 
-    // Calculate power: (Dwarf Base Power * Level Bonus) * Research Bonus * Tool Power
+    // Calculate power: (Dwarf Base Power * Level Bonus) * Research Bonus * Tool Power * Furniture Bonus
     const baseDigPower = dwarf.digPower || 0;
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const levelBonus = 1 + modifiedDigPower * DWARF_DIG_POWER_BONUS;
-    
+
     // Apply improved-digging research bonus
     const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * RESEARCH_IMPROVED_DIGGING_BONUS : 0);
-    
-    if (!dwarf.toolId) return (DWARF_BASE_POWER * levelBonus) * researchBonus; // default power if no tool
+
+    // Apply furniture dig power bonus
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    const furnitureDigBonus = 1 + furnitureBonuses.digPowerBonus;
+
+    if (!dwarf.toolId) return (DWARF_BASE_POWER * levelBonus) * researchBonus * furnitureDigBonus; // default power if no tool
     const toolInstance = toolsInventory.find(t => t.id === dwarf.toolId);
-    if (!toolInstance) return (DWARF_BASE_POWER * levelBonus) * researchBonus;
+    if (!toolInstance) return (DWARF_BASE_POWER * levelBonus) * researchBonus * furnitureDigBonus;
     // Check if tool has custom power (forged tools) or use base definition
     let toolPower;
     if (toolInstance.power !== undefined) {
@@ -1190,14 +1250,72 @@ function getDwarfToolPower(dwarf) {
     } else {
         // Base tool - look up definition
         const toolDef = tools.find(t => t.name === toolInstance.type);
-        if (!toolDef) return (DWARF_BASE_POWER * levelBonus) * researchBonus;
+        if (!toolDef) return (DWARF_BASE_POWER * levelBonus) * researchBonus * furnitureDigBonus;
         toolPower = toolDef.power / 100;
     }
 
     // Apply enchantment bonus (1% per enchantment level)
     const enchantBonus = 1 + (toolInstance.enchantLevel || 0) * ENCHANT_POWER_BONUS;
 
-    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus;
+    return (DWARF_BASE_POWER * levelBonus) * researchBonus * toolPower * enchantBonus * furnitureDigBonus;
+}
+
+/**
+ * Calculate critical hit chance including furniture bonuses
+ * Wraps calculateFinalCritChance from utils.js and adds furniture critChanceBonus
+ * @param {Object} dwarf - The dwarf performing the action
+ * @returns {number} Final critical hit chance as a decimal (0-1)
+ */
+function getCritChanceWithFurniture(dwarf) {
+    // Get base crit chance from utils.js (includes research, gems, plating)
+    let critChance = calculateFinalCritChance(dwarf);
+
+    // Add furniture crit chance bonus (additive)
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    critChance += furnitureBonuses.critChanceBonus;
+
+    return critChance;
+}
+
+/**
+ * Get effective wisdom for a dwarf including furniture bonuses
+ * @param {Object} dwarf - The dwarf to get wisdom for
+ * @returns {number} Effective wisdom value
+ */
+function getEffectiveWisdom(dwarf) {
+    const baseWisdom = dwarf.wisdom || 0;
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    return baseWisdom + furnitureBonuses.wisdomBonus;
+}
+
+/**
+ * Get effective strength for a dwarf including furniture bonuses
+ * @param {Object} dwarf - The dwarf to get strength for
+ * @returns {number} Effective strength value
+ */
+function getEffectiveStrength(dwarf) {
+    const baseStrength = dwarf.strength || 0;
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    return baseStrength + furnitureBonuses.strengthBonus;
+}
+
+/**
+ * Calculate bucket capacity with furniture strength bonus
+ * Wraps calculateDwarfBucketCapacity from utils.js and adds furniture strengthBonus
+ * @param {Object} dwarf - The dwarf to calculate capacity for
+ * @returns {number} Total bucket capacity in kg
+ */
+function getBucketCapacityWithFurniture(dwarf) {
+    // Get furniture strength bonus
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+
+    // Create a temporary dwarf object with increased strength for calculation
+    const dwarfWithBonus = {
+        ...dwarf,
+        strength: (dwarf.strength || 0) + furnitureBonuses.strengthBonus
+    };
+
+    return calculateDwarfBucketCapacity(dwarfWithBonus);
 }
 
 // Note: calculateWage and randomMaterial are now in utils.js
@@ -1473,12 +1591,21 @@ function actForDwarf(dwarf) {
 
     // Resting state
     if (dwarf.status === 'resting') {
-        const maxEnergy = dwarf.maxEnergy || 100;
+        // Calculate furniture bonuses for this dwarf
+        const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+
+        // Max energy = base + furniture bonus
+        const baseMaxEnergy = dwarf.maxEnergy || 100;
+        const maxEnergy = baseMaxEnergy + furnitureBonuses.maxEnergyBonus;
+
         // Apply better-housing research bonus with diminishing returns
         const betterHousing = researchData['better-housing'];
         const housingLevel = betterHousing ? (betterHousing.level || 0) : 0;
-        const restBonus = housingLevel > 0 ? 1 + (housingLevel * RESEARCH_BETTER_HOUSING_BASE_BONUS) / (1 + housingLevel * RESEARCH_BETTER_HOUSING_DIMINISH) : 1;
-        const restAmount = DWARF_REST_AMOUNT * restBonus;
+        const researchRestBonus = housingLevel > 0 ? 1 + (housingLevel * RESEARCH_BETTER_HOUSING_BASE_BONUS) / (1 + housingLevel * RESEARCH_BETTER_HOUSING_DIMINISH) : 1;
+
+        // Combine research bonus (multiplier) with furniture bonus (additive percentage)
+        const totalRestBonus = researchRestBonus * (1 + furnitureBonuses.restBonus);
+        const restAmount = DWARF_REST_AMOUNT * totalRestBonus;
         dwarf.energy = Math.min(maxEnergy, (dwarf.energy || 0) + restAmount);
         if (dwarf.energy >= maxEnergy) {
             dwarf.status = 'idle';
@@ -1518,8 +1645,8 @@ function actForDwarf(dwarf) {
     if (dwarf.status === 'researching') {
         // Check if at research location
         if (typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y) {
-            // Check if there's an active research
-if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+            // Check if dwarf has enough energy (energy cost scales with wisdom including furniture bonus)
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf))) {
                 if (researchReservedBy === dwarf.name) researchReservedBy = null;
                 dwarf.status = 'idle';
                 return;
@@ -1528,21 +1655,19 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
             }
-            
+
             // Pay the dwarf, consume energy and generate research point
             gold = Math.max(0, gold - wage);
             pendingTransactions.push({ type: 'expense', amount: wage, description: 'Research wage for ' + dwarf.name });
 
             // Apply energy consumption with Ruby gem prevention and Zinc plating reduction
-            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0));
+            applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf));
             if (activeResearch.progress === undefined) {
                 activeResearch.progress = 0;
             }
@@ -1555,9 +1680,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Debug: Log research attempt start
             const debugRuns = [];
 
-            // Calculate research points with multiple runs based on wisdom
+            // Calculate research points with multiple runs based on wisdom (including furniture bonus)
             let totalResearchPoints = 0;
-            let currentWisdom = Math.max(1, dwarf.wisdom || 0); // Ensure at least 1 wisdom for minimum chance
+            let currentWisdom = Math.max(1, getEffectiveWisdom(dwarf)); // Ensure at least 1 wisdom for minimum chance
             let runNumber = 0;
 
             while (currentWisdom > 0) {
@@ -1600,11 +1725,11 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                     success: success
                 });
 
-                // Halve wisdom for next run (rounded down), but only if actual wisdom > 0
-                if ((dwarf.wisdom || 0) > 0) {
+                // Halve wisdom for next run (rounded down), but only if effective wisdom > 0
+                if (getEffectiveWisdom(dwarf) > 0) {
                     currentWisdom = Math.floor(currentWisdom / 2);
                 } else {
-                    // Dwarf has 0 wisdom, only gets 1 roll with minimum chance
+                    // Dwarf has 0 effective wisdom, only gets 1 roll with minimum chance
                     break;
                 }
 
@@ -1711,8 +1836,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     if (dwarf.status === 'managing') {
         // Check if at management location
         if (typeof management === 'object' && management !== null && dwarf.x === management.x && dwarf.y === management.y) {
-            // Check if dwarf has enough energy
-            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+            // Check if dwarf has enough energy (energy cost scales with wisdom including furniture bonus)
+            if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf))) {
                 // Don't reset progress when dwarf stops - allow continuation by next dwarf
                 if (managementReservedBy === dwarf.name) managementReservedBy = null;
                 dwarf.status = 'idle';
@@ -1723,10 +1848,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -1762,9 +1885,9 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 task.progress = 0;
             }
 
-            // Wisdom-based progress (similar to smelting)
+            // Wisdom-based progress (similar to smelting, including furniture bonus)
             let totalProgressGained = 0;
-            let currentWisdom = dwarf.wisdom || 0;
+            let currentWisdom = getEffectiveWisdom(dwarf);
             let runNumber = 1;
 
             // Use task hardness as difficulty for rolling (like hardness for smelting)
@@ -1791,10 +1914,10 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
                 totalProgressGained++;
 
                 // Halve wisdom for next run
-                if ((dwarf.wisdom || 0) > 0) {
+                if (getEffectiveWisdom(dwarf) > 0) {
                     currentWisdom = Math.floor(currentWisdom / 2);
                 } else {
-                    break; // 0 wisdom, only 1 roll
+                    break; // 0 effective wisdom, only 1 roll
                 }
 
                 // Safety check
@@ -1856,7 +1979,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
 
     // Full bucket handling (weight-based)
     const bucketWeight = calculateBucketWeight(dwarf.bucket);
-    const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
+    const dwarfCapacity = getBucketCapacityWithFurniture(dwarf);
     if (bucketWeight >= dwarfCapacity) {
         if (dwarf.x === dropOff.x && dwarf.y === dropOff.y) {
             if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0) {
@@ -1965,7 +2088,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     const atResearch = typeof research === 'object' && research !== null && dwarf.x === research.x && dwarf.y === research.y;
     const atSmelter = typeof smelter === 'object' && smelter !== null && dwarf.x === smelter.x && dwarf.y === smelter.y;
 
-    if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+    if (dwarf.status === 'idle' && (atResearch || atSmelter) && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf))) {
         // Dwarf at special location - use unified task assignment
         const assignedTask = assignDwarfTask(dwarf, null, null);
 
@@ -1990,8 +2113,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     let movedDownByChance = false;
     let skipHorizontalScan = false;
 
-    // Idle dwarf - check for tasks based on priority
-    if (dwarf.status === 'idle' && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
+    // Idle dwarf - check for tasks based on priority (energy cost scales with wisdom including furniture bonus)
+    if (dwarf.status === 'idle' && dwarf.energy >= (DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf))) {
         // Use unified task assignment (pass null for digging coords to allow continuing to digging logic below)
         const assignedTask = assignDwarfTask(dwarf, null, null);
 
@@ -2035,10 +2158,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -2054,7 +2175,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // XP is now only awarded when a material is destroyed
 
             // Check for critical hit
-            const critChance = calculateFinalCritChance(dwarf);
+            const critChance = getCritChanceWithFurniture(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
             
@@ -2195,10 +2316,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // Check if we can afford to pay the dwarf
             const wage = calculateWage(dwarf);
             if (gold < wage) {
-                // Not enough gold - strike chance reduced by union-busting research
-                const unionBusting = researchData['union-busting'];
-                const continueWorkChance = DWARF_STRIKE_BASE_CHANCE + ((unionBusting ? unionBusting.level : 0) * RESEARCH_UNION_BUSTING_BONUS);
-                if (Math.random() > continueWorkChance) {
+                // Not enough gold - check if dwarf will strike
+                if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
                     dwarf.status = 'striking';
                     return;
                 }
@@ -2212,7 +2331,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
             // XP is now only awarded when a material is destroyed (see above)
 
             // Check for critical hit
-            const critChance = calculateFinalCritChance(dwarf);
+            const critChance = getCritChanceWithFurniture(dwarf);
             const isCrit = Math.random() < critChance;
             let finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
 
@@ -2475,10 +2594,8 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     // Check if we can afford to pay the dwarf
     const wage = calculateWage(dwarf);
     if (gold < wage) {
-        // Not enough gold - strike chance reduced by union-busting research
-        const unionBusting = researchData['union-busting'];
-        const continueWorkChance = 0.1 + ((unionBusting ? unionBusting.level : 0) * 0.05);
-        if (Math.random() > continueWorkChance) {
+        // Not enough gold - check if dwarf will strike
+        if (Math.random() > DWARF_STRIKE_BASE_CHANCE) {
             dwarf.status = 'striking';
             return;
         }
@@ -2490,7 +2607,7 @@ if (dwarf.energy < (DWARF_BASE_ENERGY_COST_TASK + (dwarf.wisdom || 0))) {
     pendingTransactions.push({ type: 'expense', amount: wage, description: `Digging wage for ${dwarf.name}` });
 
     // Check for critical hit
-    const critChance = calculateFinalCritChance(dwarf);
+    const critChance = getCritChanceWithFurniture(dwarf);
     const isCrit = Math.random() < critChance;
     const finalPower = isCrit ? power * CRITICAL_HIT_DAMAGE_MULTIPLIER : power;
 
@@ -2635,6 +2752,22 @@ function tick() {
             oneTimeInvestments = activeInvestments;
         }
 
+        // Ensure only one dwarf is researching at a time
+        const researchingDwarfs = dwarfs.filter(d => d.status === 'researching');
+        if (researchingDwarfs.length > 1) {
+            // Keep the first one researching, reset the others to idle and send home
+            for (let i = 1; i < researchingDwarfs.length; i++) {
+                const dwarf = researchingDwarfs[i];
+                console.warn(`[Research Conflict] Multiple dwarfs researching. Resetting ${dwarf.name} to idle.`);
+                dwarf.status = 'idle';
+                if (house) {
+                    scheduleMove(dwarf, house.x, house.y);
+                }
+            }
+            // Ensure reservation is held by the remaining researcher
+            researchReservedBy = researchingDwarfs[0].name;
+        }
+
         for (const d of dwarfs) {
             actForDwarf(d);
         }
@@ -2775,6 +2908,10 @@ self.addEventListener('message', (e) => {
             if (data.managementTasks) managementTasks = JSON.parse(JSON.stringify(data.managementTasks));
             // Initialize plating effects (from defs.js)
             if (data.platingEffects) platingEffects = JSON.parse(JSON.stringify(data.platingEffects));
+            // Initialize furniture data
+            if (data.furnitureData) furnitureData = JSON.parse(JSON.stringify(data.furnitureData));
+            if (data.commonRoom) commonRoom = JSON.parse(JSON.stringify(data.commonRoom));
+            if (data.individualRooms) individualRooms = JSON.parse(JSON.stringify(data.individualRooms));
             console.log('Worker initialized with game state');
             self.postMessage({ type: 'init-complete' });
             break;
@@ -2851,6 +2988,10 @@ self.addEventListener('message', (e) => {
                 if (data.activeManagementTasks !== undefined) {
                     activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
                 }
+                // Update furniture data
+                if (data.furnitureData) furnitureData = JSON.parse(JSON.stringify(data.furnitureData));
+                if (data.commonRoom) commonRoom = JSON.parse(JSON.stringify(data.commonRoom));
+                if (data.individualRooms) individualRooms = JSON.parse(JSON.stringify(data.individualRooms));
             }
             break;
 

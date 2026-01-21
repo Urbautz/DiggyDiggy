@@ -6,7 +6,7 @@
 // ============================================================================
 
 // Game version
-const gameversion = '0.21.0';
+const gameversion = '0.22.0';
 
 // ============================================================================
 // DWARF CONSTANTS
@@ -56,7 +56,6 @@ const ORE_EXPERTISE_ONE_HIT_CHANCE = 0.03; // 3% per level
 
 const RESEARCH_IMPROVED_DIGGING_BONUS = 0.01; // 1% per level
 const RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS = 0.05; // 5% crit chance per level
-const RESEARCH_UNION_BUSTING_BONUS = 0.05; // 5% less strike chance per level
 const RESEARCH_WAGE_OPTIMIZATION_REDUCTION = 0.01; // 1% wage increase reduction per level
 const RESEARCH_BETTER_HOUSING_BASE_BONUS = 0.1; // 10% base rest bonus
 const RESEARCH_BETTER_HOUSING_DIMINISH = 0.15; // Diminishing returns factor
@@ -68,6 +67,7 @@ const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_RATE = 0.00000135; // 0.025% interes
 const RESEARCH_SMALL_TIME_INVESTMENTS_TIER2_LIMIT = 10100; // Gold limit for tier 2 interest
 const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_RATE = 0.0000000875; // 0% interest rate for gold below 10M
 const RESEARCH_SMALL_TIME_INVESTMENTS_TIER3_LIMIT = 110100; // Gold limit for tier 3 interest
+const TRANSACTION_HISTORY_MAX_HOURS = 72; // Keep only the last 72 hours of transaction history
 const RESEARCH_BUCKET_CAPACITY_BONUS = 1; // 1 extra capacity per level
 const RESEARCH_STONE_POLISHING_BREAK_REDUCTION = 0.08; // 8% less break chance per level
 const RESEARCH_FURNACE_INSULATION_BONUS = 0.10; // 10% less heat loss per level

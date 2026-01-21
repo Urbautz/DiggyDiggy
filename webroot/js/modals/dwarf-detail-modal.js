@@ -939,6 +939,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         }
     }
 
+    // Populate combat bonuses section
+    populateCombatBonuses(dwarf);
+
     // Populate tool selector (only on initial open, not on refresh)
     if (includeToolSelector) {
         const toolSelect = document.getElementById('dwarf-tool-select');
@@ -1205,6 +1208,9 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     }
 
     document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');
+
+    // Update combat bonuses
+    populateCombatBonuses(dwarf);
 }
 
 /**
@@ -1347,6 +1353,69 @@ function stopDwarfsLiveUpdate() {
     if (!_dwarfsModalRefreshId) return;
     clearInterval(_dwarfsModalRefreshId);
     _dwarfsModalRefreshId = null;
+}
+
+/**
+ * Populate combat bonuses section in dwarf detail modal
+ * Shows: Resting Rate, Critical Hit Chance, One-Hit Chance (Stone), One-Hit Chance (Ore)
+ */
+function populateCombatBonuses(dwarf) {
+    // Calculate resting rate with furniture bonus
+    const restingRate = calculateEffectiveRestingRate(dwarf);
+    const baseRestingRate = getBaseRestingRate();
+    const restingRateEl = document.getElementById('dwarf-resting-rate');
+    if (restingRateEl) {
+        const restBonus = restingRate - baseRestingRate;
+        if (restBonus > 0) {
+            restingRateEl.textContent = `${formatNumber(restingRate, 'material')}/tick`;
+            restingRateEl.title = `Base: ${baseRestingRate}, Furniture: +${formatNumber(restBonus, 'material')}`;
+        } else {
+            restingRateEl.textContent = `${baseRestingRate}/tick`;
+            restingRateEl.title = 'Base resting rate';
+        }
+    }
+
+    // Calculate critical hit chance with furniture bonus
+    const critChance = calculateCritChanceWithFurniture(dwarf);
+    const critChanceEl = document.getElementById('dwarf-crit-chance');
+    if (critChanceEl) {
+        critChanceEl.textContent = `${formatNumber(critChance * 100, 'percent')}%`;
+        // Build tooltip with breakdown
+        const baseCrit = typeof CRITICAL_HIT_BASE_CHANCE !== 'undefined' ? CRITICAL_HIT_BASE_CHANCE : 0.02;
+        const materialScience = researchData['material-science'];
+        const researchBonus = (materialScience ? materialScience.level : 0) * (typeof RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS !== 'undefined' ? RESEARCH_MATERIAL_SCIENCE_CRIT_BONUS : 0.05);
+        const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+
+        let tooltip = `Base: ${(baseCrit * 100).toFixed(0)}%`;
+        if (researchBonus > 0) tooltip += `\nResearch: +${(researchBonus * 100).toFixed(0)}%`;
+        if (furnitureBonuses.critChanceBonus > 0) tooltip += `\nFurniture: +${(furnitureBonuses.critChanceBonus * 100).toFixed(1)}%`;
+        critChanceEl.title = tooltip;
+    }
+
+    // Calculate one-hit chances
+    const oneHitChances = calculateMaxOneHitChances(dwarf);
+
+    const oneHitStoneEl = document.getElementById('dwarf-onehit-stone');
+    if (oneHitStoneEl) {
+        const stoneChance = oneHitChances.stoneChance * 100;
+        oneHitStoneEl.textContent = `${formatNumber(stoneChance, 'percent')}%`;
+        const stoneExpertise = researchData['expertise-stone'];
+        const stoneLevel = stoneExpertise ? (stoneExpertise.level || 0) : 0;
+        oneHitStoneEl.title = stoneLevel > 0
+            ? `Stone Expertise Level ${stoneLevel}\n2% chance per level on critical hits`
+            : 'Requires Stone Expertise research';
+    }
+
+    const oneHitOreEl = document.getElementById('dwarf-onehit-ore');
+    if (oneHitOreEl) {
+        const oreChance = oneHitChances.oreChance * 100;
+        oneHitOreEl.textContent = `${formatNumber(oreChance, 'percent')}%`;
+        const oreExpertise = researchData['expertise-ore'];
+        const oreLevel = oreExpertise ? (oreExpertise.level || 0) : 0;
+        oneHitOreEl.title = oreLevel > 0
+            ? `Ore Expertise Level ${oreLevel}\n3% chance per level on critical hits`
+            : 'Requires Ore Expertise research';
+    }
 }
 
 // ============================================================================

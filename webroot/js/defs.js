@@ -1410,10 +1410,11 @@ const researchData = {
     description: 'Dwarfs dig 1% harder.'
   },
   'better-housing': {
-    name: 'Better Housing',
+    name: 'Housing',
     cost: 100,
     goldCost: 10,
     level: 0,
+    min_depth: 300,
     hardness: 20,
     description: 'The Home is more comfy, letting them rest faster. Diminishing returns per level.'
   },
@@ -1478,15 +1479,6 @@ const researchData = {
     maxlevel: 10,
     hardness: 30,
     description: 'Increases bucket weight capacity by 5% per level. Base: 50kg + (5kg × strength).'
-  },
-  'union-busting': {
-    name: 'Union Busting',
-    cost: 500,
-    goldCost: 500,
-    level: 0,
-    maxlevel: 15,
-    hardness: 40,
-    description: 'Reduces dwarf strike likelihood by 5% per level when you run out of money.'
   },
   'tool-enchanting': {
     name: 'Tool Enchanting',
@@ -1673,6 +1665,98 @@ const researchData = {
     description: 'Unlocks dwarf self management to make your life eaiser. Dwarfs will do certain stuff for you.'
   },
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // FURNITURE / CONSTRUCTION RESEARCHES
+  // ──────────────────────────────────────────────────────────────────────────
+  'comfort': {
+    name: 'Comfort',
+    cost: 200,
+    goldCost: 2000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 25,
+    requires: [{'better-housing': 1}],
+    min_depth: 2000,
+    description: 'Unlocks comfortable furniture like rocking chairs.'
+  },
+  'entertainment': {
+    name: 'Entertainment',
+    cost: 400,
+    goldCost: 8000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 35,
+    requires: [{'better-housing': 2}],
+    min_depth: 5000,
+    description: 'Unlocks entertainment furniture like gaming tables and bars.'
+  },
+  'organization': {
+    name: 'Organization',
+    cost: 500,
+    goldCost: 5000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 40,
+    requires: [{'better-housing': 2}],
+    min_depth: 5000,
+    description: 'Unlocks organizational furniture like tools racks and desks.'
+  },
+  'brewing': {
+    name: 'Brewing',
+    cost: 800,
+    goldCost: 15000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 50,
+    requires: [{'better-housing': 3}],
+    min_depth: 15000,
+    description: 'Unlocks brewing-related furniture like ale barrel racks.'
+  },
+  'knowledge': {
+    name: 'Knowledge',
+    cost: 1000,
+    goldCost: 20000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 55,
+    requires: [{'better-housing': 3}],
+    min_depth: 25000,
+    description: 'Unlocks knowledge furniture like bookshelves.'
+  },
+  'decoration': {
+    name: 'Decoration',
+    cost: 1500,
+    goldCost: 50000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 65,
+    requires: [{'better-housing': 5}],
+    min_depth: 50000,
+    description: 'Unlocks decorative furniture like banners and potted mushrooms.'
+  },
+  'religion': {
+    name: 'Religion',
+    cost: 2000,
+    goldCost: 100000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 80,
+    requires: [{'better-housing': 7}],
+    min_depth: 100000,
+    description: 'Unlocks religious furniture like shrines.'
+  },
+  'artistry': {
+    name: 'Artistry',
+    cost: 3000,
+    goldCost: 250000,
+    level: 0,
+    maxlevel: 1,
+    hardness: 95,
+    requires: [{'better-housing': 10}],
+    min_depth: 250000,
+    description: 'Unlocks artistic furniture like dwarfen statues.'
+  },
+
 };
 
 // Ordered array of research IDs (determines display order)
@@ -1701,9 +1785,16 @@ let researchTree = [
   'ore-enrichment',
   'improved-digging',
   'better-housing',
+  'comfort',
+  'entertainment',
+  'organization',
+  'brewing',
+  'knowledge',
+  'decoration',
+  'religion',
+  'artistry',
   'trading',
   'buckets',
-  'union-busting',
 ];
 
 let managementTasks = {
@@ -1798,6 +1889,223 @@ let managementTasks = {
   },
 }
 
+// ============================================================================
+// CONSTRUCTION / FURNITURE REGISTRY
+// ============================================================================
+// Furniture definitions for common room and individual dwarf rooms
+
+const furnitureData = {
+  // ──────────────────────────────────────────────────────────────────────────
+  // COMMON ROOM FURNITURE (more expensive, shared benefits)
+  // ──────────────────────────────────────────────────────────────────────────
+  'seating-bench': {
+    name: 'Seating Bench',
+    icon: '🪑',
+    room: 'common',
+    baseCost: 5000,
+    minDepth: 500,
+    requires: null,
+    effect: { restBonus: 0.015 },
+    description: 'A sturdy wooden bench. +1.5% rest recovery per level.'
+  },
+  'feasting-table': {
+    name: 'Feasting Table',
+    icon: '🍽️',
+    room: 'common',
+    baseCost: 8000,
+    minDepth: 500,
+    requires: null,
+    effect: { maxEnergyBonus: 2 },
+    description: 'A long table for communal meals. +2 max energy per level.'
+  },
+  'gaming-table': {
+    name: 'Gaming Table',
+    icon: '🎲',
+    room: 'common',
+    baseCost: 15000,
+    minDepth: 5000,
+    requires: 'entertainment',
+    effect: { restBonus: 0.02 },
+    description: 'For card games and dice. +2% rest recovery per level.'
+  },
+  'bar-with-barstools': {
+    name: 'Bar with Barstools',
+    icon: '🍺',
+    room: 'common',
+    baseCost: 20000,
+    minDepth: 10000,
+    requires: 'entertainment',
+    effect: { maxEnergyBonus: 5 },
+    description: 'A proper dwarven bar. +5 max energy per level.'
+  },
+  'ale-barrel-rack': {
+    name: 'Ale Barrel Rack',
+    icon: '⚱️',
+    room: 'common',
+    baseCost: 25000,
+    minDepth: 15000,
+    requires: 'brewing',
+    effect: { restBonus: 0.025 },
+    description: 'Stores the finest ale. +2.5% rest recovery per level.'
+  },
+  'banner': {
+    name: 'Banner',
+    icon: '🚩',
+    room: 'common',
+    baseCost: 50000,
+    minDepth: 50000,
+    requires: 'decoration',
+    effect: { digPowerBonus: 0.01 },
+    description: 'Displays clan colors proudly. +1% dig power per level.'
+  },
+  'shrine': {
+    name: 'Shrine',
+    icon: '⛩️',
+    room: 'common',
+    baseCost: 100000,
+    minDepth: 100000,
+    requires: 'religion',
+    effect: { critChanceBonus: 0.005 },
+    description: 'A sacred shrine for worship. +0.5% critical hit chance per level.'
+  },
+  'dwarfen-statue': {
+    name: 'Dwarfen Statue',
+    icon: '🗿',
+    room: 'common',
+    baseCost: 250000,
+    minDepth: 250000,
+    requires: 'artistry',
+    effect: { strengthBonus: 1, digPowerBonus: 0.02 },
+    description: 'A magnificent statue. +1 strength and +2% dig power per level.'
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // INDIVIDUAL ROOM FURNITURE (cheaper, benefits specific dwarf)
+  // ──────────────────────────────────────────────────────────────────────────
+  'bed': {
+    name: 'Bed',
+    icon: '🛏️',
+    room: 'individual',
+    baseCost: 2000,
+    minDepth: 500,
+    requires: null,
+    effect: { restBonus: 0.03 },
+    description: 'A comfortable bed. +3% rest recovery per level.'
+  },
+  'cabinet': {
+    name: 'Cabinet',
+    icon: '🧥',
+    room: 'individual',
+    baseCost: 3000,
+    minDepth: 500,
+    requires: null,
+    effect: { maxEnergyBonus: 3 },
+    description: 'Storage for belongings. +3 max energy per level.'
+  },
+  'rocking-chair': {
+    name: 'Rocking Chair',
+    icon: '🪑',
+    room: 'individual',
+    baseCost: 5000,
+    minDepth: 2000,
+    requires: 'comfort',
+    effect: { restBonus: 0.02 },
+    description: 'A relaxing chair. +2% rest recovery per level.'
+  },
+  'tools-rack': {
+    name: 'Tools Rack',
+    icon: '🪓',
+    room: 'individual',
+    baseCost: 8000,
+    minDepth: 5000,
+    requires: 'organization',
+    effect: { digPowerBonus: 0.015 },
+    description: 'Organized tool storage. +1.5% dig power per level.'
+  },
+  'desk-with-stool': {
+    name: 'Desk with Stool',
+    icon: '📝',
+    room: 'individual',
+    baseCost: 12000,
+    minDepth: 10000,
+    requires: 'organization',
+    effect: { wisdomBonus: 1 },
+    description: 'A workspace for planning. +1 wisdom per level.'
+  },
+  'bookshelf': {
+    name: 'Bookshelf',
+    icon: '📖',
+    room: 'individual',
+    baseCost: 20000,
+    minDepth: 25000,
+    requires: 'knowledge',
+    effect: { wisdomBonus: 2 },
+    description: 'Mining manuals and scrolls. +2 wisdom per level.'
+  },
+  'small-ale-barrel': {
+    name: 'Small Ale Barrel',
+    icon: '🍺',
+    room: 'individual',
+    baseCost: 35000,
+    minDepth: 75000,
+    requires: 'brewing',
+    effect: { maxEnergyBonus: 5, restBonus: 0.01 },
+    description: 'Personal ale stash. +5 max energy and +1% rest per level.'
+  },
+  'potted-mushroom': {
+    name: 'Potted Mushroom',
+    icon: '🍄',
+    room: 'individual',
+    baseCost: 75000,
+    minDepth: 150000,
+    requires: 'decoration',
+    effect: { critChanceBonus: 0.003, restBonus: 0.01 },
+    description: 'A glowing mushroom. +0.3% crit chance and +1% rest per level.'
+  }
+};
+
+// Ordered arrays for display order
+const commonRoomFurniture = [
+  'seating-bench',
+  'feasting-table',
+  'gaming-table',
+  'bar-with-barstools',
+  'ale-barrel-rack',
+  'banner',
+  'shrine',
+  'dwarfen-statue'
+];
+
+const individualRoomFurniture = [
+  'bed',
+  'cabinet',
+  'rocking-chair',
+  'tools-rack',
+  'desk-with-stool',
+  'bookshelf',
+  'small-ale-barrel',
+  'potted-mushroom'
+];
+
+// Common room - shared by all dwarfs
+// Furniture levels initialized in main.js (initializeFurniture)
+const commonRoom = {
+  name: 'Common Room',
+  furniture: {}
+};
+
+// Individual rooms - keyed by room ID
+// Each dwarf has a roomId property linking them to their room
+// Furniture levels initialized in main.js (initializeFurniture)
+const individualRooms = {
+  'room-1': { name: "Diggingston's Room", furniture: {} },
+  'room-2': { name: "Shovelli's Room", furniture: {} },
+  'room-3': { name: "Diggmaster's Room", furniture: {} },
+  'room-4': { name: "Burrower's Room", furniture: {} },
+  'room-5': { name: "NevertiredMcPickaxemer's Room", furniture: {} },
+  'room-6': { name: "SmartDigger's Room", furniture: {} }
+};
+
 let activeResearch = null; // Track which research is currently being researched
 let researchQueue = []; // Queue for up to 5 researches
 
@@ -1812,6 +2120,7 @@ let nextInvestmentId = 1; // Next investment ID to assign
 let dwarfs = [
     { name: "Diggingston",
       toolId: 1,
+      roomId: 'room-1',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
@@ -1822,6 +2131,7 @@ let dwarfs = [
       taskPriorityNone: [] },
     { name: "Shovelli",
       toolId: 2,
+      roomId: 'room-2',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
@@ -1832,44 +2142,48 @@ let dwarfs = [
       taskPriorityNone: [] },
     { name: "Diggmaster",
       toolId: 3,
+      roomId: 'room-3',
       level: 0, xp: 0,
       digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
       x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "Burrower",
-     toolId: 4,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      toolId: 4,
+      roomId: 'room-4',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "NevertiredMcPickaxemer",
-     toolId: 5,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-    taskPriorityNone: [] },
+      toolId: 5,
+      roomId: 'room-5',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+      taskPriorityNone: [] },
     { name: "SmartDigger",
-     toolId: 6,
-     level: 0, xp: 0,
-     digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
-     x: 1, y: -1,
-     status: 'idle', moveTarget: null,
-    bucket: {}, energy: 100,
-    taskPriorityHigh: [],
-    taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
-    taskPriorityNone: [] },
+      toolId: 6,
+      roomId: 'room-6',
+      level: 0, xp: 0,
+      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
+      x: 1, y: -1,
+      status: 'idle', moveTarget: null,
+      bucket: {}, energy: 100,
+      taskPriorityHigh: [],
+      taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
+      taskPriorityNone: [] },
 ]
 
 // Transaction log - keeps detailed transactions from the current hour

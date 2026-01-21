@@ -455,10 +455,7 @@ function checkCanAffordWageOrStrike(dwarf, currentGold) {
     }
 
     // Can't afford - check strike chance
-    const unionBusting = getResearchLevel('union-busting');
-    const strikeReduction = unionBusting * RESEARCH_UNION_BUSTING_BONUS;
-    const strikeChance = Math.max(0, DWARF_STRIKE_BASE_CHANCE - strikeReduction);
-    const willStrike = Math.random() > strikeChance;
+    const willStrike = Math.random() > DWARF_STRIKE_BASE_CHANCE;
 
     return { canPay: false, willStrike, wage };
 }
@@ -878,6 +875,148 @@ function calculateFinalCritChance(dwarf) {
 
     // Apply Gold plating multiplier
     critChance *= getGoldPlatingCritMultiplier(dwarf);
+
+    return critChance;
+}
+
+// ============================================================================
+// FURNITURE BONUS UTILITIES
+// ============================================================================
+
+/**
+ * Calculate total furniture bonuses for a dwarf based on common room and their individual room
+ * @param {Object} dwarf - The dwarf to calculate bonuses for
+ * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus)
+ */
+function calculateFurnitureBonuses(dwarf) {
+    const bonuses = {
+        restBonus: 0,           // Additive percentage bonus to rest recovery
+        maxEnergyBonus: 0,      // Flat bonus to max energy
+        digPowerBonus: 0,       // Additive percentage bonus to dig power
+        critChanceBonus: 0,     // Additive bonus to crit chance
+        strengthBonus: 0,       // Flat bonus to strength
+        wisdomBonus: 0          // Flat bonus to wisdom
+    };
+
+    // Add bonuses from common room furniture (applies to all dwarfs)
+    if (typeof commonRoom !== 'undefined' && commonRoom && commonRoom.furniture) {
+        for (const furnitureId in commonRoom.furniture) {
+            const furnitureLevel = commonRoom.furniture[furnitureId]?.level || 0;
+            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
+                const effect = furnitureData[furnitureId].effect;
+                if (effect) {
+                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
+                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
+                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
+                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
+                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
+                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                }
+            }
+        }
+    }
+
+    // Add bonuses from dwarf's individual room
+    const roomId = dwarf.roomId;
+    if (typeof individualRooms !== 'undefined' && roomId && individualRooms[roomId] && individualRooms[roomId].furniture) {
+        for (const furnitureId in individualRooms[roomId].furniture) {
+            const furnitureLevel = individualRooms[roomId].furniture[furnitureId]?.level || 0;
+            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
+                const effect = furnitureData[furnitureId].effect;
+                if (effect) {
+                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
+                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
+                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
+                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
+                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
+                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                }
+            }
+        }
+    }
+
+    return bonuses;
+}
+
+/**
+ * Calculate the base resting rate for a dwarf (energy recovered per tick while resting)
+ * @returns {number} Base resting rate from constants
+ */
+function getBaseRestingRate() {
+    return typeof DWARF_REST_AMOUNT !== 'undefined' ? DWARF_REST_AMOUNT : 15;
+}
+
+/**
+ * Calculate the effective resting rate for a dwarf including furniture bonuses
+ * @param {Object} dwarf - The dwarf to calculate for
+ * @returns {number} Effective resting rate per tick
+ */
+function calculateEffectiveRestingRate(dwarf) {
+    const baseRate = getBaseRestingRate();
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    // restBonus is a percentage bonus (e.g., 0.05 = 5%)
+    return baseRate * (1 + furnitureBonuses.restBonus);
+}
+
+/**
+ * Calculate the one-hit kill chance for a dwarf on critical hits
+ * This depends on stone/ore expertise research and plating multipliers
+ * @param {Object} dwarf - The dwarf to calculate for
+ * @param {string} materialType - The type of material being mined ('Stone' or 'Ore')
+ * @returns {number} One-hit chance as a decimal (0-1)
+ */
+function calculateOneHitChance(dwarf, materialType) {
+    let oneHitChance = 0;
+
+    // Get expertise levels (note: IDs are 'expertise-stone' and 'expertise-ore' in defs.js)
+    const stoneExpertise = researchData['expertise-stone'];
+    const oreExpertise = researchData['expertise-ore'];
+
+    // Calculate base chance from expertise
+    if (materialType && materialType.includes('Stone')) {
+        const stoneLevel = stoneExpertise ? (stoneExpertise.level || 0) : 0;
+        const stoneChancePerLevel = typeof STONE_EXPERTISE_ONE_HIT_CHANCE !== 'undefined' ? STONE_EXPERTISE_ONE_HIT_CHANCE : 0.02;
+        oneHitChance = stoneLevel * stoneChancePerLevel;
+    } else if (materialType && materialType.includes('Ore')) {
+        const oreLevel = oreExpertise ? (oreExpertise.level || 0) : 0;
+        const oreChancePerLevel = typeof ORE_EXPERTISE_ONE_HIT_CHANCE !== 'undefined' ? ORE_EXPERTISE_ONE_HIT_CHANCE : 0.03;
+        oneHitChance = oreLevel * oreChancePerLevel;
+    }
+
+    // Apply Uranium and Plutonium plating multipliers
+    const uraniumMultiplier = getUraniumPlatingOneHitMultiplier(dwarf);
+    const plutoniumMultiplier = getPlutoniumPlatingOneHitMultiplier(dwarf);
+    const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
+
+    oneHitChance *= totalMultiplier;
+
+    return oneHitChance;
+}
+
+/**
+ * Calculate the maximum one-hit chance for a dwarf (best case scenario between stone and ore)
+ * @param {Object} dwarf - The dwarf to calculate for
+ * @returns {Object} Object with stoneChance and oreChance
+ */
+function calculateMaxOneHitChances(dwarf) {
+    return {
+        stoneChance: calculateOneHitChance(dwarf, 'Stone'),
+        oreChance: calculateOneHitChance(dwarf, 'Ore')
+    };
+}
+
+/**
+ * Calculate critical hit chance including furniture bonuses (wrapper for main thread)
+ * @param {Object} dwarf - The dwarf to calculate for
+ * @returns {number} Critical hit chance as a decimal (0-1)
+ */
+function calculateCritChanceWithFurniture(dwarf) {
+    // Get base crit chance (includes research, gems, plating)
+    let critChance = calculateFinalCritChance(dwarf);
+
+    // Add furniture crit chance bonus (additive)
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    critChance += furnitureBonuses.critChanceBonus;
 
     return critChance;
 }

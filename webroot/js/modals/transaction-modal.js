@@ -197,6 +197,14 @@ function processHourlyRollup() {
         });
     }
 
+    // Prune transaction history to keep only the last TRANSACTION_HISTORY_MAX_HOURS hours
+    const cutoffTime = Date.now() - (TRANSACTION_HISTORY_MAX_HOURS * 60 * 60 * 1000);
+    const originalLength = transactionHistory.length;
+    transactionHistory = transactionHistory.filter(entry => entry.hour >= cutoffTime);
+    if (transactionHistory.length < originalLength) {
+        console.log(`Pruned ${originalLength - transactionHistory.length} old transaction history entries`);
+    }
+
     // Clear the detailed transaction log for the completed hour
     transactionLog = [];
 }

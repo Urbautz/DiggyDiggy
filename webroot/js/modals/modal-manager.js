@@ -21,7 +21,8 @@ class ModalManager {
             'sell-modal',
             'warehouse-sell-modal',
             'about-modal',
-            'management-modal'
+            'management-modal',
+            'housing-modal'
         ];
         this.loadedModals = new Set();
         this.loadPromises = new Map();

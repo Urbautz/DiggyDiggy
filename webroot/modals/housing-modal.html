@@ -1,0 +1,37 @@
+<!-- Housing modal -->
+<div id="housing-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Housing dialog">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog modal-dialog-wide" role="document">
+        <header class="modal-header">
+            <h2>🏠 Housing</h2>
+            <button class="modal-close" aria-label="Close housing" data-action="close-modal">×</button>
+        </header>
+        <div class="modal-body">
+            <p>Build and upgrade furniture for your dwarfs!</p>
+
+            <!-- Common Room Section (collapsible) -->
+            <div class="housing-section collapsible">
+                <div class="housing-section-header" onclick="toggleHousingSection(this)">
+                    <span class="collapse-icon">▼</span>
+                    <h3 class="housing-section-title">🏠 Common Room</h3>
+                </div>
+                <div class="housing-section-content">
+                    <div id="common-room-furniture" class="furniture-grid">
+                        <!-- Common room furniture will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Rooms Section -->
+            <div class="housing-section">
+                <h3 class="housing-section-title" style="margin-bottom: 12px;">🛏️ Individual Rooms</h3>
+                <div id="individual-rooms-container">
+                    <!-- Individual rooms will be populated here dynamically -->
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" data-action="close-modal">Close</button>
+        </footer>
+    </div>
+</div>

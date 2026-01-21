@@ -671,9 +671,19 @@ function openMasonry() {
 }
 
 function openSmelter() {
+    // Check if furnace research is unlocked
+    const furnaceResearch = researchData['furnace'];
+    const isFurnaceUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (!isFurnaceUnlocked) {
+        return;
+    }
+
     openModal('smelter-modal');
     populateSmelter();
 }
+
+// Housing/Furniture UI functions moved to modals/housing-modal.js
 
 // Transaction/Finances modal UI functions (openTransactions, populateTransactions, logTransaction, etc.) moved to modals/transaction-modal.js
 
@@ -2571,10 +2581,12 @@ function initWorker() {
                     }
                 }
 
-                // Update forge and management function links when research state changes
+                // Update function links when research state changes
                 if (researchStateChanged) {
                     updateForgeFunctionLink();
                     updateManagementFunctionLink();
+                    updateSmelterFunctionLink();
+                    updateHousingFunctionLink();
                 }
 
                 // Autosave after each tick
@@ -2646,7 +2658,10 @@ function initWorker() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             managementTasks: managementTasks || {},
-            platingEffects
+            platingEffects,
+            furnitureData,
+            commonRoom,
+            individualRooms
         }
     });
     
@@ -2721,6 +2736,8 @@ function saveGame() {
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
             nextManagementTaskId: nextManagementTaskId || 1,
+            commonRoom: commonRoom,
+            individualRooms: individualRooms,
             timestamp: now,
             version: gameversion
         };
@@ -2978,8 +2995,15 @@ function loadGame() {
         // Restore transaction history
         if (gameState.transactionHistory) {
             transactionHistory = gameState.transactionHistory;
+            // Prune old entries to keep only the last TRANSACTION_HISTORY_MAX_HOURS hours
+            const cutoffTime = Date.now() - (TRANSACTION_HISTORY_MAX_HOURS * 60 * 60 * 1000);
+            const originalLength = transactionHistory.length;
+            transactionHistory = transactionHistory.filter(entry => entry.hour >= cutoffTime);
+            if (transactionHistory.length < originalLength) {
+                console.log(`Pruned ${originalLength - transactionHistory.length} old transaction history entries on load`);
+            }
         }
-        
+
         // Restore current hour timestamp
         if (gameState.currentHourTimestamp) {
             currentHourTimestamp = gameState.currentHourTimestamp;
@@ -3048,7 +3072,33 @@ function loadGame() {
         if (gameState.smelterMaxTemp !== undefined && gameState.smelterCoalMaxTemp === undefined) {
             smelterCoalMaxTemp = gameState.smelterMaxTemp;
         }
-        
+
+        // Restore furniture levels
+        // Note: We copy directly without checking if furniture exists in current definitions,
+        // because commonRoom.furniture and individualRooms[x].furniture start as empty objects.
+        // initializeFurniture() runs after loadGame() and will fill in any missing furniture.
+        if (gameState.commonRoom && gameState.commonRoom.furniture) {
+            for (const furnitureId in gameState.commonRoom.furniture) {
+                commonRoom.furniture[furnitureId] = gameState.commonRoom.furniture[furnitureId];
+            }
+        }
+        if (gameState.individualRooms) {
+            for (const roomId in gameState.individualRooms) {
+                if (individualRooms[roomId] && gameState.individualRooms[roomId].furniture) {
+                    for (const furnitureId in gameState.individualRooms[roomId].furniture) {
+                        individualRooms[roomId].furniture[furnitureId] = gameState.individualRooms[roomId].furniture[furnitureId];
+                    }
+                }
+            }
+        }
+
+        // Migration: Add roomId to dwarfs if missing (for saves before construction feature)
+        dwarfs.forEach((dwarf, index) => {
+            if (!dwarf.roomId) {
+                dwarf.roomId = `room-${index + 1}`;
+            }
+        });
+
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;
     } catch (e) {
@@ -3403,6 +3453,17 @@ function populateFunctionsList() {
         e.preventDefault();
         openSmelter();
     };
+
+    // Check if smelter is unlocked (requires Furnace research)
+    const furnaceResearch = researchData['furnace'];
+    const isSmelterUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (!isSmelterUnlocked) {
+        smelterLink.style.opacity = '0.5';
+        smelterLink.style.cursor = 'not-allowed';
+        smelterLink.title = 'Requires Furnace research';
+    }
+
     list.appendChild(smelterLink);
 
     // Forge function
@@ -3427,6 +3488,29 @@ function populateFunctionsList() {
     }
 
     list.appendChild(forgeLink);
+
+    // Housing function
+    const housingLink = document.createElement('a');
+    housingLink.href = '#';
+    housingLink.className = 'function-link';
+    housingLink.id = 'housing-function-link';
+    housingLink.innerHTML = '<span class="icon">🏠</span><span>Housing</span>';
+    housingLink.onclick = (e) => {
+        e.preventDefault();
+        openHousing();
+    };
+
+    // Check if housing is unlocked (requires Housing research)
+    const housingResearch = researchData['better-housing'];
+    const isHousingUnlocked = housingResearch && (housingResearch.level || 0) >= 1;
+
+    if (!isHousingUnlocked) {
+        housingLink.style.opacity = '0.5';
+        housingLink.style.cursor = 'not-allowed';
+        housingLink.title = 'Requires Housing research';
+    }
+
+    list.appendChild(housingLink);
 
     // Management function - last position
     const managementLink = document.createElement('a');
@@ -3500,6 +3584,58 @@ function updateManagementFunctionLink() {
             managementLink.style.opacity = '0.5';
             managementLink.style.cursor = 'not-allowed';
             managementLink.title = 'Requires Management research';
+        }
+    }
+}
+
+// Update smelter function link state without rebuilding the entire list
+function updateSmelterFunctionLink() {
+    const smelterLink = document.getElementById('smelter-function-link');
+    if (!smelterLink) return;
+
+    // Check if smelter is unlocked (requires Furnace research)
+    const furnaceResearch = researchData['furnace'];
+    const isSmelterUnlocked = furnaceResearch && (furnaceResearch.level || 0) >= 1;
+
+    if (isSmelterUnlocked) {
+        // Only update if state actually changed
+        if (smelterLink.style.opacity === '0.5') {
+            smelterLink.style.opacity = '1';
+            smelterLink.style.cursor = 'pointer';
+            smelterLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (smelterLink.style.opacity !== '0.5') {
+            smelterLink.style.opacity = '0.5';
+            smelterLink.style.cursor = 'not-allowed';
+            smelterLink.title = 'Requires Furnace research';
+        }
+    }
+}
+
+// Update housing function link state without rebuilding the entire list
+function updateHousingFunctionLink() {
+    const housingLink = document.getElementById('housing-function-link');
+    if (!housingLink) return;
+
+    // Check if housing is unlocked (requires Housing research)
+    const housingResearch = researchData['better-housing'];
+    const isHousingUnlocked = housingResearch && (housingResearch.level || 0) >= 1;
+
+    if (isHousingUnlocked) {
+        // Only update if state actually changed
+        if (housingLink.style.opacity === '0.5') {
+            housingLink.style.opacity = '1';
+            housingLink.style.cursor = 'pointer';
+            housingLink.title = '';
+        }
+    } else {
+        // Only update if state actually changed
+        if (housingLink.style.opacity !== '0.5') {
+            housingLink.style.opacity = '0.5';
+            housingLink.style.cursor = 'not-allowed';
+            housingLink.title = 'Requires Housing research';
         }
     }
 }
@@ -3592,16 +3728,21 @@ function switchMaterialsTab(tab) {
     }
 }
 
+// initializeFurniture moved to modals/housing-modal.js
+
 // Initialize the game state
 function initGame() {
     // Try to load saved game first
     const loaded = loadGame();
-    
+
     if (!loaded) {
         // No saved game, generate new grid
         generateGrid();
     }
-    
+
+    // Initialize furniture (handles both new games and migrations)
+    initializeFurniture();
+
     updateGridDisplay();
     updateGoldDisplay();
     updateMaterialsPanel(); // Initialize materials panel on load
