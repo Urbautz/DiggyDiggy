@@ -3,6 +3,9 @@
  * Handles tool enchantment interface with slider for enchantment levels
  */
 
+// Store current tool ID for the confirm action
+let currentEnchantToolId = null;
+
 /**
  * Opens the enchant modal for a specific tool
  * @param {number} toolId - The ID of the tool to enchant
@@ -22,6 +25,7 @@ function openEnchantModal(toolId) {
         return;
     }
 
+    currentEnchantToolId = toolId;
     openModal('enchant-modal');
     populateEnchantModal(tool, maxEnchantLevel);
 }
@@ -32,39 +36,23 @@ function openEnchantModal(toolId) {
  * @param {number} maxEnchantLevel - Maximum enchantment level available
  */
 function populateEnchantModal(tool, maxEnchantLevel) {
-    const container = document.getElementById('enchant-content');
-    if (!container) return;
-
     const toolName = tool.name || `${tool.type} #${tool.id}`;
     const toolPower = tool.power || tool.level || 0;
 
-    container.innerHTML = `
-        <div style="margin-bottom: 16px;">
-            <h3 style="margin: 0 0 8px 0;">🔨 ${toolName}</h3>
-            <p style="margin: 0; color: #9fbfe0; font-size: 13px;">Current Power: ${toolPower}</p>
-        </div>
+    // Populate tool info
+    const nameEl = document.getElementById('enchant-tool-name');
+    const powerEl = document.getElementById('enchant-tool-power');
+    if (nameEl) nameEl.textContent = `🔨 ${toolName}`;
+    if (powerEl) powerEl.textContent = toolPower;
 
-        <div style="margin-bottom: 16px; padding: 12px; background: rgba(138, 43, 226, 0.1); border: 1px solid rgba(138, 43, 226, 0.3); border-radius: 6px;">
-            <label for="enchant-level-slider" style="display: block; margin-bottom: 8px; font-weight: 600;">Enchantment Level:</label>
-            <input type="range" id="enchant-level-slider" min="1" max="${maxEnchantLevel}" value="1"
-                   style="width: 100%; margin-bottom: 8px;"
-                   oninput="updateEnchantPreview()">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #9fbfe0;">
-                <span>Level 1</span>
-                <span id="enchant-level-display" style="font-weight: bold; color: #dda0ff;">Level 1</span>
-                <span>Level ${maxEnchantLevel}</span>
-            </div>
-        </div>
-
-        <div id="enchant-preview" style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;">
-            <!-- Preview will be populated by updateEnchantPreview() -->
-        </div>
-
-        <button id="confirm-enchant-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 14px; font-weight: bold;"
-                onclick="confirmEnchant(${tool.id})">
-            ✨ Enchant Tool
-        </button>
-    `;
+    // Configure slider
+    const slider = document.getElementById('enchant-level-slider');
+    const maxLabel = document.getElementById('enchant-max-level-label');
+    if (slider) {
+        slider.max = maxEnchantLevel;
+        slider.value = 1;
+    }
+    if (maxLabel) maxLabel.textContent = `Level ${maxEnchantLevel}`;
 
     updateEnchantPreview();
 }
@@ -75,44 +63,43 @@ function populateEnchantModal(tool, maxEnchantLevel) {
 function updateEnchantPreview() {
     const slider = document.getElementById('enchant-level-slider');
     const display = document.getElementById('enchant-level-display');
-    const preview = document.getElementById('enchant-preview');
+    const powerValue = document.getElementById('enchant-power-value');
+    const costValue = document.getElementById('enchant-cost-value');
+    const warning = document.getElementById('enchant-warning');
+    const btn = document.getElementById('confirm-enchant-btn');
 
-    if (!slider || !display || !preview) return;
+    if (!slider) return;
 
     const enchantLevel = parseInt(slider.value);
-    display.textContent = `Level ${enchantLevel}`;
 
-    // Calculate cost using the formula: baseCost * (multiplier ^ (level - 1))
-    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+    // Update level display
+    if (display) display.textContent = `Level ${enchantLevel}`;
+
+    // Calculate cost using the formula: baseCost * level * (multiplier ^ (level - 1))
+    const cost = Math.round(ENCHANT_BASE_COST * enchantLevel * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
     const canAfford = gold >= cost;
 
-    preview.innerHTML = `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="color: #e6eefc;">Enchantment Power:</span>
-            <span style="color: #dda0ff; font-weight: bold;">+${enchantLevel}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="color: #e6eefc;">Gold Cost:</span>
-            <span style="color: ${canAfford ? '#ffd700' : '#ff6b6b'}; font-weight: bold;">${cost} 💰</span>
-        </div>
-        ${!canAfford ? '<p style="color: #ff6b6b; margin: 8px 0 0 0; font-size: 12px;">⚠️ Not enough gold!</p>' : ''}
-    `;
+    // Update preview values
+    if (powerValue) powerValue.textContent = `+${enchantLevel}`;
+    if (costValue) {
+        costValue.textContent = `${formatNumber(cost, 'gold')} 💰`;
+        costValue.classList.toggle('cannot-afford', !canAfford);
+    }
+
+    // Show/hide warning
+    if (warning) warning.hidden = canAfford;
 
     // Update button state
-    const btn = document.getElementById('confirm-enchant-btn');
     if (btn) {
         btn.disabled = !canAfford;
-        btn.style.opacity = canAfford ? '1' : '0.5';
-        btn.style.cursor = canAfford ? 'pointer' : 'not-allowed';
     }
 }
 
 /**
  * Confirms and applies the enchantment to the tool
- * @param {number} toolId - The ID of the tool to enchant
  */
-function confirmEnchant(toolId) {
-    const tool = toolsInventory.find(t => t.id === toolId);
+function confirmEnchant() {
+    const tool = toolsInventory.find(t => t.id === currentEnchantToolId);
     if (!tool) {
         alert('Tool not found!');
         return;
@@ -122,7 +109,7 @@ function confirmEnchant(toolId) {
     if (!slider) return;
 
     const enchantLevel = parseInt(slider.value);
-    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+    const cost = Math.round(ENCHANT_BASE_COST * enchantLevel * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
 
     if (gold < cost) {
         alert(`Not enough gold! Need ${formatNumber(cost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
@@ -150,8 +137,6 @@ function confirmEnchant(toolId) {
 
     // Close modal and refresh UI
     closeModal('enchant-modal');
-    populateToolsInPanel(); // Refresh tools panel to show enchantment
-
-    // Show success message
-    alert(`✨ Tool enchanted to level ${enchantLevel}!\n\nThe tool now has +${enchantLevel} enchantment power.`);
+    currentEnchantToolId = null;
+    populateToolsInPanel();
 }

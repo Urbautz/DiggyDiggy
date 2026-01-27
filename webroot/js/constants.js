@@ -213,7 +213,7 @@ const TOOL_UPGRADE_COST_MULTIPLIER = 2; // Cost doubles with each level
 // ============================================================================
 
 const ENCHANT_BASE_COST = 500; // Base gold cost for enchanting
-const ENCHANT_COST_MULTIPLIER = 4; // Cost multiplier per enchantment level
+const ENCHANT_COST_MULTIPLIER = 1.5; // Exponential cost multiplier per enchantment level (formula: base × level × multiplier^(level-1))
 const ENCHANT_POWER_BONUS = 0.08; // 8% power bonus per enchantment level
 
 // ============================================================================

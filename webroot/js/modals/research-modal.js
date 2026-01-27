@@ -218,18 +218,16 @@ function populateResearch() {
         const progressPercent = Math.floor((progress / actualCost) * 100);
         activeDiv.innerHTML = `
             <h3>🔬 Currently Researching</h3>
-            <p style="margin: 8px 0;"><strong id="research-name" style="font-size: 1.2em; color: #ffd700;">${activeResearch.name}</strong> (Level ${targetLevel}) • <span id="research-percent">${progressPercent}%</span> complete</p>
-            <p style="margin: 6px 0;"><small>Progress: <span id="research-progress">${formatNumber(progress, 'material')}</span> / <span id="research-cost">${formatNumber(actualCost,'material')}</span></small></p>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-                <div class="progress-bar" style="flex: 1; margin-top: 0;"><div class="progress-fill" id="research-progress-fill" style="width: ${progressPercent}%"></div></div>
-                <button class="btn-cancel-research" style="padding: 6px 10px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; flex-shrink: 0;">✖ Cancel</button>
+            <p><strong id="research-name" class="active-research-name">${activeResearch.name}</strong> (Level ${targetLevel}) • <span id="research-percent">${progressPercent}%</span> complete</p>
+            <p><small>Progress: <span id="research-progress">${formatNumber(progress, 'material')}</span> / <span id="research-cost">${formatNumber(actualCost,'material')}</span></small></p>
+            <div class="active-research-progress-row">
+                <div class="progress-bar"><div class="progress-fill" id="research-progress-fill" style="width: ${progressPercent}%"></div></div>
+                <button class="btn-cancel-research">✖ Cancel</button>
             </div>
         `;
 
         // Add cancel button click handler
         const cancelBtn = activeDiv.querySelector('.btn-cancel-research');
-        cancelBtn.onmouseover = () => { cancelBtn.style.background = '#ff5252'; };
-        cancelBtn.onmouseout = () => { cancelBtn.style.background = '#ff6b6b'; };
         cancelBtn.onclick = () => {
             if (confirm(`Cancel research on ${activeResearch.name}?\n\nProgress will be lost, but ${actualGoldCost} 💰 will be refunded.`)) {
                 cancelResearch();
@@ -243,33 +241,30 @@ function populateResearch() {
     if (researchQueue.length > 0) {
         const queueDiv = document.createElement('div');
         queueDiv.className = 'research-queue';
-        queueDiv.style.cssText = 'background: rgba(42, 42, 62, 0.5); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(68, 68, 68, 0.5);';
 
-        let queueHTML = '<h3 style="margin-top: 0; color: #ffa500;">📋 Research Queue</h3>';
-        queueHTML += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        let queueHTML = '<h3>📋 Research Queue</h3>';
+        queueHTML += '<div class="research-queue-list">';
 
         researchQueue.forEach((queuedResearch, index) => {
             queueHTML += `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 30, 46, 0.5); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(85, 85, 85, 0.5);">
-                    <div style="flex: 1;">
+                <div class="research-queue-item">
+                    <div class="research-queue-item-info">
                         <strong>${index + 1}. ${queuedResearch.name}</strong> (Level ${queuedResearch.targetLevel})
-                        <span style="color: #888; font-size: 11px; margin-left: 8px;">Gold paid: ${formatNumber(queuedResearch.goldCost, 'gold')} 💰</span>
+                        <span class="research-queue-item-gold">Gold paid: ${formatNumber(queuedResearch.goldCost, 'gold')} 💰</span>
                     </div>
-                    <button class="btn-remove-from-queue" data-index="${index}" style="padding: 4px 8px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">✖ Remove</button>
+                    <button class="btn-remove-from-queue" data-index="${index}">✖ Remove</button>
                 </div>
             `;
         });
 
         queueHTML += '</div>';
-        queueHTML += `<p style="margin-top: 8px; margin-bottom: 0; font-size: 11px; color: #888;">Queue: ${researchQueue.length}/5 slots used</p>`;
+        queueHTML += `<p class="research-queue-slots">Queue: ${researchQueue.length}/5 slots used</p>`;
         queueDiv.innerHTML = queueHTML;
 
         // Add remove button handlers
         container.appendChild(queueDiv);
         queueDiv.querySelectorAll('.btn-remove-from-queue').forEach(btn => {
             const index = parseInt(btn.dataset.index);
-            btn.onmouseover = () => { btn.style.background = '#ff5252'; };
-            btn.onmouseout = () => { btn.style.background = '#ff6b6b'; };
             btn.onclick = () => {
                 const research = researchQueue[index];
                 if (confirm(`Remove ${research.name} from queue?\n\n${formatNumber(research.goldCost, 'gold')} 💰 will be refunded.`)) {
@@ -312,8 +307,8 @@ function populateResearch() {
 
         const nameTd = document.createElement('td');
         const nameDiv = document.createElement('div');
-        nameDiv.style.lineHeight = '1.3';
-        nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small style="line-height: 1.2;">${researchItem.description}</small>`;
+        nameDiv.className = 'research-name-cell';
+        nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
         nameTd.appendChild(nameDiv);
 
         const levelTd = document.createElement('td');
@@ -347,20 +342,14 @@ function populateResearch() {
         // If research is impossible, show warning instead of button
         if (isImpossible) {
             const warningDiv = document.createElement('div');
-            warningDiv.style.color = '#ff6b6b';
-            warningDiv.style.fontWeight = 'bold';
-            warningDiv.style.fontSize = '12px';
-            warningDiv.style.textAlign = 'center';
+            warningDiv.className = 'research-warning';
             warningDiv.innerHTML = `⚠️ Dwarf with<br>Wisdom ${minWisdomRequired} required`;
             warningDiv.title = `No dwarf can complete this research!\nRequired hardness: ${effectiveHardness}\nMax possible: ${maxPossiblePower} (Wisdom ${maxWisdom} × 100)\n\nYou need a dwarf with at least Wisdom ${minWisdomRequired}\nor use Amethyst gems to reduce hardness.`;
             actionTd.appendChild(warningDiv);
         } else if (!requirementsMet.met) {
             // Requirements not met - show warning text instead of button
             const warningDiv = document.createElement('div');
-            warningDiv.style.color = '#ff6b6b';
-            warningDiv.style.fontWeight = 'bold';
-            warningDiv.style.fontSize = '12px';
-            warningDiv.style.textAlign = 'center';
+            warningDiv.className = 'research-warning';
             warningDiv.innerHTML = `Requires ${requirementsMet.reason.replace('Requires: ', '')}`;
             warningDiv.title = requirementsMet.reason;
             actionTd.appendChild(warningDiv);
@@ -434,7 +423,7 @@ function populateResearch() {
     if (completedResearches.length > 0) {
         const completedSection = document.createElement('div');
         completedSection.className = 'completed-research-section';
-        completedSection.innerHTML = '<h3 style="color: #4CAF50; margin: 20px 0 10px 0;">✓ Completed Researches</h3>';
+        completedSection.innerHTML = '<h3>✓ Completed Researches</h3>';
 
         const completedTable = document.createElement('table');
         completedTable.className = 'research-table completed';
@@ -447,19 +436,18 @@ function populateResearch() {
 
         for (const researchItem of completedResearches) {
             const tr = document.createElement('tr');
-            tr.style.opacity = '0.7';
 
             const nameTd = document.createElement('td');
             const nameDiv = document.createElement('div');
-            nameDiv.style.lineHeight = '1.3';
-            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small style="line-height: 1.2;">${researchItem.description}</small>`;
+            nameDiv.className = 'research-name-cell';
+            nameDiv.innerHTML = `<strong>${researchItem.name}</strong><br><small>${researchItem.description}</small>`;
             nameTd.appendChild(nameDiv);
 
             const levelTd = document.createElement('td');
             levelTd.textContent = `${researchItem.level} / ${researchItem.maxlevel}`;
 
             const statusTd = document.createElement('td');
-            statusTd.innerHTML = '<span style="color: #4CAF50; font-weight: bold;">✓ Maxed</span>';
+            statusTd.innerHTML = '<span class="research-status-maxed">✓ Maxed</span>';
 
             tr.appendChild(nameTd);
             tr.appendChild(levelTd);

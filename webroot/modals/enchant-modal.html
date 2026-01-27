@@ -8,7 +8,36 @@
         </header>
         <div class="modal-body">
             <div id="enchant-content">
-                <!-- Content will be added here -->
+                <div class="enchant-tool-info">
+                    <h3 id="enchant-tool-name">🔨 Tool Name</h3>
+                    <p class="enchant-tool-power">Current Power: <span id="enchant-tool-power">0</span></p>
+                </div>
+
+                <div class="enchant-slider-container">
+                    <label for="enchant-level-slider">Enchantment Level:</label>
+                    <input type="range" id="enchant-level-slider" min="1" max="1" value="1" oninput="updateEnchantPreview()">
+                    <div class="enchant-slider-labels">
+                        <span>Level 1</span>
+                        <span id="enchant-level-display">Level 1</span>
+                        <span id="enchant-max-level-label">Level 1</span>
+                    </div>
+                </div>
+
+                <div id="enchant-preview" class="enchant-preview">
+                    <div class="enchant-preview-row">
+                        <span>Enchantment Power:</span>
+                        <span id="enchant-power-value" class="enchant-power">+1</span>
+                    </div>
+                    <div class="enchant-preview-row">
+                        <span>Gold Cost:</span>
+                        <span id="enchant-cost-value" class="enchant-cost">500 💰</span>
+                    </div>
+                    <p id="enchant-warning" class="enchant-warning" hidden>⚠️ Not enough gold!</p>
+                </div>
+
+                <button id="confirm-enchant-btn" class="btn-primary enchant-confirm-btn" onclick="confirmEnchant()">
+                    ✨ Enchant Tool
+                </button>
             </div>
         </div>
         <footer class="modal-footer">

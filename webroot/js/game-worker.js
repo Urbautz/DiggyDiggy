@@ -299,10 +299,10 @@ function handleBlockDestruction(cell, dwarf, x, y) {
         pendingTransactions.push({ type: 'gem-spawn', x: x, y: y, dwarf: dwarf.name, gem: gemType, carat: carat, gemId: gem.id });
 
         // Don't collect the stone - gem is now in its place
-        // Award XP for destroying the stone
+        // Award XP for destroying the stone (with furniture bonus)
         if (mat && typeof mat.hardness === 'number') {
             const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-            dwarf.xp = (dwarf.xp || 0) + xpGain;
+            awardXpWithBonus(dwarf, xpGain);
         }
     } else {
         // No gem - collect the material normally
@@ -374,10 +374,10 @@ function handleBlockDestruction(cell, dwarf, x, y) {
 
         dwarf.bucket[finalMatId] = (dwarf.bucket[finalMatId] || 0) + 1;
 
-        // Award XP only when material is destroyed
+        // Award XP only when material is destroyed (with furniture bonus)
         if (mat && typeof mat.hardness === 'number') {
             const xpGain = Math.ceil(Math.sqrt(mat.hardness));
-            dwarf.xp = (dwarf.xp || 0) + xpGain;
+            awardXpWithBonus(dwarf, xpGain);
         }
     }
 }
@@ -1008,9 +1008,9 @@ function handleWorkshopTask(dwarf, workshopConfig) {
         // Note: No transaction logged for masonry tasks - they just process existing materials
         // Wage expense is already tracked separately in the wage transaction
 
-        // Award XP for workshop work (based on task hardness)
+        // Award XP for workshop work (based on task hardness, with furniture bonus)
         const xpGain = Math.ceil(Math.sqrt(task.hardness || 1));
-        dwarf.xp = (dwarf.xp || 0) + xpGain;
+        awardXpWithBonus(dwarf, xpGain);
 
     } else if (workshopType === 'smelting') {
         // Immediate task (no ticksRequired) - only for smelter
@@ -1039,11 +1039,11 @@ function handleWorkshopTask(dwarf, workshopConfig) {
             handleOutputFunction(task, dwarf);
         }
 
-        // Pay the dwarf, consume energy and award XP
+        // Pay the dwarf, consume energy and award XP (with furniture bonus)
         gold = Math.max(0, gold - wage);
         pendingTransactions.push({ type: 'expense', amount: wage, description: `${transactionPrefix} wage for ${dwarf.name}` });
         applyEnergyConsumption(dwarf, DWARF_BASE_ENERGY_COST_TASK + getEffectiveWisdom(dwarf));
-        dwarf.xp = (dwarf.xp || 0) + DWARF_XP_PER_ACTION;
+        awardXpWithBonus(dwarf, DWARF_XP_PER_ACTION);
 
         return;
     } else {
@@ -1172,7 +1172,7 @@ function handleSmelterTaskOutput(task, dwarf) {
 /**
  * Calculate total furniture bonuses for a dwarf based on common room and their individual room
  * @param {Object} dwarf - The dwarf to calculate bonuses for
- * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus)
+ * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus, xpGainBonus)
  */
 function calculateFurnitureBonuses(dwarf) {
     const bonuses = {
@@ -1181,7 +1181,8 @@ function calculateFurnitureBonuses(dwarf) {
         digPowerBonus: 0,       // Additive percentage bonus to dig power
         critChanceBonus: 0,     // Additive bonus to crit chance
         strengthBonus: 0,       // Flat bonus to strength
-        wisdomBonus: 0          // Flat bonus to wisdom
+        wisdomBonus: 0,         // Flat bonus to wisdom
+        xpGainBonus: 0          // Additive percentage bonus to XP gain
     };
 
     // Add bonuses from common room furniture (applies to all dwarfs)
@@ -1197,6 +1198,7 @@ function calculateFurnitureBonuses(dwarf) {
                     if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
                     if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
                     if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
                 }
             }
         }
@@ -1216,12 +1218,25 @@ function calculateFurnitureBonuses(dwarf) {
                     if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
                     if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
                     if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
                 }
             }
         }
     }
 
     return bonuses;
+}
+
+/**
+ * Award XP to a dwarf, applying furniture XP gain bonus
+ * @param {Object} dwarf - The dwarf to award XP to
+ * @param {number} baseXp - The base XP amount before bonus
+ */
+function awardXpWithBonus(dwarf, baseXp) {
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    const xpMultiplier = 1 + furnitureBonuses.xpGainBonus;
+    const finalXp = Math.ceil(baseXp * xpMultiplier);
+    dwarf.xp = (dwarf.xp || 0) + finalXp;
 }
 
 function getDwarfToolPower(dwarf) {
@@ -1741,10 +1756,10 @@ function actForDwarf(dwarf) {
             const researchPoints = totalResearchPoints;
             activeResearch.progress += researchPoints;
 
-            // Award XP based on successful attempts (ceiling of square root)
+            // Award XP based on successful attempts (ceiling of square root, with furniture bonus)
             const successfulAttempts = Math.max(1, totalResearchPoints); // At least 1 for the attempt
             const xpMultiplier = Math.ceil(Math.sqrt(successfulAttempts));
-            dwarf.xp = (dwarf.xp || 0) + Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier));
+            awardXpWithBonus(dwarf, Math.ceil(Math.sqrt(DWARF_XP_PER_ACTION * xpMultiplier)));
             
             // Check if research is complete using formula: baseCost * (1.15^(targetLevel-1))
             // Current level is what we have, target level is current + 1
@@ -1933,9 +1948,9 @@ function actForDwarf(dwarf) {
                 // Task complete!
                 console.log(`[Management] Task "${task.name || taskDef.name}" completed by ${dwarf.name}! (type: ${task.type})`);
 
-                // Award XP (hardness * cost for XP calculation)
+                // Award XP (hardness * cost for XP calculation, with furniture bonus)
                 const xpGain = Math.ceil(Math.sqrt(hardness * cost));
-                dwarf.xp = (dwarf.xp || 0) + xpGain;
+                awardXpWithBonus(dwarf, xpGain);
 
                 // Execute the task based on type
                 executeManagementTaskWrapper(task, taskDef);

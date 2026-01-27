@@ -300,7 +300,7 @@ function updateNextSkillpointButton(currentDwarfName) {
         dwarfsWithSkillPoints.sort((a, b) => a.name.localeCompare(b.name));
         const nextDwarf = dwarfsWithSkillPoints[0];
 
-        nextBtn.style.display = 'block';
+        nextBtn.classList.remove('hidden');
         nextBtn.title = `Switch to ${nextDwarf.name}`;
 
         // Update click handler
@@ -308,7 +308,7 @@ function updateNextSkillpointButton(currentDwarfName) {
             openDwarfDetailModal(nextDwarf);
         };
     } else {
-        nextBtn.style.display = 'none';
+        nextBtn.classList.add('hidden');
     }
 }
 
@@ -829,7 +829,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
 
     // Populate dig power
     document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'percent');
-    const enchantLine = enchantLevel > 0 ? `<div style="color: #b19cd9;">× Enchantment: ${formatNumber(enchantBonus, 'percent')} (+${enchantLevel})</div>` : '';
+    const enchantLine = enchantLevel > 0 ? `<div class="dwarf-digpower-enchant">× Enchantment: ${formatNumber(enchantBonus, 'percent')} (+${enchantLevel})</div>` : '';
     const diamondBonusPercent = baseDigPowerPoints > 0
         ? ((modifiedDigPowerPoints - baseDigPowerPoints) / baseDigPowerPoints * 100)
         : 0;
@@ -842,7 +842,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     }
     const diamondTooltip = totalDiamondCarat > 0 ? `title="${totalDiamondCarat}ct Diamond in tool"` : '';
     const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
-        ? `<div style="color: #66ccff; margin-left: 10px; cursor: help;" ${diamondTooltip}>💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
+        ? `<div class="dwarf-digpower-diamond" ${diamondTooltip}>💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
         : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
@@ -866,7 +866,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     document.getElementById('dwarf-wage-calc').innerHTML = `
         <div>Base: ${formatNumber(DWARF_BASE_WAGE, 'gold')}</div>
         <div>× Level-Factor: ${formatNumber(levelMultiplier, 'material')}</div>
-        <div id="dwarf-wage-next" style="margin-top: 6px; font-size: 11px; color: #FFD700;">Next level: ${formatNumber(nextLevelWage, 'gold')}</div>
+        <div id="dwarf-wage-next" class="dwarf-wage-next">Next level: ${formatNumber(nextLevelWage, 'gold')}</div>
     `;
 
     // Populate current tool
@@ -899,7 +899,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         // Add enchantment badge if tool is enchanted
         if (enchantLevel > 0) {
             const enchantSpan = document.createElement('span');
-            enchantSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(138, 43, 226, 0.2); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 3px; color: #dda0ff; font-size: 10px; font-weight: bold;';
+            enchantSpan.className = 'dwarf-tool-badge dwarf-tool-badge-enchant';
             enchantSpan.textContent = `✨+${enchantLevel}`;
             toolBadges.appendChild(enchantSpan);
         }
@@ -918,7 +918,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             // Create a span for each gem type
             Object.entries(gemsByType).forEach(([type, carats]) => {
                 const gemSpan = document.createElement('span');
-                gemSpan.style.cssText = 'margin-right: 6px; padding: 2px 6px; background: rgba(102, 204, 255, 0.15); border: 1px solid rgba(102, 204, 255, 0.4); border-radius: 3px; color: #66ccff; font-size: 10px; font-weight: bold;';
+                gemSpan.className = 'dwarf-tool-badge dwarf-tool-badge-gem';
                 gemSpan.textContent = `💎 ${type} ${carats}ct`;
                 gemSpan.title = `${carats} carat ${type}`;
                 toolBadges.appendChild(gemSpan);
@@ -932,7 +932,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
             const platingColor = platingMaterial ? platingMaterial.color : '#888888';
 
             const platingSpan = document.createElement('span');
-            platingSpan.style.cssText = `margin-right: 6px; padding: 2px 6px; background: ${platingColor}; border: 1px solid ${platingColor}dd; border-radius: 3px; color: #ffffff; font-size: 10px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); cursor: help;`;
+            platingSpan.className = 'dwarf-tool-badge dwarf-tool-badge-plating';
+            platingSpan.style.background = platingColor;
+            platingSpan.style.borderColor = platingColor;
             platingSpan.textContent = platingEffect.name;
             platingSpan.title = platingEffect.description;
             toolBadges.appendChild(platingSpan);
@@ -987,32 +989,30 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     // Helper to create stat card
     const createStatCard = (icon, name, level, description, upgradeType) => {
         const card = document.createElement('div');
-        card.className = 'levelup-option';
-        card.style.padding = '10px';
+        card.className = 'levelup-option dwarf-stat-card';
 
         const headerEl = document.createElement('h4');
-        headerEl.style.cssText = 'margin: 0 0 6px 0; font-size: 13px;';
+        headerEl.className = 'dwarf-stat-card-header';
         headerEl.textContent = `${icon} ${name}`;
         card.appendChild(headerEl);
 
         const skillPointsEl = document.createElement('p');
-        skillPointsEl.style.cssText = 'font-size: 16px; font-weight: bold; margin: 6px 0; display: flex; align-items: center; justify-content: center; gap: 6px;';
+        skillPointsEl.className = 'dwarf-stat-card-points';
         skillPointsEl.innerHTML = `Skill Points invested: ${level}`;
 
         if (hasEnoughXP) {
             const btn = document.createElement('button');
-            btn.className = 'btn-primary';
+            btn.className = 'btn-primary dwarf-stat-upgrade-btn';
             btn.textContent = '+1';
             btn.dataset.upgradeType = upgradeType;
             btn.dataset.dwarfName = dwarf.name;
-            btn.style.cssText = 'padding: 2px 8px; font-size: 11px; margin: 0; min-width: auto; background: linear-gradient(135deg, #ffd700, #ffa726); border-color: #ffa726;';
             skillPointsEl.appendChild(btn);
         }
 
         card.appendChild(skillPointsEl);
 
         const descEl = document.createElement('p');
-        descEl.style.cssText = 'font-size: 13px; opacity: 0.8; margin: 0; white-space: pre-line;';
+        descEl.className = 'dwarf-stat-card-desc';
         descEl.textContent = description;
         card.appendChild(descEl);
 
@@ -1165,7 +1165,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     } else {
         const activity = getDwarfCurrentActivity(dwarf);
         if (activity) {
-            moveTargetElement.innerHTML = `<span style="font-size: 1vw;">${activity.substr(0,12)}</span>`;
+            moveTargetElement.innerHTML = `<span class="dwarf-move-target-activity">${activity.substr(0,12)}</span>`;
         } else {
             moveTargetElement.textContent = '→ None';
         }
@@ -1175,7 +1175,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     document.getElementById('dwarf-bucket-header').textContent = `🧺 Bucket (${bucketWeight}kg/${dwarfCapacity}kg)`;
     const bucketContents = document.getElementById('dwarf-bucket-contents');
     if (dwarf.bucket && Object.keys(dwarf.bucket).length > 0 && bucketWeight > 0) {
-        let bucketHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px;">';
+        let bucketHTML = '<div class="dwarf-bucket-refresh-grid">';
         for (const [materialId, count] of Object.entries(dwarf.bucket)) {
             // Handle both regular materials (count is a number) and gems (count might be an object)
             let displayCount = count;
@@ -1195,16 +1195,16 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
             }
 
             bucketHTML += `
-                <div style="padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; text-align: center;">
-                    <div style="font-size: 9px; font-weight: bold;">${displayName}</div>
-                    <div style="font-size: 12px; margin-top: 1px;">${displayCount}</div>
+                <div class="dwarf-bucket-refresh-item">
+                    <div class="dwarf-bucket-refresh-item-name">${displayName}</div>
+                    <div class="dwarf-bucket-refresh-item-count">${displayCount}</div>
                 </div>
             `;
         }
         bucketHTML += '</div>';
         bucketContents.innerHTML = bucketHTML;
     } else {
-        bucketContents.innerHTML = '<p style="opacity: 0.6; text-align: center; margin: 4px 0; font-size: 11px;">Empty</p>';
+        bucketContents.innerHTML = '<p class="dwarf-bucket-refresh-empty">Empty</p>';
     }
 
     document.getElementById('dwarf-digpower-total').textContent = formatNumber(totalDigPower, 'material');

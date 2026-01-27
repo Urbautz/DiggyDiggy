@@ -1902,17 +1902,17 @@ const furnitureData = {
     name: 'Seating Bench',
     icon: '🪑',
     room: 'common',
-    baseCost: 5000,
+    baseCost: 500,
     minDepth: 500,
     requires: null,
-    effect: { restBonus: 0.015 },
-    description: 'A sturdy wooden bench. +1.5% rest recovery per level.'
+    effect: { restBonus: 0.05 },
+    description: 'A sturdy wooden bench. +5% rest recovery per level.'
   },
   'feasting-table': {
     name: 'Feasting Table',
     icon: '🍽️',
     room: 'common',
-    baseCost: 8000,
+    baseCost: 800,
     minDepth: 500,
     requires: null,
     effect: { maxEnergyBonus: 2 },
@@ -1922,17 +1922,17 @@ const furnitureData = {
     name: 'Gaming Table',
     icon: '🎲',
     room: 'common',
-    baseCost: 15000,
+    baseCost: 5000,
     minDepth: 5000,
     requires: 'entertainment',
-    effect: { restBonus: 0.02 },
-    description: 'For card games and dice. +2% rest recovery per level.'
+    effect: { restBonus: 0.08 },
+    description: 'For card games and dice. +8% rest recovery per level.'
   },
   'bar-with-barstools': {
     name: 'Bar with Barstools',
     icon: '🍺',
     room: 'common',
-    baseCost: 20000,
+    baseCost: 7000,
     minDepth: 10000,
     requires: 'entertainment',
     effect: { maxEnergyBonus: 5 },
@@ -1942,17 +1942,17 @@ const furnitureData = {
     name: 'Ale Barrel Rack',
     icon: '⚱️',
     room: 'common',
-    baseCost: 25000,
+    baseCost: 10000,
     minDepth: 15000,
     requires: 'brewing',
-    effect: { restBonus: 0.025 },
-    description: 'Stores the finest ale. +2.5% rest recovery per level.'
+    effect: { restBonus: 0.1 },
+    description: 'Stores the finest ale. +10% rest recovery per level.'
   },
   'banner': {
     name: 'Banner',
     icon: '🚩',
     room: 'common',
-    baseCost: 50000,
+    baseCost: 15000,
     minDepth: 50000,
     requires: 'decoration',
     effect: { digPowerBonus: 0.01 },
@@ -1965,8 +1965,8 @@ const furnitureData = {
     baseCost: 100000,
     minDepth: 100000,
     requires: 'religion',
-    effect: { critChanceBonus: 0.005 },
-    description: 'A sacred shrine for worship. +0.5% critical hit chance per level.'
+   effect: { xpGainBonus: 0.01 },
+    description: 'A sacred shrine for worship. +1% XP gain per level.'
   },
   'dwarfen-statue': {
     name: 'Dwarfen Statue',
@@ -1986,17 +1986,17 @@ const furnitureData = {
     name: 'Bed',
     icon: '🛏️',
     room: 'individual',
-    baseCost: 2000,
+    baseCost: 500,
     minDepth: 500,
     requires: null,
-    effect: { restBonus: 0.03 },
-    description: 'A comfortable bed. +3% rest recovery per level.'
+    effect: { restBonus: 0.05 },
+    description: 'A comfortable bed. +5% rest recovery per level.'
   },
   'cabinet': {
     name: 'Cabinet',
     icon: '🧥',
     room: 'individual',
-    baseCost: 3000,
+    baseCost: 300,
     minDepth: 500,
     requires: null,
     effect: { maxEnergyBonus: 3 },
@@ -2006,17 +2006,17 @@ const furnitureData = {
     name: 'Rocking Chair',
     icon: '🪑',
     room: 'individual',
-    baseCost: 5000,
+    baseCost: 2000,
     minDepth: 2000,
     requires: 'comfort',
-    effect: { restBonus: 0.02 },
-    description: 'A relaxing chair. +2% rest recovery per level.'
+    effect: { restBonus: 0.08 },
+    description: 'A relaxing chair. +8% rest recovery per level.'
   },
   'tools-rack': {
     name: 'Tools Rack',
     icon: '🪓',
     room: 'individual',
-    baseCost: 8000,
+    baseCost: 4000,
     minDepth: 5000,
     requires: 'organization',
     effect: { digPowerBonus: 0.015 },
@@ -2026,17 +2026,17 @@ const furnitureData = {
     name: 'Desk with Stool',
     icon: '📝',
     room: 'individual',
-    baseCost: 12000,
+    baseCost: 5000,
     minDepth: 10000,
     requires: 'organization',
-    effect: { wisdomBonus: 1 },
+    effect: { xpGainBonus: 0.03 },
     description: 'A workspace for planning. +1 wisdom per level.'
   },
   'bookshelf': {
     name: 'Bookshelf',
     icon: '📖',
     room: 'individual',
-    baseCost: 20000,
+    baseCost: 12000,
     minDepth: 25000,
     requires: 'knowledge',
     effect: { wisdomBonus: 2 },
@@ -2049,8 +2049,8 @@ const furnitureData = {
     baseCost: 35000,
     minDepth: 75000,
     requires: 'brewing',
-    effect: { maxEnergyBonus: 5, restBonus: 0.01 },
-    description: 'Personal ale stash. +5 max energy and +1% rest per level.'
+    effect: { maxEnergyBonus: 5, restBonus: 0.05 },
+    description: 'Personal ale stash. +5 max energy and +5% rest per level.'
   },
   'potted-mushroom': {
     name: 'Potted Mushroom',
@@ -2059,8 +2059,8 @@ const furnitureData = {
     baseCost: 75000,
     minDepth: 150000,
     requires: 'decoration',
-    effect: { critChanceBonus: 0.003, restBonus: 0.01 },
-    description: 'A glowing mushroom. +0.3% crit chance and +1% rest per level.'
+    effect: { digPowerBonus: 0.015, restBonus: 0.04 },
+    description: 'A glowing mushroom. +1.5% dig power and +4% rest per level.'
   }
 };
 

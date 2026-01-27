@@ -1135,6 +1135,10 @@ header, footer {
     border-color: rgba(251, 191, 36, 0.2);
 }
 
+.dwarf-row.dwarf-clickable {
+    cursor: pointer;
+}
+
 .dwarf-row.dwarf-clickable:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.15);
@@ -1507,6 +1511,119 @@ header, footer {
 .btn-research:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* Research queue styles */
+.research-queue {
+    background: rgba(42, 42, 62, 0.5);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(68, 68, 68, 0.5);
+}
+
+.research-queue h3 {
+    margin-top: 0;
+    color: #ffa500;
+}
+
+.research-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.research-queue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(30, 30, 46, 0.5);
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(85, 85, 85, 0.5);
+}
+
+.research-queue-item-info {
+    flex: 1;
+}
+
+.research-queue-item-gold {
+    color: #888;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+.research-queue-slots {
+    margin-top: 8px;
+    margin-bottom: 0;
+    font-size: 11px;
+    color: #888;
+}
+
+/* Research active section styles */
+.active-research-name {
+    font-size: 1.2em;
+    color: #ffd700;
+}
+
+.active-research-progress-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.active-research-progress-row .progress-bar {
+    flex: 1;
+    margin-top: 0;
+}
+
+/* Research cancel/remove buttons */
+.btn-cancel-research,
+.btn-remove-from-queue {
+    padding: 6px 10px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-cancel-research:hover,
+.btn-remove-from-queue:hover {
+    background: #ff5252;
+}
+
+/* Research warning styles */
+.research-warning {
+    color: #ff6b6b;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Research name cell styles */
+.research-name-cell {
+    line-height: 1.3;
+}
+
+/* Completed research section */
+.completed-research-section h3 {
+    color: #4CAF50;
+    margin: 20px 0 10px 0;
+}
+
+.research-table.completed tr {
+    opacity: 0.7;
+}
+
+.research-status-maxed {
+    color: #4CAF50;
+    font-weight: bold;
 }
 
 /* Notification badge pulse animation */
@@ -2601,6 +2718,133 @@ header, footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+}
+
+/* Stat Card Styles */
+.dwarf-stat-card {
+    padding: 10px;
+}
+
+.dwarf-stat-card-header {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+}
+
+.dwarf-stat-card-points {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 6px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dwarf-stat-card-desc {
+    font-size: 13px;
+    opacity: 0.8;
+    margin: 0;
+    white-space: pre-line;
+}
+
+.dwarf-stat-upgrade-btn {
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 0;
+    min-width: auto;
+    background: linear-gradient(135deg, #ffd700, #ffa726);
+    border-color: #ffa726;
+}
+
+/* Dig Power Calculation Details */
+.dwarf-digpower-enchant {
+    color: #b19cd9;
+}
+
+.dwarf-digpower-diamond {
+    color: #66ccff;
+    margin-left: 10px;
+    cursor: help;
+}
+
+/* Tool Badge Styles */
+.dwarf-tool-badge {
+    margin-right: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.dwarf-tool-badge-enchant {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    color: #dda0ff;
+}
+
+.dwarf-tool-badge-gem {
+    background: rgba(102, 204, 255, 0.15);
+    border: 1px solid rgba(102, 204, 255, 0.4);
+    color: #66ccff;
+}
+
+.dwarf-tool-badge-plating {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    cursor: help;
+}
+
+/* Bucket Grid in Refresh Modal */
+.dwarf-bucket-refresh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 4px;
+}
+
+.dwarf-bucket-refresh-item {
+    padding: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    text-align: center;
+}
+
+.dwarf-bucket-refresh-item-name {
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.dwarf-bucket-refresh-item-count {
+    font-size: 12px;
+    margin-top: 1px;
+}
+
+.dwarf-bucket-refresh-empty {
+    opacity: 0.6;
+    text-align: center;
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+/* Move Target Activity */
+.dwarf-move-target-activity {
+    font-size: 1vw;
+}
+
+/* Task Priority Section Title */
+.dwarf-task-priority-title {
+    margin-bottom: 10px;
+}
+
+/* Reset Button Compact Style */
+.dwarf-reset-btn-compact {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Hidden by default (for next skillpoint button) */
+.hidden {
+    display: none;
 }
 
 /* Gold Display */
@@ -4142,4 +4386,535 @@ header, footer {
 
 .individual-room .furniture-description {
     font-size: 10px;
+}
+
+/* ============================================
+   Critical Error Notification
+   ============================================ */
+#critical-error-notification {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    max-width: 500px;
+    font-family: Arial, sans-serif;
+    border: 2px solid #b71c1c;
+}
+
+#critical-error-notification .error-content {
+    display: flex;
+    align-items: start;
+    gap: 12px;
+}
+
+#critical-error-notification .error-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+#critical-error-notification .error-body {
+    flex: 1;
+}
+
+#critical-error-notification .error-title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+#critical-error-notification .error-message {
+    font-size: 14px;
+    opacity: 0.95;
+    margin-bottom: 8px;
+}
+
+#critical-error-notification .error-hint {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+#critical-error-notification .error-close {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+#critical-error-notification .error-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* ============================================
+   Tool Badges (Plating, Enchant, Gems)
+   ============================================ */
+.tool-badge {
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.tool-badge-plating {
+    color: #ffffff;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+    cursor: help;
+}
+
+.tool-badge-enchant {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    color: #dda0ff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.tool-badge-gems {
+    background: rgba(102, 204, 255, 0.2);
+    border: 1px solid rgba(102, 204, 255, 0.4);
+    color: #66ccff;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   Function Bar Progress Bars
+   ============================================ */
+.function-progress-container {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    height: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.function-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.research-progress-bar {
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+}
+
+.smelter-temp-bar {
+    background: linear-gradient(90deg, #ff4500, #ff8c00);
+}
+
+/* ============================================
+   Disabled/Locked UI State
+   ============================================ */
+.ui-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Dwarf XP Display States
+   ============================================ */
+.dwarf-xp-display.can-level {
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.dwarf-xp-display.in-progress {
+    font-size: 10px;
+    color: #9fbfe0;
+    opacity: 0.7;
+}
+
+/* ============================================
+   Enchant Modal
+   ============================================ */
+.enchant-tool-info {
+    margin-bottom: 16px;
+}
+
+.enchant-tool-info h3 {
+    margin: 0 0 8px 0;
+}
+
+.enchant-tool-power {
+    margin: 0;
+    color: #9fbfe0;
+    font-size: 13px;
+}
+
+.enchant-slider-container {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(138, 43, 226, 0.1);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+}
+
+.enchant-slider-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.enchant-slider-container input[type="range"] {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.enchant-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #9fbfe0;
+}
+
+#enchant-level-display {
+    font-weight: bold;
+    color: #dda0ff;
+}
+
+.enchant-preview {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.enchant-preview-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.enchant-preview-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.enchant-power {
+    color: #dda0ff;
+    font-weight: bold;
+}
+
+.enchant-cost {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.enchant-cost.cannot-afford {
+    color: #ff6b6b;
+}
+
+.enchant-warning {
+    color: #ff6b6b;
+    margin: 8px 0 0 0;
+    font-size: 12px;
+}
+
+.enchant-confirm-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.enchant-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Transaction Modal
+   ============================================ */
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.transactions-table th {
+    padding: 8px;
+    border-bottom: 2px solid #5b6d7a;
+}
+
+.transactions-table td {
+    padding: 8px;
+}
+
+.transactions-table .th-left {
+    text-align: left;
+}
+
+.transactions-table .th-right {
+    text-align: right;
+}
+
+.transactions-table .th-center {
+    text-align: center;
+}
+
+.transactions-table tbody tr {
+    border-bottom: 1px solid #3a4a57;
+}
+
+.transactions-table .row-current {
+    background: #2d3f52;
+}
+
+.transactions-table .cell-hour {
+    font-weight: bold;
+}
+
+.transactions-table .cell-income {
+    text-align: right;
+    color: #4ade80;
+}
+
+.transactions-table .cell-income-bold {
+    text-align: right;
+    color: #4ade80;
+    font-weight: bold;
+}
+
+.transactions-table .cell-expense {
+    text-align: right;
+    color: #ff6b6b;
+}
+
+.transactions-table .cell-expense-bold {
+    text-align: right;
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.transactions-table .cell-net {
+    text-align: right;
+    font-weight: bold;
+}
+
+.transactions-table .cell-net.positive {
+    color: #4ade80;
+}
+
+.transactions-table .cell-net.negative {
+    color: #ff6b6b;
+}
+
+.transactions-table .cell-actions {
+    text-align: center;
+}
+
+.transactions-table .cell-balance {
+    text-align: right;
+}
+
+.transactions-table .btn-details {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.transactions-empty {
+    text-align: center;
+    color: #9fbfe0;
+    padding: 20px;
+}
+
+.transactions-back-btn {
+    margin-bottom: 15px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #2a3f5a;
+}
+
+.transactions-details-header {
+    color: #ffd700;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+/* Investments Tab */
+.investments-locked {
+    text-align: center;
+    padding: 20px;
+    color: #9fbfe0;
+}
+
+.investments-header {
+    color: #ffd700;
+    margin-bottom: 15px;
+}
+
+.investments-header-margin {
+    margin-top: 30px;
+}
+
+.investments-interest-card {
+    background: #1e2a35;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.investments-interest-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investments-interest-total {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #4ade80;
+    margin-bottom: 15px;
+}
+
+.investments-breakdown-header {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 10px;
+}
+
+.investments-tier {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.investments-tier-label {
+    color: #9fbfe0;
+    font-size: 0.9em;
+}
+
+.investments-tier-value {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+/* Investment Form */
+.investment-form {
+    background: #1e2a35;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.investment-form-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investment-form-desc {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 15px;
+}
+
+.investment-amount-label {
+    color: #9fbfe0;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.investment-amount-display {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #4ade80;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.investment-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.investment-btn {
+    padding: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.investment-info-display {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.investment-create-btn {
+    width: 100%;
+}
+
+.investment-not-enough {
+    color: #ff6b6b;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Active Investments */
+.active-investments-header {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investment-card {
+    background: #1e2a35;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.investment-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.investment-card-title {
+    font-weight: bold;
+    color: #9fbfe0;
+}
+
+.investment-card-amount {
+    color: #4ade80;
+}
+
+.investment-progress-bar {
+    background: #2a3f5a;
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.investment-progress-fill {
+    background: #4ade80;
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.investment-card-details {
+    font-size: 0.9em;
+    color: #7a8a99;
+}
+
+.investment-card-details div {
+    margin-bottom: 2px;
 }
