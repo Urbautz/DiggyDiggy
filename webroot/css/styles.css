@@ -4635,3 +4635,286 @@ header, footer {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ============================================
+   Transaction Modal
+   ============================================ */
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.transactions-table th {
+    padding: 8px;
+    border-bottom: 2px solid #5b6d7a;
+}
+
+.transactions-table td {
+    padding: 8px;
+}
+
+.transactions-table .th-left {
+    text-align: left;
+}
+
+.transactions-table .th-right {
+    text-align: right;
+}
+
+.transactions-table .th-center {
+    text-align: center;
+}
+
+.transactions-table tbody tr {
+    border-bottom: 1px solid #3a4a57;
+}
+
+.transactions-table .row-current {
+    background: #2d3f52;
+}
+
+.transactions-table .cell-hour {
+    font-weight: bold;
+}
+
+.transactions-table .cell-income {
+    text-align: right;
+    color: #4ade80;
+}
+
+.transactions-table .cell-income-bold {
+    text-align: right;
+    color: #4ade80;
+    font-weight: bold;
+}
+
+.transactions-table .cell-expense {
+    text-align: right;
+    color: #ff6b6b;
+}
+
+.transactions-table .cell-expense-bold {
+    text-align: right;
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.transactions-table .cell-net {
+    text-align: right;
+    font-weight: bold;
+}
+
+.transactions-table .cell-net.positive {
+    color: #4ade80;
+}
+
+.transactions-table .cell-net.negative {
+    color: #ff6b6b;
+}
+
+.transactions-table .cell-actions {
+    text-align: center;
+}
+
+.transactions-table .cell-balance {
+    text-align: right;
+}
+
+.transactions-table .btn-details {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.transactions-empty {
+    text-align: center;
+    color: #9fbfe0;
+    padding: 20px;
+}
+
+.transactions-back-btn {
+    margin-bottom: 15px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #2a3f5a;
+}
+
+.transactions-details-header {
+    color: #ffd700;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+/* Investments Tab */
+.investments-locked {
+    text-align: center;
+    padding: 20px;
+    color: #9fbfe0;
+}
+
+.investments-header {
+    color: #ffd700;
+    margin-bottom: 15px;
+}
+
+.investments-header-margin {
+    margin-top: 30px;
+}
+
+.investments-interest-card {
+    background: #1e2a35;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.investments-interest-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investments-interest-total {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #4ade80;
+    margin-bottom: 15px;
+}
+
+.investments-breakdown-header {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 10px;
+}
+
+.investments-tier {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.investments-tier-label {
+    color: #9fbfe0;
+    font-size: 0.9em;
+}
+
+.investments-tier-value {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+/* Investment Form */
+.investment-form {
+    background: #1e2a35;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.investment-form-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investment-form-desc {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 15px;
+}
+
+.investment-amount-label {
+    color: #9fbfe0;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.investment-amount-display {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #4ade80;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.investment-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.investment-btn {
+    padding: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.investment-info-display {
+    font-size: 0.9em;
+    color: #7a8a99;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.investment-create-btn {
+    width: 100%;
+}
+
+.investment-not-enough {
+    color: #ff6b6b;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Active Investments */
+.active-investments-header {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #9fbfe0;
+}
+
+.investment-card {
+    background: #1e2a35;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.investment-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.investment-card-title {
+    font-weight: bold;
+    color: #9fbfe0;
+}
+
+.investment-card-amount {
+    color: #4ade80;
+}
+
+.investment-progress-bar {
+    background: #2a3f5a;
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.investment-progress-fill {
+    background: #4ade80;
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.investment-card-details {
+    font-size: 0.9em;
+    color: #7a8a99;
+}
+
+.investment-card-details div {
+    margin-bottom: 2px;
+}

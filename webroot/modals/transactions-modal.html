@@ -15,7 +15,7 @@
             </div>
 
             <div id="transactions-content" class="transactions-content">
-                <!-- Content will be added here -->
+                <!-- Dynamic content inserted here -->
             </div>
         </div>
         <footer class="modal-footer">
@@ -23,3 +23,123 @@
         </footer>
     </div>
 </div>
+
+<!-- Templates for transaction modal (hidden, cloned by JS) -->
+<template id="template-transactions-empty">
+    <p class="transactions-empty">No financial data yet.</p>
+</template>
+
+<template id="template-transactions-table">
+    <table class="transactions-table">
+        <thead></thead>
+        <tbody></tbody>
+    </table>
+</template>
+
+<template id="template-summary-header">
+    <tr>
+        <th class="th-left">Hour</th>
+        <th class="th-right">Income</th>
+        <th class="th-right">Expense</th>
+        <th class="th-right">Net</th>
+        <th class="th-center">Actions</th>
+    </tr>
+</template>
+
+<template id="template-details-header">
+    <tr>
+        <th class="th-left">Description</th>
+        <th class="th-right">Amount</th>
+        <th class="th-right">Count</th>
+    </tr>
+</template>
+
+<template id="template-recent-header">
+    <tr>
+        <th class="th-left">Time</th>
+        <th class="th-left">Description</th>
+        <th class="th-right">Amount</th>
+        <th class="th-right">Balance</th>
+    </tr>
+</template>
+
+<template id="template-hour-details-back">
+    <button class="btn-secondary transactions-back-btn" onclick="closeHourDetails()">← Back to Summary</button>
+    <h3 class="transactions-details-header"></h3>
+</template>
+
+<template id="template-investments-locked">
+    <div class="investments-locked">
+        <h3>📊 Investments</h3>
+        <p>Research "Small Time Investments" to unlock passive interest income.</p>
+    </div>
+</template>
+
+<template id="template-investments-content">
+    <h3 class="investments-header">📊 Investment Portfolio</h3>
+
+    <div class="investments-interest-card">
+        <div class="investments-interest-header">Small time investments</div>
+        <div id="investments-interest-total" class="investments-interest-total">+0</div>
+        <div class="investments-breakdown-header">Tier Breakdown (lower interest the more money you have):</div>
+        <div id="investments-tiers"></div>
+    </div>
+
+    <div id="one-time-investments-section" hidden>
+        <h3 class="investments-header investments-header-margin">💰 One-Time Investments</h3>
+
+        <div class="investment-form">
+            <div class="investment-form-title">Create New Investment</div>
+            <div class="investment-form-desc">Invest 100,000 to 75% of your gold. Receive 1 gold per 100k invested for 120,000 ticks (10 hours).</div>
+
+            <div id="investment-form-content">
+                <!-- Dynamic: either the form controls or "not enough gold" message -->
+            </div>
+        </div>
+
+        <div id="active-investments-section" hidden>
+            <h4 class="active-investments-header">Active Investments</h4>
+            <div id="active-investments-list"></div>
+        </div>
+    </div>
+</template>
+
+<template id="template-investment-form-controls">
+    <label class="investment-amount-label">Amount:</label>
+    <div id="investment-amount-display" class="investment-amount-display">0</div>
+
+    <div class="investment-buttons">
+        <button class="btn-secondary investment-btn" onclick="adjustInvestmentAmount(-100000)">-</button>
+        <button class="btn-secondary investment-btn" onclick="adjustInvestmentAmount(100000)">+</button>
+        <button class="btn-secondary investment-btn" onclick="setInvestmentPercent(50)">50%</button>
+        <button class="btn-secondary investment-btn" onclick="setInvestmentPercent(75)">Max</button>
+    </div>
+
+    <div id="investment-info-display" class="investment-info-display"></div>
+
+    <button class="btn-primary investment-create-btn" onclick="createInvestment()">Create Investment</button>
+</template>
+
+<template id="template-investment-not-enough">
+    <div class="investment-not-enough">You need at least 100,000 gold to create an investment.</div>
+</template>
+
+<template id="template-investment-card">
+    <div class="investment-card">
+        <div class="investment-card-header">
+            <div class="investment-card-title"></div>
+            <div class="investment-card-amount"></div>
+        </div>
+        <div class="investment-progress-bar">
+            <div class="investment-progress-fill"></div>
+        </div>
+        <div class="investment-card-details"></div>
+    </div>
+</template>
+
+<template id="template-investments-tier">
+    <div class="investments-tier">
+        <div class="investments-tier-label"></div>
+        <div class="investments-tier-value"></div>
+    </div>
+</template>
