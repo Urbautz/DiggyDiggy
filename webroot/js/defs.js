@@ -1965,8 +1965,8 @@ const furnitureData = {
     baseCost: 100000,
     minDepth: 100000,
     requires: 'religion',
-    effect: { critChanceBonus: 0.002 },
-    description: 'A sacred shrine for worship. +0.2% critical hit chance per level.'
+   effect: { xpGainBonus: 0.01 },
+    description: 'A sacred shrine for worship. +1% XP gain per level.'
   },
   'dwarfen-statue': {
     name: 'Dwarfen Statue',
@@ -2029,7 +2029,7 @@ const furnitureData = {
     baseCost: 5000,
     minDepth: 10000,
     requires: 'organization',
-    effect: { wisdomBonus: 1 },
+    effect: { xpGainBonus: 0.03 },
     description: 'A workspace for planning. +1 wisdom per level.'
   },
   'bookshelf': {
