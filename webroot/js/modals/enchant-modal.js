@@ -82,8 +82,8 @@ function updateEnchantPreview() {
     const enchantLevel = parseInt(slider.value);
     display.textContent = `Level ${enchantLevel}`;
 
-    // Calculate cost using the formula: baseCost * (multiplier ^ (level - 1))
-    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+    // Calculate cost using the formula: baseCost * level * (multiplier ^ (level - 1))
+    const cost = Math.round(ENCHANT_BASE_COST * enchantLevel * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
     const canAfford = gold >= cost;
 
     preview.innerHTML = `
@@ -122,7 +122,7 @@ function confirmEnchant(toolId) {
     if (!slider) return;
 
     const enchantLevel = parseInt(slider.value);
-    const cost = Math.round(ENCHANT_BASE_COST * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
+    const cost = Math.round(ENCHANT_BASE_COST * enchantLevel * Math.pow(ENCHANT_COST_MULTIPLIER, enchantLevel - 1));
 
     if (gold < cost) {
         alert(`Not enough gold! Need ${formatNumber(cost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
