@@ -4538,3 +4538,100 @@ header, footer {
     color: #9fbfe0;
     opacity: 0.7;
 }
+
+/* ============================================
+   Enchant Modal
+   ============================================ */
+.enchant-tool-info {
+    margin-bottom: 16px;
+}
+
+.enchant-tool-info h3 {
+    margin: 0 0 8px 0;
+}
+
+.enchant-tool-power {
+    margin: 0;
+    color: #9fbfe0;
+    font-size: 13px;
+}
+
+.enchant-slider-container {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(138, 43, 226, 0.1);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+}
+
+.enchant-slider-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.enchant-slider-container input[type="range"] {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.enchant-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #9fbfe0;
+}
+
+#enchant-level-display {
+    font-weight: bold;
+    color: #dda0ff;
+}
+
+.enchant-preview {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.enchant-preview-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.enchant-preview-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.enchant-power {
+    color: #dda0ff;
+    font-weight: bold;
+}
+
+.enchant-cost {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.enchant-cost.cannot-afford {
+    color: #ff6b6b;
+}
+
+.enchant-warning {
+    color: #ff6b6b;
+    margin: 8px 0 0 0;
+    font-size: 12px;
+}
+
+.enchant-confirm-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.enchant-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
