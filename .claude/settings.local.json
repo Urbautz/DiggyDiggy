@@ -10,7 +10,8 @@
       "Bash(do sed -i \"s/researchtree\\\\.find\\(r => r\\\\.id === ''\\\\\\([^'']*\\\\\\)''\\)/researchData[''\\\\1'']/g\" \"$file\")",
       "Bash(done)",
       "Bash(echo:*)",
-      "Bash(for file in *.html)"
+      "Bash(for file in *.html)",
+      "Bash(git show:*)"
     ]
   }
 }

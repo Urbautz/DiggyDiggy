@@ -178,6 +178,7 @@ function createFurnitureCard(furnitureId, furniture, level, roomType, roomId) {
         if (furniture.effect.critChanceBonus) effects.push(`+${(furniture.effect.critChanceBonus * 100).toFixed(1)}% crit`);
         if (furniture.effect.strengthBonus) effects.push(`+${furniture.effect.strengthBonus} strength`);
         if (furniture.effect.wisdomBonus) effects.push(`+${furniture.effect.wisdomBonus} wisdom`);
+        if (furniture.effect.xpGainBonus) effects.push(`+${(furniture.effect.xpGainBonus * 100).toFixed(1)}% XP gain`);
         if (effects.length > 0) {
             effectHtml = `<div class="furniture-effect">Per quality: ${effects.join(', ')}</div>`;
         }
