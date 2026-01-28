@@ -739,6 +739,10 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const bucketWeight = calculateBucketWeight(dwarf.bucket);
     const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
+    // Calculate furniture bonuses early for use in multiple places
+    const furnitureBonusesEarly = calculateFurnitureBonuses(dwarf);
+    const effectiveMaxEnergyDisplay = (dwarf.maxEnergy || 100) + furnitureBonusesEarly.maxEnergyBonus;
+
     // Calculate dig power components
     const baseDwarfPower = 3;
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
@@ -765,15 +769,16 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const improvedDigging = researchData['improved-digging'];
     const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
     const enchantBonus = 1 + enchantLevel * ENCHANT_POWER_BONUS;
+    const furnitureDigBonus = 1 + furnitureBonusesEarly.digPowerBonus;
 
     // Apply gem bonus (5% per carat for each gem)
 
-    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus;
+    const totalDigPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus * furnitureDigBonus;
 
     // Populate basic stats
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
     document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
-    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${effectiveMaxEnergyDisplay}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Populate bucket
@@ -844,6 +849,9 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
     const diamondBonusLine = modifiedDigPowerPoints > baseDigPowerPoints
         ? `<div class="dwarf-digpower-diamond" ${diamondTooltip}>💎 (Diamond: +${formatNumber(diamondBonusPercent, 'percent')}% to Level)</div>`
         : '';
+    const furnitureDigLine = furnitureBonusesEarly.digPowerBonus > 0
+        ? `<div class="dwarf-digpower-furniture">× 🏠 Furniture: ${formatNumber(furnitureDigBonus, 'percent')}</div>`
+        : '';
     document.getElementById('dwarf-digpower-calc').innerHTML = `
         <div>Base: ${baseDwarfPower}</div>
         <div>× Level Bonus: ${formatNumber(levelBonus, 'percent')}</div>
@@ -851,6 +859,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         <div>× Research: ${formatNumber(researchBonus, 'percent')} (${improvedDigging ? improvedDigging.level : 0})</div>
         <div>× Tool Power: ${formatNumber(toolPower, 'percent')}</div>
         ${enchantLine}
+        ${furnitureDigLine}
     `;
 
     // Calculate and populate wage
@@ -1056,33 +1065,45 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         }
     }
 
+    // Get furniture bonuses for this dwarf
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+
     const baseDigPower = dwarf.digPower || 0;
     const modifiedDigPower = getDiamondModifiedDigPower(dwarf, baseDigPower);
     const diamondDigPowerPercent = (modifiedDigPower > baseDigPower && baseDigPower > 0)
         ? ((modifiedDigPower - baseDigPower) / baseDigPower * 100)
         : 0;
     const diamondBonus = modifiedDigPower > baseDigPower ? ` (+${formatNumber(diamondDigPowerPercent, 'percent')}% from 💎Diamond ${totalDiamondCaratForStats}ct)` : '';
-    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power\n${diamondBonus}`;
+    const furnitureDigPowerBonus = furnitureBonuses.digPowerBonus > 0 ? `\n🏠 Furniture: +${formatNumber(furnitureBonuses.digPowerBonus * 100, 'percent')}%` : '';
+    const digPowerDesc = `+${(baseDigPower * 10).toFixed(1)}% power${diamondBonus}${furnitureDigPowerBonus}`;
 
-    const energyDesc = `Maximum Energy: ${dwarf.maxEnergy || 100}${rubyEnergyChance > 0 ? `\n💎Ruby ${totalRubyCarat}ct: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}`;
+    const baseMaxEnergy = dwarf.maxEnergy || 100;
+    const effectiveMaxEnergy = baseMaxEnergy + furnitureBonuses.maxEnergyBonus;
+    const furnitureEnergyBonus = furnitureBonuses.maxEnergyBonus > 0 ? `\n🏠 Furniture: +${furnitureBonuses.maxEnergyBonus}` : '';
+    const energyDesc = `Maximum Energy: ${effectiveMaxEnergy}${rubyEnergyChance > 0 ? `\n💎Ruby ${totalRubyCarat}ct: ${formatNumber(rubyEnergyChance, 'percent')}% chance to prevent energy consumption` : ''}${furnitureEnergyBonus}`;
 
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
-    const effectiveStrength = Math.floor(modifiedStrength);
+    const effectiveStrength = Math.floor(modifiedStrength) + furnitureBonuses.strengthBonus;
     const sapphireBonusPercent = (modifiedStrength > baseStrength && baseStrength > 0)
         ? ((modifiedStrength - baseStrength) / baseStrength * 100)
         : 0;
     const sapphireBonus = modifiedStrength > baseStrength ? ` (+${formatNumber(sapphireBonusPercent, 'percent')}% from 💎Sapphire ${totalSapphireCarat}ct)` : '';
-    const strengthDesc = `+5kg per strength point${sapphireBonus}`;
+    const furnitureStrengthBonus = furnitureBonuses.strengthBonus > 0 ? `\n🏠 Furniture: +${furnitureBonuses.strengthBonus}` : '';
+    const strengthDesc = `+5kg per strength point${sapphireBonus}${furnitureStrengthBonus}`;
 
+    const baseWisdom = dwarf.wisdom || 0;
+    const effectiveWisdom = baseWisdom + furnitureBonuses.wisdomBonus;
     const amethystReduction = getAmethystHardnessReduction(dwarf);
     const amethystBonus = amethystReduction > 0 ? ` (-${(amethystReduction*100).toFixed(0)}% hardness from 💎Amethyst ${totalAmethystCarat}ct)` : '';
-    const wisdomDesc = `Research success probability and Smelting Speed\n${amethystBonus}`;
+    const furnitureWisdomBonus = furnitureBonuses.wisdomBonus > 0 ? `\n🏠 Furniture: +${furnitureBonuses.wisdomBonus}` : '';
+    const wisdomDesc = `Research success probability and Smelting Speed${amethystBonus}${furnitureWisdomBonus}`;
 
+    // Display stats - show base skill points (furniture bonuses shown in tooltip)
     statsGrid.appendChild(createStatCard('⛏️', 'Dig Power', dwarf.digPower || 0, digPowerDesc, 'digPower'));
     statsGrid.appendChild(createStatCard('⚡', 'Max Energy', energyLevel, energyDesc, 'maxEnergy'));
-    statsGrid.appendChild(createStatCard('💪', 'Strength', dwarf.strength || 0, strengthDesc, 'strength'));
-    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', dwarf.wisdom || 0, wisdomDesc, 'wisdom'));
+    statsGrid.appendChild(createStatCard('💪', 'Strength', effectiveStrength, strengthDesc, 'strength'));
+    statsGrid.appendChild(createStatCard('🧠', 'Wisdom', effectiveWisdom, wisdomDesc, 'wisdom'));
 
     // Populate rename input
     const renameInput = document.getElementById('dwarf-rename-input');
@@ -1130,6 +1151,10 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     const bucketWeight = calculateBucketWeight(dwarf.bucket);
     const dwarfCapacity = calculateDwarfBucketCapacity(dwarf);
 
+    // Calculate furniture bonuses for energy display
+    const furnitureBonusesRefresh = calculateFurnitureBonuses(dwarf);
+    const effectiveMaxEnergyRefresh = (dwarf.maxEnergy || 100) + furnitureBonusesRefresh.maxEnergyBonus;
+
     // Calculate dig power
     const baseDwarfPower = 3;
     const currentTool = dwarf.toolId ? toolsInventory.find(t => t.id === dwarf.toolId) : null;
@@ -1152,7 +1177,7 @@ function refreshDwarfDetailModal(dwarf, forceFullUpdate = false) {
     // Update only the dynamic text content (fast, non-blocking)
     document.getElementById('dwarf-level').textContent = `⭐ ${currentLevel}`;
     document.getElementById('dwarf-xp').textContent = `${formatNumber(currentXP, 'xp')}/${formatNumber(xpNeeded, 'xp')}`;
-    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${dwarf.maxEnergy || 100}`;
+    document.getElementById('dwarf-energy').textContent = `⚡ ${Math.round(dwarf.energy || 0)}/${effectiveMaxEnergyRefresh}`;
     document.getElementById('dwarf-status').textContent = `💼 ${dwarf.status || 'idle'}`;
 
     // Update location information with friendly names
@@ -1415,6 +1440,17 @@ function populateCombatBonuses(dwarf) {
         oneHitOreEl.title = oreLevel > 0
             ? `Ore Expertise Level ${oreLevel}\n3% chance per level on critical hits`
             : 'Requires Ore Expertise research';
+    }
+
+    // Calculate XP gain bonus from furniture
+    const xpGainBonusEl = document.getElementById('dwarf-xp-gain-bonus');
+    if (xpGainBonusEl) {
+        const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+        const xpGainBonus = furnitureBonuses.xpGainBonus * 100;
+        xpGainBonusEl.textContent = `+${formatNumber(xpGainBonus, 'percent')}%`;
+        xpGainBonusEl.title = xpGainBonus > 0
+            ? `Furniture bonus: +${formatNumber(xpGainBonus, 'percent')}% XP from all sources`
+            : 'No XP bonus (upgrade Shrine or Desk furniture)';
     }
 }
 

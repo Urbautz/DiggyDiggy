@@ -1169,63 +1169,7 @@ function handleSmelterTaskOutput(task, dwarf) {
     }
 }
 
-/**
- * Calculate total furniture bonuses for a dwarf based on common room and their individual room
- * @param {Object} dwarf - The dwarf to calculate bonuses for
- * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus, xpGainBonus)
- */
-function calculateFurnitureBonuses(dwarf) {
-    const bonuses = {
-        restBonus: 0,           // Additive percentage bonus to rest recovery
-        maxEnergyBonus: 0,      // Flat bonus to max energy
-        digPowerBonus: 0,       // Additive percentage bonus to dig power
-        critChanceBonus: 0,     // Additive bonus to crit chance
-        strengthBonus: 0,       // Flat bonus to strength
-        wisdomBonus: 0,         // Flat bonus to wisdom
-        xpGainBonus: 0          // Additive percentage bonus to XP gain
-    };
-
-    // Add bonuses from common room furniture (applies to all dwarfs)
-    if (commonRoom && commonRoom.furniture) {
-        for (const furnitureId in commonRoom.furniture) {
-            const furnitureLevel = commonRoom.furniture[furnitureId]?.level || 0;
-            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
-                const effect = furnitureData[furnitureId].effect;
-                if (effect) {
-                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
-                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
-                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
-                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
-                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
-                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
-                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
-                }
-            }
-        }
-    }
-
-    // Add bonuses from dwarf's individual room
-    const roomId = dwarf.roomId;
-    if (roomId && individualRooms[roomId] && individualRooms[roomId].furniture) {
-        for (const furnitureId in individualRooms[roomId].furniture) {
-            const furnitureLevel = individualRooms[roomId].furniture[furnitureId]?.level || 0;
-            if (furnitureLevel > 0 && furnitureData[furnitureId]) {
-                const effect = furnitureData[furnitureId].effect;
-                if (effect) {
-                    if (effect.restBonus) bonuses.restBonus += effect.restBonus * furnitureLevel;
-                    if (effect.maxEnergyBonus) bonuses.maxEnergyBonus += effect.maxEnergyBonus * furnitureLevel;
-                    if (effect.digPowerBonus) bonuses.digPowerBonus += effect.digPowerBonus * furnitureLevel;
-                    if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
-                    if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
-                    if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
-                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
-                }
-            }
-        }
-    }
-
-    return bonuses;
-}
+// Note: calculateFurnitureBonuses is defined in utils.js
 
 /**
  * Award XP to a dwarf, applying furniture XP gain bonus

@@ -382,7 +382,10 @@ function calculateDwarfBucketCapacity(dwarf) {
     const baseCapacity = 50; // Base capacity in kg
     const baseStrength = dwarf.strength || 0;
     const modifiedStrength = getSapphireModifiedStrength(dwarf, baseStrength);
-    const strengthBonus = Math.floor(modifiedStrength) * 5; // 5kg per strength point
+    // Include furniture strength bonus
+    const furnitureBonuses = calculateFurnitureBonuses(dwarf);
+    const totalStrength = Math.floor(modifiedStrength) + furnitureBonuses.strengthBonus;
+    const strengthBonus = totalStrength * 5; // 5kg per strength point
 
     const bucketResearchLevel = getResearchLevel('buckets');
     const researchMultiplier = 1 + (bucketResearchLevel * 0.05); // 5% per level
@@ -886,7 +889,7 @@ function calculateFinalCritChance(dwarf) {
 /**
  * Calculate total furniture bonuses for a dwarf based on common room and their individual room
  * @param {Object} dwarf - The dwarf to calculate bonuses for
- * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus)
+ * @returns {Object} Object containing all furniture bonuses (restBonus, maxEnergyBonus, digPowerBonus, critChanceBonus, strengthBonus, wisdomBonus, xpGainBonus)
  */
 function calculateFurnitureBonuses(dwarf) {
     const bonuses = {
@@ -895,7 +898,8 @@ function calculateFurnitureBonuses(dwarf) {
         digPowerBonus: 0,       // Additive percentage bonus to dig power
         critChanceBonus: 0,     // Additive bonus to crit chance
         strengthBonus: 0,       // Flat bonus to strength
-        wisdomBonus: 0          // Flat bonus to wisdom
+        wisdomBonus: 0,         // Flat bonus to wisdom
+        xpGainBonus: 0          // Additive percentage bonus to XP gain
     };
 
     // Add bonuses from common room furniture (applies to all dwarfs)
@@ -911,6 +915,7 @@ function calculateFurnitureBonuses(dwarf) {
                     if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
                     if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
                     if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
                 }
             }
         }
@@ -930,6 +935,7 @@ function calculateFurnitureBonuses(dwarf) {
                     if (effect.critChanceBonus) bonuses.critChanceBonus += effect.critChanceBonus * furnitureLevel;
                     if (effect.strengthBonus) bonuses.strengthBonus += effect.strengthBonus * furnitureLevel;
                     if (effect.wisdomBonus) bonuses.wisdomBonus += effect.wisdomBonus * furnitureLevel;
+                    if (effect.xpGainBonus) bonuses.xpGainBonus += effect.xpGainBonus * furnitureLevel;
                 }
             }
         }
