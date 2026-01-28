@@ -1819,7 +1819,7 @@ let managementTasks = {
     hardness: 10,
   },
   'sell-gems': {
-    name: 'Sell unpolishedGems',
+    name: 'Sell unpolished Gems',
     description: 'Automatically sell unpolished gems.',
     values: {gemtype: {Description: 'Gem Type', default:'any', type:'gem-dropdown'},
              minQuantity: {Description: 'Run when quantity >', default:10, type:'number'},
