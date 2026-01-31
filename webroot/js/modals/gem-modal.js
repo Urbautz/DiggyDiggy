@@ -691,6 +691,8 @@ function sellGems(gemType, carat, polished, includeLower) {
 
     // Add gold
     gold += totalValue;
+    pendingGoldDelta += totalValue;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     updateGoldDisplay();
 
     // Log transaction
@@ -708,7 +710,8 @@ function sellGems(gemType, carat, polished, includeLower) {
             type: 'update-state',
             data: {
                 gems: gems,
-                gold: gold
+                gold: gold,
+                goldSyncToken: goldSyncToken
             }
         });
     }
@@ -773,6 +776,8 @@ function sellAllGemsOfType(gemType) {
 
     // Add gold
     gold += totalValue;
+    pendingGoldDelta += totalValue;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     updateGoldDisplay();
 
     // Log transaction
@@ -785,7 +790,8 @@ function sellAllGemsOfType(gemType) {
             type: 'update-state',
             data: {
                 gems: gems,
-                gold: gold
+                gold: gold,
+                goldSyncToken: goldSyncToken
             }
         });
     }

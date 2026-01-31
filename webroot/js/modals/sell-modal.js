@@ -156,6 +156,8 @@ function sellMaterial(materialId, amount) {
     // Update stock and gold
     materialsStock[materialId] -= amount;
     gold += earnings;
+    pendingGoldDelta += earnings;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
 
     // Log transaction
     logTransaction('income', earnings, `Sold ${amount}x ${material.name}`);
@@ -167,6 +169,7 @@ function sellMaterial(materialId, amount) {
             data: {
                 materialsStock: materialsStock,
                 gold: gold,
+                goldSyncToken: goldSyncToken,
                 toolsInventory: toolsInventory
             }
         });

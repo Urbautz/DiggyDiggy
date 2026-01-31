@@ -118,6 +118,8 @@ function confirmEnchant() {
 
     // Deduct gold
     gold -= cost;
+    pendingGoldDelta -= cost;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     logTransaction('expense', cost, `Enchanted ${tool.name || tool.type} to level ${enchantLevel}`);
     updateGoldDisplay();
 
@@ -128,7 +130,7 @@ function confirmEnchant() {
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            data: { toolsInventory, gold }
+            data: { toolsInventory, gold, goldSyncToken }
         });
     }
 

@@ -31,6 +31,7 @@ let masonryTasks = [];
 let masonryTasksData = {};
 let dropGridStartX = 10;
 let gold = 1000;
+let goldSyncToken = 0; // Tracks last sync token received from main thread
 let toolsInventory = [];
 let activeResearch = null;
 let researchQueue = [];
@@ -2839,6 +2840,7 @@ function tick() {
                 gems,
                 nextGemId,
                 gold,
+                goldSyncToken,
                 toolsInventory,
                 activeResearch,
                 researchQueue,
@@ -2908,6 +2910,7 @@ self.addEventListener('message', (e) => {
             }
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
+            goldSyncToken = data.goldSyncToken || 0;
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
             researchQueue = data.researchQueue ? JSON.parse(JSON.stringify(data.researchQueue)) : [];
@@ -2977,6 +2980,7 @@ self.addEventListener('message', (e) => {
                 if (data.startX !== undefined) startX = data.startX;
                 if (data.materialsStock) materialsStock = data.materialsStock;
                 if (data.gold !== undefined) gold = data.gold;
+                if (data.goldSyncToken !== undefined) goldSyncToken = data.goldSyncToken;
                 if (data.gems !== undefined) gems = data.gems;
                 if (data.toolsInventory) toolsInventory = data.toolsInventory;
                 if (data.activeResearch !== undefined) {

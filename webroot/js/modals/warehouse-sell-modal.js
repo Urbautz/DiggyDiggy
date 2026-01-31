@@ -217,13 +217,15 @@ function executeBulkSell(action) {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Bulk sell (${action}): ${totalItems} items for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker
         if (gameWorker && workerInitialized) {
             gameWorker.postMessage({
                 type: 'update-state',
-                data: { gold, materialsStock }
+                data: { gold, goldSyncToken, materialsStock }
             });
         }
 
@@ -285,12 +287,14 @@ function sellAllMaterials() {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Sold all materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker with new gold amount
         gameWorker.postMessage({
             type: 'update-state',
-            data: { gold, materialsStock }
+            data: { gold, goldSyncToken, materialsStock }
         });
 
         // Update displays
@@ -366,12 +370,14 @@ function sellNotCraftableMaterials() {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Sold not-craftable materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker with new gold amount
         gameWorker.postMessage({
             type: 'update-state',
-            data: { gold, materialsStock }
+            data: { gold, goldSyncToken, materialsStock }
         });
 
         // Update displays

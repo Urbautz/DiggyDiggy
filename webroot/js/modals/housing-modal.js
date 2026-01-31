@@ -265,6 +265,8 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
 
     // Deduct gold and increase level
     gold -= cost;
+    pendingGoldDelta -= cost;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
 
     if (roomType === 'common') {
         commonRoom.furniture[furnitureId].level = currentLevel + 1;
@@ -286,7 +288,7 @@ function levelUpFurniture(furnitureId, roomType, roomId) {
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            data: { commonRoom, individualRooms, gold }
+            data: { commonRoom, individualRooms, gold, goldSyncToken }
         });
     }
 }

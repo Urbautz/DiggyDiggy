@@ -2126,6 +2126,10 @@ let grid = [];
 let startX = 0;
 let gold = 50;
 
+// Gold sync tracking - prevents race condition between main thread sales and worker ticks
+let goldSyncToken = 0;      // Incremented when main thread sends gold update to worker
+let pendingGoldDelta = 0;   // Tracks unsynced local gold changes (sales, etc.)
+
 // One-time investments system
 let oneTimeInvestments = []; // Array of active one-time investments
 let nextInvestmentId = 1; // Next investment ID to assign

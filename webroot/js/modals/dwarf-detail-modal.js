@@ -1334,6 +1334,8 @@ function resetDwarfPoints(dwarf) {
 
     // Deduct gold
     gold -= resetCost;
+    pendingGoldDelta -= resetCost;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     logTransaction('expense', resetCost, `Reset points for ${actualDwarf.name}`);
     updateGoldDisplay();
 
@@ -1350,7 +1352,7 @@ function resetDwarfPoints(dwarf) {
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            data: { dwarfs, gold }
+            data: { dwarfs, gold, goldSyncToken }
         });
     }
 

@@ -1516,19 +1516,22 @@ function sellToolFromPanel(toolId) {
     
     // Add gold
     gold += sellValue;
-    
+    pendingGoldDelta += sellValue;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
+
     // Remove tool from inventory
     const index = toolsInventory.findIndex(t => t.id === toolId);
     if (index !== -1) {
         toolsInventory.splice(index, 1);
     }
-    
+
     // Sync with worker
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
             data: {
                 gold: gold,
+                goldSyncToken: goldSyncToken,
                 toolsInventory: toolsInventory
             }
         });
@@ -2436,9 +2439,17 @@ function initWorker() {
                     materialsStock[key] = data.materialsStock[key];
                 }
 
-                // Update gold
+                // Update gold with sync token reconciliation
+                // This prevents race condition where tick-complete overwrites local sales
                 if (data.gold !== undefined) {
-                    gold = data.gold;
+                    if (data.goldSyncToken === goldSyncToken) {
+                        // Worker has processed our latest gold update - use worker's value
+                        gold = data.gold;
+                        pendingGoldDelta = 0;
+                    } else {
+                        // Worker hasn't seen our update yet - add pending local changes
+                        gold = data.gold + pendingGoldDelta;
+                    }
                 }
                 
                 // Process transactions from worker
@@ -2671,6 +2682,7 @@ function initWorker() {
             smelterTasksData,
             dropGridStartX,
             gold,
+            goldSyncToken,
             toolsInventory,
             activeResearch,
             researchQueue,
@@ -3313,7 +3325,9 @@ window.activateCheat = function activateCheat() {
     
     // Add gold bonus
     gold += CHEAT_GOLD_BONUS;
-    
+    pendingGoldDelta += CHEAT_GOLD_BONUS;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
+
     // Log transaction
     logTransaction('income', CHEAT_GOLD_BONUS, 'Cheat code activated');
     
@@ -3409,6 +3423,7 @@ window.activateCheat = function activateCheat() {
                 startX: startX,
                 dwarfs: dwarfs,
                 gold: gold,
+                goldSyncToken: goldSyncToken,
                 materialsStock: materialsStock,
                 activeResearch: activeResearch,
                 researchData: researchData,
