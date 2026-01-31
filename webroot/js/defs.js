@@ -1412,7 +1412,8 @@ const researchData = {
   'better-housing': {
     name: 'Housing',
     cost: 100,
-    goldCost: 10,
+    goldCost: 500,
+    maxlevel: 100,
     level: 0,
     min_depth: 300,
     hardness: 20,
@@ -1543,6 +1544,17 @@ const researchData = {
     requires: [{'grinding-machine': 1}],
     min_depth: 1000,
     description: 'Unlocks the furnace for smelting of ores.'
+  },
+  'smelter-capacity': {
+    name: 'Smelter Capacity',
+    cost: 7500,
+    goldCost: 25000,
+    level: 0,
+    maxlevel: 4,
+    hardness: 95,
+    requires: [{'furnace-insulation': 5}],
+    min_depth: 20000,
+    description: 'Increases smelter batch size by 1 per level. Smelt multiple items at once (including alloys).'
   },
   'furnace-insulation': {
     name: 'Furnace Insulation',
@@ -1775,6 +1787,7 @@ let researchTree = [
   'furnace-insulation',
   'forge',
   'alloys',
+  'smelter-capacity',
   'material-science',
   'wage-optimization',
   'expertise-stone',
@@ -2030,7 +2043,7 @@ const furnitureData = {
     minDepth: 10000,
     requires: 'organization',
     effect: { xpGainBonus: 0.03 },
-    description: 'A workspace for planning. +1 wisdom per level.'
+    description: 'A workspace for planning. +3% XP gain per level.'
   },
   'bookshelf': {
     name: 'Bookshelf',

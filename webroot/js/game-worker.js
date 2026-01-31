@@ -573,21 +573,24 @@ function smelterHasWork() {
             continue; // Skip tasks that require higher temperature
         }
 
+        // Get smelter capacity for batch processing (only for non-heating tasks)
+        const capacity = getSmelterCapacity();
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                return true; // Found a task with enough materials
+            if (stockAmount >= task.input.amount * capacity) {
+                return true; // Found a task with enough materials for batch
             }
         }
         // Check for multiple inputs (alloy format)
         if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
-                return stockAmount >= input.amount;
+                return stockAmount >= input.amount * capacity;
             });
             if (hasAllInputs) {
-                return true; // Found a task with all required materials
+                return true; // Found a task with all required materials for batch
             }
         }
     }
@@ -737,10 +740,13 @@ function findActionableSmelterTask() {
             continue; // Skip tasks that require higher temperature
         }
 
+        // Get smelter capacity for batch processing (only for non-heating tasks)
+        const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
+            if (stockAmount >= task.input.amount * capacity) {
                 return { task: task, taskId: taskId };
             }
         }
@@ -748,7 +754,7 @@ function findActionableSmelterTask() {
         if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
-                return stockAmount >= input.amount;
+                return stockAmount >= input.amount * capacity;
             });
             if (hasAllInputs) {
                 return { task: task, taskId: taskId };
@@ -980,16 +986,19 @@ function handleWorkshopTask(dwarf, workshopConfig) {
             }
             else {
                 // Handle normal workshop task completion
-                handleOutputFunction(task, dwarf);
+                handleOutputFunction(task, dwarf, workshopType);
+
+                // Get capacity multiplier for smelting tasks (not masonry)
+                const capacityMultiplier = workshopType === 'smelting' ? getSmelterCapacity() : 1;
 
                 // Consume input materials after task completion
                 if (task.inputs && Array.isArray(task.inputs)) {
                     task.inputs.forEach(input => {
-                        materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                        materialsStock[input.material] = (materialsStock[input.material] || 0) - (input.amount * capacityMultiplier);
                     });
                 } else if (task.input && task.input.material && task.input.amount) {
                     const inputMaterial = task.input.material;
-                    const inputAmount = task.input.amount;
+                    const inputAmount = task.input.amount * capacityMultiplier;
                     materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
                 }
 
@@ -1014,13 +1023,16 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 
     } else if (workshopType === 'smelting') {
         // Immediate task (no ticksRequired) - only for smelter
+        // Get capacity multiplier (only for non-heating tasks)
+        const capacityMultiplier = task.type === 'heating' ? 1 : getSmelterCapacity();
+
         // Consume input materials
         if (task.inputs && Array.isArray(task.inputs)) {
             task.inputs.forEach(input => {
-                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                materialsStock[input.material] = (materialsStock[input.material] || 0) - (input.amount * capacityMultiplier);
             });
         } else if (task.input && task.input.material && task.input.amount) {
-            materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - task.input.amount;
+            materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - (task.input.amount * capacityMultiplier);
         }
 
         // Handle heating task
@@ -1036,7 +1048,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
             }
         } else if (task.output) {
-            handleOutputFunction(task, dwarf);
+            handleOutputFunction(task, dwarf, workshopType);
         }
 
         // Pay the dwarf, consume energy and award XP (with furniture bonus)
@@ -1056,7 +1068,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 }
 
 // Handle masonry task output production including break chance and bonus ore
-function handleMasonryTaskOutput(task, dwarf) {
+function handleMasonryTaskOutput(task, dwarf, workshopType) {
     // Skip if task has no output (e.g., gem cutting, control tasks)
     if (!task.output) return;
 
@@ -1113,9 +1125,11 @@ function handleMasonryTaskOutput(task, dwarf) {
 }
 
 // Handle smelter task output production including break chance and bonus ore
-function handleSmelterTaskOutput(task, dwarf) {
+function handleSmelterTaskOutput(task, dwarf, workshopType) {
     const outputMaterial = task.output.material;
-    const outputAmount = task.output.amount;
+    // Apply smelter capacity multiplier for batch processing
+    const capacityMultiplier = workshopType === 'smelting' ? getSmelterCapacity() : 1;
+    const outputAmount = task.output.amount * capacityMultiplier;
 
     // Check for break chance (for polishing tasks)
     let success = true;
@@ -1256,6 +1270,16 @@ function getEffectiveStrength(dwarf) {
     const baseStrength = dwarf.strength || 0;
     const furnitureBonuses = calculateFurnitureBonuses(dwarf);
     return baseStrength + furnitureBonuses.strengthBonus;
+}
+
+/**
+ * Get the smelter batch capacity based on research level
+ * @returns {number} Number of items to process per smelting operation (base 1 + research level)
+ */
+function getSmelterCapacity() {
+    const smelterCapacityResearch = researchData['smelter-capacity'];
+    const researchLevel = smelterCapacityResearch ? (smelterCapacityResearch.level || 0) : 0;
+    return 1 + (researchLevel * SMELTER_CAPACITY_BONUS_PER_LEVEL);
 }
 
 /**
