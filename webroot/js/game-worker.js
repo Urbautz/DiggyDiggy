@@ -985,11 +985,32 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 dwarf[currentTaskField] = null;
             }
             else {
-                // Handle normal workshop task completion
-                handleOutputFunction(task, dwarf, workshopType);
-
                 // Get capacity multiplier for smelting tasks (not masonry)
                 const capacityMultiplier = workshopType === 'smelting' ? getSmelterCapacity() : 1;
+
+                // Debug: Log stock before consumption (for smelting only)
+                // if (workshopType === 'smelting') {
+                //     console.log(`🔥 SMELTING: ${task.name} (capacity: ${capacityMultiplier}x)`);
+                //     if (task.inputs && Array.isArray(task.inputs)) {
+                //         task.inputs.forEach(input => {
+                //             const stockBefore = materialsStock[input.material] || 0;
+                //             const consumed = input.amount * capacityMultiplier;
+                //             console.log(`  📥 Input: ${input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+                //         });
+                //     } else if (task.input && task.input.material && task.input.amount) {
+                //         const stockBefore = materialsStock[task.input.material] || 0;
+                //         const consumed = task.input.amount * capacityMultiplier;
+                //         console.log(`  📥 Input: ${task.input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+                //     }
+                //     if (task.output) {
+                //         const outputStockBefore = materialsStock[task.output.material] || 0;
+                //         const produced = task.output.amount * capacityMultiplier;
+                //         console.log(`  📤 Output: ${task.output.material} - Stock: ${outputStockBefore} → ${outputStockBefore + produced} (produced: ${produced})`);
+                //     }
+                // }
+
+                // Handle normal workshop task completion
+                handleOutputFunction(task, dwarf, workshopType);
 
                 // Consume input materials after task completion
                 if (task.inputs && Array.isArray(task.inputs)) {
@@ -1025,6 +1046,27 @@ function handleWorkshopTask(dwarf, workshopConfig) {
         // Immediate task (no ticksRequired) - only for smelter
         // Get capacity multiplier (only for non-heating tasks)
         const capacityMultiplier = task.type === 'heating' ? 1 : getSmelterCapacity();
+
+        // Debug: Log stock before consumption
+        // if (task.type !== 'heating') {
+        //     console.log(`🔥 SMELTING (immediate): ${task.name} (capacity: ${capacityMultiplier}x)`);
+        //     if (task.inputs && Array.isArray(task.inputs)) {
+        //         task.inputs.forEach(input => {
+        //             const stockBefore = materialsStock[input.material] || 0;
+        //             const consumed = input.amount * capacityMultiplier;
+        //             console.log(`  📥 Input: ${input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+        //         });
+        //     } else if (task.input && task.input.material && task.input.amount) {
+        //         const stockBefore = materialsStock[task.input.material] || 0;
+        //         const consumed = task.input.amount * capacityMultiplier;
+        //         console.log(`  📥 Input: ${task.input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+        //     }
+        //     if (task.output) {
+        //         const outputStockBefore = materialsStock[task.output.material] || 0;
+        //         const produced = task.output.amount * capacityMultiplier;
+        //         console.log(`  📤 Output: ${task.output.material} - Stock: ${outputStockBefore} → ${outputStockBefore + produced} (produced: ${produced})`);
+        //     }
+        // }
 
         // Consume input materials
         if (task.inputs && Array.isArray(task.inputs)) {
@@ -2189,23 +2231,23 @@ function actForDwarf(dwarf) {
                 const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
                 oneHitChance *= totalMultiplier;
 
-                if (totalMultiplier > 1) {
-                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
-                }
+                // if (totalMultiplier > 1) {
+                //     console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                // }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCell.hardness; // One-hit!
-                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
+                    // console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
 
                     // Check for Plutonium nuclear explosion
                     const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
                     if (triggerExplosion) {
-                        console.log(`☢️ ══════════════════════════════════════════`);
-                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
-                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
-                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
-                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
-                        console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        // console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        // console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        // console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
                         pendingTransactions.push({
                             type: 'nuclear-explosion',
                             x: dwarf.x,
@@ -2345,23 +2387,23 @@ function actForDwarf(dwarf) {
                 const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
                 oneHitChance *= totalMultiplier;
 
-                if (totalMultiplier > 1) {
-                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
-                }
+                // if (totalMultiplier > 1) {
+                //     console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                // }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCellDig.hardness; // One-hit!
-                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
+                    // console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
 
                     // Check for Plutonium nuclear explosion
                     const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
                     if (triggerExplosion) {
-                        console.log(`☢️ ══════════════════════════════════════════`);
-                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
-                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
-                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
-                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
-                        console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        // console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        // console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        // console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
                         pendingTransactions.push({
                             type: 'nuclear-explosion',
                             x: dwarf.x,

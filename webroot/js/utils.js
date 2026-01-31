@@ -564,25 +564,36 @@ function getGemCuttingTicksRequired() {
 }
 
 /**
+ * Get the smelter batch capacity based on research level
+ * @returns {number} Number of items to process per smelting operation (base 1 + research level)
+ */
+function getSmelterCapacity() {
+    const smelterCapacityResearch = researchData['smelter-capacity'];
+    const researchLevel = smelterCapacityResearch ? (smelterCapacityResearch.level || 0) : 0;
+    return 1 + (researchLevel * SMELTER_CAPACITY_BONUS_PER_LEVEL);
+}
+
+/**
  * Check if there are enough materials in stock for a smelter task
  * Handles both single input and multiple inputs (alloys)
  * @param {Object} task - The smelter task to check
  * @param {Object} materialsStock - The materials stock object
+ * @param {number} capacityMultiplier - Optional multiplier for batch processing (default 1)
  * @returns {boolean} True if all required materials are available
  */
-function hasMaterialsForTask(task, materialsStock) {
+function hasMaterialsForTask(task, materialsStock, capacityMultiplier = 1) {
     // Handle multiple inputs (alloy format)
     if (task.inputs && Array.isArray(task.inputs)) {
         return task.inputs.every(input => {
             const stock = materialsStock[input.material] || 0;
-            return stock >= input.amount;
+            return stock >= input.amount * capacityMultiplier;
         });
     }
 
     // Handle single input (legacy format)
     if (task.input && task.input.material && task.input.amount) {
         const stock = materialsStock[task.input.material] || 0;
-        return stock >= task.input.amount;
+        return stock >= task.input.amount * capacityMultiplier;
     }
 
     // No input requirements (e.g., gem cutting, do nothing)
@@ -626,8 +637,10 @@ function countActionableSmelterTasks() {
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
             isActionable = !!gemToProcess;
         } else {
-            // Check materials
-            const hasMaterials = hasMaterialsForTask(task, materialsStock);
+            // Get capacity multiplier (only for non-heating tasks)
+            const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+            // Check materials with capacity multiplier
+            const hasMaterials = hasMaterialsForTask(task, materialsStock, capacity);
 
             // For heating tasks, check temperature requirements
             if (task.type === 'heating') {

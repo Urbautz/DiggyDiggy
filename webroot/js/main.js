@@ -126,8 +126,8 @@ function countActionableSmelterTasks() {
                 continue;
             }
 
-            // Check if materials are available for heating
-            if (hasMaterialsForTask(task, materialsStock)) {
+            // Check if materials are available for heating (no capacity for heating)
+            if (hasMaterialsForTask(task, materialsStock, 1)) {
                 count++;
             }
             continue;
@@ -147,8 +147,10 @@ function countActionableSmelterTasks() {
             continue;
         }
 
-        // Use shared helper to check material availability
-        if (hasMaterialsForTask(task, materialsStock)) {
+        // Get smelter capacity for batch processing
+        const capacity = getSmelterCapacity();
+        // Use shared helper to check material availability with capacity
+        if (hasMaterialsForTask(task, materialsStock, capacity)) {
             count++;
         }
     }
