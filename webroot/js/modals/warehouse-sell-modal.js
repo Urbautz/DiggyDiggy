@@ -16,20 +16,38 @@ function openWarehouseSellModal() {
     const totalTradeBonus = tradeBonus * negotiationsBonus;
 
     // Calculate values for each category
-    const smelterInputMaterials = new Set();
+    // Collect all workshop input materials (smelter, masonry, enrichment)
+    const workshopInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+
+    // Smelter inputs
     for (const taskId of smelterTasks) {
         const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
-            smelterInputMaterials.add(task.input.material);
+            workshopInputMaterials.add(task.input.material);
         }
         if (task.inputs && Array.isArray(task.inputs)) {
-            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
         }
-        /* Output materials should NOT be added to the craftable list.
-        if (task.output && task.output.material) {
-            craftableMaterials.add(task.output.material);
-        } */
+    }
+
+    // Masonry inputs
+    for (const taskId of masonryTasks) {
+        const task = masonryTasksData[taskId];
+        if (task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
+        }
+    }
+
+    // Enrichment (Zentrifuge) inputs
+    for (const taskId of enrichmentTasks) {
+        const task = enrichmentTasksData[taskId];
+        if (task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
     }
 
     let looseValue = 0;
@@ -76,7 +94,7 @@ function openWarehouseSellModal() {
 
             // Non-craftables (raw materials that cannot be crafted - not outputs of recipes)
             if (!craftableMaterials.has(id)
-                && !smelterInputMaterials.has(id)
+                && !workshopInputMaterials.has(id)
                 && !materialType.startsWith('Gem')
                 && !materialType.startsWith('Ingot')
                 && value > 0) {
@@ -156,17 +174,40 @@ function executeBulkSell(action) {
 
     const totalTradeBonus = tradeBonus * negotiationsBonus;
 
-    const smelterInputMaterials = new Set();
+    // Collect all workshop input materials (smelter, masonry, enrichment)
+    const workshopInputMaterials = new Set();
     const craftableMaterials = new Set(); // Materials that can be crafted (outputs of recipes)
+
+    // Smelter inputs
     for (const taskId of smelterTasks) {
         const task = smelterTasksData[taskId];
         if (task.input && task.input.material) {
-            smelterInputMaterials.add(task.input.material);
+            workshopInputMaterials.add(task.input.material);
         }
         if (task.inputs && Array.isArray(task.inputs)) {
-            task.inputs.forEach(input => smelterInputMaterials.add(input.material));
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
         }
     }
+
+    // Masonry inputs
+    for (const taskId of masonryTasks) {
+        const task = masonryTasksData[taskId];
+        if (task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
+        }
+    }
+
+    // Enrichment (Zentrifuge) inputs
+    for (const taskId of enrichmentTasks) {
+        const task = enrichmentTasksData[taskId];
+        if (task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+    }
+
     let totalGold = 0;
     let totalItems = 0;
     const soldMaterials = [];
@@ -190,7 +231,7 @@ function executeBulkSell(action) {
                 break;
             case 'sell-non-craftables':
                 shouldSell = !craftableMaterials.has(id)
-                    && !smelterInputMaterials.has(id)
+                    && !workshopInputMaterials.has(id)
                     && !materialType.startsWith('Gem')
                     && !materialType.startsWith('Ingot');
                 break;
@@ -217,13 +258,15 @@ function executeBulkSell(action) {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Bulk sell (${action}): ${totalItems} items for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker
         if (gameWorker && workerInitialized) {
             gameWorker.postMessage({
                 type: 'update-state',
-                data: { gold, materialsStock }
+                data: { gold, goldSyncToken, materialsStock }
             });
         }
 
@@ -285,12 +328,14 @@ function sellAllMaterials() {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Sold all materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker with new gold amount
         gameWorker.postMessage({
             type: 'update-state',
-            data: { gold, materialsStock }
+            data: { gold, goldSyncToken, materialsStock }
         });
 
         // Update displays
@@ -306,8 +351,8 @@ function sellAllMaterials() {
  * Sells only non-craftable materials (excludes smelter inputs and ingots)
  */
 function sellNotCraftableMaterials() {
-    // Get materials that are used as smelter inputs (these are craftable)
-    const smelterInputMaterials = getSmelterInputMaterials();
+    // Get materials that are used as workshop inputs (smelter, masonry, enrichment)
+    const workshopInputMaterials = getWorkshopInputMaterials();
 
     // Calculate trade bonus
     const betterTrading = researchData['trading'];
@@ -323,8 +368,8 @@ function sellNotCraftableMaterials() {
     let previewGold = 0;
     let previewItems = 0;
     for (const [id, m] of Object.entries(materials)) {
-        // Skip materials that are used as smelter inputs or forge inputs (ingots)
-        if (smelterInputMaterials.has(id)) continue;
+        // Skip materials that are used as workshop inputs or forge inputs (ingots)
+        if (workshopInputMaterials.has(id)) continue;
         if (m.type == 'Ingot') {
             console.log(`Skipping ingot material ${m.name} from not-craftable sell preview`);
             continue;
@@ -339,7 +384,7 @@ function sellNotCraftableMaterials() {
     if (previewItems === 0) return;
 
     // Confirmation dialog
-    if (!confirm(`Sell non-craftable materials?\n(Excludes smelter inputs and forge materials)\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
+    if (!confirm(`Sell non-craftable materials?\n(Excludes workshop inputs and forge materials)\n\n${formatNumber(previewItems, 'material')} items for ${formatNumber(previewGold, 'gold')} gold`)) {
         return;
     }
 
@@ -347,8 +392,8 @@ function sellNotCraftableMaterials() {
     let totalItems = 0;
 
     for (const [id, m] of Object.entries(materials)) {
-        // Skip materials that are used as smelter inputs or forge inputs (ingots)
-        if (smelterInputMaterials.has(id)) continue;
+        // Skip materials that are used as workshop inputs or forge inputs (ingots)
+        if (workshopInputMaterials.has(id)) continue;
         if (m.type === 'Ingot') continue;
 
         const count = (typeof materialsStock !== 'undefined' && materialsStock[id] != null) ? materialsStock[id] : 0;
@@ -366,12 +411,14 @@ function sellNotCraftableMaterials() {
 
     if (totalItems > 0) {
         gold += totalGold;
+        pendingGoldDelta += totalGold;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         console.log(`Sold not-craftable materials (${totalItems} items) for ${formatNumber(totalGold, 'gold')} gold`);
 
         // Update worker with new gold amount
         gameWorker.postMessage({
             type: 'update-state',
-            data: { gold, materialsStock }
+            data: { gold, goldSyncToken, materialsStock }
         });
 
         // Update displays

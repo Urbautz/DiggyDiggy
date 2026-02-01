@@ -169,6 +169,7 @@ const SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED = 25; // Time for exotic ore enrichm
 const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point
 const SMELTER_MIN_SUCCESS_CHANCE = 0.25; // Minimum 25% success chance per attempt
 const SMELTER_HARDNESS_DIVISOR = 8; // Divide material hardness by this to get smelting difficulty
+const SMELTER_CAPACITY_BONUS_PER_LEVEL = 1; // +1 item per smelting operation per research level
 
 // ============================================================================
 // TASK PRIORITY CONSTANTS

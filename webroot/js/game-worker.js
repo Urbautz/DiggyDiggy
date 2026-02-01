@@ -24,13 +24,17 @@ let house = null;
 let research = null;
 let smelter = null;
 let masonry = null;
+let enrichment = null;
 let management = null;
 let smelterTasks = [];
 let smelterTasksData = {};
 let masonryTasks = [];
 let masonryTasksData = {};
+let enrichmentTasks = [];
+let enrichmentTasksData = {};
 let dropGridStartX = 10;
 let gold = 1000;
+let goldSyncToken = 0; // Tracks last sync token received from main thread
 let toolsInventory = [];
 let activeResearch = null;
 let researchQueue = [];
@@ -59,6 +63,7 @@ const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
 let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
 let masonryReservedBy = null; // Track which dwarf name has reserved the masonry
+let enrichmentReservedBy = null; // Track which dwarf name has reserved the enrichment facility
 let managementReservedBy = null; // Track which dwarf name has reserved the management cell
 
 // Stuck detection tracking
@@ -126,16 +131,17 @@ function coordKey(x, y) {
 function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     // Get dwarf's task priority lists (default if not set)
     const taskPriorityHigh = dwarf.taskPriorityHigh || [];
-    const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'managing'];
+    const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'enriching', 'managing'];
     const taskPriorityNone = dwarf.taskPriorityNone || [];
 
     // STEP 1: Find all tasks the dwarf can do
-    const allPossibleTasks = ['research', 'masonry', 'smelting', 'managing', 'digging'];
+    const allPossibleTasks = ['research', 'masonry', 'smelting', 'enriching', 'managing', 'digging'];
 
     const taskAvailability = {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
         'masonry': masonryHasWork() && (!masonryReservedBy || masonryReservedBy === dwarf.name) && typeof masonry === 'object' && masonry !== null,
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
+        'enriching': enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
         'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
     };
@@ -204,6 +210,7 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
         'research': { location: research, status: 'researching', emoji: '🔬', getReserved: () => researchReservedBy, setReserved: (name) => { researchReservedBy = name; } },
         'masonry': { location: masonry, status: 'masonry', emoji: '🔨', getReserved: () => masonryReservedBy, setReserved: (name) => { masonryReservedBy = name; } },
         'smelting': { location: smelter, status: 'smelting', emoji: '🔥', getReserved: () => smelterReservedBy, setReserved: (name) => { smelterReservedBy = name; } },
+        'enriching': { location: enrichment, status: 'enriching', emoji: '☢️', getReserved: () => enrichmentReservedBy, setReserved: (name) => { enrichmentReservedBy = name; } },
         'managing': { location: management, status: 'managing', emoji: '💼', getReserved: () => managementReservedBy, setReserved: (name) => { managementReservedBy = name; } }
     };
 
@@ -513,6 +520,30 @@ function masonryHasWork() {
     return false;
 }
 
+// Check if the enrichment facility has any actionable work
+function enrichmentHasWork() {
+    if (!enrichmentTasks || enrichmentTasks.length === 0) return false;
+
+    // Check each task in priority order
+    for (const taskId of enrichmentTasks) {
+        if (taskId === 'do-nothing') {
+            // If "do nothing" is encountered, stop checking
+            return false;
+        }
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+
+        // Check for single input
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return true; // Found a task with enough materials
+            }
+        }
+    }
+    return false;
+}
+
 
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
@@ -573,21 +604,24 @@ function smelterHasWork() {
             continue; // Skip tasks that require higher temperature
         }
 
+        // Get smelter capacity for batch processing (only for non-heating tasks)
+        const capacity = getSmelterCapacity();
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
-                return true; // Found a task with enough materials
+            if (stockAmount >= task.input.amount * capacity) {
+                return true; // Found a task with enough materials for batch
             }
         }
         // Check for multiple inputs (alloy format)
         if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
-                return stockAmount >= input.amount;
+                return stockAmount >= input.amount * capacity;
             });
             if (hasAllInputs) {
-                return true; // Found a task with all required materials
+                return true; // Found a task with all required materials for batch
             }
         }
     }
@@ -694,6 +728,28 @@ function findActionableMasonryTask() {
     return null;
 }
 
+// Find the first actionable enrichment task
+function findActionableEnrichmentTask() {
+    if (!enrichmentTasks || enrichmentTasks.length === 0) return null;
+
+    for (const taskId of enrichmentTasks) {
+        if (taskId === 'do-nothing') {
+            return null; // Stop at "do nothing"
+        }
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+
+        // Check for single input
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return { task: task, taskId: taskId };
+            }
+        }
+    }
+    return null;
+}
+
 // Find the first actionable smelter task
 function findActionableSmelterTask() {
     if (!smelterTasks || smelterTasks.length === 0) return null;
@@ -737,10 +793,13 @@ function findActionableSmelterTask() {
             continue; // Skip tasks that require higher temperature
         }
 
+        // Get smelter capacity for batch processing (only for non-heating tasks)
+        const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+
         // Check for single input (legacy format)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) {
+            if (stockAmount >= task.input.amount * capacity) {
                 return { task: task, taskId: taskId };
             }
         }
@@ -748,7 +807,7 @@ function findActionableSmelterTask() {
         if (task.inputs && Array.isArray(task.inputs)) {
             const hasAllInputs = task.inputs.every(input => {
                 const stockAmount = materialsStock[input.material] || 0;
-                return stockAmount >= input.amount;
+                return stockAmount >= input.amount * capacity;
             });
             if (hasAllInputs) {
                 return { task: task, taskId: taskId };
@@ -979,17 +1038,41 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 dwarf[currentTaskField] = null;
             }
             else {
+                // Get capacity multiplier for smelting tasks (not masonry)
+                const capacityMultiplier = workshopType === 'smelting' ? getSmelterCapacity() : 1;
+
+                // Debug: Log stock before consumption (for smelting only)
+                // if (workshopType === 'smelting') {
+                //     console.log(`🔥 SMELTING: ${task.name} (capacity: ${capacityMultiplier}x)`);
+                //     if (task.inputs && Array.isArray(task.inputs)) {
+                //         task.inputs.forEach(input => {
+                //             const stockBefore = materialsStock[input.material] || 0;
+                //             const consumed = input.amount * capacityMultiplier;
+                //             console.log(`  📥 Input: ${input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+                //         });
+                //     } else if (task.input && task.input.material && task.input.amount) {
+                //         const stockBefore = materialsStock[task.input.material] || 0;
+                //         const consumed = task.input.amount * capacityMultiplier;
+                //         console.log(`  📥 Input: ${task.input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+                //     }
+                //     if (task.output) {
+                //         const outputStockBefore = materialsStock[task.output.material] || 0;
+                //         const produced = task.output.amount * capacityMultiplier;
+                //         console.log(`  📤 Output: ${task.output.material} - Stock: ${outputStockBefore} → ${outputStockBefore + produced} (produced: ${produced})`);
+                //     }
+                // }
+
                 // Handle normal workshop task completion
-                handleOutputFunction(task, dwarf);
+                handleOutputFunction(task, dwarf, workshopType);
 
                 // Consume input materials after task completion
                 if (task.inputs && Array.isArray(task.inputs)) {
                     task.inputs.forEach(input => {
-                        materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                        materialsStock[input.material] = (materialsStock[input.material] || 0) - (input.amount * capacityMultiplier);
                     });
                 } else if (task.input && task.input.material && task.input.amount) {
                     const inputMaterial = task.input.material;
-                    const inputAmount = task.input.amount;
+                    const inputAmount = task.input.amount * capacityMultiplier;
                     materialsStock[inputMaterial] = (materialsStock[inputMaterial] || 0) - inputAmount;
                 }
 
@@ -1014,13 +1097,37 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 
     } else if (workshopType === 'smelting') {
         // Immediate task (no ticksRequired) - only for smelter
+        // Get capacity multiplier (only for non-heating tasks)
+        const capacityMultiplier = task.type === 'heating' ? 1 : getSmelterCapacity();
+
+        // Debug: Log stock before consumption
+        // if (task.type !== 'heating') {
+        //     console.log(`🔥 SMELTING (immediate): ${task.name} (capacity: ${capacityMultiplier}x)`);
+        //     if (task.inputs && Array.isArray(task.inputs)) {
+        //         task.inputs.forEach(input => {
+        //             const stockBefore = materialsStock[input.material] || 0;
+        //             const consumed = input.amount * capacityMultiplier;
+        //             console.log(`  📥 Input: ${input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+        //         });
+        //     } else if (task.input && task.input.material && task.input.amount) {
+        //         const stockBefore = materialsStock[task.input.material] || 0;
+        //         const consumed = task.input.amount * capacityMultiplier;
+        //         console.log(`  📥 Input: ${task.input.material} - Stock: ${stockBefore} → ${stockBefore - consumed} (consumed: ${consumed})`);
+        //     }
+        //     if (task.output) {
+        //         const outputStockBefore = materialsStock[task.output.material] || 0;
+        //         const produced = task.output.amount * capacityMultiplier;
+        //         console.log(`  📤 Output: ${task.output.material} - Stock: ${outputStockBefore} → ${outputStockBefore + produced} (produced: ${produced})`);
+        //     }
+        // }
+
         // Consume input materials
         if (task.inputs && Array.isArray(task.inputs)) {
             task.inputs.forEach(input => {
-                materialsStock[input.material] = (materialsStock[input.material] || 0) - input.amount;
+                materialsStock[input.material] = (materialsStock[input.material] || 0) - (input.amount * capacityMultiplier);
             });
         } else if (task.input && task.input.material && task.input.amount) {
-            materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - task.input.amount;
+            materialsStock[task.input.material] = (materialsStock[task.input.material] || 0) - (task.input.amount * capacityMultiplier);
         }
 
         // Handle heating task
@@ -1036,7 +1143,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 smelterTemperature = Math.min(coalMaxTemp, smelterTemperature + task.heatGain);
             }
         } else if (task.output) {
-            handleOutputFunction(task, dwarf);
+            handleOutputFunction(task, dwarf, workshopType);
         }
 
         // Pay the dwarf, consume energy and award XP (with furniture bonus)
@@ -1056,7 +1163,7 @@ function handleWorkshopTask(dwarf, workshopConfig) {
 }
 
 // Handle masonry task output production including break chance and bonus ore
-function handleMasonryTaskOutput(task, dwarf) {
+function handleMasonryTaskOutput(task, dwarf, workshopType) {
     // Skip if task has no output (e.g., gem cutting, control tasks)
     if (!task.output) return;
 
@@ -1113,9 +1220,11 @@ function handleMasonryTaskOutput(task, dwarf) {
 }
 
 // Handle smelter task output production including break chance and bonus ore
-function handleSmelterTaskOutput(task, dwarf) {
+function handleSmelterTaskOutput(task, dwarf, workshopType) {
     const outputMaterial = task.output.material;
-    const outputAmount = task.output.amount;
+    // Apply smelter capacity multiplier for batch processing
+    const capacityMultiplier = workshopType === 'smelting' ? getSmelterCapacity() : 1;
+    const outputAmount = task.output.amount * capacityMultiplier;
 
     // Check for break chance (for polishing tasks)
     let success = true;
@@ -1167,6 +1276,15 @@ function handleSmelterTaskOutput(task, dwarf) {
             }
         }
     }
+}
+
+// Handle enrichment task output (simpler than smelter - no temperature, no break chance)
+function handleEnrichmentTaskOutput(task, dwarf, workshopType) {
+    const outputMaterial = task.output.material;
+    const outputAmount = task.output.amount;
+
+    // Produce output materials
+    materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
 }
 
 // Note: calculateFurnitureBonuses is defined in utils.js
@@ -1256,6 +1374,16 @@ function getEffectiveStrength(dwarf) {
     const baseStrength = dwarf.strength || 0;
     const furnitureBonuses = calculateFurnitureBonuses(dwarf);
     return baseStrength + furnitureBonuses.strengthBonus;
+}
+
+/**
+ * Get the smelter batch capacity based on research level
+ * @returns {number} Number of items to process per smelting operation (base 1 + research level)
+ */
+function getSmelterCapacity() {
+    const smelterCapacityResearch = researchData['smelter-capacity'];
+    const researchLevel = smelterCapacityResearch ? (smelterCapacityResearch.level || 0) : 0;
+    return 1 + (researchLevel * SMELTER_CAPACITY_BONUS_PER_LEVEL);
 }
 
 /**
@@ -1791,6 +1919,22 @@ function actForDwarf(dwarf) {
         return;
     }
 
+    // Enriching state
+    if (dwarf.status === 'enriching') {
+        handleWorkshopTask(dwarf, {
+            workshopType: 'enriching',
+            location: enrichment,
+            reservedBy: enrichmentReservedBy,
+            setReservedBy: (val) => { enrichmentReservedBy = val; },
+            currentTaskField: 'currentEnrichmentTask',
+            findTaskFunction: findActionableEnrichmentTask,
+            handleOutputFunction: handleEnrichmentTaskOutput,
+            tasksData: enrichmentTasksData,
+            transactionPrefix: 'Enrichment'
+        });
+        return;
+    }
+
     // Managing state
     if (dwarf.status === 'managing') {
         // Check if at management location
@@ -2165,23 +2309,23 @@ function actForDwarf(dwarf) {
                 const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
                 oneHitChance *= totalMultiplier;
 
-                if (totalMultiplier > 1) {
-                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
-                }
+                // if (totalMultiplier > 1) {
+                //     console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                // }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCell.hardness; // One-hit!
-                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
+                    // console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCell.materialId}!`);
 
                     // Check for Plutonium nuclear explosion
                     const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
                     if (triggerExplosion) {
-                        console.log(`☢️ ══════════════════════════════════════════`);
-                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
-                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
-                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
-                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
-                        console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        // console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        // console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        // console.log(`☢️ Material destroyed: ${mat ? mat.name : curCell.materialId}`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
                         pendingTransactions.push({
                             type: 'nuclear-explosion',
                             x: dwarf.x,
@@ -2321,23 +2465,23 @@ function actForDwarf(dwarf) {
                 const totalMultiplier = uraniumMultiplier * plutoniumMultiplier;
                 oneHitChance *= totalMultiplier;
 
-                if (totalMultiplier > 1) {
-                    console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
-                }
+                // if (totalMultiplier > 1) {
+                //     console.log(`🎯 One-hit multiplier: ${totalMultiplier}x (Uranium: ${uraniumMultiplier}x, Plutonium: ${plutoniumMultiplier}x) = ${(oneHitChance * 100).toFixed(2)}% chance`);
+                // }
 
                 if (oneHitChance > 0 && Math.random() < oneHitChance) {
                     finalPower = curCellDig.hardness; // One-hit!
-                    console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
+                    // console.log(`💥 CRITICAL ONE-HIT! ${dwarf.name} used ${expertiseType} Expertise to instantly destroy ${mat ? mat.name : curCellDig.materialId}!`);
 
                     // Check for Plutonium nuclear explosion
                     const triggerExplosion = shouldPlutoniumTriggerExplosion(dwarf);
                     if (triggerExplosion) {
-                        console.log(`☢️ ══════════════════════════════════════════`);
-                        console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
-                        console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
-                        console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
-                        console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
-                        console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
+                        // console.log(`☢️ NUCLEAR EXPLOSION TRIGGERED!`);
+                        // console.log(`☢️ ${dwarf.name}'s Plutonium plating detonated!`);
+                        // console.log(`☢️ Location: (${dwarf.x}, ${dwarf.y})`);
+                        // console.log(`☢️ Material destroyed: ${mat ? mat.name : curCellDig.materialId}`);
+                        // console.log(`☢️ ══════════════════════════════════════════`);
                         pendingTransactions.push({
                             type: 'nuclear-explosion',
                             x: dwarf.x,
@@ -2773,6 +2917,7 @@ function tick() {
                 gems,
                 nextGemId,
                 gold,
+                goldSyncToken,
                 toolsInventory,
                 activeResearch,
                 researchQueue,
@@ -2785,6 +2930,7 @@ function tick() {
                 smelterHeatingMode,
                 smelterTasks,
                 smelterTasksData,
+                enrichmentTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,
                 activeManagementTasks,
@@ -2827,6 +2973,7 @@ self.addEventListener('message', (e) => {
             research = data.research;
             masonry = data.masonry;
             smelter = data.smelter;
+            enrichment = data.enrichment;
             management = data.management;
             if (data.masonryTasks) {
                 masonryTasks = JSON.parse(JSON.stringify(data.masonryTasks));
@@ -2840,8 +2987,15 @@ self.addEventListener('message', (e) => {
             if (data.smelterTasksData) {
                 smelterTasksData = JSON.parse(JSON.stringify(data.smelterTasksData));
             }
+            if (data.enrichmentTasks) {
+                enrichmentTasks = JSON.parse(JSON.stringify(data.enrichmentTasks));
+            }
+            if (data.enrichmentTasksData) {
+                enrichmentTasksData = JSON.parse(JSON.stringify(data.enrichmentTasksData));
+            }
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
+            goldSyncToken = data.goldSyncToken || 0;
             toolsInventory = data.toolsInventory || [];
             activeResearch = data.activeResearch || null;
             researchQueue = data.researchQueue ? JSON.parse(JSON.stringify(data.researchQueue)) : [];
@@ -2911,6 +3065,7 @@ self.addEventListener('message', (e) => {
                 if (data.startX !== undefined) startX = data.startX;
                 if (data.materialsStock) materialsStock = data.materialsStock;
                 if (data.gold !== undefined) gold = data.gold;
+                if (data.goldSyncToken !== undefined) goldSyncToken = data.goldSyncToken;
                 if (data.gems !== undefined) gems = data.gems;
                 if (data.toolsInventory) toolsInventory = data.toolsInventory;
                 if (data.activeResearch !== undefined) {
@@ -2938,6 +3093,10 @@ self.addEventListener('message', (e) => {
                 if (data.smelterTasks) {
                     // Copy the smelter tasks from main thread
                     smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
+                }
+                if (data.enrichmentTasks) {
+                    // Copy the enrichment tasks from main thread
+                    enrichmentTasks = JSON.parse(JSON.stringify(data.enrichmentTasks));
                 }
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
                 if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;

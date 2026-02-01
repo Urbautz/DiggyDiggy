@@ -633,13 +633,15 @@ async function startForging() {
         const coolingCost = forgeState.coolingOilQuality === 1 ? 0 : FORGE_COOLING_BASE_COST * Math.pow(FORGE_COOLING_COST_MULTIPLIER, forgeState.coolingOilQuality - 2);
         if (coolingCost > 0) {
             gold -= coolingCost;
+            pendingGoldDelta -= coolingCost;  // Track for sync reconciliation
+            goldSyncToken++;  // Increment sync token
             updateGoldDisplay();
             logTransaction('expense', coolingCost, 'Cooling oil for forging');
             saveGame();
             if (gameWorker && workerInitialized) {
                 gameWorker.postMessage({
                     type: 'update-state',
-                    data: { gold: gold }
+                    data: { gold: gold, goldSyncToken: goldSyncToken }
                 });
             }
         }
@@ -692,13 +694,15 @@ async function startForging() {
         // Deduct handle cost before mounting
         const handleCost = FORGE_HANDLE_BASE_COST * Math.pow(FORGE_HANDLE_COST_MULTIPLIER, forgeState.handleQuality - 1);
         gold -= handleCost;
+        pendingGoldDelta -= handleCost;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         updateGoldDisplay();
         logTransaction('expense', handleCost, 'Handle for forging');
         saveGame();
         if (gameWorker && workerInitialized) {
             gameWorker.postMessage({
                 type: 'update-state',
-                data: { gold: gold }
+                data: { gold: gold, goldSyncToken: goldSyncToken }
             });
         }
 

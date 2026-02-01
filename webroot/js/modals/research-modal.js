@@ -507,6 +507,8 @@ function startResearch(researchId) {
 
         // Deduct gold cost and add to queue
         gold -= goldCost;
+        pendingGoldDelta -= goldCost;  // Track for sync reconciliation
+        goldSyncToken++;  // Increment sync token
         logTransaction('expense', goldCost, `Queued research: ${researchItem.name} (Level ${targetLevel})`);
 
         researchQueue.push({
@@ -527,7 +529,8 @@ function startResearch(researchId) {
                 type: 'update-state',
                 data: {
                     researchQueue: researchQueue,
-                    gold: gold
+                    gold: gold,
+                    goldSyncToken: goldSyncToken
                 }
             });
         } else {
@@ -553,6 +556,8 @@ function startResearch(researchId) {
 
     // Deduct gold cost
     gold -= goldCost;
+    pendingGoldDelta -= goldCost;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     logTransaction('expense', goldCost, `Started research: ${researchItem.name} (Level ${targetLevel})`);
 
     // Initialize progress if not set
@@ -571,6 +576,7 @@ function startResearch(researchId) {
                 activeResearch: activeResearch,
                 researchData: researchData,
                 gold: gold,
+                goldSyncToken: goldSyncToken,
                 researchQueue: researchQueue
             }
         });
@@ -644,6 +650,7 @@ function cancelResearch() {
     const currentLevel = activeResearch.level || 0;
     const targetLevel = currentLevel + 1;
     const goldCost = Math.round(activeResearch.goldCost * Math.pow(RESEARCH_COST_MULTIPLIER, Math.max(0, targetLevel - 1)));
+    let totalRefund = goldCost;
     gold += goldCost;
     logTransaction('income', goldCost, `Cancelled research: ${researchName} (Level ${targetLevel}) - refund`);
 
@@ -653,6 +660,7 @@ function cancelResearch() {
         if (researchQueue[i].id === researchId) {
             const removed = researchQueue.splice(i, 1)[0];
             gold += removed.goldCost;
+            totalRefund += removed.goldCost;
             logTransaction('income', removed.goldCost, `Auto-removed dependent: ${removed.name} (Level ${removed.targetLevel}) - refund`);
             removedSameLevels.push(removed);
         }
@@ -665,10 +673,15 @@ function cancelResearch() {
         if (dependents.includes(researchQueue[i].id)) {
             const removed = researchQueue.splice(i, 1)[0];
             gold += removed.goldCost;
+            totalRefund += removed.goldCost;
             logTransaction('income', removed.goldCost, `Auto-removed dependent: ${removed.name} (Level ${removed.targetLevel}) - refund`);
             removedDependents.push(removed);
         }
     }
+
+    // Track for sync reconciliation (all refunds combined)
+    pendingGoldDelta += totalRefund;
+    goldSyncToken++;
 
     // Clear active research
     activeResearch = null;
@@ -704,6 +717,7 @@ function cancelResearch() {
                 activeResearch: activeResearch,
                 dwarfs: dwarfs,
                 gold: gold,
+                goldSyncToken: goldSyncToken,
                 researchQueue: researchQueue
             }
         });
@@ -732,6 +746,7 @@ function removeFromResearchQueue(index) {
     const removedLevel = removed.level;
 
     // Refund gold
+    let totalRefund = removed.goldCost;
     gold += removed.goldCost;
     logTransaction('income', removed.goldCost, `Removed from queue: ${removed.name} (Level ${removed.targetLevel}) - refund`);
 
@@ -741,6 +756,7 @@ function removeFromResearchQueue(index) {
         if (researchQueue[i].id === removedId && researchQueue[i].targetLevel > removed.targetLevel) {
             const dep = researchQueue.splice(i, 1)[0];
             gold += dep.goldCost;
+            totalRefund += dep.goldCost;
             logTransaction('income', dep.goldCost, `Auto-removed dependent level: ${dep.name} (Level ${dep.targetLevel}) - refund`);
             removedSameLevels.push(dep);
         }
@@ -753,10 +769,15 @@ function removeFromResearchQueue(index) {
         if (dependents.includes(researchQueue[i].id)) {
             const dep = researchQueue.splice(i, 1)[0];
             gold += dep.goldCost;
+            totalRefund += dep.goldCost;
             logTransaction('income', dep.goldCost, `Auto-removed dependent: ${dep.name} (Level ${dep.targetLevel}) - refund`);
             removedDependents.push(dep);
         }
     }
+
+    // Track for sync reconciliation (all refunds combined)
+    pendingGoldDelta += totalRefund;
+    goldSyncToken++;
 
     // Notify user if dependents were removed
     if (removedSameLevels.length > 0 || removedDependents.length > 0) {
@@ -777,7 +798,8 @@ function removeFromResearchQueue(index) {
             type: 'update-state',
             data: {
                 researchQueue: researchQueue,
-                gold: gold
+                gold: gold,
+                goldSyncToken: goldSyncToken
             }
         });
     }

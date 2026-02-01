@@ -15,14 +15,17 @@ function addTableRow(table, headerText, contentText) {
     table.appendChild(tr);
 }
 
-// Helper function to calculate how many times a task can be performed
+// Helper function to calculate how many times a task can be performed (accounting for batch capacity)
 function calculateTaskAvailableRuns(task) {
     if (task.type === 'gem-cutting') {
         return gems.filter(g => g.markedForCutting && !g.polished).length;
     }
 
+    // Get smelter capacity (only for non-heating tasks)
+    const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+
     if (task.type === 'heating' || !task.output) {
-        // Heating tasks - check input material
+        // Heating tasks - check input material (no capacity multiplier)
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             return Math.floor(stockAmount / task.input.amount);
@@ -30,21 +33,23 @@ function calculateTaskAvailableRuns(task) {
         return 0;
     }
 
-    // For tasks with multiple inputs (alloys)
+    // For tasks with multiple inputs (alloys) - account for batch capacity
     if (task.inputs && Array.isArray(task.inputs)) {
         let minRuns = Infinity;
         for (const input of task.inputs) {
             const stockAmount = materialsStock[input.material] || 0;
-            const possibleRuns = Math.floor(stockAmount / input.amount);
+            // Divide by (amount * capacity) to get number of batches
+            const possibleRuns = Math.floor(stockAmount / (input.amount * capacity));
             minRuns = Math.min(minRuns, possibleRuns);
         }
         return minRuns === Infinity ? 0 : minRuns;
     }
 
-    // For tasks with single input
+    // For tasks with single input - account for batch capacity
     if (task.input && task.input.material && task.input.amount) {
         const stockAmount = materialsStock[task.input.material] || 0;
-        return Math.floor(stockAmount / task.input.amount);
+        // Divide by (amount * capacity) to get number of batches
+        return Math.floor(stockAmount / (task.input.amount * capacity));
     }
 
     return 0;
@@ -117,9 +122,17 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
     tempSection.style.display = 'none';
     tempBarContainer.style.display = 'none';
 
+    // Get smelter capacity for batch processing (not for heating tasks)
+    const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+
     // Input/Output Materials section
     if ((task.input && task.output) || (task.inputs && task.output) || task.type === 'gem-cutting') {
         materialsSection.style.display = '';
+
+        // Show batch size info if capacity > 1
+        if (capacity > 1) {
+            addTableRow(materialsTable, 'Batch Size', `${capacity}x (from Smelter Capacity research)`);
+        }
 
         if (task.type === 'gem-cutting') {
             // Gem cutting task
@@ -132,21 +145,22 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
                 addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
             }
         } else if (task.inputs && Array.isArray(task.inputs)) {
-            // Multiple inputs (alloy format)
+            // Multiple inputs (alloy format) - show batch amounts
             task.inputs.forEach(input => {
                 const inputMat = getMaterialById(input.material);
                 const inputName = inputMat ? inputMat.name : input.material;
                 const stockAmount = materialsStock[input.material] || 0;
+                const batchAmount = input.amount * capacity;
 
                 const tr = document.createElement('tr');
                 const th = document.createElement('th');
                 th.textContent = 'Input';
 
                 const td = document.createElement('td');
-                td.textContent = `${input.amount}x ${inputName} `;
+                td.textContent = `${batchAmount}x ${inputName} `;
 
                 const stockSpan = document.createElement('span');
-                stockSpan.style.color = stockAmount >= input.amount ? '#81c784' : '#e57373';
+                stockSpan.style.color = stockAmount >= batchAmount ? '#81c784' : '#e57373';
                 stockSpan.textContent = `(Stock: ${formatNumber(stockAmount, 'material')})`;
                 td.appendChild(stockSpan);
 
@@ -157,7 +171,8 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
 
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
-            addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            const batchOutputAmount = task.output.amount * capacity;
+            addTableRow(materialsTable, 'Output', `${batchOutputAmount}x ${outputName}`);
             if (task.ticksRequired) {
                 addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
             }
@@ -165,22 +180,24 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
                 addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
             }
         } else if (task.input && task.output) {
-            // Single input
+            // Single input - show batch amounts
             const inputMat = getMaterialById(task.input.material);
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             const stockAmount = materialsStock[task.input.material] || 0;
+            const batchInputAmount = task.input.amount * capacity;
+            const batchOutputAmount = task.output.amount * capacity;
 
             const inputTr = document.createElement('tr');
             const inputTh = document.createElement('th');
             inputTh.textContent = 'Input';
 
             const inputTd = document.createElement('td');
-            inputTd.textContent = `${task.input.amount}x ${inputName} `;
+            inputTd.textContent = `${batchInputAmount}x ${inputName} `;
 
             const stockSpan = document.createElement('span');
-            stockSpan.style.color = stockAmount >= task.input.amount ? '#81c784' : '#e57373';
+            stockSpan.style.color = stockAmount >= batchInputAmount ? '#81c784' : '#e57373';
             stockSpan.textContent = `(Stock: ${formatNumber(stockAmount, 'material')})`;
             inputTd.appendChild(stockSpan);
 
@@ -188,7 +205,7 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             inputTr.appendChild(inputTd);
             materialsTable.appendChild(inputTr);
 
-            addTableRow(materialsTable, 'Output', `${task.output.amount}x ${outputName}`);
+            addTableRow(materialsTable, 'Output', `${batchOutputAmount}x ${outputName}`);
             if (task.ticksRequired) {
                 addTableRow(materialsTable, 'Time', `${task.ticksRequired} ticks`);
             }
@@ -196,7 +213,7 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
                 addTableRow(materialsTable, 'Difficulty', `${task.hardness}`);
             }
         } else if (task.input && task.type === 'heating') {
-            // Heating task
+            // Heating task (no capacity multiplier)
             const inputMat = getMaterialById(task.input.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const stockAmount = materialsStock[task.input.material] || 0;
@@ -649,9 +666,12 @@ function populateSmelter() {
             return;
         }
 
-        // Check if this task is actionable (has enough materials)
+        // Check if this task is actionable (has enough materials for batch processing)
         let isActionable = false;
         let stockAmount = 0;
+        // Get capacity multiplier for non-heating tasks
+        const capacity = task.type === 'heating' ? 1 : getSmelterCapacity();
+
         if (taskId === 'do-nothing') {
             isActionable = true; // "Do nothing" is always "actionable"
         } else if (task.type === 'gem-cutting' && isUnlocked) {
@@ -659,8 +679,8 @@ function populateSmelter() {
             const gemToProcess = gems.find(g => g.markedForCutting && !g.polished);
             isActionable = !!gemToProcess;
         } else if (isUnlocked) {
-            // Use utility function to check materials
-            const hasMaterials = hasMaterialsForTask(task, materialsStock);
+            // Use utility function to check materials with capacity multiplier
+            const hasMaterials = hasMaterialsForTask(task, materialsStock, capacity);
 
             // For single input tasks, also track stock amount for display
             if (task.input && task.input.material) {
@@ -694,7 +714,7 @@ function populateSmelter() {
                 taskRow.classList.add('smelter-task-actionable');
             } else {
                 // Determine if blocked by temperature or materials
-                const hasMaterials = hasMaterialsForTask(task, materialsStock);
+                const hasMaterials = hasMaterialsForTask(task, materialsStock, capacity);
                 let tempClass = null;
 
                 // Check for temperature-related states
@@ -740,7 +760,7 @@ function populateSmelter() {
             statusIndicator.title = 'Currently being worked on';
         } else if (isActionable) {
             statusIndicator.textContent = '✅';
-            statusIndicator.title = 'Ready - materials available';
+            statusIndicator.title = capacity > 1 ? `Ready - materials available for batch of ${capacity}` : 'Ready - materials available';
         } else {
             // Determine why task is blocked
             if (task.type === 'heating' && task.heatGain !== 'dynamic' && stockAmount >= task.input.amount && !smelterHeatingMode) {
@@ -758,19 +778,23 @@ function populateSmelter() {
                 statusIndicator.textContent = '💤';
                 statusIndicator.title = `Blocked - no gems marked for cutting`;
             } else if (task.inputs && Array.isArray(task.inputs)) {
-                // Multiple inputs - show all missing materials
+                // Multiple inputs - show all missing materials (with capacity requirement)
                 statusIndicator.textContent = '💤';
                 const missingMaterials = task.inputs.filter(input => {
                     const stock = materialsStock[input.material] || 0;
-                    return stock < input.amount;
+                    return stock < input.amount * capacity;
                 }).map(input => {
                     const stock = materialsStock[input.material] || 0;
-                    return `${input.material}: ${formatNumber(stock, 'material')}/${input.amount}`;
+                    const requiredAmount = input.amount * capacity;
+                    return `${input.material}: ${formatNumber(stock, 'material')}/${requiredAmount}`;
                 }).join(', ');
-                statusIndicator.title = `Blocked - need ${missingMaterials}`;
+                const batchNote = capacity > 1 ? ` (batch of ${capacity})` : '';
+                statusIndicator.title = `Blocked - need ${missingMaterials}${batchNote}`;
             } else if (task.input && task.input.amount) {
                 statusIndicator.textContent = '💤';
-                statusIndicator.title = `Blocked - need ${task.input.amount}x, have ${formatNumber(stockAmount, 'material')}x`;
+                const requiredAmount = task.input.amount * capacity;
+                const batchNote = capacity > 1 ? ` (batch of ${capacity})` : '';
+                statusIndicator.title = `Blocked - need ${requiredAmount}x, have ${formatNumber(stockAmount, 'material')}x${batchNote}`;
             } else {
                 statusIndicator.textContent = '💤';
                 statusIndicator.title = `Blocked`;
@@ -823,7 +847,7 @@ function populateSmelter() {
             taskInfo.appendChild(taskRecipe);
         }
 
-        // Show input/output if applicable (with available runs)
+        // Show input/output if applicable (with available runs and batch amounts)
         else if (task.inputs && task.output) {
             // Multiple inputs (alloy format)
             const taskRecipe = document.createElement('span');
@@ -831,16 +855,18 @@ function populateSmelter() {
             const inputsText = task.inputs.map(input => {
                 const inputMat = getMaterialById(input.material);
                 const inputName = inputMat ? inputMat.name : input.material;
-                return `${input.amount}x ${inputName}`;
+                const batchAmount = input.amount * capacity;
+                return `${batchAmount}x ${inputName}`;
             }).join(' + ');
             const outputMat = getMaterialById(task.output.material);
             const outputName = outputMat ? outputMat.name : task.output.material;
+            const batchOutputAmount = task.output.amount * capacity;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
 
             const availableRuns = calculateTaskAvailableRuns(task);
             const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
 
-            taskRecipe.textContent = `${inputsText} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
+            taskRecipe.textContent = `${inputsText} → ${batchOutputAmount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {
@@ -855,12 +881,14 @@ function populateSmelter() {
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
+            const batchInputAmount = task.input.amount * capacity;
+            const batchOutputAmount = task.output.amount * capacity;
             const tempReq = task.minTemp ? ` @ ${task.minTemp}°` : '';
 
             const availableRuns = calculateTaskAvailableRuns(task);
             const runsText = availableRuns > 0 ? ` (${availableRuns}x available)` : '';
 
-            taskRecipe.textContent = `${task.input.amount}x ${inputName} → ${task.output.amount}x ${outputName}${tempReq}${runsText}`;
+            taskRecipe.textContent = `${batchInputAmount}x ${inputName} → ${batchOutputAmount}x ${outputName}${tempReq}${runsText}`;
             if (!isUnlocked) {
                 taskRecipe.classList.add('recipe-locked');
             } else {

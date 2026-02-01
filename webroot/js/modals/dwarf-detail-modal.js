@@ -320,6 +320,7 @@ const TASK_DEFINITIONS = {
     'research': { icon: '🔬', name: 'Research' },
     'masonry': { icon: '🔨', name: 'Masonry' },
     'smelting': { icon: '🔥', name: 'Smelter' },
+    'enriching': { icon: '☢️', name: 'Zentrifuge' },
     'managing': { icon: '🏢', name: 'Managing' }
 };
 
@@ -344,7 +345,7 @@ function populateTaskPriorityLists(dwarf) {
 
     // Initialize taskPriorityNormal with all tasks not in other lists
     if (!dwarf.taskPriorityNormal) {
-        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'enriching', 'managing'];
         dwarf.taskPriorityNormal = allTasks.filter(task =>
             !dwarf.taskPriorityHigh.includes(task) &&
             !dwarf.taskPriorityNone.includes(task)
@@ -358,7 +359,7 @@ function populateTaskPriorityLists(dwarf) {
         );
 
         // Add any missing tasks to normal priority (tasks that aren't in any list)
-        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'managing'];
+        const allTasks = ['digging', 'research', 'masonry', 'smelting', 'enriching', 'managing'];
         const allAssignedTasks = [
             ...dwarf.taskPriorityHigh,
             ...dwarf.taskPriorityNormal,
@@ -1334,6 +1335,8 @@ function resetDwarfPoints(dwarf) {
 
     // Deduct gold
     gold -= resetCost;
+    pendingGoldDelta -= resetCost;  // Track for sync reconciliation
+    goldSyncToken++;  // Increment sync token
     logTransaction('expense', resetCost, `Reset points for ${actualDwarf.name}`);
     updateGoldDisplay();
 
@@ -1350,7 +1353,7 @@ function resetDwarfPoints(dwarf) {
     if (gameWorker && workerInitialized) {
         gameWorker.postMessage({
             type: 'update-state',
-            data: { dwarfs, gold }
+            data: { dwarfs, gold, goldSyncToken }
         });
     }
 
