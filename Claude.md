@@ -50,10 +50,11 @@ webroot/
 │   ├── utils.js         # Utility functions
 │   └── modals/
 │       └── modal-manager.js  # Loads modal HTML files dynamically
-├── modals/              # All modal HTML templates (15 files)
+├── modals/              # All modal HTML templates (16 files)
 │   ├── about-modal.html
 │   ├── dwarfs-modal.html
 │   ├── enchant-modal.html
+│   ├── enrichment-modal.html
 │   ├── forge-modal.html
 │   ├── forging-animation-modal.html
 │   ├── gem-modal.html
@@ -102,6 +103,7 @@ All game balance constants and data definitions live here.
 | `sell-modal.html` | Individual material selling | Slider-based selling interface |
 | `settings-modal.html` | Game settings | Cheat mode activation, save deletion, export |
 | `smelter-modal.html` | Smelter task queue | Heat furnace, smelt ores, polish gems |
+| `enrichment-modal.html` | Zentrifuge task queue | Process rare ores (Wolfram, Uranium, Plutonium) |
 | `task-details-modal.html` | Smelter task details | Shows materials, temperature, requirements |
 | `transactions-modal.html` | Finances/money flow | Hourly summary and transaction log |
 | `warehouse-sell-modal.html` | Bulk selling options | Sell stones, ores, ingots, etc. |
@@ -111,7 +113,7 @@ All game balance constants and data definitions live here.
 **Loading Sequence:**
 1. **Page Load**: `index.html` loads with `<script src="js/modals/modal-manager.js"></script>` (non-deferred script in `<head>`)
 2. **DOM Ready**: Modal manager waits for `DOMContentLoaded` or runs immediately if DOM already loaded
-3. **Async Fetch**: All 15 modal HTML files are fetched in parallel using `Promise.all()`
+3. **Async Fetch**: All 16 modal HTML files are fetched in parallel using `Promise.all()`
 4. **DOM Insertion**: Each modal HTML is parsed and appended to `document.body`
 5. **Event Dispatch**: `modalsLoaded` custom event is fired on `window` when all modals are ready
 6. **Game Init**: `main.js` (deferred) initializes the game, modals are already in DOM
@@ -148,6 +150,7 @@ All existing modal functions work unchanged:
 - `openLevelUp(dwarfId)` - Shows dwarf level up modal
 - `openResearch()` - Shows research lab
 - `openSmelter()` - Shows smelter
+- `openEnrichment()` - Shows Zentrifuge
 - `openForge()` - Shows forge
 - `openTransactions()` - Shows finances
 - etc.
@@ -273,7 +276,7 @@ Modal-specific styles use selectors like:
     - `wisdom`: Improves research success chance (2% per point) and enables price negotiation bonuses.
 - **Energy:** Dwarfs consume energy for actions (5 per dig, 1 per move, 10 per task). They rest when energy drops below 20, recovering 15 energy per tick. Max energy increases 20% per level.
 - **Wages:** Base wage is 0.01 gold per dig, increasing 18% per level (reducible via "Wage Negotiation" research).
-- **Task Priorities:** Each dwarf has customizable task priorities (digging, research, smelting) and can blacklist specific tasks.
+- **Task Priorities:** Each dwarf has customizable task priorities (digging, research, smelting, enriching) and can blacklist specific tasks.
 - **Skill Points Reset:** Can reset skill points for 1000 gold per dwarf level.
 
 ### Combat
@@ -305,11 +308,22 @@ Modal-specific styles use selectors like:
   - **Stone Polishing:** Marble, Granite, Obsidian (50% base break chance, reduced by research)
   - **Metal Smelting:** Soft metals (copper, zinc, bronze), Iron chain (ore→pig iron→iron→steel→hardened→dwarf steel)
   - **Alloys:** Brass, Glass Metals (Dwarfen Metallic Glass, Moonsilver, Incocel, Thornless Silver)
-  - **Ore Enrichment:** Wolfram, Uranium, Plutonium
 - **Temperature Management:** Heat loss 0.05% per tick (reducible via "Furnace Insulation"). Max temp 1500° base, +100° per "Furnace Temperature" research level.
 - **Task Progress:** Based on dwarf wisdom. Higher wisdom = faster task completion.
 - **Task Hardness:** Each task has hardness rating determining difficulty and time required.
 - **Hysteresis:** Auto-heating uses min/max temperature settings to avoid constant toggling.
+
+### Zentrifuge (Enrichment)
+- **Structure:** Task definitions in `enrichmentTasksData` object, task order in `enrichmentTasks` array.
+- **Unlock:** Requires "Ore Enrichment" research.
+- **No Temperature Required:** Unlike the smelter, the Zentrifuge does not need heating.
+- **Dwarf Task:** Dwarfs with 'enriching' in their task priorities will work here.
+- **Tasks:**
+  - **Enrich Wolfram:** Wolfram Ore → Wolfram
+  - **Enrich Uranium:** Uranium Ore → Uranium
+  - **Enrich Plutonium:** Plutonium Ore → Plutonium
+  - **Enrich Randomium:** Randomium Ore → Randomium
+- **Output Materials:** Used for advanced tool plating (Wolfram, Uranium, Plutonium plating).
 
 ### Forge
 - The forge is used to craft and upgrade tools.
@@ -452,7 +466,7 @@ let researchTree = [
 
 7. **Research vs Research Tree confusion**: `researchData` is the object with research definitions (indexed by ID), `researchTree` is the array controlling display order. Always update both when adding new research.
 
-8. **Smelter task structure**: `smelterTasksData` contains task definitions, `smelterTasks` array controls priority order. Same pattern as research.
+8. **Smelter/Enrichment task structure**: `smelterTasksData`/`enrichmentTasksData` contain task definitions, `smelterTasks`/`enrichmentTasks` arrays control priority order. Same pattern as research.
 
 9. **Material ID changes**: Materials use string IDs as keys. Changing IDs breaks save compatibility and requires version bump.
 
@@ -615,6 +629,10 @@ let researchTree = ['furnace', 'forge', ...];  // Display order
 // Smelter system
 const smelterTasksData = { 'heat-furnace': { name: '...', ... } };
 let smelterTasks = ['heat-furnace', 'smelt-copper', ...];  // Priority order
+
+// Enrichment system (Zentrifuge)
+const enrichmentTasksData = { 'enrich-wolfram': { name: '...', ... } };
+let enrichmentTasks = ['enrich-wolfram', 'enrich-uranium', ...];  // Priority order
 
 // Materials system
 const materials = { 'copper ore': { hardness: 1800, ... } };

@@ -24,11 +24,14 @@ let house = null;
 let research = null;
 let smelter = null;
 let masonry = null;
+let enrichment = null;
 let management = null;
 let smelterTasks = [];
 let smelterTasksData = {};
 let masonryTasks = [];
 let masonryTasksData = {};
+let enrichmentTasks = [];
+let enrichmentTasksData = {};
 let dropGridStartX = 10;
 let gold = 1000;
 let goldSyncToken = 0; // Tracks last sync token received from main thread
@@ -60,6 +63,7 @@ const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
 let smelterReservedBy = null; // Track which dwarf name has reserved the smelter
 let masonryReservedBy = null; // Track which dwarf name has reserved the masonry
+let enrichmentReservedBy = null; // Track which dwarf name has reserved the enrichment facility
 let managementReservedBy = null; // Track which dwarf name has reserved the management cell
 
 // Stuck detection tracking
@@ -127,16 +131,17 @@ function coordKey(x, y) {
 function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
     // Get dwarf's task priority lists (default if not set)
     const taskPriorityHigh = dwarf.taskPriorityHigh || [];
-    const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'managing'];
+    const taskPriorityNormal = dwarf.taskPriorityNormal || ['digging', 'research', 'smelting', 'enriching', 'managing'];
     const taskPriorityNone = dwarf.taskPriorityNone || [];
 
     // STEP 1: Find all tasks the dwarf can do
-    const allPossibleTasks = ['research', 'masonry', 'smelting', 'managing', 'digging'];
+    const allPossibleTasks = ['research', 'masonry', 'smelting', 'enriching', 'managing', 'digging'];
 
     const taskAvailability = {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
         'masonry': masonryHasWork() && (!masonryReservedBy || masonryReservedBy === dwarf.name) && typeof masonry === 'object' && masonry !== null,
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
+        'enriching': enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
         'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
     };
@@ -205,6 +210,7 @@ function executeTask(dwarf, taskId, diggingX = null, diggingY = null) {
         'research': { location: research, status: 'researching', emoji: '🔬', getReserved: () => researchReservedBy, setReserved: (name) => { researchReservedBy = name; } },
         'masonry': { location: masonry, status: 'masonry', emoji: '🔨', getReserved: () => masonryReservedBy, setReserved: (name) => { masonryReservedBy = name; } },
         'smelting': { location: smelter, status: 'smelting', emoji: '🔥', getReserved: () => smelterReservedBy, setReserved: (name) => { smelterReservedBy = name; } },
+        'enriching': { location: enrichment, status: 'enriching', emoji: '☢️', getReserved: () => enrichmentReservedBy, setReserved: (name) => { enrichmentReservedBy = name; } },
         'managing': { location: management, status: 'managing', emoji: '💼', getReserved: () => managementReservedBy, setReserved: (name) => { managementReservedBy = name; } }
     };
 
@@ -514,6 +520,30 @@ function masonryHasWork() {
     return false;
 }
 
+// Check if the enrichment facility has any actionable work
+function enrichmentHasWork() {
+    if (!enrichmentTasks || enrichmentTasks.length === 0) return false;
+
+    // Check each task in priority order
+    for (const taskId of enrichmentTasks) {
+        if (taskId === 'do-nothing') {
+            // If "do nothing" is encountered, stop checking
+            return false;
+        }
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+
+        // Check for single input
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
+                return true; // Found a task with enough materials
+            }
+        }
+    }
+    return false;
+}
+
 
 // Check if the smelter has any actionable work (not "do nothing" as first task, and has materials)
 function smelterHasWork() {
@@ -691,6 +721,28 @@ function findActionableMasonryTask() {
                 return stockAmount >= input.amount;
             });
             if (hasAllInputs) {
+                return { task: task, taskId: taskId };
+            }
+        }
+    }
+    return null;
+}
+
+// Find the first actionable enrichment task
+function findActionableEnrichmentTask() {
+    if (!enrichmentTasks || enrichmentTasks.length === 0) return null;
+
+    for (const taskId of enrichmentTasks) {
+        if (taskId === 'do-nothing') {
+            return null; // Stop at "do nothing"
+        }
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+
+        // Check for single input
+        if (task.input && task.input.material && task.input.amount) {
+            const stockAmount = materialsStock[task.input.material] || 0;
+            if (stockAmount >= task.input.amount) {
                 return { task: task, taskId: taskId };
             }
         }
@@ -1224,6 +1276,15 @@ function handleSmelterTaskOutput(task, dwarf, workshopType) {
             }
         }
     }
+}
+
+// Handle enrichment task output (simpler than smelter - no temperature, no break chance)
+function handleEnrichmentTaskOutput(task, dwarf, workshopType) {
+    const outputMaterial = task.output.material;
+    const outputAmount = task.output.amount;
+
+    // Produce output materials
+    materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
 }
 
 // Note: calculateFurnitureBonuses is defined in utils.js
@@ -1854,6 +1915,22 @@ function actForDwarf(dwarf) {
             handleOutputFunction: handleSmelterTaskOutput,
             tasksData: smelterTasksData,
             transactionPrefix: 'Smelter'
+        });
+        return;
+    }
+
+    // Enriching state
+    if (dwarf.status === 'enriching') {
+        handleWorkshopTask(dwarf, {
+            workshopType: 'enriching',
+            location: enrichment,
+            reservedBy: enrichmentReservedBy,
+            setReservedBy: (val) => { enrichmentReservedBy = val; },
+            currentTaskField: 'currentEnrichmentTask',
+            findTaskFunction: findActionableEnrichmentTask,
+            handleOutputFunction: handleEnrichmentTaskOutput,
+            tasksData: enrichmentTasksData,
+            transactionPrefix: 'Enrichment'
         });
         return;
     }
@@ -2895,6 +2972,7 @@ self.addEventListener('message', (e) => {
             research = data.research;
             masonry = data.masonry;
             smelter = data.smelter;
+            enrichment = data.enrichment;
             management = data.management;
             if (data.masonryTasks) {
                 masonryTasks = JSON.parse(JSON.stringify(data.masonryTasks));
@@ -2907,6 +2985,12 @@ self.addEventListener('message', (e) => {
             }
             if (data.smelterTasksData) {
                 smelterTasksData = JSON.parse(JSON.stringify(data.smelterTasksData));
+            }
+            if (data.enrichmentTasks) {
+                enrichmentTasks = JSON.parse(JSON.stringify(data.enrichmentTasks));
+            }
+            if (data.enrichmentTasksData) {
+                enrichmentTasksData = JSON.parse(JSON.stringify(data.enrichmentTasksData));
             }
             dropGridStartX = data.dropGridStartX;
             gold = data.gold !== undefined ? data.gold : 1000;
@@ -3008,6 +3092,10 @@ self.addEventListener('message', (e) => {
                 if (data.smelterTasks) {
                     // Copy the smelter tasks from main thread
                     smelterTasks = JSON.parse(JSON.stringify(data.smelterTasks));
+                }
+                if (data.enrichmentTasks) {
+                    // Copy the enrichment tasks from main thread
+                    enrichmentTasks = JSON.parse(JSON.stringify(data.enrichmentTasks));
                 }
                 if (data.smelterTemperature !== undefined) smelterTemperature = data.smelterTemperature;
                 if (data.smelterCoalMinTemp !== undefined) smelterCoalMinTemp = data.smelterCoalMinTemp;

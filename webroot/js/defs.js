@@ -1312,50 +1312,6 @@ const smelterTasksData = {
     ticksRequired: SMELTER_ALLOY_TICKS_REQUIRED,
     requires: 'glass-metals',
     hardness: 110
-  },
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // ORE ENRICHMENT
-  // ──────────────────────────────────────────────────────────────────────────
-  'enrich-wolfram': {
-    name: 'Enrich Wolfram',
-    description: 'Enrich wolfram ore through advanced processing.',
-    input: { material: 'wolfram ore', amount: 1 },
-    output: { material: 'wolfram', amount: 1 },
-    minTemp: 2422,
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
-    requires: 'ore-enrichment',
-    hardness: 105
-  },
-  'enrich-uranium': {
-    name: 'Enrich Uranium',
-    description: 'Enrich uranium ore through advanced processing.',
-    input: { material: 'uranium ore', amount: 1 },
-    output: { material: 'uranium', amount: 1 },
-    minTemp: 2535,
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
-    requires: 'ore-enrichment',
-    hardness: 110
-  },
-  'enrich-plutonium': {
-    name: 'Enrich Plutonium',
-    description: 'Enrich plutonium ore through advanced processing.',
-    input: { material: 'plutonium ore', amount: 1 },
-    output: { material: 'plutonium', amount: 1 },
-    minTemp: 2740,
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
-    requires: 'ore-enrichment',
-    hardness: 115
-  },
-  'enrich-randomium': {
-    name: 'Enrich Randomium',
-    description: 'Enrich randomium ore through chaotic processing.',
-    input: { material: 'randomium ore', amount: 1 },
-    output: { material: 'randomium', amount: 1 },
-    minTemp: 1337,
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
-    requires: 'ore-enrichment',
-    hardness: 120
   }
 };
 
@@ -1382,11 +1338,7 @@ let smelterTasks = [
     'smelt-dwarfen-metallic-glass',
     'smelt-moonsilver',
     'smelt-incocel',
-    'smelt-thornless-silver',
-    'enrich-wolfram',
-    'enrich-uranium',
-    'enrich-plutonium',
-    'enrich-randomium'
+    'smelt-thornless-silver'
 ];
 
 // Smelter temperature system
@@ -1395,6 +1347,61 @@ let smelterCoalMinTemp = 25; // Minimum temperature for coal heating (user confi
 let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user configurable)
 let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
+
+// ============================================================================
+// ENRICHMENT REGISTRY
+// ============================================================================
+// Enrichment tasks for processing rare ores (no temperature required)
+const enrichmentTasksData = {
+  'do-nothing': {
+    name: 'Do Nothing',
+    description: 'The enrichment facility sits idle.',
+    input: null,
+    output: null,
+    type: 'none'
+  },
+  'enrich-wolfram': {
+    name: 'Enrich Wolfram',
+    description: 'Enrich wolfram ore through advanced processing.',
+    input: { material: 'wolfram ore', amount: 1 },
+    output: { material: 'wolfram', amount: 1 },
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    hardness: 105
+  },
+  'enrich-uranium': {
+    name: 'Enrich Uranium',
+    description: 'Enrich uranium ore through advanced processing.',
+    input: { material: 'uranium ore', amount: 1 },
+    output: { material: 'uranium', amount: 1 },
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    hardness: 110
+  },
+  'enrich-plutonium': {
+    name: 'Enrich Plutonium',
+    description: 'Enrich plutonium ore through advanced processing.',
+    input: { material: 'plutonium ore', amount: 1 },
+    output: { material: 'plutonium', amount: 1 },
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    hardness: 115
+  },
+  'enrich-randomium': {
+    name: 'Enrich Randomium',
+    description: 'Enrich randomium ore through chaotic processing.',
+    input: { material: 'randomium ore', amount: 1 },
+    output: { material: 'randomium', amount: 1 },
+    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    hardness: 120
+  }
+};
+
+// Ordered array of enrichment task IDs (determines task priority)
+let enrichmentTasks = [
+    'enrich-wolfram',
+    'enrich-uranium',
+    'enrich-plutonium',
+    'enrich-randomium',
+    'do-nothing'
+];
 
 // ============================================================================
 // RESEARCH REGISTRY
@@ -2225,18 +2232,19 @@ let nextGemId = 1;
 // How many items a dwarf can hold before needing to return to drop-off
 const bucketCapacity = 4;
 
-// Functions grid - 1x6 grid above the main digging grid (y = -1)
+// Functions grid - 1x7 grid above the main digging grid (y = -1)
 const functionsGridY = -1; // One row above the main grid
-const functionsGridWidth = 6;
+const functionsGridWidth = 7;
 
-// Function locations in the 1x6 grid above main grid
-// Order: House, Warehouse, Masonry, Smelter, Research, Management
+// Function locations in the 1x7 grid above main grid
+// Order: House, Warehouse, Masonry, Smelter, Enrichment, Research, Management
 const house = { x: 0, y: functionsGridY };        // First cell (House/Bed)
 const dropOff = { x: 1, y: functionsGridY };      // Second cell (Warehouse)
 const masonry = { x: 2, y: functionsGridY };      // Third cell (Masonry)
 const smelter = { x: 3, y: functionsGridY };      // Fourth cell (Smelter)
-const research = { x: 4, y: functionsGridY };     // Fifth cell (Research)
-const management = { x: 5, y: functionsGridY };   // Sixth cell (Management)
+const enrichment = { x: 4, y: functionsGridY };   // Fifth cell (Enrichment)
+const research = { x: 5, y: functionsGridY };     // Sixth cell (Research)
+const management = { x: 6, y: functionsGridY };   // Seventh cell (Management)
 
 // Keep old drop-grid on the right for backward compatibility (2x2 grid)
 const dropGridStartX = gridWidth;

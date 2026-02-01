@@ -173,6 +173,22 @@ function countActionableMasonryTasks() {
     return count;
 }
 
+// Count how many enrichment tasks are currently actionable
+function countActionableEnrichmentTasks() {
+    let count = 0;
+    for (const taskId of enrichmentTasks) {
+        if (taskId === 'do-nothing') break; // Stop at "do nothing" (matches worker logic)
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+
+        // Use shared helper to check material availability
+        if (hasMaterialsForTask(task, materialsStock)) {
+            count++;
+        }
+    }
+    return count;
+}
+
 // Check if the masonry's top task is "do nothing"
 function isMasonryPaused() {
     return masonryTasks.length > 0 && masonryTasks[0] === 'do-nothing';
@@ -181,6 +197,11 @@ function isMasonryPaused() {
 // Check if the smelter's top task is "do nothing"
 function isSmelterPaused() {
     return smelterTasks.length > 0 && smelterTasks[0] === 'do-nothing';
+}
+
+// Check if the enrichment's top task is "do nothing"
+function isEnrichmentPaused() {
+    return enrichmentTasks.length > 0 && enrichmentTasks[0] === 'do-nothing';
 }
 
 function getToolByType(toolType) {
@@ -615,6 +636,27 @@ function updateGridDisplay() {
                     }
                 }
 
+                if (typeof enrichment === 'object' && enrichment !== null && enrichment.x === gx && enrichment.y === gy) {
+                    const hasEnrichment = researchData['ore-enrichment'] && researchData['ore-enrichment'].level >= 1;
+                    cell.title = hasEnrichment ? 'Zentrifuge' : 'Zentrifuge (Requires Ore Enrichment research)';
+                    cell.style.position = 'relative';
+                    const enrich = document.createElement('span');
+                    enrich.className = 'drop-off-marker' + (hasEnrichment ? '' : ' ui-disabled');
+                    enrich.textContent = '☢️';
+                    cell.appendChild(enrich);
+
+                    // Add notification badge showing number of actionable enrichment tasks
+                    if (hasEnrichment) {
+                        const actionableCount = countActionableEnrichmentTasks();
+                        if (actionableCount > 0) {
+                            const badge = document.createElement('div');
+                            badge.className = 'grid-badge';
+                            badge.textContent = actionableCount;
+                            cell.appendChild(badge);
+                        }
+                    }
+                }
+
                 if (typeof management === 'object' && management !== null && management.x === gx && management.y === gy) {
                     const hasManagement = researchData['management'] && researchData['management'].level >= 1;
                     cell.title = hasManagement ? 'Management' : 'Management (Requires research)';
@@ -680,6 +722,19 @@ function openSmelter() {
 
     openModal('smelter-modal');
     populateSmelter();
+}
+
+function openEnrichment() {
+    // Check if ore-enrichment research is unlocked
+    const enrichmentResearch = researchData['ore-enrichment'];
+    const isEnrichmentUnlocked = enrichmentResearch && (enrichmentResearch.level || 0) >= 1;
+
+    if (!isEnrichmentUnlocked) {
+        return;
+    }
+
+    openModal('enrichment-modal');
+    populateEnrichment();
 }
 
 // Housing/Furniture UI functions moved to modals/housing-modal.js
@@ -2675,11 +2730,14 @@ function initWorker() {
             research,
             masonry,
             smelter,
+            enrichment,
             management,
             masonryTasks,
             masonryTasksData,
             smelterTasks,
             smelterTasksData,
+            enrichmentTasks,
+            enrichmentTasksData,
             dropGridStartX,
             gold,
             goldSyncToken,
@@ -2764,6 +2822,7 @@ function saveGame() {
             currentHourTimestamp: currentHourTimestamp,
             smelterTasks: smelterTasks,
             masonryTasks: masonryTasks,
+            enrichmentTasks: enrichmentTasks,
             smelterTemperature: smelterTemperature,
             smelterCoalMinTemp: smelterCoalMinTemp,
             smelterCoalMaxTemp: smelterCoalMaxTemp,
@@ -2932,6 +2991,24 @@ function loadGame() {
                 const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
                 dwarf.taskPriorityHigh.splice(smeltingIndex, 0, 'masonry');
             }
+
+            // Migration: Add 'enriching' to existing task priorities if missing
+            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('enriching')) {
+                const smeltingIndex = dwarf.taskPriorityNormal.indexOf('smelting');
+                if (smeltingIndex !== -1) {
+                    // Insert enriching just after smelting
+                    dwarf.taskPriorityNormal.splice(smeltingIndex + 1, 0, 'enriching');
+                } else {
+                    // If smelting not found, just add at the end
+                    dwarf.taskPriorityNormal.push('enriching');
+                }
+            }
+
+            // Also add enriching to taskPriorityHigh if it has smelting there
+            if (dwarf.taskPriorityHigh && dwarf.taskPriorityHigh.includes('smelting') && !dwarf.taskPriorityHigh.includes('enriching')) {
+                const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
+                dwarf.taskPriorityHigh.splice(smeltingIndex + 1, 0, 'enriching');
+            }
         }
 
         startX = gameState.startX || 0;
@@ -3075,6 +3152,13 @@ function loadGame() {
             }
         }
         // Note: If masonryTasks is not in saved game, we'll use the default from defs.js
+
+        // Restore enrichment tasks order (backwards compatible - will be undefined in old saves)
+        if (gameState.enrichmentTasks && Array.isArray(gameState.enrichmentTasks)) {
+            // Filter out any that don't exist in enrichmentTasksData
+            enrichmentTasks = gameState.enrichmentTasks.filter(id => enrichmentTasksData[id]);
+        }
+        // Note: If enrichmentTasks is not in saved game, we'll use the default from defs.js
 
         // Restore smelter temperature state
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
@@ -3505,6 +3589,28 @@ function populateFunctionsList() {
     }
 
     list.appendChild(smelterLink);
+
+    // Zentrifuge function
+    const enrichmentLink = document.createElement('a');
+    enrichmentLink.href = '#';
+    enrichmentLink.className = 'function-link';
+    enrichmentLink.id = 'enrichment-function-link';
+    enrichmentLink.innerHTML = '<span class="icon">☢️</span><span>Zentrifuge</span>';
+    enrichmentLink.onclick = (e) => {
+        e.preventDefault();
+        openEnrichment();
+    };
+
+    // Check if enrichment is unlocked (requires Ore Enrichment research)
+    const enrichmentResearch = researchData['ore-enrichment'];
+    const isEnrichmentUnlocked = enrichmentResearch && (enrichmentResearch.level || 0) >= 1;
+
+    if (!isEnrichmentUnlocked) {
+        enrichmentLink.classList.add('ui-disabled');
+        enrichmentLink.title = 'Requires Ore Enrichment research';
+    }
+
+    list.appendChild(enrichmentLink);
 
     // Forge function
     const forgeLink = document.createElement('a');

@@ -14,6 +14,7 @@ class ModalManager {
             'research-modal',
             'masonry-modal',
             'smelter-modal',
+            'enrichment-modal',
             'task-details-modal',
             'transactions-modal',
             'settings-modal',
