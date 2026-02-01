@@ -99,7 +99,8 @@ main {
     display: flex;
     gap: 1px;
     align-items: flex-start;
-    height: 70px;   
+    justify-content: center;
+    height: 70px;
 }
 
 /* Functions list with clickable links (7 per row grid layout) */

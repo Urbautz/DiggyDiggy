@@ -2930,6 +2930,7 @@ function tick() {
                 smelterHeatingMode,
                 smelterTasks,
                 smelterTasksData,
+                enrichmentTasksData,
                 oneTimeInvestments,
                 nextInvestmentId,
                 activeManagementTasks,

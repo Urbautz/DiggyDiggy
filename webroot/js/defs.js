@@ -1365,7 +1365,7 @@ const enrichmentTasksData = {
     description: 'Enrich wolfram ore through advanced processing.',
     input: { material: 'wolfram ore', amount: 1 },
     output: { material: 'wolfram', amount: 1 },
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    ticksRequired: 250,
     hardness: 105
   },
   'enrich-uranium': {
@@ -1373,7 +1373,7 @@ const enrichmentTasksData = {
     description: 'Enrich uranium ore through advanced processing.',
     input: { material: 'uranium ore', amount: 1 },
     output: { material: 'uranium', amount: 1 },
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    ticksRequired: 500,
     hardness: 110
   },
   'enrich-plutonium': {
@@ -1381,7 +1381,7 @@ const enrichmentTasksData = {
     description: 'Enrich plutonium ore through advanced processing.',
     input: { material: 'plutonium ore', amount: 1 },
     output: { material: 'plutonium', amount: 1 },
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    ticksRequired: 1000,
     hardness: 115
   },
   'enrich-randomium': {
@@ -1389,7 +1389,7 @@ const enrichmentTasksData = {
     description: 'Enrich randomium ore through chaotic processing.',
     input: { material: 'randomium ore', amount: 1 },
     output: { material: 'randomium', amount: 1 },
-    ticksRequired: SMELTER_ORE_ENRICHMENT_TICKS_REQUIRED,
+    ticksRequired: 1337,
     hardness: 120
   }
 };

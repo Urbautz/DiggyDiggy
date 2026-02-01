@@ -2656,6 +2656,16 @@ function initWorker() {
                     smelterTasks = data.smelterTasks;
                 }
 
+                // Update enrichment tasks data from worker (includes progress)
+                if (data.enrichmentTasksData !== undefined) {
+                    // Merge progress from worker into main thread's task data
+                    for (const taskId in data.enrichmentTasksData) {
+                        if (enrichmentTasksData[taskId]) {
+                            enrichmentTasksData[taskId].progress = data.enrichmentTasksData[taskId].progress;
+                        }
+                    }
+                }
+
                 // Update one-time investments from worker
                 if (data.oneTimeInvestments !== undefined) {
                     oneTimeInvestments = data.oneTimeInvestments;
