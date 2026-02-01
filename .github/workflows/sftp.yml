@@ -4,7 +4,11 @@ name: Publish Website on DEV
 
 # Controls when the workflow will run
 on:
-
+  workflow_dispatch: 
+    inputs:
+        version:
+          description: 'version'
+          required: false
   # Triggers the workflow on push request event 
   # but only for the specific branch
   push:
