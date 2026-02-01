@@ -1980,9 +1980,15 @@ function initMaterialsPanel() {
     
     list.innerHTML = '';
     
-    // Get materials that are used as smelter inputs and outputs
+    // Get materials that are used as workshop inputs and outputs
     const smelterInputMaterials = new Set();
     const smelterOutputMaterials = new Set();
+    const masonryInputMaterials = new Set();
+    const masonryOutputMaterials = new Set();
+    const enrichmentInputMaterials = new Set();
+    const enrichmentOutputMaterials = new Set();
+
+    // Smelter inputs/outputs
     for (const taskId of smelterTasks) {
         const task = smelterTasksData[taskId];
         if (!task) continue;
@@ -1994,6 +2000,33 @@ function initMaterialsPanel() {
         }
         if (task.output && task.output.material) {
             smelterOutputMaterials.add(task.output.material);
+        }
+    }
+
+    // Masonry inputs/outputs
+    for (const taskId of masonryTasks) {
+        const task = masonryTasksData[taskId];
+        if (!task) continue;
+        if (task.input && task.input.material) {
+            masonryInputMaterials.add(task.input.material);
+        }
+        if (task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => masonryInputMaterials.add(input.material));
+        }
+        if (task.output && task.output.material) {
+            masonryOutputMaterials.add(task.output.material);
+        }
+    }
+
+    // Enrichment (Zentrifuge) inputs/outputs
+    for (const taskId of enrichmentTasks) {
+        const task = enrichmentTasksData[taskId];
+        if (!task) continue;
+        if (task.input && task.input.material) {
+            enrichmentInputMaterials.add(task.input.material);
+        }
+        if (task.output && task.output.material) {
+            enrichmentOutputMaterials.add(task.output.material);
         }
     }
     
@@ -2047,23 +2080,43 @@ function initMaterialsPanel() {
         // Recipe usage icons column
         const icons = document.createElement('span');
         icons.className = 'wh-col-icons';
-        const isInput = smelterInputMaterials.has(id);
-        const isOutput = smelterOutputMaterials.has(id);
+        const isSmelterInput = smelterInputMaterials.has(id);
+        const isSmelterOutput = smelterOutputMaterials.has(id);
+        const isMasonryInput = masonryInputMaterials.has(id);
+        const isMasonryOutput = masonryOutputMaterials.has(id);
+        const isEnrichmentInput = enrichmentInputMaterials.has(id);
+        const isEnrichmentOutput = enrichmentOutputMaterials.has(id);
         const isForgeInput = m.type === 'Ingot';
-        
+
         let iconsText = '';
         const tooltipParts = [];
-        if (isInput) {
-            iconsText += '🪨';
-            tooltipParts.push('Used in smelter recipes');
+        if (isSmelterInput) {
+            iconsText += '🔥';
+            tooltipParts.push('Smelter input');
         }
-        if (isOutput) {
+        if (isSmelterOutput) {
             iconsText += '♨️';
-            tooltipParts.push('Produced by smelter');
+            tooltipParts.push('Smelter output');
+        }
+        if (isMasonryInput) {
+            iconsText += '🔨';
+            tooltipParts.push('Masonry input');
+        }
+        if (isMasonryOutput) {
+            iconsText += '🪨';
+            tooltipParts.push('Masonry output');
+        }
+        if (isEnrichmentInput) {
+            iconsText += '☢️';
+            tooltipParts.push('Zentrifuge input');
+        }
+        if (isEnrichmentOutput) {
+            iconsText += '⚛️';
+            tooltipParts.push('Zentrifuge output');
         }
         if (isForgeInput) {
             iconsText += '🔩';
-            tooltipParts.push('Used in forge');
+            tooltipParts.push('Forge input');
         }
         icons.textContent = iconsText;
         if (tooltipParts.length > 0) {

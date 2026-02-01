@@ -486,16 +486,56 @@ function getSmelterInputMaterials() {
 }
 
 /**
+ * Get a set of material IDs that are used as inputs in any workshop (smelter, masonry, enrichment)
+ * @returns {Set<string>} Set of material IDs that are workshop inputs
+ */
+function getWorkshopInputMaterials() {
+    const workshopInputMaterials = new Set();
+
+    // Smelter inputs
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (task && task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+        if (task && task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
+        }
+    }
+
+    // Masonry inputs
+    for (const taskId of masonryTasks) {
+        const task = masonryTasksData[taskId];
+        if (task && task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+        if (task && task.inputs && Array.isArray(task.inputs)) {
+            task.inputs.forEach(input => workshopInputMaterials.add(input.material));
+        }
+    }
+
+    // Enrichment (Zentrifuge) inputs
+    for (const taskId of enrichmentTasks) {
+        const task = enrichmentTasksData[taskId];
+        if (task && task.input && task.input.material) {
+            workshopInputMaterials.add(task.input.material);
+        }
+    }
+
+    return workshopInputMaterials;
+}
+
+/**
  * Calculate total quantity of non-craftable materials in stock
  * Non-craftable materials are those that are NOT:
- * - Used as smelter inputs
+ * - Used as workshop inputs (smelter, masonry, enrichment)
  * - Ingots (used in forge)
  * - Gems
  * @param {Object} materialsStock - The materials stock object
  * @returns {number} Total quantity of non-craftable materials
  */
 function calculateNonCraftableMaterialsTotal(materialsStock) {
-    const smelterInputMaterials = getSmelterInputMaterials();
+    const workshopInputMaterials = getWorkshopInputMaterials();
     let totalNonCraftables = 0;
 
     for (const [materialId, quantity] of Object.entries(materialsStock)) {
@@ -504,8 +544,8 @@ function calculateNonCraftableMaterialsTotal(materialsStock) {
 
         const materialType = mat.type || '';
 
-        // Skip materials that are used as smelter inputs or forge inputs (ingots) or gems
-        if (smelterInputMaterials.has(materialId)) continue;
+        // Skip materials that are used as workshop inputs or forge inputs (ingots) or gems
+        if (workshopInputMaterials.has(materialId)) continue;
         if (materialType.startsWith('Ingot')) continue;
         if (materialType.startsWith('Gem')) continue;
 

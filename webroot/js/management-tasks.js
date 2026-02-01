@@ -87,7 +87,7 @@ function executeSellMaterial(task, context, totalTradeBonus) {
  * Execute sell-non-craftables task
  */
 function executeSellNonCraftables(task, context, totalTradeBonus) {
-    const smelterInputMaterials = getSmelterInputMaterials();
+    const workshopInputMaterials = getWorkshopInputMaterials();
 
     let totalGold = 0;
     let totalItems = 0;
@@ -96,10 +96,10 @@ function executeSellNonCraftables(task, context, totalTradeBonus) {
         const materialType = m.type || '';
 
         // Skip materials that are:
-        // - Used in smelter tasks (inputs for recipes)
+        // - Used in workshop tasks (smelter, masonry, enrichment inputs)
         // - Ingots (valuable crafted materials)
         // - Gems (have their own sell task)
-        if (smelterInputMaterials.has(id)) continue;
+        if (workshopInputMaterials.has(id)) continue;
         if (materialType.startsWith('Ingot')) continue;
         if (materialType.startsWith('Gem')) continue;
 
