@@ -55,44 +55,178 @@ function calculateTaskAvailableRuns(task) {
     return 0;
 }
 
-// Helper function to create threshold control row
-function createThresholdRow(label, spanId, currentValue, adjustFunctionName) {
-    const tr = document.createElement('tr');
-    const th = document.createElement('th');
-    th.textContent = label;
+// Helper function to create a threshold control row for the main smelter view
+function createThresholdControl(label, valueId, currentValue, adjustFunctionName) {
+    const row = document.createElement('div');
+    row.className = 'smelter-temp-threshold-row';
 
-    const td = document.createElement('td');
-    const controlDiv = document.createElement('div');
-    controlDiv.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'smelter-temp-threshold-label';
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
 
-    const valueSpan = document.createElement('span');
-    valueSpan.id = spanId;
-    valueSpan.textContent = `${currentValue}°`;
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'smelter-temp-threshold-controls';
 
     const decreaseBtn = document.createElement('button');
+    decreaseBtn.className = 'smelter-temp-btn';
     decreaseBtn.textContent = '-25°';
-    decreaseBtn.style.cssText = 'padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;';
     decreaseBtn.onclick = () => {
         window[adjustFunctionName](-25);
-        updateTaskDetailTemperature();
+        updateMainTempControls();
     };
+    controlsDiv.appendChild(decreaseBtn);
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'smelter-temp-threshold-value';
+    valueSpan.id = valueId;
+    valueSpan.textContent = `${currentValue}°`;
+    controlsDiv.appendChild(valueSpan);
 
     const increaseBtn = document.createElement('button');
+    increaseBtn.className = 'smelter-temp-btn';
     increaseBtn.textContent = '+25°';
-    increaseBtn.style.cssText = 'padding: 4px 8px; font-size: 11px; background: #2a3a4a; border: 1px solid #3a4a5a; color: #fff; cursor: pointer; border-radius: 2px;';
     increaseBtn.onclick = () => {
         window[adjustFunctionName](25);
-        updateTaskDetailTemperature();
+        updateMainTempControls();
     };
+    controlsDiv.appendChild(increaseBtn);
 
-    controlDiv.appendChild(valueSpan);
-    controlDiv.appendChild(decreaseBtn);
-    controlDiv.appendChild(increaseBtn);
-    td.appendChild(controlDiv);
-    tr.appendChild(th);
-    tr.appendChild(td);
+    row.appendChild(controlsDiv);
+    return row;
+}
 
-    return tr;
+// Create the temperature control panel for the main smelter view
+function createTemperatureControlPanel() {
+    // Gate: furnace research must be unlocked
+    const furnaceResearch = researchData['furnace'];
+    if (!furnaceResearch || (furnaceResearch.level || 0) < 1) {
+        return null;
+    }
+
+    // Calculate derived values
+    const furnaceTemp = researchData['furnace-temperature'];
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+    const currentTemp = Math.round(smelterTemperature);
+    const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+    const tempColor = currentTemp > 1000 ? '#ff4444'
+                    : currentTemp > 500 ? '#ff8800'
+                    : currentTemp > 100 ? '#ffbb00'
+                    : '#88ccff';
+
+    // Main container
+    const panel = document.createElement('div');
+    panel.className = 'smelter-temp-control-panel';
+    panel.id = 'smelter-temp-control-panel';
+
+    // Section header
+    const header = document.createElement('div');
+    header.className = 'smelter-temp-control-header';
+    header.innerHTML = '<span class="smelter-temp-control-icon">🌡️</span> Temperature Control';
+    panel.appendChild(header);
+
+    // Temperature bar
+    const barContainer = document.createElement('div');
+    barContainer.className = 'smelter-temp-bar-container';
+    barContainer.id = 'smelter-main-temp-bar-container';
+
+    const bar = document.createElement('div');
+    bar.className = 'smelter-temp-bar-fill';
+    bar.id = 'smelter-main-temp-bar';
+    bar.style.width = `${tempPercent}%`;
+    barContainer.appendChild(bar);
+    panel.appendChild(barContainer);
+
+    // Current temperature display
+    const tempDisplay = document.createElement('div');
+    tempDisplay.className = 'smelter-temp-current-display';
+    tempDisplay.id = 'smelter-main-temp-display';
+    tempDisplay.innerHTML = `<strong>Current:</strong> <span id="smelter-main-temp-value" style="color: ${tempColor}; font-weight: bold;">${currentTemp}°</span> / ${maxTempLimit}°`;
+    panel.appendChild(tempDisplay);
+
+    // Coal heating subsection (always shown if furnace is unlocked)
+    const coalSection = document.createElement('div');
+    coalSection.className = 'smelter-temp-subsection';
+    coalSection.id = 'smelter-coal-temp-section';
+
+    const coalHeader = document.createElement('div');
+    coalHeader.className = 'smelter-temp-subsection-title';
+    coalHeader.textContent = '⛏️ Coal Heating';
+    coalSection.appendChild(coalHeader);
+
+    const coalControls = document.createElement('div');
+    coalControls.className = 'smelter-temp-controls-grid';
+    coalControls.appendChild(
+        createThresholdControl('Min Threshold', 'smelter-main-coal-min', smelterCoalMinTemp, 'adjustCoalMinTemp')
+    );
+    coalControls.appendChild(
+        createThresholdControl('Max Threshold', 'smelter-main-coal-max', smelterCoalMaxTemp, 'adjustCoalMaxTemp')
+    );
+    coalSection.appendChild(coalControls);
+    panel.appendChild(coalSection);
+
+    // Magma heating subsection (only if magma-furnace research is unlocked)
+    const magmaResearch = researchData['magma-furnace'];
+    const isMagmaUnlocked = magmaResearch && (magmaResearch.level || 0) >= 1;
+
+    if (isMagmaUnlocked) {
+        const magmaSection = document.createElement('div');
+        magmaSection.className = 'smelter-temp-subsection';
+        magmaSection.id = 'smelter-magma-temp-section';
+
+        const magmaHeader = document.createElement('div');
+        magmaHeader.className = 'smelter-temp-subsection-title';
+        magmaHeader.textContent = '🌋 Magma Heating';
+        magmaSection.appendChild(magmaHeader);
+
+        const magmaControls = document.createElement('div');
+        magmaControls.className = 'smelter-temp-controls-grid';
+        magmaControls.appendChild(
+            createThresholdControl('Min Threshold', 'smelter-main-magma-min', smelterMagmaMinTemp, 'adjustMagmaMinTemp')
+        );
+        magmaSection.appendChild(magmaControls);
+        panel.appendChild(magmaSection);
+    }
+
+    return panel;
+}
+
+// Efficiently update the main temperature control panel values without DOM rebuild
+function updateMainTempControls() {
+    const panel = document.getElementById('smelter-temp-control-panel');
+    if (!panel) return;
+
+    const furnaceTemp = researchData['furnace-temperature'];
+    const furnaceTempLevel = furnaceTemp ? (furnaceTemp.level || 0) : 0;
+    const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
+    const currentTemp = Math.round(smelterTemperature);
+    const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
+    const tempColor = currentTemp > 1000 ? '#ff4444'
+                    : currentTemp > 500 ? '#ff8800'
+                    : currentTemp > 100 ? '#ffbb00'
+                    : '#88ccff';
+
+    // Update bar
+    const bar = document.getElementById('smelter-main-temp-bar');
+    if (bar) bar.style.width = `${tempPercent}%`;
+
+    // Update temperature value text
+    const tempValue = document.getElementById('smelter-main-temp-value');
+    if (tempValue) {
+        tempValue.textContent = `${currentTemp}°`;
+        tempValue.style.color = tempColor;
+    }
+
+    // Update threshold values
+    const coalMin = document.getElementById('smelter-main-coal-min');
+    if (coalMin) coalMin.textContent = `${smelterCoalMinTemp}°`;
+
+    const coalMax = document.getElementById('smelter-main-coal-max');
+    if (coalMax) coalMax.textContent = `${smelterCoalMaxTemp}°`;
+
+    const magmaMin = document.getElementById('smelter-main-magma-min');
+    if (magmaMin) magmaMin.textContent = `${smelterMagmaMinTemp}°`;
 }
 
 // Open task details modal
@@ -277,7 +411,7 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
             const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
             tempBar.style.width = `${tempPercent}%`;
 
-            // Current temp display
+            // Current temp display (read-only)
             const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
             const currentTempRow = document.createElement('tr');
             const currentTempTh = document.createElement('th');
@@ -293,20 +427,8 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
 
             if (task.heatGain === 'dynamic') {
                 addTableRow(tempTable, 'Max Temp', `${maxTempLimit}°`);
-
-                // Magma min threshold control
-                const minThresholdRow = createThresholdRow('Min Threshold', 'task-detail-magma-min', smelterMagmaMinTemp, 'adjustMagmaMinTemp');
-                tempTable.appendChild(minThresholdRow);
             } else {
                 addTableRow(tempTable, 'Heat Gain', `+${task.heatGain}° per use`);
-
-                // Coal min threshold control
-                const minThresholdRow = createThresholdRow('Min Threshold', 'task-detail-coal-min', smelterCoalMinTemp, 'adjustCoalMinTemp');
-                tempTable.appendChild(minThresholdRow);
-
-                // Coal max threshold control
-                const maxThresholdRow = createThresholdRow('Max Threshold', 'task-detail-coal-max', smelterCoalMaxTemp, 'adjustCoalMaxTemp');
-                tempTable.appendChild(maxThresholdRow);
             }
         }
     }
@@ -343,10 +465,6 @@ function openTaskDetailsModal(task, isUnlocked, requiredResearchName) {
 function updateTaskDetailTemperature() {
     const currentTempEl = document.getElementById('task-detail-current-temp');
     const tempBarEl = document.getElementById('task-detail-temp-bar');
-    const coalMinEl = document.getElementById('task-detail-coal-min');
-    const coalMaxEl = document.getElementById('task-detail-coal-max');
-    const magmaMinEl = document.getElementById('task-detail-magma-min');
-
     if (currentTempEl) {
         const currentTemp = Math.round(smelterTemperature);
         const tempColor = currentTemp > 1000 ? '#ff4444' : currentTemp > 500 ? '#ff8800' : currentTemp > 100 ? '#ffbb00' : '#88ccff';
@@ -360,18 +478,6 @@ function updateTaskDetailTemperature() {
         const maxTempLimit = SMELTER_MAX_TEMPERATURE_LIMIT + (furnaceTempLevel * 100);
         const tempPercent = Math.min(100, (smelterTemperature / maxTempLimit) * 100);
         tempBarEl.style.width = `${tempPercent}%`;
-    }
-
-    if (coalMinEl) {
-        coalMinEl.textContent = `${smelterCoalMinTemp}°`;
-    }
-
-    if (coalMaxEl) {
-        coalMaxEl.textContent = `${smelterCoalMaxTemp}°`;
-    }
-
-    if (magmaMinEl) {
-        magmaMinEl.textContent = `${smelterMagmaMinTemp}°`;
     }
 }
 
@@ -472,6 +578,9 @@ function updateSmelterTemperatureDisplay() {
             }
         }
     }
+
+    // Also update the main temperature control panel
+    updateMainTempControls();
 }
 
 /**
@@ -609,6 +718,12 @@ function populateSmelter() {
     headerDesc.className = 'smelter-description';
     headerDesc.textContent = 'Set the priority of smelter tasks. The smelter will work on tasks from top to bottom.';
     container.appendChild(headerDesc);
+
+    // Temperature control panel (above task list)
+    const tempPanel = createTemperatureControlPanel();
+    if (tempPanel) {
+        container.appendChild(tempPanel);
+    }
 
     // Task list container
     const taskList = document.createElement('div');
