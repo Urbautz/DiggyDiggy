@@ -1365,7 +1365,7 @@ const enrichmentTasksData = {
     description: 'Enrich wolfram ore through advanced processing.',
     input: { material: 'wolfram ore', amount: 1 },
     output: { material: 'wolfram', amount: 1 },
-    ticksRequired: 250,
+    ticksRequired: 125,
     hardness: 105
   },
   'enrich-uranium': {
@@ -1373,7 +1373,7 @@ const enrichmentTasksData = {
     description: 'Enrich uranium ore through advanced processing.',
     input: { material: 'uranium ore', amount: 1 },
     output: { material: 'uranium', amount: 1 },
-    ticksRequired: 500,
+    ticksRequired: 200,
     hardness: 110
   },
   'enrich-plutonium': {
@@ -1381,7 +1381,7 @@ const enrichmentTasksData = {
     description: 'Enrich plutonium ore through advanced processing.',
     input: { material: 'plutonium ore', amount: 1 },
     output: { material: 'plutonium', amount: 1 },
-    ticksRequired: 1000,
+    ticksRequired: 350,
     hardness: 115
   },
   'enrich-randomium': {
@@ -1906,6 +1906,28 @@ let managementTasks = {
     requires: {'furnace': 1},
     cost: 10,
     hardness: 25,
+  },
+  'activate-production': {
+    name: 'Activate Production',
+    description: 'Automatically activate a production task when the output material stock falls below the threshold. Moves the task above do-nothing.',
+    values: {
+      outputMaterial: {Description: 'Output Material', default: 'iron', type: 'production-output-dropdown'},
+      maxStock: {Description: 'When stock <', default: 50, type: 'number'}
+    },
+    requires: {'management': 1},
+    cost: 25,
+    hardness: 20,
+  },
+  'deactivate-production': {
+    name: 'Deactivate Production',
+    description: 'Automatically deactivate a production task when the output material stock exceeds the threshold. Moves the task below do-nothing.',
+    values: {
+      outputMaterial: {Description: 'Output Material', default: 'iron', type: 'production-output-dropdown'},
+      minStock: {Description: 'When stock >', default: 200, type: 'number'}
+    },
+    requires: {'management': 1},
+    cost: 25,
+    hardness: 20,
   },
 }
 

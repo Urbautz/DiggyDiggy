@@ -46,6 +46,12 @@ function executeManagementTask(task, taskDef, context) {
         case 'deactivate-furnace-heating':
             return executeDeactivateFurnaceHeating(task, context);
 
+        case 'activate-production':
+            return executeActivateProduction(task, context);
+
+        case 'deactivate-production':
+            return executeDeactivateProduction(task, context);
+
         default:
             if (MANAGEMENT_DEBUG) console.log(`[Management] Unknown task type: ${task.type}`);
             return context;
@@ -450,6 +456,14 @@ function checkManagementTaskActivation(activeManagementTasks, context) {
 
             case 'deactivate-furnace-heating':
                 shouldActivate = checkDeactivateFurnaceHeatingActivation(task, context);
+                break;
+
+            case 'activate-production':
+                shouldActivate = checkActivateProductionActivation(task, context);
+                break;
+
+            case 'deactivate-production':
+                shouldActivate = checkDeactivateProductionActivation(task, context);
                 break;
 
             default:
@@ -880,6 +894,184 @@ function hasMaterialsForSmelterTask(smelterTask, context) {
     }
 
     return false;
+}
+
+/**
+ * Find the production task that produces a given output material
+ * Searches smelter, masonry, and enrichment task registries
+ * @param {string} outputMaterialId - The output material ID to find
+ * @param {Object} context - Game state context
+ * @returns {Object|null} - { taskId, facility } or null if not found
+ */
+function findProductionTaskForMaterial(outputMaterialId, context) {
+    const facilities = [
+        { name: 'smelter', data: context.smelterTasksData, tasks: context.smelterTasks },
+        { name: 'masonry', data: context.masonryTasksData, tasks: context.masonryTasks },
+        { name: 'enrichment', data: context.enrichmentTasksData, tasks: context.enrichmentTasks }
+    ];
+
+    for (const facility of facilities) {
+        if (!facility.data || !facility.tasks) continue;
+        for (const [taskId, taskData] of Object.entries(facility.data)) {
+            if (taskData.output && taskData.output.material === outputMaterialId) {
+                return { taskId, facility: facility.name };
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Get the task array for a given facility name
+ * @param {string} facilityName - 'smelter', 'masonry', or 'enrichment'
+ * @param {Object} context - Game state context
+ * @returns {Array|null} - The task priority array
+ */
+function getTaskArrayForFacility(facilityName, context) {
+    switch (facilityName) {
+        case 'smelter': return context.smelterTasks;
+        case 'masonry': return context.masonryTasks;
+        case 'enrichment': return context.enrichmentTasks;
+        default: return null;
+    }
+}
+
+/**
+ * Check if activate-production task should activate
+ * Activates when output material stock falls below threshold AND the production task is currently inactive (below do-nothing)
+ */
+function checkActivateProductionActivation(task, context) {
+    const outputMaterialId = task.values.outputMaterial;
+    const maxStock = task.values.maxStock || 50;
+    const currentStock = context.materialsStock[outputMaterialId] || 0;
+
+    // Only activate if stock is below threshold
+    if (currentStock >= maxStock) return false;
+
+    // Find which production task produces this material
+    const productionTask = findProductionTaskForMaterial(outputMaterialId, context);
+    if (!productionTask) return false;
+
+    // Check if the task is currently inactive (below do-nothing or do-nothing is first)
+    const taskArray = getTaskArrayForFacility(productionTask.facility, context);
+    if (!taskArray) return false;
+
+    const doNothingIndex = taskArray.indexOf('do-nothing');
+    const taskIndex = taskArray.indexOf(productionTask.taskId);
+
+    // Task not in array - can't activate
+    if (taskIndex === -1) return false;
+
+    // Task is already active (above do-nothing or do-nothing doesn't exist)
+    if (doNothingIndex === -1 || taskIndex < doNothingIndex) return false;
+
+    return true;
+}
+
+/**
+ * Check if deactivate-production task should activate
+ * Activates when output material stock exceeds threshold AND the production task is currently active (above do-nothing)
+ */
+function checkDeactivateProductionActivation(task, context) {
+    const outputMaterialId = task.values.outputMaterial;
+    const minStock = task.values.minStock || 200;
+    const currentStock = context.materialsStock[outputMaterialId] || 0;
+
+    // Only activate if stock exceeds threshold
+    if (currentStock <= minStock) return false;
+
+    // Find which production task produces this material
+    const productionTask = findProductionTaskForMaterial(outputMaterialId, context);
+    if (!productionTask) return false;
+
+    // Check if the task is currently active (above do-nothing)
+    const taskArray = getTaskArrayForFacility(productionTask.facility, context);
+    if (!taskArray) return false;
+
+    const doNothingIndex = taskArray.indexOf('do-nothing');
+    const taskIndex = taskArray.indexOf(productionTask.taskId);
+
+    // Task not in array - can't deactivate
+    if (taskIndex === -1) return false;
+
+    // Task is already inactive (below do-nothing)
+    if (doNothingIndex >= 0 && taskIndex > doNothingIndex) return false;
+
+    // If do-nothing doesn't exist, task is always "active"
+    return true;
+}
+
+/**
+ * Execute activate-production task
+ * Moves the production task just before do-nothing (making it active with lowest priority among active tasks)
+ */
+function executeActivateProduction(task, context) {
+    const outputMaterialId = task.values.outputMaterial;
+    const productionTask = findProductionTaskForMaterial(outputMaterialId, context);
+    if (!productionTask) return context;
+
+    const taskArray = getTaskArrayForFacility(productionTask.facility, context);
+    if (!taskArray) return context;
+
+    const taskIndex = taskArray.indexOf(productionTask.taskId);
+    if (taskIndex === -1) return context;
+
+    // Remove from current position
+    taskArray.splice(taskIndex, 1);
+
+    // Insert just before do-nothing
+    const doNothingIndex = taskArray.indexOf('do-nothing');
+    if (doNothingIndex >= 0) {
+        taskArray.splice(doNothingIndex, 0, productionTask.taskId);
+    } else {
+        // No do-nothing found, add at end (all tasks are active)
+        taskArray.push(productionTask.taskId);
+    }
+
+    if (MANAGEMENT_DEBUG) {
+        const mat = context.materials[outputMaterialId];
+        const matName = mat ? mat.name : outputMaterialId;
+        console.log(`[Management] Activated production of ${matName} (task: ${productionTask.taskId}, facility: ${productionTask.facility})`);
+    }
+
+    return context;
+}
+
+/**
+ * Execute deactivate-production task
+ * Moves the production task just after do-nothing (making it inactive with highest priority among inactive tasks)
+ */
+function executeDeactivateProduction(task, context) {
+    const outputMaterialId = task.values.outputMaterial;
+    const productionTask = findProductionTaskForMaterial(outputMaterialId, context);
+    if (!productionTask) return context;
+
+    const taskArray = getTaskArrayForFacility(productionTask.facility, context);
+    if (!taskArray) return context;
+
+    const taskIndex = taskArray.indexOf(productionTask.taskId);
+    if (taskIndex === -1) return context;
+
+    // Remove from current position
+    taskArray.splice(taskIndex, 1);
+
+    // Insert just after do-nothing
+    const doNothingIndex = taskArray.indexOf('do-nothing');
+    if (doNothingIndex >= 0) {
+        taskArray.splice(doNothingIndex + 1, 0, productionTask.taskId);
+    } else {
+        // No do-nothing found, add at end
+        taskArray.push(productionTask.taskId);
+    }
+
+    if (MANAGEMENT_DEBUG) {
+        const mat = context.materials[outputMaterialId];
+        const matName = mat ? mat.name : outputMaterialId;
+        console.log(`[Management] Deactivated production of ${matName} (task: ${productionTask.taskId}, facility: ${productionTask.facility})`);
+    }
+
+    return context;
 }
 
 // Note: calculateTradeBonus, getSmelterInputMaterials, and calculateNonCraftableMaterialsTotal
