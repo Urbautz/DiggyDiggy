@@ -172,6 +172,15 @@ const SMELTER_HARDNESS_DIVISOR = 8; // Divide material hardness by this to get s
 const SMELTER_CAPACITY_BONUS_PER_LEVEL = 1; // +1 item per smelting operation per research level
 
 // ============================================================================
+// CENTRIFUGE CONSTANTS
+// ============================================================================
+
+const CENTRIFUGE_MAX_TENSION_LIMIT = 10000; // Absolute maximum tension
+const CENTRIFUGE_TENSION_DECAY_RATE = 0.001; // 0.1% decay per tick
+const CENTRIFUGE_BASE_TENSION = 0; // Minimum tension value
+const CENTRIFUGE_PRESTRESS_TICKS_REQUIRED = 1; // Completes every tick
+
+// ============================================================================
 // TASK PRIORITY CONSTANTS
 // ============================================================================
 

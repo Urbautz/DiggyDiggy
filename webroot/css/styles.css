@@ -2047,6 +2047,23 @@ header, footer {
     background: #1a2a3a;
 }
 
+/* Centrifuge Tension Panel */
+.centrifuge-tension-panel {
+    background: linear-gradient(135deg, rgba(0, 188, 212, 0.08), rgba(38, 166, 154, 0.04));
+    border-color: rgba(0, 188, 212, 0.25);
+}
+
+.centrifuge-tension-panel .smelter-temp-control-header {
+    color: #4dd0e1;
+}
+
+.centrifuge-tension-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, #4488ff, #4dd0e1, #ff8800, #ff4444);
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
 /* Task Details Modal Styles */
 .task-detail-section {
     margin-bottom: 20px;
@@ -2528,6 +2545,11 @@ header, footer {
 
 /* Custom width for the Smelter Modal */
 #smelter-modal .modal-dialog {
+    width: clamp(437px, 62vw, 780px);
+}
+
+/* Custom width for the Enrichment/Zentrifuge Modal */
+#enrichment-modal .modal-dialog {
     width: clamp(437px, 62vw, 780px);
 }
 

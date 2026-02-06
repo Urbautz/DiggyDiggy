@@ -1351,7 +1351,12 @@ let smelterHeatingMode = false; // Track if we're currently in heating mode (for
 // ============================================================================
 // ENRICHMENT REGISTRY
 // ============================================================================
-// Enrichment tasks for processing rare ores (no temperature required)
+// Centrifuge tension system
+let centrifugeTension = 0;          // Current tension (0-10000)
+let centrifugeMaxTension = 2500;    // User-configurable target threshold (steps of 250)
+let centrifugePressingMode = false; // Hysteresis: true when pressing, false when target reached
+
+// Enrichment tasks for processing rare ores
 const enrichmentTasksData = {
   'do-nothing': {
     name: 'Do Nothing',
@@ -1360,13 +1365,23 @@ const enrichmentTasksData = {
     output: null,
     type: 'none'
   },
+  'prestress-centrifuge': {
+    name: 'Prestress Centrifuge',
+    description: 'Use strength to wind up the centrifuge, building tension for enrichment processes.',
+    input: null,
+    output: null,
+    type: 'prestress',
+    ticksRequired: CENTRIFUGE_PRESTRESS_TICKS_REQUIRED,
+    hardness: 1
+  },
   'enrich-wolfram': {
     name: 'Enrich Wolfram',
     description: 'Enrich wolfram ore through advanced processing.',
     input: { material: 'wolfram ore', amount: 1 },
     output: { material: 'wolfram', amount: 1 },
     ticksRequired: 125,
-    hardness: 105
+    hardness: 105,
+    minTension: 42
   },
   'enrich-uranium': {
     name: 'Enrich Uranium',
@@ -1374,7 +1389,8 @@ const enrichmentTasksData = {
     input: { material: 'uranium ore', amount: 1 },
     output: { material: 'uranium', amount: 1 },
     ticksRequired: 200,
-    hardness: 110
+    hardness: 110,
+    minTension: 250
   },
   'enrich-plutonium': {
     name: 'Enrich Plutonium',
@@ -1382,7 +1398,8 @@ const enrichmentTasksData = {
     input: { material: 'plutonium ore', amount: 1 },
     output: { material: 'plutonium', amount: 1 },
     ticksRequired: 350,
-    hardness: 115
+    hardness: 115,
+    minTension: 750
   },
   'enrich-randomium': {
     name: 'Enrich Randomium',
@@ -1390,12 +1407,14 @@ const enrichmentTasksData = {
     input: { material: 'randomium ore', amount: 1 },
     output: { material: 'randomium', amount: 1 },
     ticksRequired: 1337,
-    hardness: 120
+    hardness: 120,
+    minTension: 1337
   }
 };
 
 // Ordered array of enrichment task IDs (determines task priority)
 let enrichmentTasks = [
+    'prestress-centrifuge',
     'enrich-wolfram',
     'enrich-uranium',
     'enrich-plutonium',
