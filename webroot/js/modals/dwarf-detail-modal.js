@@ -1029,7 +1029,7 @@ function populateDwarfDetailTemplate(dwarf, includeToolSelector = true) {
         return card;
     };
 
-    const energyLevel = Math.round(Math.log((dwarf.maxEnergy || 100) / 100) / Math.log(DWARF_LEVELUP_ENERGY_MULTIPLIER));
+    const energyLevel = Math.round(((dwarf.maxEnergy || 100) - 100) / DWARF_LEVELUP_ENERGY_BONUS);
 
     // Calculate Ruby energy prevention chance for display
     let rubyEnergyChance = 0;
@@ -1268,7 +1268,7 @@ function applyLevelUp(dwarf, upgradeType) {
             console.log(`Leveled up dig power: ${actualDwarf.digPower}`);
             break;
         case 'maxEnergy':
-            actualDwarf.maxEnergy = Math.floor((actualDwarf.maxEnergy || 100) * DWARF_LEVELUP_ENERGY_MULTIPLIER);
+            actualDwarf.maxEnergy = (actualDwarf.maxEnergy || 100) + DWARF_LEVELUP_ENERGY_BONUS;
             actualDwarf.energy = Math.min(actualDwarf.energy, actualDwarf.maxEnergy); // Cap current energy
             console.log(`Leveled up max energy: ${actualDwarf.maxEnergy}`);
             break;

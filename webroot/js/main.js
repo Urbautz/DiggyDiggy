@@ -3087,6 +3087,15 @@ function loadGame() {
                 const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
                 dwarf.taskPriorityHigh.splice(smeltingIndex + 1, 0, 'enriching');
             }
+
+            // Migration: Convert old exponential maxEnergy to new linear scaling (+30 per level)
+            // Old formula: 100 * 1.2^n -> New formula: 100 + 30*n
+            const currentMax = dwarf.maxEnergy || 100;
+            if (currentMax !== 100) {
+                const energyLevels = Math.round(Math.log(currentMax / 100) / Math.log(1.2));
+                dwarf.maxEnergy = 100 + energyLevels * DWARF_LEVELUP_ENERGY_BONUS;
+                dwarf.energy = Math.min(dwarf.energy, dwarf.maxEnergy);
+            }
         }
 
         startX = gameState.startX || 0;
