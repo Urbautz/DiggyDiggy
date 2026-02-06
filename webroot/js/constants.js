@@ -35,7 +35,7 @@ function getDwarfXpForLevel(level) {
     return Math.round(50 * Math.pow(level, 1.4));
 }
 const DWARF_STRIKE_BASE_CHANCE = 0.3; // 30% chance to continue without pay
-const DWARF_LEVELUP_ENERGY_MULTIPLIER = 1.2; // 20% energy increase on levelup
+const DWARF_LEVELUP_ENERGY_BONUS = 30; // +30 max energy per levelup
 const DWARF_LEVELUP_STRENGTH_BONUS = 5; // Bucket capacity increase per strength point
 const DWARF_RESET_COST_PER_LEVEL = 1000; // Gold cost per level to reset points
 
@@ -170,6 +170,15 @@ const SMELTER_WISDOM_PROBABILITY_BONUS = 2; // 2% success bonus per wisdom point
 const SMELTER_MIN_SUCCESS_CHANCE = 0.25; // Minimum 25% success chance per attempt
 const SMELTER_HARDNESS_DIVISOR = 8; // Divide material hardness by this to get smelting difficulty
 const SMELTER_CAPACITY_BONUS_PER_LEVEL = 1; // +1 item per smelting operation per research level
+
+// ============================================================================
+// CENTRIFUGE CONSTANTS
+// ============================================================================
+
+const CENTRIFUGE_MAX_TENSION_LIMIT = 10000; // Absolute maximum tension
+const CENTRIFUGE_TENSION_DECAY_RATE = 0.001; // 0.1% decay per tick
+const CENTRIFUGE_BASE_TENSION = 0; // Minimum tension value
+const CENTRIFUGE_PRESTRESS_TICKS_REQUIRED = 1; // Completes every tick
 
 // ============================================================================
 // TASK PRIORITY CONSTANTS

@@ -181,8 +181,13 @@ function countActionableEnrichmentTasks() {
         const task = enrichmentTasksData[taskId];
         if (!task) continue;
 
+        // Skip prestress task in count
+        if (task.type === 'prestress') continue;
+
         // Use shared helper to check material availability
         if (hasMaterialsForTask(task, materialsStock)) {
+            // Check tension requirement
+            if (task.minTension && centrifugeTension < task.minTension) continue;
             count++;
         }
     }
@@ -2666,6 +2671,10 @@ function initWorker() {
                     }
                 }
 
+                // Update centrifuge tension state from worker
+                if (data.centrifugeTension !== undefined) centrifugeTension = data.centrifugeTension;
+                if (data.centrifugePressingMode !== undefined) centrifugePressingMode = data.centrifugePressingMode;
+
                 // Update one-time investments from worker
                 if (data.oneTimeInvestments !== undefined) {
                     oneTimeInvestments = data.oneTimeInvestments;
@@ -2813,6 +2822,9 @@ function initWorker() {
             smelterCoalMinTemp,
             smelterCoalMaxTemp,
             smelterMagmaMinTemp,
+            centrifugeTension,
+            centrifugeMaxTension,
+            centrifugePressingMode,
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
             activeManagementTasks: activeManagementTasks || [],
@@ -2891,6 +2903,9 @@ function saveGame() {
             smelterCoalMaxTemp: smelterCoalMaxTemp,
             smelterMagmaMinTemp: smelterMagmaMinTemp,
             smelterHeatingMode: smelterHeatingMode,
+            centrifugeTension: centrifugeTension,
+            centrifugeMaxTension: centrifugeMaxTension,
+            centrifugePressingMode: centrifugePressingMode,
             hasForgedHighHardnessTool: hasForgedHighHardnessTool,
             oneTimeInvestments: oneTimeInvestments || [],
             nextInvestmentId: nextInvestmentId || 1,
@@ -3072,6 +3087,15 @@ function loadGame() {
                 const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
                 dwarf.taskPriorityHigh.splice(smeltingIndex + 1, 0, 'enriching');
             }
+
+            // Migration: Convert old exponential maxEnergy to new linear scaling (+30 per level)
+            // Old formula: 100 * 1.2^n -> New formula: 100 + 30*n
+            const currentMax = dwarf.maxEnergy || 100;
+            if (currentMax !== 100) {
+                const energyLevels = Math.round(Math.log(currentMax / 100) / Math.log(1.2));
+                dwarf.maxEnergy = 100 + energyLevels * DWARF_LEVELUP_ENERGY_BONUS;
+                dwarf.energy = Math.min(dwarf.energy, dwarf.maxEnergy);
+            }
         }
 
         startX = gameState.startX || 0;
@@ -3220,6 +3244,11 @@ function loadGame() {
         if (gameState.enrichmentTasks && Array.isArray(gameState.enrichmentTasks)) {
             // Filter out any that don't exist in enrichmentTasksData
             enrichmentTasks = gameState.enrichmentTasks.filter(id => enrichmentTasksData[id]);
+
+            // Migration: Add 'prestress-centrifuge' if missing (added in tension update)
+            if (!enrichmentTasks.includes('prestress-centrifuge') && enrichmentTasksData['prestress-centrifuge']) {
+                enrichmentTasks.unshift('prestress-centrifuge');
+            }
         }
         // Note: If enrichmentTasks is not in saved game, we'll use the default from defs.js
 
@@ -3229,6 +3258,11 @@ function loadGame() {
         if (gameState.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = gameState.smelterCoalMaxTemp;
         if (gameState.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = gameState.smelterMagmaMinTemp;
         if (gameState.smelterHeatingMode !== undefined) smelterHeatingMode = gameState.smelterHeatingMode;
+
+        // Restore centrifuge tension state
+        if (gameState.centrifugeTension !== undefined) centrifugeTension = gameState.centrifugeTension;
+        if (gameState.centrifugeMaxTension !== undefined) centrifugeMaxTension = gameState.centrifugeMaxTension;
+        if (gameState.centrifugePressingMode !== undefined) centrifugePressingMode = gameState.centrifugePressingMode;
 
         // Restore forge state
         if (gameState.hasForgedHighHardnessTool !== undefined) hasForgedHighHardnessTool = gameState.hasForgedHighHardnessTool;

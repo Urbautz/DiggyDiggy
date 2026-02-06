@@ -171,7 +171,7 @@ function formatManagementValue(key, value, valueDef) {
     if (valueDef && valueDef.type === 'checkbox') {
         return value ? '✓' : '✗';
     }
-    if (valueDef && (valueDef.type === 'material-dropdown' || valueDef.type === 'gem-dropdown')) {
+    if (valueDef && (valueDef.type === 'material-dropdown' || valueDef.type === 'gem-dropdown' || valueDef.type === 'production-output-dropdown')) {
         // Handle "any" special value for gem-dropdown
         if (value === 'any') return 'Any Gem Type';
         const mat = getMaterialById(value);
@@ -381,6 +381,38 @@ function updateTaskValueFields() {
                 option.textContent = matData.name;
                 if (matId === defaultValue) option.selected = true;
                 input.appendChild(option);
+            }
+        } else if (fieldType === 'production-output-dropdown') {
+            // Production output material dropdown (smelter + masonry + enrichment outputs)
+            input = document.createElement('select');
+            input.className = 'management-input';
+            input.id = `task-value-${key}`;
+
+            const facilities = [
+                { name: 'Smelter', data: smelterTasksData },
+                { name: 'Masonry', data: masonryTasksData },
+                { name: 'Enrichment', data: enrichmentTasksData }
+            ];
+
+            for (const facility of facilities) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = facility.name;
+                let hasOptions = false;
+
+                for (const [taskId, taskData] of Object.entries(facility.data)) {
+                    if (!taskData.output || !taskData.output.material) continue;
+                    if (taskData.type === 'none' || taskData.type === 'heating') continue;
+
+                    const mat = materials[taskData.output.material];
+                    const option = document.createElement('option');
+                    option.value = taskData.output.material;
+                    option.textContent = mat ? mat.name : taskData.output.material;
+                    if (taskData.output.material === defaultValue) option.selected = true;
+                    optgroup.appendChild(option);
+                    hasOptions = true;
+                }
+
+                if (hasOptions) input.appendChild(optgroup);
             }
         } else if (fieldType === 'checkbox') {
             // Checkbox input
@@ -621,6 +653,38 @@ function populateEditTaskModal(task, taskDef) {
                 option.textContent = matData.name;
                 if (matId === currentValue) option.selected = true;
                 input.appendChild(option);
+            }
+        } else if (fieldType === 'production-output-dropdown') {
+            // Production output material dropdown (smelter + masonry + enrichment outputs)
+            input = document.createElement('select');
+            input.className = 'management-input';
+            input.id = `edit-task-value-${key}`;
+
+            const facilities = [
+                { name: 'Smelter', data: smelterTasksData },
+                { name: 'Masonry', data: masonryTasksData },
+                { name: 'Enrichment', data: enrichmentTasksData }
+            ];
+
+            for (const facility of facilities) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = facility.name;
+                let hasOptions = false;
+
+                for (const [taskId, taskData] of Object.entries(facility.data)) {
+                    if (!taskData.output || !taskData.output.material) continue;
+                    if (taskData.type === 'none' || taskData.type === 'heating') continue;
+
+                    const mat = materials[taskData.output.material];
+                    const option = document.createElement('option');
+                    option.value = taskData.output.material;
+                    option.textContent = mat ? mat.name : taskData.output.material;
+                    if (taskData.output.material === currentValue) option.selected = true;
+                    optgroup.appendChild(option);
+                    hasOptions = true;
+                }
+
+                if (hasOptions) input.appendChild(optgroup);
             }
         } else if (fieldType === 'checkbox') {
             // Checkbox input

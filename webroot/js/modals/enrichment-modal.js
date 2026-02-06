@@ -2,7 +2,7 @@
 // ENRICHMENT MODAL FUNCTIONS
 // ============================================================================
 // This file contains all functions related to the enrichment modal
-// Enrichment handles rare ore processing (no temperature required)
+// Enrichment handles rare ore processing with centrifuge tension system
 
 /**
  * Get the task ID that is currently being worked on at the enrichment facility (if any)
@@ -18,10 +18,20 @@ function getCurrentActiveEnrichmentTask() {
         if (taskId === 'do-nothing') return null;
         const task = enrichmentTasksData[taskId];
 
+        // Prestress task: actionable if in pressing mode
+        if (task.type === 'prestress') {
+            if (centrifugePressingMode) return taskId;
+            continue;
+        }
+
         // Check if task has required materials
         if (task.input && task.input.material) {
             const stockAmount = materialsStock[task.input.material] || 0;
-            if (stockAmount >= task.input.amount) return taskId;
+            if (stockAmount >= task.input.amount) {
+                // Check tension requirement
+                if (task.minTension && centrifugeTension < task.minTension) continue;
+                return taskId;
+            }
         }
     }
 
@@ -39,6 +49,153 @@ function calculateEnrichmentTaskAvailableRuns(task) {
     return 0;
 }
 
+// Create a threshold control row for the centrifuge tension panel
+function createTensionThresholdControl(label, valueId, currentValue, adjustFunctionName, step) {
+    const row = document.createElement('div');
+    row.className = 'smelter-temp-threshold-row';
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'smelter-temp-threshold-label';
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'smelter-temp-threshold-controls';
+
+    const decreaseBtn = document.createElement('button');
+    decreaseBtn.className = 'smelter-temp-btn';
+    decreaseBtn.textContent = `-${step}`;
+    decreaseBtn.onclick = () => {
+        window[adjustFunctionName](-step);
+        updateCentrifugeTensionPanel();
+    };
+    controlsDiv.appendChild(decreaseBtn);
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'smelter-temp-threshold-value';
+    valueSpan.id = valueId;
+    valueSpan.textContent = `${currentValue}`;
+    controlsDiv.appendChild(valueSpan);
+
+    const increaseBtn = document.createElement('button');
+    increaseBtn.className = 'smelter-temp-btn';
+    increaseBtn.textContent = `+${step}`;
+    increaseBtn.onclick = () => {
+        window[adjustFunctionName](step);
+        updateCentrifugeTensionPanel();
+    };
+    controlsDiv.appendChild(increaseBtn);
+
+    row.appendChild(controlsDiv);
+    return row;
+}
+
+// Create the centrifuge tension control panel
+function createCentrifugeTensionPanel() {
+    const currentTension = Math.round(centrifugeTension);
+    const maxTension = CENTRIFUGE_MAX_TENSION_LIMIT;
+    const tensionPercent = Math.min(100, (centrifugeTension / maxTension) * 100);
+    const tensionColor = currentTension > 7500 ? '#ff4444'
+                       : currentTension > 5000 ? '#ff8800'
+                       : currentTension > 1000 ? '#ffbb00'
+                       : '#88ccff';
+
+    const panel = document.createElement('div');
+    panel.className = 'smelter-temp-control-panel centrifuge-tension-panel';
+    panel.id = 'centrifuge-tension-panel';
+
+    // Section header
+    const header = document.createElement('div');
+    header.className = 'smelter-temp-control-header';
+    header.innerHTML = '<span class="smelter-temp-control-icon">⚙️</span> Centrifuge Tension';
+    panel.appendChild(header);
+
+    // Tension bar
+    const barContainer = document.createElement('div');
+    barContainer.className = 'smelter-temp-bar-container';
+    barContainer.id = 'centrifuge-tension-bar-container';
+
+    const bar = document.createElement('div');
+    bar.className = 'centrifuge-tension-bar-fill';
+    bar.id = 'centrifuge-tension-bar';
+    bar.style.width = `${tensionPercent}%`;
+    barContainer.appendChild(bar);
+    panel.appendChild(barContainer);
+
+    // Current tension display
+    const tensionDisplay = document.createElement('div');
+    tensionDisplay.className = 'smelter-temp-current-display';
+    tensionDisplay.id = 'centrifuge-tension-display';
+    tensionDisplay.innerHTML = `<strong>Tension:</strong> <span id="centrifuge-tension-value" style="color: ${tensionColor}; font-weight: bold;">${currentTension}</span> / ${maxTension}`;
+    panel.appendChild(tensionDisplay);
+
+    // Max tension threshold subsection
+    const thresholdSection = document.createElement('div');
+    thresholdSection.className = 'smelter-temp-subsection';
+
+    const thresholdHeader = document.createElement('div');
+    thresholdHeader.className = 'smelter-temp-subsection-title';
+    thresholdHeader.textContent = '🎯 Target Tension';
+    thresholdSection.appendChild(thresholdHeader);
+
+    const thresholdControls = document.createElement('div');
+    thresholdControls.className = 'smelter-temp-controls-grid';
+    thresholdControls.appendChild(
+        createTensionThresholdControl('Max Tension', 'centrifuge-max-tension-value', centrifugeMaxTension, 'adjustCentrifugeMaxTension', 250)
+    );
+    thresholdSection.appendChild(thresholdControls);
+    panel.appendChild(thresholdSection);
+
+    return panel;
+}
+
+// Efficiently update centrifuge tension panel values
+function updateCentrifugeTensionPanel() {
+    const panel = document.getElementById('centrifuge-tension-panel');
+    if (!panel) return;
+
+    const currentTension = Math.round(centrifugeTension);
+    const maxTension = CENTRIFUGE_MAX_TENSION_LIMIT;
+    const tensionPercent = Math.min(100, (centrifugeTension / maxTension) * 100);
+    const tensionColor = currentTension > 7500 ? '#ff4444'
+                       : currentTension > 5000 ? '#ff8800'
+                       : currentTension > 1000 ? '#ffbb00'
+                       : '#88ccff';
+
+    // Update bar
+    const bar = document.getElementById('centrifuge-tension-bar');
+    if (bar) bar.style.width = `${tensionPercent}%`;
+
+    // Update tension value
+    const tensionValue = document.getElementById('centrifuge-tension-value');
+    if (tensionValue) {
+        tensionValue.textContent = `${currentTension}`;
+        tensionValue.style.color = tensionColor;
+    }
+
+    // Update max tension threshold value
+    const maxTensionValue = document.getElementById('centrifuge-max-tension-value');
+    if (maxTensionValue) maxTensionValue.textContent = `${centrifugeMaxTension}`;
+}
+
+// Adjust centrifuge max tension setting
+window.adjustCentrifugeMaxTension = function(amount) {
+    centrifugeMaxTension = Math.max(0, Math.min(CENTRIFUGE_MAX_TENSION_LIMIT, centrifugeMaxTension + amount));
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                centrifugeMaxTension: centrifugeMaxTension
+            }
+        });
+    }
+
+    saveGame();
+    populateEnrichment();
+}
+
 function populateEnrichment() {
     const container = document.getElementById('enrichment-content');
     if (!container) return;
@@ -50,6 +207,10 @@ function populateEnrichment() {
     headerDesc.className = 'smelter-description';
     headerDesc.textContent = 'Set the priority of Zentrifuge tasks. The facility will work on tasks from top to bottom.';
     container.appendChild(headerDesc);
+
+    // Centrifuge tension control panel
+    const tensionPanel = createCentrifugeTensionPanel();
+    container.appendChild(tensionPanel);
 
     // Task list container
     const taskList = document.createElement('div');
@@ -93,15 +254,24 @@ function populateEnrichment() {
         // Check if this task is unreachable (below "do-nothing")
         const isUnreachable = doNothingIndex >= 0 && index > doNothingIndex && taskId !== 'do-nothing';
 
-        // Check if this task is actionable (has enough materials)
+        // Check if this task is actionable
         let isActionable = false;
         let stockAmount = 0;
+        let isTensionBlocked = false;
         if (taskId === 'do-nothing') {
-            isActionable = true; // "Do nothing" is always "actionable"
+            isActionable = true;
+        } else if (task.type === 'prestress') {
+            isActionable = centrifugePressingMode;
         } else {
             if (task.input && task.input.material) {
                 stockAmount = materialsStock[task.input.material] || 0;
-                isActionable = stockAmount >= task.input.amount;
+                const hasMaterials = stockAmount >= task.input.amount;
+                if (hasMaterials && task.minTension && centrifugeTension < task.minTension) {
+                    isTensionBlocked = true;
+                    isActionable = false;
+                } else {
+                    isActionable = hasMaterials;
+                }
             }
         }
 
@@ -113,6 +283,10 @@ function populateEnrichment() {
             taskRow.classList.add('smelter-task-unreachable');
         } else if (isActionable) {
             taskRow.classList.add('smelter-task-actionable');
+        } else if (task.type === 'prestress' && !centrifugePressingMode) {
+            taskRow.classList.add('smelter-task-temp-ok');
+        } else if (isTensionBlocked) {
+            taskRow.classList.add('smelter-task-temp-low');
         }
 
         if (isActiveTask) {
@@ -128,9 +302,15 @@ function populateEnrichment() {
         } else if (isActiveTask) {
             statusIndicator.textContent = '🧍';
             statusIndicator.title = 'Currently being worked on';
+        } else if (task.type === 'prestress' && !centrifugePressingMode) {
+            statusIndicator.textContent = '⚙️';
+            statusIndicator.title = 'Tension adequate - no prestress needed';
         } else if (isActionable) {
             statusIndicator.textContent = '✅';
-            statusIndicator.title = 'Ready - materials available';
+            statusIndicator.title = 'Ready';
+        } else if (isTensionBlocked) {
+            statusIndicator.textContent = '🌀';
+            statusIndicator.title = `Tension too low - need ${task.minTension}, current ${Math.round(centrifugeTension)}`;
         } else {
             statusIndicator.textContent = '⏳';
             statusIndicator.title = 'Waiting for materials';
@@ -152,7 +332,7 @@ function populateEnrichment() {
         taskRecipe.className = 'smelter-task-recipe';
 
         // For tasks with progress, show progress
-        if (task.progress !== undefined && task.progress > 0) {
+        if (task.progress !== undefined && task.progress > 0 && task.type !== 'prestress') {
             const progress = task.progress;
             const ticksRequired = task.ticksRequired;
             const percentage = Math.round((progress / ticksRequired) * 100);
@@ -160,15 +340,26 @@ function populateEnrichment() {
             const runsText = availableRuns > 1 ? ` (${availableRuns - 1} more available)` : '';
             taskRecipe.textContent = `Progress: ${progress}/${ticksRequired} ticks (${percentage}%)${runsText}`;
             taskRecipe.classList.add('recipe-ready');
+        } else if (task.type === 'prestress') {
+            // Prestress centrifuge task
+            const currentTension = Math.round(centrifugeTension);
+            if (centrifugePressingMode) {
+                taskRecipe.textContent = `Winding up... (${currentTension} / ${centrifugeMaxTension})`;
+                taskRecipe.classList.add('recipe-ready');
+            } else {
+                taskRecipe.textContent = `Tension at target (${currentTension} / ${centrifugeMaxTension})`;
+                taskRecipe.classList.add('recipe-blocked');
+            }
         } else if (task.input && task.output) {
-            // Single input/output with stock counts
+            // Single input/output with stock counts and tension requirement
             const inputMat = getMaterialById(task.input.material);
             const outputMat = getMaterialById(task.output.material);
             const inputName = inputMat ? inputMat.name : task.input.material;
             const outputName = outputMat ? outputMat.name : task.output.material;
             const stock = materialsStock[task.input.material] || 0;
+            const tensionReq = task.minTension ? ` @ ${task.minTension} tension` : '';
 
-            taskRecipe.textContent = `${task.input.amount}× ${inputName} (${stock}) → ${task.output.amount}× ${outputName}`;
+            taskRecipe.textContent = `${task.input.amount}× ${inputName} (${stock}) → ${task.output.amount}× ${outputName}${tensionReq}`;
 
             if (!isActionable && !isUnreachable) {
                 taskRecipe.classList.add('recipe-blocked');
@@ -408,7 +599,27 @@ function updateEnrichmentTasksDisplay() {
                 }
             }
         }
+
+        // Update prestress task recipe text
+        if (task.type === 'prestress') {
+            const taskRecipe = taskRow.querySelector('.smelter-task-recipe');
+            if (taskRecipe) {
+                const currentTension = Math.round(centrifugeTension);
+                if (centrifugePressingMode) {
+                    taskRecipe.textContent = `Winding up... (${currentTension} / ${centrifugeMaxTension})`;
+                    taskRecipe.classList.remove('recipe-blocked');
+                    taskRecipe.classList.add('recipe-ready');
+                } else {
+                    taskRecipe.textContent = `Tension at target (${currentTension} / ${centrifugeMaxTension})`;
+                    taskRecipe.classList.remove('recipe-ready');
+                    taskRecipe.classList.add('recipe-blocked');
+                }
+            }
+        }
     });
+
+    // Update the tension control panel
+    updateCentrifugeTensionPanel();
 }
 
 /**

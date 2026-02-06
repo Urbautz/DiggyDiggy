@@ -58,6 +58,11 @@ let smelterCoalMaxTemp = 1200; // Maximum temperature for coal heating (user con
 let smelterMagmaMinTemp = 25; // Minimum temperature for magma heating (user configurable)
 let smelterHeatingMode = false; // Track if we're currently in heating mode (for hysteresis)
 
+// Centrifuge tension system
+let centrifugeTension = 0;          // Current tension (0-10000)
+let centrifugeMaxTension = 2500;    // User-configurable target threshold (steps of 250)
+let centrifugePressingMode = false; // Hysteresis: true when pressing, false when target reached
+
 // Reservation maps (coordinate -> dwarf name who reserved the cell)
 const reservedDigBy = new Map();
 let researchReservedBy = null; // Track which dwarf name has reserved the research cell
@@ -533,11 +538,19 @@ function enrichmentHasWork() {
         const task = enrichmentTasksData[taskId];
         if (!task) continue;
 
+        // Prestress task: actionable if tension < maxTension target
+        if (task.type === 'prestress') {
+            if (centrifugePressingMode) return true;
+            continue;
+        }
+
         // Check for single input
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
-                return true; // Found a task with enough materials
+                // Check tension requirement
+                if (task.minTension && centrifugeTension < task.minTension) continue;
+                return true; // Found a task with enough materials and tension
             }
         }
     }
@@ -657,6 +670,10 @@ function executeManagementTaskWrapper(task, taskDef) {
         researchQueue,
         smelterTasks,
         smelterTasksData,
+        masonryTasks,
+        masonryTasksData,
+        enrichmentTasks,
+        enrichmentTasksData,
         smelterCoalMinTemp,
         smelterCoalMaxTemp,
         smelterMagmaMinTemp,
@@ -739,10 +756,20 @@ function findActionableEnrichmentTask() {
         const task = enrichmentTasksData[taskId];
         if (!task) continue;
 
+        // Prestress task: actionable if in pressing mode
+        if (task.type === 'prestress') {
+            if (centrifugePressingMode) {
+                return { task: task, taskId: taskId };
+            }
+            continue;
+        }
+
         // Check for single input
         if (task.input && task.input.material && task.input.amount) {
             const stockAmount = materialsStock[task.input.material] || 0;
             if (stockAmount >= task.input.amount) {
+                // Check tension requirement
+                if (task.minTension && centrifugeTension < task.minTension) continue;
                 return { task: task, taskId: taskId };
             }
         }
@@ -970,8 +997,8 @@ function handleWorkshopTask(dwarf, workshopConfig) {
                 dwarf[currentTaskField] = null;
                 return; // Skip the rest of this tick
             }
-        } else if (task.type === 'heating') {
-            // Heating tasks always make progress
+        } else if (task.type === 'heating' || task.type === 'prestress') {
+            // Heating and prestress tasks always make progress
             totalProgressGained = 1;
         } else {
             // For other tasks without output, just increment by 1
@@ -1278,13 +1305,30 @@ function handleSmelterTaskOutput(task, dwarf, workshopType) {
     }
 }
 
-// Handle enrichment task output (simpler than smelter - no temperature, no break chance)
+// Handle enrichment task output (includes tension consumption)
 function handleEnrichmentTaskOutput(task, dwarf, workshopType) {
+    // Handle prestress task: add tension based on dwarf strength
+    if (task.type === 'prestress') {
+        const strength = getEffectiveStrength(dwarf);
+        const tensionGain = Math.max(1, strength); // Minimum 1 tension per tick
+        centrifugeTension = Math.min(centrifugeMaxTension, centrifugeTension + tensionGain);
+        // Check if we reached the target
+        if (centrifugeTension >= centrifugeMaxTension) {
+            centrifugePressingMode = false;
+        }
+        return;
+    }
+
     const outputMaterial = task.output.material;
     const outputAmount = task.output.amount;
 
     // Produce output materials
     materialsStock[outputMaterial] = (materialsStock[outputMaterial] || 0) + outputAmount;
+
+    // Consume tension
+    if (task.minTension) {
+        centrifugeTension = Math.max(CENTRIFUGE_BASE_TENSION, centrifugeTension - task.minTension);
+    }
 }
 
 // Note: calculateFurnitureBonuses is defined in utils.js
@@ -2749,6 +2793,10 @@ function checkManagementTaskActivationWrapper() {
         researchQueue,
         smelterTasks,
         smelterTasksData,
+        masonryTasks,
+        masonryTasksData,
+        enrichmentTasks,
+        enrichmentTasksData,
         managementTasks,
         startX,
         RESEARCH_COST_MULTIPLIER,
@@ -2770,6 +2818,22 @@ function tick() {
             const coolingReduction = insulationLevel * RESEARCH_FURNACE_INSULATION_BONUS;
             const coolingRate = SMELTER_COOLING_RATE * (1 - coolingReduction);
             smelterTemperature = Math.max(SMELTER_BASE_TEMPERATURE, smelterTemperature * (1 - coolingRate));
+        }
+
+        // Decay centrifuge tension
+        if (centrifugeTension > CENTRIFUGE_BASE_TENSION) {
+            centrifugeTension = Math.max(CENTRIFUGE_BASE_TENSION, centrifugeTension * (1 - CENTRIFUGE_TENSION_DECAY_RATE));
+            // Snap to 0 if very small
+            if (centrifugeTension < 0.5) centrifugeTension = 0;
+        }
+
+        // Update centrifuge pressing mode (hysteresis)
+        if (!centrifugePressingMode && centrifugeTension < centrifugeMaxTension * 0.5) {
+            // Start pressing when tension drops below 50% of target
+            centrifugePressingMode = true;
+        } else if (centrifugePressingMode && centrifugeTension >= centrifugeMaxTension) {
+            // Stop pressing when target is reached
+            centrifugePressingMode = false;
         }
 
         // Apply interest from Small Time Investments research
@@ -2931,6 +2995,8 @@ function tick() {
                 smelterTasks,
                 smelterTasksData,
                 enrichmentTasksData,
+                centrifugeTension,
+                centrifugePressingMode,
                 oneTimeInvestments,
                 nextInvestmentId,
                 activeManagementTasks,
@@ -3013,6 +3079,10 @@ self.addEventListener('message', (e) => {
             if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
             if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
             if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+            // Initialize centrifuge tension state
+            if (data.centrifugeTension !== undefined) centrifugeTension = data.centrifugeTension;
+            if (data.centrifugeMaxTension !== undefined) centrifugeMaxTension = data.centrifugeMaxTension;
+            if (data.centrifugePressingMode !== undefined) centrifugePressingMode = data.centrifugePressingMode;
             // Initialize one-time investments
             if (data.oneTimeInvestments) oneTimeInvestments = JSON.parse(JSON.stringify(data.oneTimeInvestments));
             if (data.nextInvestmentId !== undefined) nextInvestmentId = data.nextInvestmentId;
@@ -3103,6 +3173,9 @@ self.addEventListener('message', (e) => {
                 if (data.smelterCoalMaxTemp !== undefined) smelterCoalMaxTemp = data.smelterCoalMaxTemp;
                 if (data.smelterMagmaMinTemp !== undefined) smelterMagmaMinTemp = data.smelterMagmaMinTemp;
                 if (data.smelterHeatingMode !== undefined) smelterHeatingMode = data.smelterHeatingMode;
+                if (data.centrifugeMaxTension !== undefined) centrifugeMaxTension = data.centrifugeMaxTension;
+                if (data.centrifugeTension !== undefined) centrifugeTension = data.centrifugeTension;
+                if (data.centrifugePressingMode !== undefined) centrifugePressingMode = data.centrifugePressingMode;
                 if (data.activeManagementTasks !== undefined) {
                     activeManagementTasks = JSON.parse(JSON.stringify(data.activeManagementTasks));
                 }
