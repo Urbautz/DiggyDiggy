@@ -2988,115 +2988,7 @@ function loadGame() {
         
         // Restore game state
         grid = gameState.grid || [];
-
-        // Migrate old uppercase material IDs in grid to lowercase
-        for (let row of grid) {
-            if (row && Array.isArray(row)) {
-                for (let cell of row) {
-                    if (cell && cell.materialId) {
-                        cell.materialId = cell.materialId.toLowerCase();
-                    }
-                }
-            }
-        }
-
         dwarfs = gameState.dwarfs || [];
-
-        // Sanitize dwarf buckets - fix any corrupted gem data and migrate material IDs to lowercase
-        for (const dwarf of dwarfs) {
-            if (dwarf.bucket) {
-                const sanitizedBucket = {};
-                for (const [key, value] of Object.entries(dwarf.bucket)) {
-                    // Migrate material ID key to lowercase
-                    const lowercaseKey = key.toLowerCase();
-
-                    // If value is an object (corrupted gem data), convert to 1
-                    // If value is a number, keep it
-                    // If value is a string like "[object Object]11", extract the number or default to 1
-                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        sanitizedBucket[lowercaseKey] = 1;
-                    } else if (typeof value === 'string') {
-                        // Try to extract number from corrupted string like "[object Object]11"
-                        const match = value.match(/\d+$/);
-                        sanitizedBucket[lowercaseKey] = match ? parseInt(match[0]) : 1;
-                    } else if (Array.isArray(value)) {
-                        sanitizedBucket[lowercaseKey] = value.length;
-                    } else if (typeof value === 'number') {
-                        sanitizedBucket[lowercaseKey] = value;
-                    } else {
-                        sanitizedBucket[lowercaseKey] = 1;
-                    }
-                }
-                dwarf.bucket = sanitizedBucket;
-            }
-
-            // Migration: Convert old two-tier system to new three-tier system
-            if (dwarf.taskPriority && !dwarf.taskPriorityNormal) {
-                // Old system detected - migrate to new system
-                dwarf.taskPriorityHigh = [];
-                dwarf.taskPriorityNormal = [...dwarf.taskPriority];
-                dwarf.taskPriorityNone = dwarf.taskBlacklist ? [...dwarf.taskBlacklist] : [];
-                // Clean up old properties
-                delete dwarf.taskPriority;
-                delete dwarf.taskBlacklist;
-            }
-
-            // Migration: Ensure new three-tier system exists
-            if (!dwarf.taskPriorityHigh) dwarf.taskPriorityHigh = [];
-            if (!dwarf.taskPriorityNormal) dwarf.taskPriorityNormal = ['digging', 'research', 'smelting', 'managing'];
-            if (!dwarf.taskPriorityNone) dwarf.taskPriorityNone = [];
-
-            // Migration: Add 'managing' to existing task priorities if missing
-            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('managing')) {
-                dwarf.taskPriorityNormal.push('managing');
-            }
-
-            // Migration: Add 'masonry' to existing task priorities if missing
-            // Insert it at the same position as 'smelting' (just before smelting)
-            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('masonry')) {
-                const smeltingIndex = dwarf.taskPriorityNormal.indexOf('smelting');
-                if (smeltingIndex !== -1) {
-                    // Insert masonry just before smelting
-                    dwarf.taskPriorityNormal.splice(smeltingIndex, 0, 'masonry');
-                } else {
-                    // If smelting not found, just add at the end
-                    dwarf.taskPriorityNormal.push('masonry');
-                }
-            }
-
-            // Also add masonry to taskPriorityHigh if it has smelting there
-            if (dwarf.taskPriorityHigh && dwarf.taskPriorityHigh.includes('smelting') && !dwarf.taskPriorityHigh.includes('masonry')) {
-                const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
-                dwarf.taskPriorityHigh.splice(smeltingIndex, 0, 'masonry');
-            }
-
-            // Migration: Add 'enriching' to existing task priorities if missing
-            if (dwarf.taskPriorityNormal && !dwarf.taskPriorityNormal.includes('enriching')) {
-                const smeltingIndex = dwarf.taskPriorityNormal.indexOf('smelting');
-                if (smeltingIndex !== -1) {
-                    // Insert enriching just after smelting
-                    dwarf.taskPriorityNormal.splice(smeltingIndex + 1, 0, 'enriching');
-                } else {
-                    // If smelting not found, just add at the end
-                    dwarf.taskPriorityNormal.push('enriching');
-                }
-            }
-
-            // Also add enriching to taskPriorityHigh if it has smelting there
-            if (dwarf.taskPriorityHigh && dwarf.taskPriorityHigh.includes('smelting') && !dwarf.taskPriorityHigh.includes('enriching')) {
-                const smeltingIndex = dwarf.taskPriorityHigh.indexOf('smelting');
-                dwarf.taskPriorityHigh.splice(smeltingIndex + 1, 0, 'enriching');
-            }
-
-            // Migration: Convert old exponential maxEnergy to new linear scaling (+30 per level)
-            // Old formula: 100 * 1.2^n -> New formula: 100 + 30*n
-            const currentMax = dwarf.maxEnergy || 100;
-            if (currentMax !== 100) {
-                const energyLevels = Math.round(Math.log(currentMax / 100) / Math.log(1.2));
-                dwarf.maxEnergy = 100 + energyLevels * DWARF_LEVELUP_ENERGY_BONUS;
-                dwarf.energy = Math.min(dwarf.energy, dwarf.maxEnergy);
-            }
-        }
 
         startX = gameState.startX || 0;
         gold = gameState.gold !== undefined ? gameState.gold : 1000;
@@ -3104,21 +2996,13 @@ function loadGame() {
         // Restore materials stock
         if (gameState.materialsStock) {
             for (const key in gameState.materialsStock) {
-                // Migrate old uppercase material IDs to lowercase
-                const lowercaseKey = key.toLowerCase();
-                materialsStock[lowercaseKey] = gameState.materialsStock[key];
+                materialsStock[key] = gameState.materialsStock[key];
             }
         }
 
         // Restore gems array
         if (gameState.gems) {
             gems = gameState.gems;
-            // Migrate old uppercase gem types to lowercase
-            for (const gem of gems) {
-                if (gem.type) {
-                    gem.type = gem.type.toLowerCase();
-                }
-            }
         }
         if (gameState.nextGemId !== undefined) {
             nextGemId = gameState.nextGemId;
@@ -3127,60 +3011,21 @@ function loadGame() {
         // Restore tools inventory
         if (gameState.toolsInventory) {
             toolsInventory.length = 0;
-            // Migrate old uppercase plating material IDs and gem types to lowercase
-            const migratedTools = gameState.toolsInventory.map(tool => {
-                const migratedTool = { ...tool };
-                if (migratedTool.plating) {
-                    migratedTool.plating = migratedTool.plating.toLowerCase();
-                }
-                // Migrate gem types to lowercase
-                if (migratedTool.gems && Array.isArray(migratedTool.gems)) {
-                    migratedTool.gems = migratedTool.gems.map(gem => ({
-                        ...gem,
-                        type: gem.type ? gem.type.toLowerCase() : gem.type
-                    }));
-                }
-                return migratedTool;
-            });
-            toolsInventory.push(...migratedTools);
+            toolsInventory.push(...gameState.toolsInventory);
         }
         
         // Restore research data - merge saved progress with current definitions
         if (gameState.researchData) {
-            // New format - update existing research items with saved progress
             for (const researchId in gameState.researchData) {
                 if (researchData[researchId]) {
                     researchData[researchId].level = gameState.researchData[researchId].level || 0;
                     researchData[researchId].progress = gameState.researchData[researchId].progress || 0;
                 }
             }
-            console.log('Loaded research data (new format)');
-        } else if (gameState.researchtree) {
-            // Legacy format support - convert old array format to new object format
-            console.log('Converting legacy researchtree format to new researchData format...');
-            for (const savedResearch of gameState.researchtree) {
-                if (researchData[savedResearch.id]) {
-                    researchData[savedResearch.id].level = savedResearch.level || 0;
-                    researchData[savedResearch.id].progress = savedResearch.progress || 0;
-                }
-            }
-            console.log('Legacy research data converted successfully');
         }
 
-        // Restore active research (with legacy format support)
+        // Restore active research
         if (gameState.activeResearch) {
-            // Ensure activeResearch has an 'id' field (legacy saves might not have it)
-            if (!gameState.activeResearch.id && researchTree.length > 0) {
-                // Try to find the research by matching properties
-                for (const researchId of researchTree) {
-                    const research = researchData[researchId];
-                    if (research && research.name === gameState.activeResearch.name) {
-                        gameState.activeResearch.id = researchId;
-                        console.log(`Added missing id '${researchId}' to active research: ${research.name}`);
-                        break;
-                    }
-                }
-            }
             activeResearch = gameState.activeResearch;
         }
 
@@ -3213,44 +3058,18 @@ function loadGame() {
         
         // Restore smelter tasks order
         if (gameState.smelterTasks && Array.isArray(gameState.smelterTasks)) {
-            // Check if saved data is old format (array of objects) or new format (array of IDs)
-            if (gameState.smelterTasks.length > 0) {
-                if (typeof gameState.smelterTasks[0] === 'object' && gameState.smelterTasks[0].id) {
-                    // Old format: extract IDs and filter out any that don't exist in smelterTasksData
-                    smelterTasks = gameState.smelterTasks
-                        .map(t => t.id)
-                        .filter(id => smelterTasksData[id]);
-                } else {
-                    // New format: use directly, but filter out any that don't exist in smelterTasksData
-                    smelterTasks = gameState.smelterTasks.filter(id => smelterTasksData[id]);
-                }
-            }
+            smelterTasks = gameState.smelterTasks.filter(id => smelterTasksData[id]);
         }
 
-        // Restore masonry tasks order (backwards compatible - will be undefined in old saves)
+        // Restore masonry tasks order
         if (gameState.masonryTasks && Array.isArray(gameState.masonryTasks)) {
-            // Filter out any that don't exist in masonryTasksData
             masonryTasks = gameState.masonryTasks.filter(id => masonryTasksData[id]);
-
-            // Migration: Add new tasks that were added in updates
-            // Check if 'cut-polish-gem' is missing and add it at the top (highest priority)
-            if (!masonryTasks.includes('cut-polish-gem') && masonryTasksData['cut-polish-gem']) {
-                masonryTasks.unshift('cut-polish-gem');
-            }
         }
-        // Note: If masonryTasks is not in saved game, we'll use the default from defs.js
 
-        // Restore enrichment tasks order (backwards compatible - will be undefined in old saves)
+        // Restore enrichment tasks order
         if (gameState.enrichmentTasks && Array.isArray(gameState.enrichmentTasks)) {
-            // Filter out any that don't exist in enrichmentTasksData
             enrichmentTasks = gameState.enrichmentTasks.filter(id => enrichmentTasksData[id]);
-
-            // Migration: Add 'prestress-centrifuge' if missing (added in tension update)
-            if (!enrichmentTasks.includes('prestress-centrifuge') && enrichmentTasksData['prestress-centrifuge']) {
-                enrichmentTasks.unshift('prestress-centrifuge');
-            }
         }
-        // Note: If enrichmentTasks is not in saved game, we'll use the default from defs.js
 
         // Restore smelter temperature state
         if (gameState.smelterTemperature !== undefined) smelterTemperature = gameState.smelterTemperature;
@@ -3283,14 +3102,6 @@ function loadGame() {
             nextManagementTaskId = gameState.nextManagementTaskId;
         }
 
-        // Backwards compatibility: if old variables exist but new ones don't, migrate them
-        if (gameState.smelterMinTemp !== undefined && gameState.smelterCoalMinTemp === undefined) {
-            smelterCoalMinTemp = gameState.smelterMinTemp;
-            smelterMagmaMinTemp = gameState.smelterMinTemp;
-        }
-        if (gameState.smelterMaxTemp !== undefined && gameState.smelterCoalMaxTemp === undefined) {
-            smelterCoalMaxTemp = gameState.smelterMaxTemp;
-        }
 
         // Restore furniture levels
         // Note: We copy directly without checking if furniture exists in current definitions,
@@ -3311,12 +3122,6 @@ function loadGame() {
             }
         }
 
-        // Migration: Add roomId to dwarfs if missing (for saves before construction feature)
-        dwarfs.forEach((dwarf, index) => {
-            if (!dwarf.roomId) {
-                dwarf.roomId = `room-${index + 1}`;
-            }
-        });
 
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;

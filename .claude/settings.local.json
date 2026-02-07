@@ -11,7 +11,9 @@
       "Bash(done)",
       "Bash(echo:*)",
       "Bash(for file in *.html)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(findstr:*)",
+      "Bash(Select-String \"maxEnergy\")"
     ]
   }
 }
