@@ -897,7 +897,7 @@ function applyMovementEnergy(dwarf, baseCost) {
         // Nickel plating: regenerate energy instead of consuming
         // Cap at max energy (stored directly on dwarf object)
         const maxEnergy = dwarf.maxEnergy || 100;
-        dwarf.energy = Math.min(maxEnergy, dwarf.energy + nickelRegen);
+        dwarf.energy = Math.min(maxEnergy, dwarf.energy + Math.ceil(maxEnergy * nickelRegen));
     } else {
         // Normal movement: consume energy (with Ruby gem prevention and Zinc plating reduction)
         applyEnergyConsumption(dwarf, baseCost);
