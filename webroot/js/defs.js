@@ -882,9 +882,9 @@ const platingEffects = {
     },
     'nickel': {
         name: 'Nickel Plating',
-        description: 'Restore 1% of max energy when moving (instead of consuming 1)',
+        description: 'Restore 2% of max energy when moving (instead of consuming 1)',
         effect: 'movementEnergyRegen',
-        value: 0.01
+        value: 0.02
     },
     'wolfram': {
         name: 'Wolfram Plating',
