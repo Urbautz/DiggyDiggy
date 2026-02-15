@@ -339,8 +339,24 @@ function populateResearch() {
         // Check if requirements are met
         const requirementsMet = checkResearchRequirements(researchItem);
 
+        // Check per-level depth gating
+        let depthBlocked = false;
+        let requiredLevelDepth = 0;
+        if (researchItem.level_depths) {
+            requiredLevelDepth = researchItem.level_depths[currentLevel] || 0;
+            if (requiredLevelDepth && startX < requiredLevelDepth) {
+                depthBlocked = true;
+            }
+        }
+
         // If research is impossible, show warning instead of button
-        if (isImpossible) {
+        if (depthBlocked) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'research-warning';
+            warningDiv.innerHTML = `Requires<br>Depth ${formatNumber(requiredLevelDepth, 'material')}`;
+            warningDiv.title = `Need to reach depth ${requiredLevelDepth} to research level ${currentLevel + 1}.\nCurrent depth: ${startX}`;
+            actionTd.appendChild(warningDiv);
+        } else if (isImpossible) {
             const warningDiv = document.createElement('div');
             warningDiv.className = 'research-warning';
             warningDiv.innerHTML = `⚠️ Dwarf with<br>Wisdom ${minWisdomRequired} required`;
@@ -484,6 +500,15 @@ function startResearch(researchId) {
     if (effectiveLevel >= maxLevel) {
         console.error('Cannot queue more levels - max level will be reached');
         return;
+    }
+
+    // Check per-level depth gating
+    if (researchItem.level_depths) {
+        const requiredDepth = researchItem.level_depths[effectiveLevel];
+        if (requiredDepth && startX < requiredDepth) {
+            alert(`Need to reach depth ${requiredDepth} to research level ${effectiveLevel + 1}!\nCurrent depth: ${startX}`);
+            return;
+        }
     }
 
     // If ANY research is active (including this one), add to queue

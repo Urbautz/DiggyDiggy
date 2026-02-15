@@ -1896,7 +1896,212 @@ function populateDwarfsInPanel() {
 
         list.appendChild(row);
     }
+
+    // Check if there's open dwarf capacity (base 3 + research level)
+    const capacityResearch = researchData['increase-dwarf-capacity'];
+    const maxDwarfs = 3 + (capacityResearch ? (capacityResearch.level || 0) : 0);
+    if (dwarfs.length < maxDwarfs) {
+        const hireBtn = document.createElement('button');
+        hireBtn.className = 'btn-primary';
+        hireBtn.style.marginTop = '8px';
+        hireBtn.style.width = '100%';
+        hireBtn.textContent = `Hire Dwarf (${dwarfs.length}/${maxDwarfs})`;
+        hireBtn.onclick = () => openHireDwarfModal();
+        list.appendChild(hireBtn);
+    }
 }
+
+// ============================================================================
+// HIRE DWARF SYSTEM
+// ============================================================================
+
+let hireCandidates = []; // Temporary storage for current candidates
+let selectedCandidateIndex = -1;
+
+function generateHireCandidates() {
+    const maxDigPower = Math.max(1, ...dwarfs.map(d => d.digPower || 0));
+    const maxStrength = Math.max(1, ...dwarfs.map(d => d.strength || 0));
+    const maxWisdom = Math.max(1, ...dwarfs.map(d => d.wisdom || 0));
+    const totalPoints = maxDigPower + maxStrength + maxWisdom;
+
+    return [0, 1, 2].map(() => {
+        const points = Math.max(1, Math.floor(Math.random() * totalPoints));
+        let dp = 0, str = 0, wis = 0;
+        for (let i = 0; i < points; i++) {
+            const r = Math.random();
+            if (r < 0.33) dp = Math.min(dp + 1, maxDigPower);
+            else if (r < 0.66) str = Math.min(str + 1, maxStrength);
+            else wis = Math.min(wis + 1, maxWisdom);
+        }
+        return { digPower: dp, strength: str, wisdom: wis };
+    });
+}
+
+function getHireCost() {
+    return 500 * dwarfs.length;
+}
+
+window.openHireDwarfModal = function openHireDwarfModal() {
+    const modal = document.getElementById('hire-dwarf-modal');
+    if (!modal) return;
+
+    const hireCost = getHireCost();
+    hireCandidates = generateHireCandidates();
+    selectedCandidateIndex = -1;
+
+    // Show cost
+    document.getElementById('hire-dwarf-cost').textContent = `Hiring cost: ${formatNumber(hireCost, 'gold')} gold`;
+
+    // Render candidate cards
+    const container = document.getElementById('hire-dwarf-candidates');
+    container.innerHTML = '';
+
+    hireCandidates.forEach((candidate, index) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'flex: 1; min-width: 120px; padding: 10px; border: 2px solid #444; border-radius: 8px; cursor: pointer; text-align: center; background: #1a1a2e; transition: border-color 0.2s;';
+        card.dataset.index = index;
+        card.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 6px;">⛏️</div>
+            <div style="margin-bottom: 8px; font-weight: bold;">Candidate ${index + 1}</div>
+            <div style="font-size: 13px; line-height: 1.6;">
+                <div>💪 Dig Power: <strong>${candidate.digPower}</strong></div>
+                <div>🏋️ Strength: <strong>${candidate.strength}</strong></div>
+                <div>🧠 Wisdom: <strong>${candidate.wisdom}</strong></div>
+            </div>
+        `;
+        card.onclick = () => selectHireCandidate(index);
+        container.appendChild(card);
+    });
+
+    // Reset name input
+    const nameInput = document.getElementById('hire-dwarf-name-input');
+    nameInput.value = '';
+    document.getElementById('hire-dwarf-name-error').style.display = 'none';
+    document.getElementById('hire-dwarf-confirm-btn').disabled = true;
+
+    // Enable confirm button when name is entered and candidate selected
+    nameInput.oninput = () => updateHireConfirmButton();
+
+    openModal('hire-dwarf-modal');
+};
+
+function selectHireCandidate(index) {
+    selectedCandidateIndex = index;
+    const container = document.getElementById('hire-dwarf-candidates');
+    const cards = container.children;
+    for (let i = 0; i < cards.length; i++) {
+        cards[i].style.borderColor = i === index ? '#4fc3f7' : '#444';
+        cards[i].style.background = i === index ? '#1e2a4a' : '#1a1a2e';
+    }
+    updateHireConfirmButton();
+}
+
+function updateHireConfirmButton() {
+    const nameInput = document.getElementById('hire-dwarf-name-input');
+    const name = nameInput.value.trim();
+    const errorEl = document.getElementById('hire-dwarf-name-error');
+    const btn = document.getElementById('hire-dwarf-confirm-btn');
+
+    errorEl.style.display = 'none';
+
+    if (!name) {
+        btn.disabled = true;
+        return;
+    }
+
+    // Check for duplicate name
+    if (dwarfs.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+        errorEl.textContent = 'A dwarf with that name already exists!';
+        errorEl.style.display = 'block';
+        btn.disabled = true;
+        return;
+    }
+
+    btn.disabled = selectedCandidateIndex === -1;
+}
+
+window.confirmHireDwarf = function confirmHireDwarf() {
+    const nameInput = document.getElementById('hire-dwarf-name-input');
+    const name = nameInput.value.trim();
+
+    if (!name || selectedCandidateIndex === -1) return;
+
+    // Check duplicate name again
+    if (dwarfs.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+        document.getElementById('hire-dwarf-name-error').textContent = 'A dwarf with that name already exists!';
+        document.getElementById('hire-dwarf-name-error').style.display = 'block';
+        return;
+    }
+
+    const hireCost = getHireCost();
+    if (gold < hireCost) {
+        alert(`Not enough gold! Need ${formatNumber(hireCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
+        return;
+    }
+
+    const candidate = hireCandidates[selectedCandidateIndex];
+
+    // Create tool
+    const newToolId = Math.max(...toolsInventory.map(t => t.id), 0) + 1;
+    const newTool = { id: newToolId, type: 'Stone', power: 100 };
+    toolsInventory.push(newTool);
+
+    // Create room (use max existing room number + 1 to avoid collisions)
+    const existingRoomNums = Object.keys(individualRooms).map(k => parseInt(k.replace('room-', '')) || 0);
+    const nextRoomNum = Math.max(0, ...existingRoomNums) + 1;
+    const roomId = 'room-' + nextRoomNum;
+    individualRooms[roomId] = { name: `${name}'s Room`, furniture: {} };
+
+    // Create dwarf
+    const newDwarf = {
+        name: name,
+        toolId: newToolId,
+        roomId: roomId,
+        level: 0, xp: 0,
+        digPower: candidate.digPower,
+        maxEnergy: 100,
+        strength: candidate.strength,
+        wisdom: candidate.wisdom,
+        x: 1, y: -1,
+        status: 'idle', moveTarget: null,
+        bucket: {}, energy: 100,
+        taskPriorityHigh: [],
+        taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
+        taskPriorityNone: []
+    };
+    dwarfs.push(newDwarf);
+
+    // Deduct gold
+    gold -= hireCost;
+    pendingGoldDelta -= hireCost;
+    goldSyncToken++;
+    logTransaction('expense', hireCost, `Hired dwarf: ${name}`);
+    updateGoldDisplay();
+
+    // Initialize furniture for the new room
+    initializeFurniture();
+
+    // Sync with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: {
+                dwarfs: dwarfs,
+                toolsInventory: toolsInventory,
+                individualRooms: individualRooms,
+                gold: gold,
+                goldSyncToken: goldSyncToken
+            }
+        });
+    }
+
+    saveGame();
+
+    // Close modal and refresh panel
+    const modal = document.getElementById('hire-dwarf-modal');
+    if (modal) modal.setAttribute('aria-hidden', 'true');
+    populateDwarfsInPanel();
+};
 
 // clicking on any element with data-action="close-modal" closes modals
 document.addEventListener('click', (ev) => {

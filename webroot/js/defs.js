@@ -1432,6 +1432,17 @@ const researchData = {
     hardness: 10,
     description: 'Dwarfs dig 1% harder.'
   },
+  'increase-dwarf-capacity': {
+    name: 'Increase Dwarf Capacity',
+    description: 'Allows hiring one additional dwarf per level.',
+    cost: 200,
+    goldCost: 500,
+    level: 0,
+    maxlevel: 22,
+    hardness: 15,
+    min_depth: 150,
+    level_depths: [150, 400, 900, 1450, 1900, 4100, 7000, 11000, 16000, 23000, 31000, 42000, 55000, 70000, 87000, 106000, 130000, 155000, 190000, 250000, 500000, 750000]
+  },
   'better-housing': {
     name: 'Housing',
     cost: 100,
@@ -1801,6 +1812,7 @@ let researchTree = [
   'small-time-investments',
   'one-time-investments',
   'management',
+  'increase-dwarf-capacity',
   'tool-enchanting',
   'grinding-machine',
   'stone-polishing',

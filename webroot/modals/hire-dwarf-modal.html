@@ -1,0 +1,23 @@
+<!-- Hire Dwarf Modal -->
+<div id="hire-dwarf-modal" class="modal" aria-hidden="true" role="dialog" aria-label="Hire New Dwarf">
+    <div class="modal-backdrop" data-action="close-modal"></div>
+    <div class="modal-dialog" role="document">
+        <header class="modal-header">
+            <h2>Hire New Dwarf</h2>
+            <button class="modal-close" aria-label="Close" data-action="close-modal">&times;</button>
+        </header>
+        <div class="modal-body">
+            <p id="hire-dwarf-cost" style="margin-bottom: 12px; font-weight: bold;"></p>
+            <div id="hire-dwarf-candidates" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;"></div>
+            <div id="hire-dwarf-name-section" style="margin-bottom: 12px;">
+                <label for="hire-dwarf-name-input" style="display: block; margin-bottom: 4px; font-weight: bold;">Dwarf Name:</label>
+                <input type="text" id="hire-dwarf-name-input" maxlength="24" placeholder="Enter a name..." style="width: 100%; padding: 6px; box-sizing: border-box; background: #1a1a2e; color: #e0e0e0; border: 1px solid #444; border-radius: 4px;">
+                <small id="hire-dwarf-name-error" style="color: #ff6b6b; display: none;"></small>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <button id="hire-dwarf-confirm-btn" class="btn-primary" onclick="confirmHireDwarf()" disabled>Hire</button>
+            <button class="btn-secondary" data-action="close-modal">Cancel</button>
+        </footer>
+    </div>
+</div>
