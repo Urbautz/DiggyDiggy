@@ -9,9 +9,12 @@
         <div class="modal-body">
             <p id="hire-dwarf-cost" style="margin-bottom: 12px; font-weight: bold;"></p>
             <div id="hire-dwarf-candidates" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;"></div>
-            <div id="hire-dwarf-name-section" style="margin-bottom: 12px;">
+            <div id="hire-dwarf-name-section" style="margin-bottom: 12px; padding: 0 4px;">
                 <label for="hire-dwarf-name-input" style="display: block; margin-bottom: 4px; font-weight: bold;">Dwarf Name:</label>
-                <input type="text" id="hire-dwarf-name-input" maxlength="24" placeholder="Enter a name..." style="width: 100%; padding: 6px; box-sizing: border-box; background: #1a1a2e; color: #e0e0e0; border: 1px solid #444; border-radius: 4px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="hire-dwarf-name-input" maxlength="24" placeholder="Enter a name..." style="flex: 1; padding: 6px; box-sizing: border-box; background: #1a1a2e; color: #e0e0e0; border: 1px solid #444; border-radius: 4px;">
+                    <button type="button" id="hire-dwarf-suggest-btn" class="btn-secondary" style="white-space: nowrap; padding: 6px 10px;" title="Generate random name">Suggest</button>
+                </div>
                 <small id="hire-dwarf-name-error" style="color: #ff6b6b; display: none;"></small>
             </div>
         </div>

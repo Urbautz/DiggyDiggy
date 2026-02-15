@@ -1157,6 +1157,10 @@ function showWarehousePanel() {
     const header = panel.querySelector('.materials-panel-header h3');
     if (header) header.textContent = 'Warehouse';
     
+    // Remove hire button (dwarfs tab only)
+    const hireDwarfBtn = document.getElementById('hire-dwarf-header-btn');
+    if (hireDwarfBtn) hireDwarfBtn.remove();
+
     // Show warehouse content
     stopDwarfsLiveUpdate();
     updateMaterialsPanel();
@@ -1180,6 +1184,10 @@ function showToolsPanel() {
     // Remove Warehouse Sell button
     const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
     if (warehouseSellBtn) warehouseSellBtn.remove();
+
+    // Remove hire button (dwarfs tab only)
+    const hireDwarfBtn = document.getElementById('hire-dwarf-header-btn');
+    if (hireDwarfBtn) hireDwarfBtn.remove();
 
     const sellNotCraftableBtn = document.getElementById('sell-not-craftable-btn');
     if (sellNotCraftableBtn) sellNotCraftableBtn.remove();
@@ -1897,17 +1905,31 @@ function populateDwarfsInPanel() {
         list.appendChild(row);
     }
 
-    // Check if there's open dwarf capacity (base 3 + research level)
+}
+
+/**
+ * Update the hire dwarf header button visibility
+ */
+function updateHireDwarfHeaderBtn() {
+    const header = document.querySelector('#materials-panel .materials-panel-header');
+    if (!header) return;
+
+    let hireBtn = document.getElementById('hire-dwarf-header-btn');
     const capacityResearch = researchData['increase-dwarf-capacity'];
     const maxDwarfs = 3 + (capacityResearch ? (capacityResearch.level || 0) : 0);
+
     if (dwarfs.length < maxDwarfs) {
-        const hireBtn = document.createElement('button');
-        hireBtn.className = 'btn-primary';
-        hireBtn.style.marginTop = '8px';
-        hireBtn.style.width = '100%';
-        hireBtn.textContent = `Hire Dwarf (${dwarfs.length}/${maxDwarfs})`;
-        hireBtn.onclick = () => openHireDwarfModal();
-        list.appendChild(hireBtn);
+        if (!hireBtn) {
+            hireBtn = document.createElement('button');
+            hireBtn.id = 'hire-dwarf-header-btn';
+            hireBtn.className = 'btn-sell-all-global';
+            hireBtn.onclick = () => openHireDwarfModal();
+            hireBtn.style.marginLeft = 'auto';
+            header.appendChild(hireBtn);
+        }
+        hireBtn.textContent = `⛏️ Hire (${dwarfs.length}/${maxDwarfs})`;
+    } else if (hireBtn) {
+        hireBtn.remove();
     }
 }
 
@@ -1917,6 +1939,26 @@ function populateDwarfsInPanel() {
 
 let hireCandidates = []; // Temporary storage for current candidates
 let selectedCandidateIndex = -1;
+
+const dwarfFirstNames = [
+    'Thorin', 'Gimli', 'Balin', 'Durin', 'Bofur',
+    'Dwalin', 'Nori', 'Gloin', 'Oin', 'Bifur',
+    'Grumli', 'Thrain', 'Fundin', 'Floi', 'Borin',
+    'Farin', 'Nain', 'Dain', 'Gror', 'Loni'
+];
+
+const dwarfLastNames = [
+    'Ironbeard', 'Stonefist', 'Deepdelver', 'Goldpick', 'Hammertoe',
+    'Coalvein', 'Copperhelm', 'Darkmine', 'Boulderback', 'Gemcutter',
+    'Steelforge', 'Tunnelborn', 'Orebreaker', 'Dustmantle', 'Anvilstrike',
+    'Shalefoot', 'Pickaxson', 'Mithrilhand', 'Quartzjaw', 'Rubblekin'
+];
+
+function generateDwarfName() {
+    const first = dwarfFirstNames[Math.floor(Math.random() * dwarfFirstNames.length)];
+    const last = dwarfLastNames[Math.floor(Math.random() * dwarfLastNames.length)];
+    return `${first} ${last}`;
+}
 
 function generateHireCandidates() {
     const maxDigPower = Math.max(1, ...dwarfs.map(d => d.digPower || 0));
@@ -1937,50 +1979,127 @@ function generateHireCandidates() {
     });
 }
 
-function getHireCost() {
-    return 500 * dwarfs.length;
+function getCandidateTotalLevel(candidate) {
+    return (candidate.digPower || 0) + (candidate.strength || 0) + (candidate.wisdom || 0);
+}
+
+function getHireCostForCandidate(candidate) {
+    const totalLevel = getCandidateTotalLevel(candidate);
+    return Math.max(100, 100 * totalLevel * dwarfs.length);
+}
+
+function getRerollCost() {
+    if (!hireCandidates || hireCandidates.length === 0) return 0;
+    return Math.max(...hireCandidates.map(c => getHireCostForCandidate(c)));
+}
+
+function renderHireCandidates() {
+    const container = document.getElementById('hire-dwarf-candidates');
+    container.innerHTML = '';
+
+    // Cost info line
+    document.getElementById('hire-dwarf-cost').textContent = 'Select a candidate to hire.';
+
+    hireCandidates.forEach((candidate, index) => {
+        const totalLevel = getCandidateTotalLevel(candidate);
+        const cost = getHireCostForCandidate(candidate);
+        const card = document.createElement('div');
+        card.style.cssText = 'flex: 1; min-width: 120px; padding: 10px; border: 2px solid #444; border-radius: 8px; cursor: pointer; text-align: center; background: #1a1a2e; transition: border-color 0.2s;';
+        card.dataset.index = index;
+        card.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 6px;">⛏️</div>
+            <div style="margin-bottom: 4px; font-weight: bold;">Candidate ${index + 1}</div>
+            <div style="margin-bottom: 6px; font-size: 12px; color: #aaa;">Total Level: <strong style="color: #4fc3f7;">${totalLevel}</strong></div>
+            <div style="font-size: 13px; line-height: 1.6;">
+                <div>💪 Dig Power: <strong>${candidate.digPower}</strong></div>
+                <div>🏋️ Strength: <strong>${candidate.strength}</strong></div>
+                <div>🧠 Wisdom: <strong>${candidate.wisdom}</strong></div>
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #ffd700;">Cost: ${formatNumber(cost, 'gold')} gold</div>
+        `;
+        card.onclick = () => selectHireCandidate(index);
+        container.appendChild(card);
+    });
+
+    // Add reroll button
+    const rerollCost = getRerollCost();
+    const rerollBtn = document.createElement('div');
+    rerollBtn.style.cssText = 'flex: 1; min-width: 120px; padding: 10px; border: 2px dashed #666; border-radius: 8px; cursor: pointer; text-align: center; background: #1a1a2e; transition: border-color 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center;';
+    rerollBtn.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 6px;">🔄</div>
+        <div style="margin-bottom: 4px; font-weight: bold;">Reroll</div>
+        <div style="font-size: 12px; color: #ffd700;">Cost: ${formatNumber(rerollCost, 'gold')} gold</div>
+    `;
+    rerollBtn.onclick = () => rerollHireCandidates();
+    container.appendChild(rerollBtn);
+
+    // Update selection highlight if one was selected
+    if (selectedCandidateIndex >= 0) {
+        selectHireCandidate(selectedCandidateIndex);
+    }
+}
+
+function rerollHireCandidates() {
+    const rerollCost = getRerollCost();
+    if (gold < rerollCost) {
+        alert(`Not enough gold! Need ${formatNumber(rerollCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
+        return;
+    }
+
+    // Deduct gold
+    gold -= rerollCost;
+    pendingGoldDelta -= rerollCost;
+    goldSyncToken++;
+    logTransaction('expense', rerollCost, 'Rerolled hire candidates');
+    updateGoldDisplay();
+
+    // Sync gold with worker
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { gold: gold, goldSyncToken: goldSyncToken }
+        });
+    }
+
+    // Generate new candidates and re-render
+    hireCandidates = generateHireCandidates();
+    selectedCandidateIndex = -1;
+    document.getElementById('hire-dwarf-confirm-btn').disabled = true;
+    renderHireCandidates();
+    saveGame();
 }
 
 window.openHireDwarfModal = function openHireDwarfModal() {
     const modal = document.getElementById('hire-dwarf-modal');
     if (!modal) return;
 
-    const hireCost = getHireCost();
-    hireCandidates = generateHireCandidates();
+    // Only generate new candidates if none are saved
+    if (!hireCandidates || hireCandidates.length === 0) {
+        hireCandidates = generateHireCandidates();
+        saveGame();
+    }
     selectedCandidateIndex = -1;
 
-    // Show cost
-    document.getElementById('hire-dwarf-cost').textContent = `Hiring cost: ${formatNumber(hireCost, 'gold')} gold`;
+    // Render candidate cards with total level, cost, and reroll button
+    renderHireCandidates();
 
-    // Render candidate cards
-    const container = document.getElementById('hire-dwarf-candidates');
-    container.innerHTML = '';
-
-    hireCandidates.forEach((candidate, index) => {
-        const card = document.createElement('div');
-        card.style.cssText = 'flex: 1; min-width: 120px; padding: 10px; border: 2px solid #444; border-radius: 8px; cursor: pointer; text-align: center; background: #1a1a2e; transition: border-color 0.2s;';
-        card.dataset.index = index;
-        card.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 6px;">⛏️</div>
-            <div style="margin-bottom: 8px; font-weight: bold;">Candidate ${index + 1}</div>
-            <div style="font-size: 13px; line-height: 1.6;">
-                <div>💪 Dig Power: <strong>${candidate.digPower}</strong></div>
-                <div>🏋️ Strength: <strong>${candidate.strength}</strong></div>
-                <div>🧠 Wisdom: <strong>${candidate.wisdom}</strong></div>
-            </div>
-        `;
-        card.onclick = () => selectHireCandidate(index);
-        container.appendChild(card);
-    });
-
-    // Reset name input
+    // Reset name input with a random suggestion
     const nameInput = document.getElementById('hire-dwarf-name-input');
-    nameInput.value = '';
+    nameInput.value = generateDwarfName();
     document.getElementById('hire-dwarf-name-error').style.display = 'none';
     document.getElementById('hire-dwarf-confirm-btn').disabled = true;
 
     // Enable confirm button when name is entered and candidate selected
     nameInput.oninput = () => updateHireConfirmButton();
+
+    // Wire up suggest button
+    const suggestBtn = document.getElementById('hire-dwarf-suggest-btn');
+    if (suggestBtn) {
+        suggestBtn.onclick = () => {
+            nameInput.value = generateDwarfName();
+            updateHireConfirmButton();
+        };
+    }
 
     openModal('hire-dwarf-modal');
 };
@@ -1990,9 +2109,15 @@ function selectHireCandidate(index) {
     const container = document.getElementById('hire-dwarf-candidates');
     const cards = container.children;
     for (let i = 0; i < cards.length; i++) {
-        cards[i].style.borderColor = i === index ? '#4fc3f7' : '#444';
-        cards[i].style.background = i === index ? '#1e2a4a' : '#1a1a2e';
+        if (i < hireCandidates.length) {
+            cards[i].style.borderColor = i === index ? '#4fc3f7' : '#444';
+            cards[i].style.background = i === index ? '#1e2a4a' : '#1a1a2e';
+        }
     }
+    // Update cost display to show selected candidate's cost
+    const candidate = hireCandidates[index];
+    const cost = getHireCostForCandidate(candidate);
+    document.getElementById('hire-dwarf-cost').textContent = `Hiring cost: ${formatNumber(cost, 'gold')} gold`;
     updateHireConfirmButton();
 }
 
@@ -2033,13 +2158,12 @@ window.confirmHireDwarf = function confirmHireDwarf() {
         return;
     }
 
-    const hireCost = getHireCost();
+    const candidate = hireCandidates[selectedCandidateIndex];
+    const hireCost = getHireCostForCandidate(candidate);
     if (gold < hireCost) {
         alert(`Not enough gold! Need ${formatNumber(hireCost, 'gold')}, have ${formatNumber(gold, 'gold')}.`);
         return;
     }
-
-    const candidate = hireCandidates[selectedCandidateIndex];
 
     // Create tool
     const newToolId = Math.max(...toolsInventory.map(t => t.id), 0) + 1;
@@ -2095,12 +2219,16 @@ window.confirmHireDwarf = function confirmHireDwarf() {
         });
     }
 
+    // Clear the hired candidate from saved list (regenerate fresh next time)
+    hireCandidates = [];
+    selectedCandidateIndex = -1;
+
     saveGame();
 
     // Close modal and refresh panel
-    const modal = document.getElementById('hire-dwarf-modal');
-    if (modal) modal.setAttribute('aria-hidden', 'true');
+    closeModal('hire-dwarf-modal');
     populateDwarfsInPanel();
+    updateHireDwarfHeaderBtn();
 };
 
 // clicking on any element with data-action="close-modal" closes modals
@@ -3118,6 +3246,7 @@ function saveGame() {
             nextManagementTaskId: nextManagementTaskId || 1,
             commonRoom: commonRoom,
             individualRooms: individualRooms,
+            hireCandidates: hireCandidates || [],
             timestamp: now,
             version: gameversion
         };
@@ -3319,12 +3448,21 @@ function loadGame() {
         }
         if (gameState.individualRooms) {
             for (const roomId in gameState.individualRooms) {
-                if (individualRooms[roomId] && gameState.individualRooms[roomId].furniture) {
+                // Create room if it doesn't exist (e.g., hired dwarfs' rooms)
+                if (!individualRooms[roomId]) {
+                    individualRooms[roomId] = { name: gameState.individualRooms[roomId].name || roomId, furniture: {} };
+                }
+                if (gameState.individualRooms[roomId].furniture) {
                     for (const furnitureId in gameState.individualRooms[roomId].furniture) {
                         individualRooms[roomId].furniture[furnitureId] = gameState.individualRooms[roomId].furniture[furnitureId];
                     }
                 }
             }
+        }
+
+        // Restore hire candidates (so they persist across page reloads)
+        if (gameState.hireCandidates && Array.isArray(gameState.hireCandidates)) {
+            hireCandidates = gameState.hireCandidates;
         }
 
 
