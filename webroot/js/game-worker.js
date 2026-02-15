@@ -146,7 +146,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
         'masonry': masonryHasWork() && (!masonryReservedBy || masonryReservedBy === dwarf.name) && typeof masonry === 'object' && masonry !== null,
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
-        'enriching': enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
+        'enriching': researchData['ore-enrichment'] && researchData['ore-enrichment'].level >= 1 && enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
         'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
     };
