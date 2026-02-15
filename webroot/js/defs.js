@@ -848,10 +848,7 @@ const tools = [
 const toolsInventory = [
     { id: 1, type: 'Stone', power: 100 },
     { id: 2, type: 'Stone', power: 100 },
-    { id: 3, type: 'Stone', power: 100 },
-    { id: 4, type: 'Stone', power: 100 },
-    { id: 5, type: 'Stone', power: 100 },
-    { id: 6, type: 'Stone', power: 100 }
+    { id: 3, type: 'Stone', power: 100 }
 ];
 
 // Plating effects - define what each plating material does when applied to tools
@@ -2161,10 +2158,7 @@ const commonRoom = {
 const individualRooms = {
   'room-1': { name: "Diggingston's Room", furniture: {} },
   'room-2': { name: "Shovelli's Room", furniture: {} },
-  'room-3': { name: "Diggmaster's Room", furniture: {} },
-  'room-4': { name: "Burrower's Room", furniture: {} },
-  'room-5': { name: "NevertiredMcPickaxemer's Room", furniture: {} },
-  'room-6': { name: "SmartDigger's Room", furniture: {} }
+  'room-3': { name: "Diggmaster's Room", furniture: {} }
 };
 
 let activeResearch = null; // Track which research is currently being researched
@@ -2183,7 +2177,7 @@ let oneTimeInvestments = []; // Array of active one-time investments
 let nextInvestmentId = 1; // Next investment ID to assign
 
 let dwarfs = [
-    { name: "Diggingston",
+    { name: "Diggingston Deephammer",
       toolId: 1,
       roomId: 'room-1',
       level: 0, xp: 0,
@@ -2194,7 +2188,7 @@ let dwarfs = [
       taskPriorityHigh: [],
       taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
-    { name: "Shovelli",
+    { name: "Gemma Deephammer",
       toolId: 2,
       roomId: 'room-2',
       level: 0, xp: 0,
@@ -2205,7 +2199,7 @@ let dwarfs = [
       taskPriorityHigh: [],
       taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
       taskPriorityNone: [] },
-    { name: "Diggmaster",
+    { name: "Diggi Junior",
       toolId: 3,
       roomId: 'room-3',
       level: 0, xp: 0,
@@ -2215,39 +2209,6 @@ let dwarfs = [
       bucket: {}, energy: 100,
       taskPriorityHigh: [],
       taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-      taskPriorityNone: [] },
-    { name: "Burrower",
-      toolId: 4,
-      roomId: 'room-4',
-      level: 0, xp: 0,
-      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 1, y: -1,
-      status: 'idle', moveTarget: null,
-      bucket: {}, energy: 100,
-      taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-      taskPriorityNone: [] },
-    { name: "NevertiredMcPickaxemer",
-      toolId: 5,
-      roomId: 'room-5',
-      level: 0, xp: 0,
-      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 0,
-      x: 1, y: -1,
-      status: 'idle', moveTarget: null,
-      bucket: {}, energy: 100,
-      taskPriorityHigh: [],
-      taskPriorityNormal: ['digging', 'research', 'masonry', 'smelting', 'managing'],
-      taskPriorityNone: [] },
-    { name: "SmartDigger",
-      toolId: 6,
-      roomId: 'room-6',
-      level: 0, xp: 0,
-      digPower: 0, maxEnergy: 100, strength: 0, wisdom: 3,
-      x: 1, y: -1,
-      status: 'idle', moveTarget: null,
-      bucket: {}, energy: 100,
-      taskPriorityHigh: [],
-      taskPriorityNormal: ['managing', 'research', 'masonry', 'smelting', 'digging'],
       taskPriorityNone: [] },
 ]
 
