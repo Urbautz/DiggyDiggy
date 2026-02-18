@@ -1830,53 +1830,39 @@ function populateDwarfsInPanel() {
         }
         header.appendChild(xpDisplay);
 
-        // Calculate digging power (matching game-worker.js calculation)
+        // Calculate digging power (matching dwarf-detail-modal calculation)
         const baseDwarfPower = 3;
-        let totalPower = baseDwarfPower;
-
-        if (d.toolId) {
-            const tool = toolsInventory.find(t => t.id === d.toolId);
-            if (tool) {
-                const levelBonus = 1 + (d.digPower || 0) * 0.1;
-                const improvedDigging = researchData['improved-digging'];
-                const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
-
-                // Check if tool has custom power (forged tools) or use base definition
-                let toolPower;
-                if (tool.power !== undefined) {
-                    // Forged tool with custom power
-                    toolPower = tool.power / 100;
-                } else {
-                    // Base tool - look up definition
-                    const toolDef = getToolByType(tool.type);
-                    if (toolDef) {
-                        toolPower = toolDef.power / 100;
-                    } else {
-                        toolPower = 1.0; // Fallback
-                    }
-                }
-
-                totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower;
+        const tool = d.toolId ? toolsInventory.find(t => t.id === d.toolId) : null;
+        let toolPower = 1.0;
+        if (tool) {
+            if (tool.power !== undefined) {
+                toolPower = tool.power / 100;
+            } else {
+                const toolDef = getToolByType(tool.type);
+                if (toolDef) toolPower = toolDef.power / 100;
             }
         }
+        const furnitureBonuses = calculateFurnitureBonuses(d);
+        const modifiedDigPower = getDiamondModifiedDigPower(d, d.digPower || 0);
+        const levelBonus = 1 + modifiedDigPower * 0.1;
+        const improvedDigging = researchData['improved-digging'];
+        const researchBonus = 1 + (improvedDigging ? (improvedDigging.level || 0) * 0.01 : 0);
+        const enchantBonus = 1 + (tool ? (tool.enchantLevel || 0) : 0) * ENCHANT_POWER_BONUS;
+        const furnitureDigBonus = 1 + furnitureBonuses.digPowerBonus;
+        const totalPower = (baseDwarfPower * levelBonus) * researchBonus * toolPower * enchantBonus * furnitureDigBonus;
 
         // Calculate bucket fill (weight-based)
         const bucketWeight = calculateBucketWeight(d.bucket);
         const dwarfCapacity = calculateDwarfBucketCapacity(d);
 
         // Get tool name for display
-        const toolName = d.toolId ? (() => {
-            const tool = toolsInventory.find(t => t.id === d.toolId);
-            return tool ? (tool.name || tool.type) : 'None';
-        })() : 'None';
+        const toolName = tool ? (tool.name || tool.type) : 'None';
 
-        // Calculate wage using same logic as game-worker.js
-        const wageOptimization = researchData['wage-optimization'];
-        const researchLevel = wageOptimization ? (wageOptimization.level || 0) : 0;
-        const researchReduction = researchLevel * RESEARCH_WAGE_OPTIMIZATION_REDUCTION;
-        const increaseRate = Math.max(DWARF_WAGE_INCREASE_MIN, DWARF_WAGE_INCREASE_RATE - researchReduction);
-        const dwarfLevel = (currentLevel || 1) - 1;
-        const wage = DWARF_BASE_WAGE * (1 + dwarfLevel * increaseRate);
+        // Calculate wage using shared utility (compound rate, same as worker)
+        const wage = calculateWage(d);
+
+        // Max energy with furniture bonus
+        const effectiveMaxEnergy = (d.maxEnergy || 100) + furnitureBonuses.maxEnergyBonus;
 
         // Build dwarf info using DOM elements
         const info = createElement('div', {
@@ -1889,7 +1875,7 @@ function populateDwarfsInPanel() {
                 }),
                 document.createTextNode(` | 💰 ${formatNumber(wage, 'gold')} | 💼 ${d.status || 'idle'}`),
                 document.createElement('br'),
-                document.createTextNode(`🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${d.maxEnergy || 100}`),
+                document.createTextNode(`🧺 ${bucketWeight}kg/${dwarfCapacity}kg | ⚡${Math.round(d.energy || 0)}/${effectiveMaxEnergy}`),
                 document.createElement('br'),
                 document.createTextNode(`⛏️ ${formatNumber(totalPower, 'material')} (${toolName})`)
             ]
