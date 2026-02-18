@@ -172,6 +172,9 @@ function openDwarfs() {
     // Populate dwarfs content in the materials-list container
     populateDwarfsInPanel();
     startDwarfsLiveUpdate();
+
+    // Show hire button in header if capacity available
+    updateHireDwarfHeaderBtn();
 }
 
 /**

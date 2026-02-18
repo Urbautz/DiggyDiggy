@@ -146,7 +146,7 @@ function assignDwarfTask(dwarf, diggingX = null, diggingY = null) {
         'research': activeResearch && (!researchReservedBy || researchReservedBy === dwarf.name) && typeof research === 'object' && research !== null && canDwarfAttemptResearch(dwarf),
         'masonry': masonryHasWork() && (!masonryReservedBy || masonryReservedBy === dwarf.name) && typeof masonry === 'object' && masonry !== null,
         'smelting': smelterHasWork() && (!smelterReservedBy || smelterReservedBy === dwarf.name) && typeof smelter === 'object' && smelter !== null,
-        'enriching': enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
+        'enriching': researchData['ore-enrichment'] && researchData['ore-enrichment'].level >= 1 && enrichmentHasWork() && (!enrichmentReservedBy || enrichmentReservedBy === dwarf.name) && typeof enrichment === 'object' && enrichment !== null,
         'managing': managementHasWork() && (!managementReservedBy || managementReservedBy === dwarf.name) && typeof management === 'object' && management !== null,
         'digging': true // Digging is always considered "available" in priority check
     };
@@ -2592,9 +2592,8 @@ function actForDwarf(dwarf) {
             const downRowIndex = rowIndex + 1;
             if (downRowIndex < grid.length) {
                 const downCell = grid[downRowIndex][originalX];
-                const occupiedDown = isCellOccupiedByStanding(originalX, downRowIndex);
                 const downKey = coordKey(originalX, downRowIndex);
-                if (downCell && downCell.hardness > 0 && !occupiedDown && !isReservedForDig(originalX, downRowIndex)) {
+                if (downCell && downCell.hardness > 0 && !isReservedForDig(originalX, downRowIndex)) {
                     if (scheduleMove(dwarf, originalX, downRowIndex)) {
                         //console.log(`Dwarf ${dwarf.name} decided to move down from (${originalX},${rowIndex}) to (${originalX},${downRowIndex})`);
                         return;
@@ -2620,42 +2619,37 @@ function actForDwarf(dwarf) {
             if (!(row[c] && row[c].hardness > 0)) continue;
             // Allow near-stuck dwarfs to override reservations
             if (!isNearStuck && isReservedForDig(c, rowIndex) && reservedDigBy.get(coordKey(c, rowIndex)) !== dwarf.name) continue;
-            if (isCellOccupiedByStanding(c, rowIndex)) {
-                continue;
-            }
             foundCol = c;
             break;
         }
     }
 
-    // If no column found, try row below
+    // If no column found, try deeper rows (scan further below based on dwarf count)
     if (foundCol === -1) {
-        const nextRowIndex = rowIndex + 1;
-        if (nextRowIndex >= grid.length) {
-            console.log(`No diggable cell found on row ${rowIndex} and no row below for dwarf ${dwarf.name}`);
-            // Fallback: move to random adjacent cell to break stuck state
-            const randomCol = (dwarf.x + (Math.random() < 0.5 ? 1 : -1) + gridWidth) % gridWidth;
-            scheduleMove(dwarf, randomCol, dwarf.y);
-            return;
-        }
-
-        const nextRow = grid[nextRowIndex];
+        const maxScanDepth = Math.max(5, Math.ceil(dwarfs.length / gridWidth) + 2);
         let foundBelow = -1;
+        let foundBelowRow = -1;
         const tracked = stuckTracking.get(dwarf.name);
         const isNearStuck = tracked && tracked.ticks > STUCK_DETECTION_TICKS * 0.5;
 
-        for (let offset = 0; offset < nextRow.length; offset++) {
-            const c = (originalX + dir * offset + nextRow.length) % nextRow.length;
-            if (!(nextRow[c] && nextRow[c].hardness > 0)) continue;
-            // Allow near-stuck dwarfs to override reservations
-            if (!isNearStuck && isReservedForDig(c, nextRowIndex) && reservedDigBy.get(coordKey(c, nextRowIndex)) !== dwarf.name) continue;
-            if (isCellOccupiedByStanding(c, nextRowIndex)) continue;
-            foundBelow = c;
-            break;
+        for (let rowOff = 1; rowOff <= maxScanDepth; rowOff++) {
+            const scanRowIndex = rowIndex + rowOff;
+            if (scanRowIndex >= grid.length) break;
+            const scanRow = grid[scanRowIndex];
+
+            for (let offset = 0; offset < scanRow.length; offset++) {
+                const c = (originalX + dir * offset + scanRow.length) % scanRow.length;
+                if (!(scanRow[c] && scanRow[c].hardness > 0)) continue;
+                if (!isNearStuck && isReservedForDig(c, scanRowIndex) && reservedDigBy.get(coordKey(c, scanRowIndex)) !== dwarf.name) continue;
+                foundBelow = c;
+                foundBelowRow = scanRowIndex;
+                break;
+            }
+            if (foundBelow !== -1) break;
         }
 
         if (foundBelow === -1) {
-            console.log(`No diggable cell found on row ${rowIndex} or row ${nextRowIndex} for dwarf ${dwarf.name}`);
+            console.log(`No diggable cell found within ${maxScanDepth} rows below row ${rowIndex} for dwarf ${dwarf.name}`);
             // Fallback: try moving to house or random location
             if (house && Math.random() < 0.7) {
                 scheduleMove(dwarf, house.x, house.y);
@@ -2667,13 +2661,12 @@ function actForDwarf(dwarf) {
             return;
         }
 
-        if (scheduleMove(dwarf, foundBelow, nextRowIndex)) {
-            //console.log(`Dwarf ${dwarf.name} scheduled move to (${foundBelow},${nextRowIndex})`);
+        if (scheduleMove(dwarf, foundBelow, foundBelowRow)) {
             foundCol = foundBelow;
             return;
         } else {
-            console.log(`Dwarf ${dwarf.name} could not schedule move to (${foundBelow},${nextRowIndex})`);
-            scheduleMove(dwarf, foundBelow + 1, nextRowIndex + 1);
+            console.log(`Dwarf ${dwarf.name} could not schedule move to (${foundBelow},${foundBelowRow})`);
+            scheduleMove(dwarf, foundBelow + 1, foundBelowRow + 1);
             return;
         }
     }
@@ -2702,16 +2695,11 @@ function actForDwarf(dwarf) {
     if (foundCol !== originalX && prevRowIndex > 0) {
         const aboveRowIndex = prevRowIndex - 1;
         const aboveCell = grid[aboveRowIndex] && grid[aboveRowIndex][foundCol];
-        const occupiedAbove = dwarfs.some(other => other !== dwarf && other.x === foundCol && other.y === aboveRowIndex);
-        if (aboveCell && aboveCell.hardness > 0 && !occupiedAbove) {
+        const aboveReserved = isReservedForDig(foundCol, aboveRowIndex) && reservedDigBy.get(coordKey(foundCol, aboveRowIndex)) !== dwarf.name;
+        if (aboveCell && aboveCell.hardness > 0 && !aboveReserved) {
             if (Math.random() < GRID_MOVE_UP_CHANCE) {
                 dwarf.y = aboveRowIndex;
-                //console.log(`Dwarf ${dwarf.name} moved up to (${foundCol},${aboveRowIndex}) after changing x (70% roll passed)`);
-            } else {
-                //console.log(`Dwarf ${dwarf.name} chose NOT to move up to (${foundCol},${aboveRowIndex}) (70% roll failed)`);
             }
-        } else if (aboveCell && aboveCell.hardness > 0 && occupiedAbove) {
-            console.warn(`Dwarf ${dwarf.name} wanted to move up to (${foundCol},${aboveRowIndex}) but it's occupied; will dig current target instead.`);
         }
     }
 
@@ -2719,16 +2707,11 @@ function actForDwarf(dwarf) {
     if (dwarf.x !== originalX && prevRowIndex > 0) {
         const aboveRowIndex2 = prevRowIndex - 1;
         const aboveCell2 = grid[aboveRowIndex2] && grid[aboveRowIndex2][dwarf.x];
-        const occupiedAbove2 = dwarfs.some(other => other !== dwarf && other.x === dwarf.x && other.y === aboveRowIndex2);
-        if (aboveCell2 && aboveCell2.hardness > 0 && !occupiedAbove2) {
+        const aboveReserved2 = isReservedForDig(dwarf.x, aboveRowIndex2) && reservedDigBy.get(coordKey(dwarf.x, aboveRowIndex2)) !== dwarf.name;
+        if (aboveCell2 && aboveCell2.hardness > 0 && !aboveReserved2) {
             if (Math.random() < GRID_MOVE_UP_CHANCE) {
                 dwarf.y = aboveRowIndex2;
-                //console.log(`(Safety) Dwarf ${dwarf.name} moved up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll passed)`);
-            } else {
-                //console.log(`(Safety) Dwarf ${dwarf.name} chose NOT to move up to (${dwarf.x},${aboveRowIndex2}) before digging (70% roll failed)`);
             }
-        } else if (aboveCell2 && aboveCell2.hardness > 0 && occupiedAbove2) {
-            console.log(`(Safety) Dwarf ${dwarf.name} could not move up to (${dwarf.x},${aboveRowIndex2}) because another dwarf is present`);
         }
     }
 
@@ -2737,7 +2720,7 @@ function actForDwarf(dwarf) {
     const target = grid[targetRowIndex][foundCol];
     const prev = target.hardness;
     const targetKey = coordKey(foundCol, targetRowIndex);
-    if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf);
+    if (!reservedDigBy.get(targetKey)) reservedDigBy.set(targetKey, dwarf.name);
     // Check if we can afford to pay the dwarf
     const wage = calculateWage(dwarf);
     if (gold < wage) {
@@ -2944,6 +2927,29 @@ function tick() {
         if (failsafeTickCounter >= FAILSAFE_CHECK_INTERVAL) {
             failsafeTickCounter = 0;
             
+            // Clean up stale dig reservations - remove entries where the reserving dwarf
+            // is no longer at or heading to the reserved cell
+            for (const [key, dwarfName] of reservedDigBy.entries()) {
+                // Skip entries that aren't strings (bug cleanup for old dwarf object entries)
+                if (typeof dwarfName !== 'string') {
+                    reservedDigBy.delete(key);
+                    continue;
+                }
+                const reservingDwarf = dwarfs.find(d => d.name === dwarfName);
+                if (!reservingDwarf) {
+                    reservedDigBy.delete(key);
+                    continue;
+                }
+                const [rx, ry] = key.split(',').map(Number);
+                const atCell = reservingDwarf.x === rx && reservingDwarf.y === ry;
+                const headingToCell = reservingDwarf.moveTarget &&
+                    reservingDwarf.moveTarget.x === rx && reservingDwarf.moveTarget.y === ry;
+                const isDigging = reservingDwarf.status === 'digging';
+                if (!atCell && !headingToCell && !isDigging) {
+                    reservedDigBy.delete(key);
+                }
+            }
+
             // Release if reserved by a dwarf that's not heading to/at smelter or actively smelting
             if (smelterReservedBy) {
                 const reservingDwarf = dwarfs.find(d => d.name === smelterReservedBy);
