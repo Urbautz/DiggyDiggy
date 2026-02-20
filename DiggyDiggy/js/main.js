@@ -711,6 +711,10 @@ function updateGridDisplay() {
 // Gem modal code (openGemModal, populateGemModal, confirmGemSetting, unsetGem,
 // openGemsModal, populateGemsList, markGemsForCutting, sellGems) moved to modals/gem-modal.js
 
+function openWelcome() {
+    openModal('welcome-modal');
+}
+
 function openMasonry() {
     openModal('masonry-modal');
     populateMasonry();
@@ -4102,6 +4106,7 @@ function initGame() {
     if (!loaded) {
         // No saved game, generate new grid
         generateGrid();
+        window._showWelcomeModal = true;
     }
 
     // Initialize furniture (handles both new games and migrations)
@@ -4137,6 +4142,9 @@ window.addEventListener('modalsLoaded', () => {
         const cheatButton = document.getElementById('settings-cheat-button');
         if (cheatSection) cheatSection.classList.add('visible');
         if (cheatButton) cheatButton.classList.add('visible');
+    }
+    if (window._showWelcomeModal) {
+        openWelcome();
     }
 });
 
