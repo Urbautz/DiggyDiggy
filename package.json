@@ -2,9 +2,9 @@
   "name": "diggy-diggy",
   "version": "1.0.0",
   "description": "An incremental game about dwarfs digging a hole.",
-  "main": "webroot/js/main.js",
+  "main": "DiggyDiggy/js/main.js",
   "scripts": {
-    "start": "live-server webroot",
+    "start": "live-server DiggyDiggy",
     "test": "jest"
   },
   "keywords": [

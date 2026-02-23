@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Launch Chrome",
             "url": "http://localhost:8000/",
-            "webRoot": "${workspaceFolder}/webroot",
+            "webRoot": "${workspaceFolder}/DiggyDiggy",
             "sourceMaps": true,
             "userDataDir": false,
             "preLaunchTask": "start-server"
@@ -19,7 +19,7 @@
             "request": "launch",
             "name": "Launch Edge",
             "url": "http://localhost:8000/",
-            "webRoot": "${workspaceFolder}/webroot",
+            "webRoot": "${workspaceFolder}/DiggyDiggy",
             "sourceMaps": true,
             "trace": true,
             "preLaunchTask": "start-server"
