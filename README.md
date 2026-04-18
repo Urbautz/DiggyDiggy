@@ -1,3 +1,3 @@
-[Play The game|https://urbautz.github.io/DiggyDiggy/webroot/] (in a Browser)
+Play here:
 
-[Wiki|https://github.com/Urbautz/DiggyDiggy/wiki]
+https://bautznet.org/DiggyDiggy/DiggyDiggy/
