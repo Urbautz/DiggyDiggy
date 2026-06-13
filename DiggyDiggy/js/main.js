@@ -749,9 +749,13 @@ function updateStatsSettingsDisplay() {
     }
 }
 
-function maybeSendStats(dwarfLevel) {
+let lastStatDepthReported = -1;
+
+function maybeSendStats(currentDepth) {
     if (sendGameStats !== true) return;
-    if (dwarfLevel % STATS_REPORT_EVERY_N_LEVELS !== 0) return;
+    const milestone = Math.floor(currentDepth / STATS_REPORT_EVERY_N_LEVELS) * STATS_REPORT_EVERY_N_LEVELS;
+    if (milestone <= lastStatDepthReported) return;
+    lastStatDepthReported = milestone;
     const saved = localStorage.getItem('diggyDiggyGameState');
     if (!saved) return;
     try {
@@ -2039,7 +2043,8 @@ function getCandidateTotalLevel(candidate) {
 
 function getHireCostForCandidate(candidate) {
     const totalLevel = getCandidateTotalLevel(candidate);
-    return Math.max(100, 100 * totalLevel * dwarfs.length);
+    const paidDwarfs = Math.max(1, dwarfs.length - 3);
+    return Math.max(100, 100 * totalLevel * paidDwarfs);
 }
 
 function getRerollCost() {
@@ -2921,6 +2926,7 @@ function initWorker() {
                 }
                 
                 startX = data.startX;
+                maybeSendStats(startX);
 
                 // Update gems array
                 if (data.gems) {

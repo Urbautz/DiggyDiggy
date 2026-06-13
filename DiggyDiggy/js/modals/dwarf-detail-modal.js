@@ -1263,7 +1263,6 @@ function applyLevelUp(dwarf, upgradeType) {
     // Deduct XP and increase level
     actualDwarf.xp -= xpNeeded;
     actualDwarf.level += 1;
-    maybeSendStats(actualDwarf.level);
 
     // Apply the chosen upgrade
     switch(upgradeType) {

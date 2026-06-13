@@ -11,16 +11,56 @@ const MAX_DEPTH       = 10000000;    // 10 million rows; physically unreachable
 const MAX_FUTURE_MS   = 300000;      // 5 minutes clock skew tolerance
 const MAX_AGE_MS      = 31536000000; // 1 year old timestamps are stale but acceptable
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json');
-
 function fail(int $code, string $reason): never {
     http_response_code($code);
     echo json_encode(['error' => $reason]);
     exit;
 }
+
+// ── Debug mode ───────────────────────────────────────────────────────────────
+// Access via: https://bautznet.org/DiggyDiggy/DiggyDiggy/stats.php?debug=true
+// Performs a real INSERT with a dummy UUID to verify the DB connection.
+// Remove or restrict this before going to production.
+if (isset($_GET['debug'])) {
+    header('Access-Control-Allow-Origin: *');
+    header('Content-Type: application/json');
+    $testUuid = sprintf(
+        '%08x-%04x-4%03x-%04x-%012x',
+        random_int(0, 0xFFFFFFFF),
+        random_int(0, 0xFFFF),
+        random_int(0, 0xFFF),
+        random_int(0x8000, 0xBFFF),
+        random_int(0, 0xFFFFFFFFFFFF)
+    );
+    $nowMs = (int) (microtime(true) * 1000);
+    try {
+        $pdo = new PDO(
+            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+            DB_USER, DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        $pdo->prepare('
+            INSERT INTO games (uuid, first_seen, last_seen, savedata)
+            VALUES (:uuid, :ts, :ts, :savedata)
+        ')->execute([':uuid' => $testUuid, ':ts' => $nowMs, ':savedata' => '"debug"']);
+        $pdo->prepare('
+            INSERT INTO depth_stats (uuid, recorded_at, depth, gold)
+            VALUES (:uuid, :ts, 0, 0)
+        ')->execute([':uuid' => $testUuid, ':ts' => $nowMs]);
+        http_response_code(200);
+        echo json_encode(['ok' => true, 'test_uuid' => $testUuid, 'host' => DB_HOST, 'db' => DB_NAME]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage(), 'host' => DB_HOST, 'db' => DB_NAME]);
+    }
+    exit;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json');
 
 // Browsers send a preflight OPTIONS request before cross-origin POSTs
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -124,6 +164,6 @@ try {
 
 } catch (PDOException $e) {
     error_log('stats.php DB error: ' . $e->getMessage());
-    // Return a generic message — never expose DB internals to the client
-    fail(500, 'Database error — check server error log');
+    // TODO: revert to generic message after debugging
+    fail(500, $e->getMessage());
 }
