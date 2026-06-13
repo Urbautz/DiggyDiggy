@@ -715,6 +715,69 @@ function openWelcome() {
     openModal('welcome-modal');
 }
 
+// ============================================================================
+// GAME STATISTICS
+// ============================================================================
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+window.setStatsPref = function setStatsPref(send) {
+    sendGameStats = send;
+    localStorage.setItem('diggyDiggyStatsPref', send ? 'true' : 'false');
+    updateStatsSettingsDisplay();
+    closeModal('welcome-modal');
+};
+
+function initStatsPreference() {
+    const saved = localStorage.getItem('diggyDiggyStatsPref');
+    if (saved !== null) sendGameStats = saved === 'true';
+}
+
+function updateStatsSettingsDisplay() {
+    const el = document.getElementById('settings-stats-status');
+    if (!el) return;
+    if (sendGameStats === null) {
+        el.textContent = 'Not decided yet.';
+    } else {
+        el.textContent = sendGameStats ? '✅ Currently sending statistics.' : '❌ Not sending statistics.';
+    }
+}
+
+function maybeSendStats(dwarfLevel) {
+    if (sendGameStats !== true) return;
+    if (dwarfLevel % STATS_REPORT_EVERY_N_LEVELS !== 0) return;
+    const saved = localStorage.getItem('diggyDiggyGameState');
+    if (!saved) return;
+    try {
+        const state = JSON.parse(saved);
+        delete state.transactionHistory;
+        delete state.transactions;
+        fetch('https://bautznet.org/DiggyDiggy/DiggyDiggy/stats.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: gameUUID, savedata: state })
+        }).then(res => {
+            if (res.status !== 204) {
+                res.json().then(body => {
+                    console.warn(`[Stats] Server rejected stats (HTTP ${res.status}):`, body.error ?? body);
+                }).catch(() => {
+                    console.warn(`[Stats] Server rejected stats (HTTP ${res.status}), no response body`);
+                });
+            }
+        }).catch(err => {
+            console.warn('[Stats] Could not reach stats endpoint:', err.message);
+        });
+    } catch (e) {
+        console.warn('[Stats] Failed to prepare stats payload:', e.message);
+    }
+}
+
 function openMasonry() {
     openModal('masonry-modal');
     populateMasonry();
@@ -1060,6 +1123,7 @@ function openModal(modalname) {
     // Update backup restore buttons when opening settings
     if (modalname === 'settings-modal') {
         updateBackupRestoreUI();
+        updateStatsSettingsDisplay();
     }
 
     // Handle z-index stacking for modals that open on top of other modals
@@ -2171,7 +2235,7 @@ window.confirmHireDwarf = function confirmHireDwarf() {
         name: name,
         toolId: newToolId,
         roomId: roomId,
-        level: 0, xp: 0,
+        level: getCandidateTotalLevel(candidate), xp: 0,
         digPower: candidate.digPower,
         maxEnergy: 100,
         strength: candidate.strength,
@@ -3237,6 +3301,7 @@ function saveGame() {
             commonRoom: commonRoom,
             individualRooms: individualRooms,
             hireCandidates: hireCandidates || [],
+            uuid: gameUUID,
             timestamp: now,
             version: gameversion
         };
@@ -3455,6 +3520,8 @@ function loadGame() {
             hireCandidates = gameState.hireCandidates;
         }
 
+        // Restore UUID (generate one if this is an old save without it)
+        gameUUID = gameState.uuid || generateUUID();
 
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;
@@ -4100,11 +4167,14 @@ function switchMaterialsTab(tab) {
 
 // Initialize the game state
 function initGame() {
+    initStatsPreference();
+
     // Try to load saved game first
     const loaded = loadGame();
 
     if (!loaded) {
-        // No saved game, generate new grid
+        // No saved game, generate new grid and a fresh UUID
+        gameUUID = generateUUID();
         generateGrid();
         window._showWelcomeModal = true;
     }
@@ -4143,6 +4213,9 @@ window.addEventListener('modalsLoaded', () => {
         if (cheatSection) cheatSection.classList.add('visible');
         if (cheatButton) cheatButton.classList.add('visible');
     }
+    document.querySelectorAll('.stats-interval-label').forEach(el => {
+        el.textContent = STATS_REPORT_EVERY_N_LEVELS;
+    });
     if (window._showWelcomeModal) {
         openWelcome();
     }

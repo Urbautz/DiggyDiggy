@@ -25,6 +25,18 @@
                     <a href="https://github.com/Urbautz/DiggyDiggy/issues" target="_blank" rel="noopener">GitHub Issues</a>.
                 </p>
             </div>
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #12122a; border-radius: 8px; border: 1px solid #333;">
+                <h3 style="margin-top: 0;">📊 Help improve the game</h3>
+                <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 0.75rem;">
+                    Every <span class="stats-interval-label"></span> dwarf level(s), we'd like to send anonymous game statistics to help us balance the game.
+                    No personal data is collected — only your game progress (depth reached, materials, dwarfs, etc.).
+                    You can change this at any time in Settings.
+                </p>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn-primary" onclick="setStatsPref(true)">✅ Yes, send stats</button>
+                    <button class="btn-secondary" onclick="setStatsPref(false)">❌ No thanks</button>
+                </div>
+            </div>
         </div>
         <footer class="modal-footer">
             <button class="btn-secondary" data-action="close-modal">Let's Dig!</button>

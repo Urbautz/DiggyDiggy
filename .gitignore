@@ -1,0 +1,8 @@
+# Database credentials
+DiggyDiggy/db_config.php
+
+# Stats files written by the old Node.js endpoint
+DiggyDiggy/stats/
+
+# Node
+node_modules/

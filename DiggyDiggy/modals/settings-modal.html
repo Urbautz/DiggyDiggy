@@ -28,6 +28,17 @@
                 <button id="restore-daily-btn" class="btn-secondary" onclick="restoreBackup('daily')" disabled>📅 Daily</button>
             </div>
 
+            <h3>📊 Game Statistics</h3>
+            <p style="margin-bottom: 0.5rem; font-size: 0.9rem; color: #aaa;">
+                Every <span class="stats-interval-label"></span> dwarf level(s), anonymous game data (depth, materials, dwarfs) is sent to help balance the game.
+                No personal information is included.
+            </p>
+            <div id="settings-stats-status" style="margin-bottom: 0.5rem; font-size: 0.9rem;"></div>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="setStatsPref(true)">✅ Send stats</button>
+                <button class="btn-secondary" onclick="setStatsPref(false)">❌ Don't send stats</button>
+            </div>
+
             <div id="settings-cheat-section" class="settings-cheat-section">
                 <h3 class="settings-cheat-title">🎮 Cheat Mode</h3>
                 <p class="settings-cheat-description"><button id="settings-cheat-button" class="btn-cheat" onclick="activateCheat()">🚀 Cheat</button></p>
