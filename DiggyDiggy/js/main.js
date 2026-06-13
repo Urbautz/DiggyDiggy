@@ -4183,6 +4183,15 @@ function initGame() {
         gameUUID = generateUUID();
         generateGrid();
         window._showWelcomeModal = true;
+
+        // Assign random generated names to starting dwarfs
+        const usedNames = new Set();
+        dwarfs.forEach(d => {
+            let name;
+            do { name = generateDwarfName(); } while (usedNames.has(name));
+            usedNames.add(name);
+            d.name = name;
+        });
     }
 
     // Initialize furniture (handles both new games and migrations)
