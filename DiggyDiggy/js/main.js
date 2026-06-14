@@ -1253,9 +1253,11 @@ function showToolsPanel() {
     const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
 
-    // Remove Warehouse Sell button
+    // Remove Warehouse Sell button and emergency sell checkbox
     const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
     if (warehouseSellBtn) warehouseSellBtn.remove();
+    const emergencySellWrap = document.getElementById('warehouse-emergency-sell-wrap');
+    if (emergencySellWrap) emergencySellWrap.remove();
 
     // Remove hire button (dwarfs tab only)
     const hireDwarfBtn = document.getElementById('hire-dwarf-header-btn');
@@ -2731,6 +2733,31 @@ function updateMaterialsPanel() {
             gemsBtn.remove();
         }
 
+        // Create or update emergency sell checkbox
+        let emergencySellWrap = document.getElementById('warehouse-emergency-sell-wrap');
+        if (hasAnyMaterials) {
+            if (!emergencySellWrap) {
+                emergencySellWrap = document.createElement('label');
+                emergencySellWrap.id = 'warehouse-emergency-sell-wrap';
+                emergencySellWrap.style.cssText = 'display:flex;align-items:center;gap:0.3rem;margin-left:auto;cursor:pointer;font-size:0.85rem;white-space:nowrap;';
+                emergencySellWrap.title = 'When you run out of money, the game will sell non-craftable materials at 60% of their value';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'warehouse-emergency-sell';
+                cb.checked = emergencySellEnabled;
+                cb.style.cssText = 'width:1rem;height:1rem;cursor:pointer;';
+                cb.onchange = () => toggleEmergencySell(cb.checked);
+                emergencySellWrap.appendChild(cb);
+                emergencySellWrap.appendChild(document.createTextNode('Auto-sell'));
+                header.appendChild(emergencySellWrap);
+            } else {
+                const cb = document.getElementById('warehouse-emergency-sell');
+                if (cb) cb.checked = emergencySellEnabled;
+            }
+        } else if (emergencySellWrap) {
+            emergencySellWrap.remove();
+        }
+
         // Create or update Warehouse Sell button (on the right)
         let warehouseSellBtn = document.getElementById('warehouse-sell-btn');
         if (hasAnyMaterials) {
@@ -2740,7 +2767,6 @@ function updateMaterialsPanel() {
                 warehouseSellBtn.className = 'btn-sell-all-global';
                 warehouseSellBtn.textContent = '💰 Sell';
                 warehouseSellBtn.onclick = openWarehouseSellModal;
-                warehouseSellBtn.style.marginLeft = 'auto';
                 header.appendChild(warehouseSellBtn);
             }
         } else if (warehouseSellBtn) {
