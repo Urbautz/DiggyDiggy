@@ -760,12 +760,31 @@ function maybeSendStats(currentDepth) {
     if (!saved) return;
     try {
         const state = JSON.parse(saved);
-        delete state.transactionHistory;
-        delete state.transactions;
+
+        // Build a lean stats payload — omit grid, operational state, and zero-stock materials
+        const statsPayload = {
+            version:          state.version,
+            startX:           state.startX,
+            gold:             state.gold,
+            researchData:     state.researchData,
+            toolsInventory:   state.toolsInventory,
+            gems:             state.gems,
+            transactionHistory: state.transactionHistory,
+            commonRoom:       state.commonRoom,
+            individualRooms:  state.individualRooms,
+            hasForgedHighHardnessTool: state.hasForgedHighHardnessTool,
+            // Strip zero-stock entries
+            materialsStock: Object.fromEntries(
+                Object.entries(state.materialsStock || {}).filter(([, qty]) => qty > 0)
+            ),
+            // Strip operational dwarf state (position, movement, bucket contents)
+            dwarfs: (state.dwarfs || []).map(({ x, y, status, moveTarget, bucket, reservations, energy, currentManagementTask, ...rest }) => rest),
+        };
+
         fetch('https://bautznet.org/DiggyDiggy/DiggyDiggy/stats.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uuid: gameUUID, savedata: state })
+            body: JSON.stringify({ uuid: gameUUID, savedata: statsPayload })
         }).then(res => {
             if (res.status !== 204) {
                 res.json().then(body => {
@@ -4317,6 +4336,9 @@ function initGame() {
             do { name = generateDwarfName(); } while (usedNames.has(name));
             usedNames.add(name);
             d.name = name;
+            if (d.roomId && individualRooms[d.roomId]) {
+                individualRooms[d.roomId].name = `${name}'s Room`;
+            }
         });
     }
 
