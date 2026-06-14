@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const STATS_DIR = path.join(__dirname, 'stats');
+const WEB_ROOT = path.resolve(__dirname);
 
 const PORT = 8000;
 
@@ -42,11 +43,16 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    let filePath = '.' + req.url;
-    if (filePath === './') {
-        filePath = './index.html';
+    const urlPath = req.url.split('?')[0]; // strip query string
+    const resolvedPath = path.resolve(WEB_ROOT, '.' + urlPath);
+
+    if (!resolvedPath.startsWith(WEB_ROOT + path.sep) && resolvedPath !== WEB_ROOT) {
+        res.writeHead(403, { 'Content-Type': 'text/html' });
+        res.end('<h1>403 - Forbidden</h1>', 'utf-8');
+        return;
     }
 
+    const filePath = resolvedPath === WEB_ROOT ? path.join(WEB_ROOT, 'index.html') : resolvedPath;
     const extname = String(path.extname(filePath)).toLowerCase();
     const contentType = mimeTypes[extname] || 'application/octet-stream';
 

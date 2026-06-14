@@ -50,8 +50,9 @@ if (isset($_GET['debug'])) {
         http_response_code(200);
         echo json_encode(['ok' => true, 'test_uuid' => $testUuid, 'host' => DB_HOST, 'db' => DB_NAME]);
     } catch (PDOException $e) {
+        error_log('stats.php DB test error: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => $e->getMessage(), 'host' => DB_HOST, 'db' => DB_NAME]);
+        echo json_encode(['ok' => false, 'error' => 'Database error']);
     }
     exit;
 }
@@ -164,6 +165,5 @@ try {
 
 } catch (PDOException $e) {
     error_log('stats.php DB error: ' . $e->getMessage());
-    // TODO: revert to generic message after debugging
-    fail(500, $e->getMessage());
+    fail(500, 'Database error');
 }
