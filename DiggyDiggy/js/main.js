@@ -715,6 +715,73 @@ function openWelcome() {
     openModal('welcome-modal');
 }
 
+// ============================================================================
+// GAME STATISTICS
+// ============================================================================
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+window.setStatsPref = function setStatsPref(send) {
+    sendGameStats = send;
+    localStorage.setItem('diggyDiggyStatsPref', send ? 'true' : 'false');
+    updateStatsSettingsDisplay();
+    closeModal('welcome-modal');
+};
+
+function initStatsPreference() {
+    const saved = localStorage.getItem('diggyDiggyStatsPref');
+    if (saved !== null) sendGameStats = saved === 'true';
+}
+
+function updateStatsSettingsDisplay() {
+    const el = document.getElementById('settings-stats-status');
+    if (!el) return;
+    if (sendGameStats === null) {
+        el.textContent = 'Not decided yet.';
+    } else {
+        el.textContent = sendGameStats ? '✅ Currently sending statistics.' : '❌ Not sending statistics.';
+    }
+}
+
+let lastStatDepthReported = -1;
+
+function maybeSendStats(currentDepth) {
+    if (sendGameStats !== true) return;
+    const milestone = Math.floor(currentDepth / STATS_REPORT_EVERY_N_LEVELS) * STATS_REPORT_EVERY_N_LEVELS;
+    if (milestone <= lastStatDepthReported) return;
+    lastStatDepthReported = milestone;
+    const saved = localStorage.getItem('diggyDiggyGameState');
+    if (!saved) return;
+    try {
+        const state = JSON.parse(saved);
+        delete state.transactionHistory;
+        delete state.transactions;
+        fetch('https://bautznet.org/DiggyDiggy/DiggyDiggy/stats.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: gameUUID, savedata: state })
+        }).then(res => {
+            if (res.status !== 204) {
+                res.json().then(body => {
+                    console.warn(`[Stats] Server rejected stats (HTTP ${res.status}):`, body.error ?? body);
+                }).catch(() => {
+                    console.warn(`[Stats] Server rejected stats (HTTP ${res.status}), no response body`);
+                });
+            }
+        }).catch(err => {
+            console.warn('[Stats] Could not reach stats endpoint:', err.message);
+        });
+    } catch (e) {
+        console.warn('[Stats] Failed to prepare stats payload:', e.message);
+    }
+}
+
 function openMasonry() {
     openModal('masonry-modal');
     populateMasonry();
@@ -1060,6 +1127,7 @@ function openModal(modalname) {
     // Update backup restore buttons when opening settings
     if (modalname === 'settings-modal') {
         updateBackupRestoreUI();
+        updateStatsSettingsDisplay();
     }
 
     // Handle z-index stacking for modals that open on top of other modals
@@ -1185,9 +1253,11 @@ function showToolsPanel() {
     const sellAllHeaderBtn = document.getElementById('sell-all-header-btn');
     if (sellAllHeaderBtn) sellAllHeaderBtn.remove();
 
-    // Remove Warehouse Sell button
+    // Remove Warehouse Sell button and emergency sell checkbox
     const warehouseSellBtn = document.getElementById('warehouse-sell-btn');
     if (warehouseSellBtn) warehouseSellBtn.remove();
+    const emergencySellWrap = document.getElementById('warehouse-emergency-sell-wrap');
+    if (emergencySellWrap) emergencySellWrap.remove();
 
     // Remove hire button (dwarfs tab only)
     const hireDwarfBtn = document.getElementById('hire-dwarf-header-btn');
@@ -1924,6 +1994,82 @@ function updateHireDwarfHeaderBtn() {
 }
 
 // ============================================================================
+// EMERGENCY SELL SYSTEM
+// ============================================================================
+
+window.toggleEmergencySell = function(checked) {
+    emergencySellEnabled = checked;
+    saveGame();
+};
+
+function performEmergencySell(target) {
+    if (target <= 0) return;
+
+    // Build the set of materials used as smelter inputs
+    const smelterInputs = new Set();
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task) continue;
+        if (task.input && task.input.material) smelterInputs.add(task.input.material);
+        if (task.inputs) task.inputs.forEach(inp => smelterInputs.add(inp.material));
+    }
+
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+    const EMERGENCY_DISCOUNT = 0.6;
+
+    // Collect eligible materials sorted cheapest first
+    const eligible = Object.keys(materialsStock)
+        .map(id => ({ id, m: materials[id], qty: materialsStock[id] }))
+        .filter(({ m, qty }) => m && qty > 0 &&
+            !smelterInputs.has(({ id }) => id) &&
+            m.type !== 'Ingot' && m.type !== 'Processed' && m.type !== 'Gem' && m.type !== 'Special')
+        .filter(({ id }) => !smelterInputs.has(id))
+        .sort((a, b) => a.m.worth - b.m.worth);
+
+    let remaining = target;
+    let totalEarnings = 0;
+    let soldItems = 0;
+
+    for (const { id, m, qty } of eligible) {
+        if (remaining <= 0) break;
+        const pricePerUnit = m.worth * totalTradeBonus * EMERGENCY_DISCOUNT;
+        if (pricePerUnit <= 0) continue;
+
+        const unitsNeeded = Math.ceil(remaining / pricePerUnit);
+        const unitsSold = Math.min(unitsNeeded, qty);
+        const earnings = unitsSold * pricePerUnit;
+
+        materialsStock[id] -= unitsSold;
+        totalEarnings += earnings;
+        soldItems += unitsSold;
+        remaining -= earnings;
+    }
+
+    if (totalEarnings <= 0) return;
+
+    gold += totalEarnings;
+    pendingGoldDelta += totalEarnings;
+    goldSyncToken++;
+
+    logTransaction('income', totalEarnings, `Emergency sell: ${formatNumber(soldItems, 'material')} items at 60%`);
+
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { materialsStock, gold, goldSyncToken, toolsInventory }
+        });
+    }
+
+    updateGoldDisplay();
+    updateStockDisplay();
+    console.log(`Emergency sell: +${formatNumber(totalEarnings, 'gold')} gold (target was ${formatNumber(target, 'gold')})`);
+}
+
+// ============================================================================
 // HIRE DWARF SYSTEM
 // ============================================================================
 
@@ -1975,7 +2121,8 @@ function getCandidateTotalLevel(candidate) {
 
 function getHireCostForCandidate(candidate) {
     const totalLevel = getCandidateTotalLevel(candidate);
-    return Math.max(100, 100 * totalLevel * dwarfs.length);
+    const paidDwarfs = Math.max(1, dwarfs.length - 3);
+    return Math.max(100, 100 * totalLevel * paidDwarfs);
 }
 
 function getRerollCost() {
@@ -2171,7 +2318,7 @@ window.confirmHireDwarf = function confirmHireDwarf() {
         name: name,
         toolId: newToolId,
         roomId: roomId,
-        level: 0, xp: 0,
+        level: getCandidateTotalLevel(candidate), xp: 0,
         digPower: candidate.digPower,
         maxEnergy: 100,
         strength: candidate.strength,
@@ -2586,6 +2733,31 @@ function updateMaterialsPanel() {
             gemsBtn.remove();
         }
 
+        // Create or update emergency sell checkbox
+        let emergencySellWrap = document.getElementById('warehouse-emergency-sell-wrap');
+        if (hasAnyMaterials) {
+            if (!emergencySellWrap) {
+                emergencySellWrap = document.createElement('label');
+                emergencySellWrap.id = 'warehouse-emergency-sell-wrap';
+                emergencySellWrap.style.cssText = 'display:flex;align-items:center;gap:0.3rem;margin-left:auto;cursor:pointer;font-size:0.85rem;white-space:nowrap;';
+                emergencySellWrap.title = 'When you run out of money, the game will sell non-craftable materials at 60% of their value';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'warehouse-emergency-sell';
+                cb.checked = emergencySellEnabled;
+                cb.style.cssText = 'width:1rem;height:1rem;cursor:pointer;';
+                cb.onchange = () => toggleEmergencySell(cb.checked);
+                emergencySellWrap.appendChild(cb);
+                emergencySellWrap.appendChild(document.createTextNode('Auto-sell'));
+                header.appendChild(emergencySellWrap);
+            } else {
+                const cb = document.getElementById('warehouse-emergency-sell');
+                if (cb) cb.checked = emergencySellEnabled;
+            }
+        } else if (emergencySellWrap) {
+            emergencySellWrap.remove();
+        }
+
         // Create or update Warehouse Sell button (on the right)
         let warehouseSellBtn = document.getElementById('warehouse-sell-btn');
         if (hasAnyMaterials) {
@@ -2595,7 +2767,6 @@ function updateMaterialsPanel() {
                 warehouseSellBtn.className = 'btn-sell-all-global';
                 warehouseSellBtn.textContent = '💰 Sell';
                 warehouseSellBtn.onclick = openWarehouseSellModal;
-                warehouseSellBtn.style.marginLeft = 'auto';
                 header.appendChild(warehouseSellBtn);
             }
         } else if (warehouseSellBtn) {
@@ -2757,6 +2928,8 @@ let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
 let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
+let emergencySellEnabled = true;
+let recentTickWages = []; // Rolling window of wage totals for last 10 ticks
 
 /**
  * Handle critical errors by pausing the game and showing an error notification
@@ -2857,6 +3030,7 @@ function initWorker() {
                 }
                 
                 startX = data.startX;
+                maybeSendStats(startX);
 
                 // Update gems array
                 if (data.gems) {
@@ -2887,7 +3061,23 @@ function initWorker() {
                         gold = data.gold + pendingGoldDelta;
                     }
                 }
-                
+
+                // Track wages from this tick for emergency sell targeting
+                const tickWageTotal = (data.transactions || [])
+                    .filter(t => t.type === 'expense' && t.description && t.description.toLowerCase().includes('wage'))
+                    .reduce((sum, t) => sum + t.amount, 0);
+                recentTickWages.push(tickWageTotal);
+                if (recentTickWages.length > 10) recentTickWages.shift();
+
+                // Emergency sell: if gold can't cover any dwarf's next wage, sell before they strike
+                if (emergencySellEnabled && dwarfs.length > 0) {
+                    const cheapestWage = Math.min(...dwarfs.map(d => calculateWage(d)));
+                    if (gold < cheapestWage) {
+                        const wageTarget = recentTickWages.reduce((sum, w) => sum + w, 0);
+                        performEmergencySell(wageTarget);
+                    }
+                }
+
                 // Process transactions from worker
                 if (data.transactions && Array.isArray(data.transactions)) {
                     for (const transaction of data.transactions) {
@@ -3237,6 +3427,8 @@ function saveGame() {
             commonRoom: commonRoom,
             individualRooms: individualRooms,
             hireCandidates: hireCandidates || [],
+            emergencySellEnabled: emergencySellEnabled,
+            uuid: gameUUID,
             timestamp: now,
             version: gameversion
         };
@@ -3455,6 +3647,13 @@ function loadGame() {
             hireCandidates = gameState.hireCandidates;
         }
 
+        // Restore settings
+        if (gameState.emergencySellEnabled !== undefined) {
+            emergencySellEnabled = gameState.emergencySellEnabled;
+        }
+
+        // Restore UUID (generate one if this is an old save without it)
+        gameUUID = gameState.uuid || generateUUID();
 
         console.log('Game loaded from', new Date(gameState.timestamp));
         return true;
@@ -4100,13 +4299,25 @@ function switchMaterialsTab(tab) {
 
 // Initialize the game state
 function initGame() {
+    initStatsPreference();
+
     // Try to load saved game first
     const loaded = loadGame();
 
     if (!loaded) {
-        // No saved game, generate new grid
+        // No saved game, generate new grid and a fresh UUID
+        gameUUID = generateUUID();
         generateGrid();
         window._showWelcomeModal = true;
+
+        // Assign random generated names to starting dwarfs
+        const usedNames = new Set();
+        dwarfs.forEach(d => {
+            let name;
+            do { name = generateDwarfName(); } while (usedNames.has(name));
+            usedNames.add(name);
+            d.name = name;
+        });
     }
 
     // Initialize furniture (handles both new games and migrations)
@@ -4143,6 +4354,9 @@ window.addEventListener('modalsLoaded', () => {
         if (cheatSection) cheatSection.classList.add('visible');
         if (cheatButton) cheatButton.classList.add('visible');
     }
+    document.querySelectorAll('.stats-interval-label').forEach(el => {
+        el.textContent = STATS_REPORT_EVERY_N_LEVELS;
+    });
     if (window._showWelcomeModal) {
         openWelcome();
     }

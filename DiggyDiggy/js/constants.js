@@ -240,3 +240,9 @@ const AUTO_REFRESH_INTERVAL = 2000; // Milliseconds for transaction modal refres
 
 const CHEAT_GOLD_BONUS = 5000; // Gold added by cheat code
 const CHEAT_DEPTH_MULTIPLIER = 2; // Depth multiplier for cheat code
+
+// ============================================================================
+// STATS REPORTING
+// ============================================================================
+
+const STATS_REPORT_EVERY_N_LEVELS = 1; // Send anonymous stats every N dwarf levels

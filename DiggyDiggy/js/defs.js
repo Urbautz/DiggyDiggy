@@ -2180,6 +2180,9 @@ let grid = [];
 let startX = 0;
 let gold = 50;
 
+let gameUUID = null;        // Unique ID for this save, used for anonymous stats
+let sendGameStats = null;   // null = not decided, true = opted in, false = opted out
+
 // Gold sync tracking - prevents race condition between main thread sales and worker ticks
 let goldSyncToken = 0;      // Incremented when main thread sends gold update to worker
 let pendingGoldDelta = 0;   // Tracks unsynced local gold changes (sales, etc.)
