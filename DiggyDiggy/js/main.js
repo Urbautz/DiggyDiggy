@@ -1992,6 +1992,82 @@ function updateHireDwarfHeaderBtn() {
 }
 
 // ============================================================================
+// EMERGENCY SELL SYSTEM
+// ============================================================================
+
+window.toggleEmergencySell = function(checked) {
+    emergencySellEnabled = checked;
+    saveGame();
+};
+
+function performEmergencySell(target) {
+    if (target <= 0) return;
+
+    // Build the set of materials used as smelter inputs
+    const smelterInputs = new Set();
+    for (const taskId of smelterTasks) {
+        const task = smelterTasksData[taskId];
+        if (!task) continue;
+        if (task.input && task.input.material) smelterInputs.add(task.input.material);
+        if (task.inputs) task.inputs.forEach(inp => smelterInputs.add(inp.material));
+    }
+
+    const betterTrading = getResearchLevel('trading');
+    const tradeBonus = 1 + betterTrading * RESEARCH_TRADING_BONUS;
+    const priceNegotiationsLevel = getResearchLevel('price-negotiations');
+    const negotiationsBonus = priceNegotiationsLevel > 0 ? (1 + getHighestDwarfWisdom() * RESEARCH_PRICE_NEGOTIATIONS_BONUS) : 1;
+    const totalTradeBonus = tradeBonus * negotiationsBonus;
+    const EMERGENCY_DISCOUNT = 0.6;
+
+    // Collect eligible materials sorted cheapest first
+    const eligible = Object.keys(materialsStock)
+        .map(id => ({ id, m: materials[id], qty: materialsStock[id] }))
+        .filter(({ m, qty }) => m && qty > 0 &&
+            !smelterInputs.has(({ id }) => id) &&
+            m.type !== 'Ingot' && m.type !== 'Processed' && m.type !== 'Gem' && m.type !== 'Special')
+        .filter(({ id }) => !smelterInputs.has(id))
+        .sort((a, b) => a.m.worth - b.m.worth);
+
+    let remaining = target;
+    let totalEarnings = 0;
+    let soldItems = 0;
+
+    for (const { id, m, qty } of eligible) {
+        if (remaining <= 0) break;
+        const pricePerUnit = m.worth * totalTradeBonus * EMERGENCY_DISCOUNT;
+        if (pricePerUnit <= 0) continue;
+
+        const unitsNeeded = Math.ceil(remaining / pricePerUnit);
+        const unitsSold = Math.min(unitsNeeded, qty);
+        const earnings = unitsSold * pricePerUnit;
+
+        materialsStock[id] -= unitsSold;
+        totalEarnings += earnings;
+        soldItems += unitsSold;
+        remaining -= earnings;
+    }
+
+    if (totalEarnings <= 0) return;
+
+    gold += totalEarnings;
+    pendingGoldDelta += totalEarnings;
+    goldSyncToken++;
+
+    logTransaction('income', totalEarnings, `Emergency sell: ${formatNumber(soldItems, 'material')} items at 60%`);
+
+    if (gameWorker && workerInitialized) {
+        gameWorker.postMessage({
+            type: 'update-state',
+            data: { materialsStock, gold, goldSyncToken, toolsInventory }
+        });
+    }
+
+    updateGoldDisplay();
+    updateStockDisplay();
+    console.log(`Emergency sell: +${formatNumber(totalEarnings, 'gold')} gold (target was ${formatNumber(target, 'gold')})`);
+}
+
+// ============================================================================
 // HIRE DWARF SYSTEM
 // ============================================================================
 
@@ -2826,6 +2902,8 @@ let gamePaused = false;
 let tickCounter = 0; // Track ticks for periodic updates
 let smelterRefreshCounter = 0; // Track ticks for smelter refresh rate
 let cheatModeEnabled = false; // Track if cheat mode is available
+let emergencySellEnabled = true;
+let recentTickWages = []; // Rolling window of wage totals for last 10 ticks
 
 /**
  * Handle critical errors by pausing the game and showing an error notification
@@ -2957,7 +3035,23 @@ function initWorker() {
                         gold = data.gold + pendingGoldDelta;
                     }
                 }
-                
+
+                // Track wages from this tick for emergency sell targeting
+                const tickWageTotal = (data.transactions || [])
+                    .filter(t => t.type === 'expense' && t.description && t.description.toLowerCase().includes('wage'))
+                    .reduce((sum, t) => sum + t.amount, 0);
+                recentTickWages.push(tickWageTotal);
+                if (recentTickWages.length > 10) recentTickWages.shift();
+
+                // Emergency sell: if gold can't cover any dwarf's next wage, sell before they strike
+                if (emergencySellEnabled && dwarfs.length > 0) {
+                    const cheapestWage = Math.min(...dwarfs.map(d => calculateWage(d)));
+                    if (gold < cheapestWage) {
+                        const wageTarget = recentTickWages.reduce((sum, w) => sum + w, 0);
+                        performEmergencySell(wageTarget);
+                    }
+                }
+
                 // Process transactions from worker
                 if (data.transactions && Array.isArray(data.transactions)) {
                     for (const transaction of data.transactions) {
@@ -3307,6 +3401,7 @@ function saveGame() {
             commonRoom: commonRoom,
             individualRooms: individualRooms,
             hireCandidates: hireCandidates || [],
+            emergencySellEnabled: emergencySellEnabled,
             uuid: gameUUID,
             timestamp: now,
             version: gameversion
@@ -3524,6 +3619,11 @@ function loadGame() {
         // Restore hire candidates (so they persist across page reloads)
         if (gameState.hireCandidates && Array.isArray(gameState.hireCandidates)) {
             hireCandidates = gameState.hireCandidates;
+        }
+
+        // Restore settings
+        if (gameState.emergencySellEnabled !== undefined) {
+            emergencySellEnabled = gameState.emergencySellEnabled;
         }
 
         // Restore UUID (generate one if this is an old save without it)

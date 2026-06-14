@@ -19,8 +19,6 @@ const mimeTypes = {
 };
 
 const server = http.createServer((req, res) => {
-    console.log(`${req.method} ${req.url}`);
-
     // Stats collection endpoint
     if (req.method === 'POST' && req.url === '/api/stats') {
         let body = '';

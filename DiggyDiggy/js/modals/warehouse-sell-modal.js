@@ -159,6 +159,9 @@ function openWarehouseSellModal() {
         };
     }
 
+    const emergencyCb = document.getElementById('warehouse-emergency-sell');
+    if (emergencyCb) emergencyCb.checked = emergencySellEnabled;
+
     openModal('warehouse-sell-modal');
 }
 
